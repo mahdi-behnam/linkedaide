@@ -1,0 +1,192 @@
+"""Asynchronous Telegram Bot API client for human-in-the-loop approvals.
+
+Architecture Invariants:
+- High-risk operations require explicit human authorization via Telegram.
+- Outbound approval requests attach inline keyboard with compact callback_data.
+- Outcome transitions strip the inline keyboard as a UI-level idempotency guard.
+- Strict authorization check validates sender against TELEGRAM_AUTHORIZED_CHAT_ID.
+"""
+
+import logging
+from typing import Any
+
+import httpx
+from pydantic import SecretStr
+
+from agent.config import Settings
+from agent.errors import TelegramAPIError
+from agent.models.schemas import PendingAction
+from agent.telegram.keyboards import (
+    build_suggestion_keyboard,
+    build_suggestion_message,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class TelegramClient:
+    """Asynchronous HTTP client for Telegram Bot API interactions."""
+
+    def __init__(
+        self,
+        settings: Settings,
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self._settings = settings
+        self._custom_client = http_client is not None
+        self._http_client = http_client or httpx.AsyncClient(timeout=15.0)
+
+        token_str = (
+            settings.telegram_bot_token.get_secret_value()
+            if isinstance(settings.telegram_bot_token, SecretStr)
+            else str(settings.telegram_bot_token)
+        )
+        self._base_url = f"https://api.telegram.org/bot{token_str}"
+
+    async def __aenter__(self) -> TelegramClient:
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.aclose()
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client if internally managed."""
+        if not self._custom_client and not self._http_client.is_closed:
+            await self._http_client.aclose()
+
+    @staticmethod
+    def is_authorized(chat_id: int | None, settings: Settings) -> bool:
+        """Validate whether a chat/user ID matches the authorized Telegram identity.
+
+        Args:
+            chat_id: Telegram chat or user ID from callback/message.
+            settings: Runtime configuration containing TELEGRAM_AUTHORIZED_CHAT_ID.
+
+        Returns:
+            True if authorized, False otherwise.
+        """
+        if chat_id is None or chat_id <= 0:
+            return False
+        return chat_id == settings.telegram_authorized_chat_id
+
+    async def send_suggestion(self, item: PendingAction) -> int:
+        """Send an action approval suggestion to the authorized Telegram chat.
+
+        Args:
+            item: PendingAction record with context, draft text, and item ID.
+
+        Returns:
+            Telegram message_id of the sent suggestion message.
+
+        Raises:
+            TelegramAPIError: If the API call fails or returns an error.
+        """
+        message_text = build_suggestion_message(item)
+        keyboard = build_suggestion_keyboard(item.item_id, item.action_type)
+
+        payload: dict[str, Any] = {
+            "chat_id": self._settings.telegram_authorized_chat_id,
+            "text": message_text,
+            "parse_mode": "HTML",
+            "link_preview_options": {"is_disabled": True},
+            "reply_markup": keyboard,
+        }
+
+        data = await self._post("sendMessage", payload)
+        message_id = data.get("result", {}).get("message_id")
+        if not message_id or not isinstance(message_id, int):
+            raise TelegramAPIError(
+                f"Telegram sendMessage response missing integer message_id: {data}"
+            )
+
+        logger.info(f"Sent Telegram suggestion for item '{item.item_id}' (message_id={message_id})")
+        return message_id
+
+    async def edit_to_outcome(
+        self,
+        chat_id: int,
+        message_id: int,
+        outcome_text: str,
+    ) -> None:
+        """Edit a suggestion message to terminal outcome and strip its inline keyboard.
+
+        This removes the inline buttons to prevent duplicate operator clicks.
+
+        Args:
+            chat_id: Target Telegram chat ID.
+            message_id: ID of the message to edit.
+            outcome_text: Formatted terminal outcome text.
+
+        Raises:
+            TelegramAPIError: If editing fails (except for harmless 'message is not modified').
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": outcome_text,
+            "parse_mode": "HTML",
+            "link_preview_options": {"is_disabled": True},
+            "reply_markup": {"inline_keyboard": []},
+        }
+
+        try:
+            await self._post("editMessageText", payload)
+            logger.info(f"Updated Telegram message {message_id} in chat {chat_id} to outcome.")
+        except TelegramAPIError as e:
+            err_msg = str(e).lower()
+            if "message is not modified" in err_msg:
+                logger.debug(
+                    f"Telegram message {message_id} already contains outcome text. Ignoring."
+                )
+                return
+            raise
+
+    async def send_notification(self, text: str) -> int:
+        """Send an operational or emergency alert message to the authorized chat.
+
+        Args:
+            text: Notification text (supports HTML formatting).
+
+        Returns:
+            Telegram message_id.
+
+        Raises:
+            TelegramAPIError: If delivery fails.
+        """
+        payload: dict[str, Any] = {
+            "chat_id": self._settings.telegram_authorized_chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "link_preview_options": {"is_disabled": True},
+        }
+
+        data = await self._post("sendMessage", payload)
+        message_id = data.get("result", {}).get("message_id")
+        if not message_id or not isinstance(message_id, int):
+            raise TelegramAPIError(f"Telegram sendMessage notification missing message_id: {data}")
+        return message_id
+
+    async def _post(self, method: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Execute a POST request against the Telegram Bot API."""
+        url = f"{self._base_url}/{method}"
+        try:
+            response = await self._http_client.post(url, json=payload)
+        except Exception as net_err:
+            raise TelegramAPIError(
+                f"Telegram Bot API network request failed ({method}): {net_err}"
+            ) from net_err
+
+        try:
+            data = response.json()
+        except Exception:
+            data = {"raw_body": response.text}
+
+        if response.status_code >= 400 or not data.get("ok", False):
+            description = data.get("description", response.text)
+            status_code = response.status_code
+            raise TelegramAPIError(
+                f"Telegram API error {status_code} on {method}: {description}",
+                details={"status_code": status_code, "response": data},
+            )
+
+        return data  # type: ignore[no-any-return]

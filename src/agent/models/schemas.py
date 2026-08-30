@@ -241,6 +241,8 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_REJECT_COMMENT: "reject_comment",
     ACTION_CODE_APPROVE_POST: "approve_post",
     ACTION_CODE_REJECT_POST: "reject_post",
+    "apv": "approve_comment",
+    "rej": "reject_comment",
 }
 
 REVERSE_ACTION_MAP: dict[str, str] = {
@@ -302,6 +304,7 @@ class CallbackDataPayload(BaseModel):
             ACTION_CODE_APPROVE_POST,
             "approve_comment",
             "approve_post",
+            "apv",
         )
 
     @property
@@ -312,6 +315,7 @@ class CallbackDataPayload(BaseModel):
             ACTION_CODE_REJECT_POST,
             "reject_comment",
             "reject_post",
+            "rej",
         )
 
     @property
