@@ -1,0 +1,239 @@
+"""Runtime configuration loader and settings model.
+
+Architecture Invariants:
+- All runtime configuration flows through Settings.
+- Validated via pydantic-settings.
+- Missing or invalid configuration raises ConfigError.
+"""
+
+import json
+from pathlib import Path
+from typing import Any
+
+from pydantic import AliasChoices, Field, ValidationError, field_validator
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+
+from agent.errors import ConfigError
+
+
+class ComplexValueDecoderMixin:
+    """Mixin supporting comma-separated and JSON list parsing for complex settings fields."""
+
+    def decode_complex_value(self, field_name: str, field_info: FieldInfo, value: Any) -> Any:
+        if field_name == "user_focus_areas" and isinstance(value, str):
+            v_str = value.strip()
+            if not v_str:
+                return []
+            if v_str.startswith("[") and v_str.endswith("]"):
+                try:
+                    parsed = json.loads(v_str)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
+                except json.JSONDecodeError:
+                    pass
+            return [part.strip() for part in v_str.split(",") if part.strip()]
+        return super().decode_complex_value(field_name, field_info, value)  # type: ignore[misc]
+
+
+class FlexibleEnvSettingsSource(ComplexValueDecoderMixin, EnvSettingsSource):
+    """Env source supporting flexible list formats."""
+
+
+class FlexibleDotEnvSettingsSource(ComplexValueDecoderMixin, DotEnvSettingsSource):
+    """DotEnv source supporting flexible list formats."""
+
+
+class Settings(BaseSettings):
+    """Central configuration settings for the LinkedIn HITL Agent."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # NVIDIA NIM LLM Configuration
+    nvidia_nim_api_key: str = Field(
+        description="API key for NVIDIA NIM endpoints",
+        validation_alias=AliasChoices("NVIDIA_NIM_API_KEY", "nvidia_nim_api_key"),
+    )
+    nim_model_primary: str = Field(
+        default="meta/llama-3.3-70b-instruct",
+        description="Primary model for comment and post drafting",
+        validation_alias=AliasChoices("NIM_MODEL_PRIMARY", "nim_model_primary"),
+    )
+    nim_model_fallback: str = Field(
+        default="meta/llama-3.1-8b-instruct",
+        description="Fallback model if primary encounters rate limit or failure",
+        validation_alias=AliasChoices("NIM_MODEL_FALLBACK", "nim_model_fallback"),
+    )
+    nim_model_triage: str | None = Field(
+        default=None,
+        description="Optional lightweight model dedicated to post triage",
+        validation_alias=AliasChoices("NIM_MODEL_TRIAGE", "nim_model_triage"),
+    )
+    nim_temperature: float = Field(
+        default=0.2,
+        ge=0.0,
+        le=2.0,
+        description="Temperature for LLM generation",
+        validation_alias=AliasChoices("NIM_TEMPERATURE", "nim_temperature"),
+    )
+    nim_timeout_seconds: float = Field(
+        default=60.0,
+        ge=1.0,
+        description="Request timeout for NVIDIA NIM API calls in seconds",
+        validation_alias=AliasChoices("NIM_TIMEOUT_SECONDS", "nim_timeout_seconds"),
+    )
+    nim_max_tokens: int = Field(
+        default=1024,
+        ge=1,
+        description="Maximum tokens generated per NIM response",
+        validation_alias=AliasChoices("NIM_MAX_TOKENS", "nim_max_tokens"),
+    )
+
+    # Telegram Configuration
+    telegram_bot_token: str = Field(
+        description="Telegram bot token obtained from @BotFather",
+        validation_alias=AliasChoices("TELEGRAM_BOT_TOKEN", "telegram_bot_token"),
+    )
+    telegram_authorized_chat_id: int = Field(
+        description="Authorized Telegram user/chat ID permitted to approve actions",
+        validation_alias=AliasChoices("TELEGRAM_AUTHORIZED_CHAT_ID", "telegram_authorized_chat_id"),
+    )
+
+    # LinkedIn Session & Encryption
+    session_encryption_key: str | None = Field(
+        default=None,
+        description="Fernet 32-byte url-safe base64 key for encrypting storage state",
+        validation_alias=AliasChoices("SESSION_ENCRYPTION_KEY", "session_encryption_key"),
+    )
+    linkedin_session_state_enc: str | None = Field(
+        default=None,
+        description="Base64 encrypted LinkedIn Playwright storage state string",
+        validation_alias=AliasChoices("LINKEDIN_SESSION_STATE_ENC", "linkedin_session_state_enc"),
+    )
+
+    # Persona & Focus Areas
+    user_focus_areas: list[str] = Field(
+        default_factory=list,
+        description="Domain areas of interest for filtering and comment focus",
+        validation_alias=AliasChoices("USER_FOCUS_AREAS", "user_focus_areas"),
+    )
+    user_persona: str = Field(
+        default="",
+        description="User persona and professional background guidance for LLM generation",
+        validation_alias=AliasChoices("USER_PERSONA", "user_persona"),
+    )
+
+    # Safety, Rate Limits, and Operational Controls
+    max_comments_per_day: int = Field(
+        default=5,
+        ge=0,
+        description="Daily maximum allowed LinkedIn comments",
+        validation_alias=AliasChoices("MAX_COMMENTS_PER_DAY", "max_comments_per_day"),
+    )
+    max_posts_per_day: int = Field(
+        default=1,
+        ge=0,
+        description="Daily maximum allowed original LinkedIn posts",
+        validation_alias=AliasChoices("MAX_POSTS_PER_DAY", "max_posts_per_day"),
+    )
+    max_suggestions_per_run: int = Field(
+        default=3,
+        ge=1,
+        description="Maximum suggestions delivered to Telegram per scout run",
+        validation_alias=AliasChoices("MAX_SUGGESTIONS_PER_RUN", "max_suggestions_per_run"),
+    )
+    pending_action_ttl_hours: int = Field(
+        default=12,
+        ge=1,
+        description="Time-to-live for pending approvals in hours before expiration",
+        validation_alias=AliasChoices("PENDING_ACTION_TTL_HOURS", "pending_action_ttl_hours"),
+    )
+    agent_paused: bool = Field(
+        default=False,
+        description="Safety kill switch: when True, all workflows pause without action",
+        validation_alias=AliasChoices("AGENT_PAUSED", "agent_paused"),
+    )
+    dry_run: bool = Field(
+        default=False,
+        description="When True, prevents all live LinkedIn writes and logs actions",
+        validation_alias=AliasChoices("DRY_RUN", "dry_run"),
+    )
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level",
+        validation_alias=AliasChoices("LOG_LEVEL", "log_level"),
+    )
+    state_dir: Path = Field(
+        default=Path("state"),
+        description="Path to version-controlled durable state directory",
+        validation_alias=AliasChoices("STATE_DIR", "state_dir"),
+    )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            FlexibleEnvSettingsSource(settings_cls),
+            FlexibleDotEnvSettingsSource(settings_cls, env_file=".env", env_file_encoding="utf-8"),
+            file_secret_settings,
+        )
+
+    @field_validator("user_focus_areas", mode="before")
+    @classmethod
+    def parse_user_focus_areas(cls, v: Any) -> list[str]:
+        """Parse comma-separated string, JSON list, or list of strings into list[str]."""
+        if isinstance(v, list):
+            return [str(item).strip() for item in v if str(item).strip()]
+        if isinstance(v, str):
+            v_str = v.strip()
+            if not v_str:
+                return []
+            if v_str.startswith("[") and v_str.endswith("]"):
+                try:
+                    parsed = json.loads(v_str)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
+                except json.JSONDecodeError:
+                    pass
+            return [part.strip() for part in v_str.split(",") if part.strip()]
+        return []
+
+    @property
+    def effective_triage_model(self) -> str:
+        """Return the effective model to use for triage."""
+        return self.nim_model_triage or self.nim_model_primary
+
+
+def load_settings(**kwargs: Any) -> Settings:
+    """Load and validate settings from environment variables, .env file, and/or kwargs.
+
+    Raises:
+        ConfigError: If required settings are missing or values fail validation.
+    """
+    try:
+        return Settings(**kwargs)
+    except ValidationError as e:
+        field_errors = []
+        for error in e.errors():
+            loc = ".".join(str(elem) for elem in error["loc"])
+            field_errors.append(f"{loc}: {error['msg']}")
+        msg = f"Configuration validation failed: {'; '.join(field_errors)}"
+        raise ConfigError(msg, details={"errors": e.errors()}) from e
