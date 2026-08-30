@@ -1,0 +1,102 @@
+name: Execute Action
+
+on:
+  repository_dispatch:
+    types: [telegram-approval-action]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform (approve | reject)"
+        required: true
+        type: choice
+        options:
+          - approve
+          - reject
+        default: approve
+      item_id:
+        description: "Pending item 8-char hex identifier"
+        required: true
+        type: string
+      telegram_chat_id:
+        description: "Authorized Telegram chat ID"
+        required: false
+        type: string
+      telegram_message_id:
+        description: "Telegram message ID to edit"
+        required: false
+        type: string
+
+concurrency:
+  group: linkedin-browser-lock
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  execute:
+    name: Execute Approved/Rejected Action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install Dependencies
+        run: uv sync --all-groups
+
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Decrypt Storage State
+        if: github.event.client_payload.action == 'approve' || inputs.action == 'approve'
+        env:
+          SESSION_ENCRYPTION_KEY: ${{ secrets.SESSION_ENCRYPTION_KEY }}
+          LINKEDIN_SESSION_STATE_ENC: ${{ secrets.LINKEDIN_SESSION_STATE_ENC }}
+        run: |
+          uv run python -c "
+          import os
+          from pathlib import Path
+          from pydantic import SecretStr
+          from agent.browser.session import decrypt_storage_state
+
+          key = SecretStr(os.environ['SESSION_ENCRYPTION_KEY'])
+          enc = os.environ['LINKEDIN_SESSION_STATE_ENC']
+          out = Path('/tmp/runner_storage_state.json')
+          decrypt_storage_state(enc, key, out)
+          "
+
+      - name: Execute Flow
+        env:
+          ACTION: ${{ github.event.client_payload.action || inputs.action }}
+          ITEM_ID: ${{ github.event.client_payload.item_id || inputs.item_id }}
+          TELEGRAM_CHAT_ID: ${{ github.event.client_payload.telegram_chat_id || inputs.telegram_chat_id }}
+          TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id || inputs.telegram_message_id }}
+          TELEGRAM_CALLBACK_QUERY_ID: ${{ github.event.client_payload.telegram_callback_query_id || '' }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
+          LINKEDIN_STORAGE_STATE_PATH: /tmp/runner_storage_state.json
+          DRY_RUN: ${{ vars.DRY_RUN || false }}
+        run: uv run python -m agent.orchestration.execute_flow
+
+      - name: Wipe Decrypted Storage State
+        if: always()
+        run: rm -f /tmp/runner_storage_state.json
+
+      - name: Commit and Push Updated State
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state/
+          git diff --staged --quiet || (git commit -m "chore(state): update history and consumable state [skip ci]" && git push)

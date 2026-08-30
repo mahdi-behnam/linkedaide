@@ -1,0 +1,86 @@
+name: LinkedIn Feed Scout
+
+on:
+  schedule:
+    # Runs Monday to Friday at 08:00, 13:00, 18:00 UTC
+    - cron: "0 8,13,18 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry Run Mode (No real Telegram writes or durable pending state mutation)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: linkedin-browser-lock
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  scout:
+    name: Discover & Draft Candidates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install Dependencies
+        run: uv sync --all-groups
+
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Decrypt Storage State
+        env:
+          SESSION_ENCRYPTION_KEY: ${{ secrets.SESSION_ENCRYPTION_KEY }}
+          LINKEDIN_SESSION_STATE_ENC: ${{ secrets.LINKEDIN_SESSION_STATE_ENC }}
+        run: |
+          uv run python -c "
+          import os
+          from pathlib import Path
+          from pydantic import SecretStr
+          from agent.browser.session import decrypt_storage_state
+
+          key = SecretStr(os.environ['SESSION_ENCRYPTION_KEY'])
+          enc = os.environ['LINKEDIN_SESSION_STATE_ENC']
+          out = Path('/tmp/runner_storage_state.json')
+          decrypt_storage_state(enc, key, out)
+          "
+
+      - name: Execute Scout Flow
+        env:
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          NIM_MODEL_PRIMARY: ${{ vars.NIM_MODEL_PRIMARY || 'meta/llama-3.3-70b-instruct' }}
+          NIM_MODEL_FALLBACK: ${{ vars.NIM_MODEL_FALLBACK || 'mistralai/mixtral-8x22b-instruct-v0.1' }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
+          LINKEDIN_STORAGE_STATE_PATH: /tmp/runner_storage_state.json
+          USER_FOCUS_AREAS: ${{ vars.USER_FOCUS_AREAS || '["AI Agents", "Python", "Distributed Systems"]' }}
+          MAX_SUGGESTIONS_PER_RUN: ${{ vars.MAX_SUGGESTIONS_PER_RUN || 3 }}
+          DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || false }}
+        run: uv run python -m agent.orchestration.scout_flow
+
+      - name: Wipe Decrypted Storage State
+        if: always()
+        run: rm -f /tmp/runner_storage_state.json
+
+      - name: Commit and Push Updated State
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state/
+          git diff --staged --quiet || (git commit -m "chore(state): record scout feed updates [skip ci]" && git push)

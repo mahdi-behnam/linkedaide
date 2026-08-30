@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Lint, Type Check & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install Dependencies
+        run: uv sync --all-groups
+
+      - name: Ruff Lint Check
+        run: uv run ruff check .
+
+      - name: Ruff Formatting Check
+        run: uv run ruff format --check .
+
+      - name: Mypy Static Type Analysis
+        run: uv run mypy src tests scripts
+
+      - name: Run Test Suite with Coverage
+        run: uv run pytest --cov=agent --cov-report=term-missing --cov-report=xml
