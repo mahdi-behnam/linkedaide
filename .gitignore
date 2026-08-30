@@ -1,0 +1,217 @@
+# ------------------------------------------------------------
+# Secrets & local environment
+# ------------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.crt
+
+secrets/
+.secret/
+.credentials/
+
+
+# ------------------------------------------------------------
+# LinkedIn / Playwright authentication state
+# NEVER commit authenticated browser session data
+# ------------------------------------------------------------
+
+*storage_state*.json
+*storage-state*.json
+
+auth/
+playwright/.auth/
+tests/.auth/
+
+
+# ------------------------------------------------------------
+# Debug artifacts
+# Screenshots/traces may contain LinkedIn/account information
+# ------------------------------------------------------------
+
+debug/
+screenshots/
+traces/
+
+*.trace
+*.zip
+
+
+# ------------------------------------------------------------
+# Python
+# ------------------------------------------------------------
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.so
+
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+
+# ------------------------------------------------------------
+# Virtual environments
+# ------------------------------------------------------------
+
+.venv/
+venv/
+env/
+ENV/
+
+.python-version
+
+
+# ------------------------------------------------------------
+# Testing / coverage
+# ------------------------------------------------------------
+
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+.tox/
+.nox/
+
+hypothesis/
+
+test-results/
+playwright-report/
+blob-report/
+
+
+# ------------------------------------------------------------
+# Type checkers / linters
+# ------------------------------------------------------------
+
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+.pyright/
+.ruff_cache/
+
+.pyre/
+
+
+# ------------------------------------------------------------
+# Jupyter
+# ------------------------------------------------------------
+
+.ipynb_checkpoints/
+
+
+# ------------------------------------------------------------
+# IDEs / editors
+# ------------------------------------------------------------
+
+.idea/
+.vscode/
+
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+
+# ------------------------------------------------------------
+# macOS
+# ------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+
+# ------------------------------------------------------------
+# Windows
+# ------------------------------------------------------------
+
+Thumbs.db
+Thumbs.db:encryptable
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# ------------------------------------------------------------
+# Linux
+# ------------------------------------------------------------
+
+*~
+.directory
+.Trash-*
+
+
+# ------------------------------------------------------------
+# Logs / temporary files
+# ------------------------------------------------------------
+
+*.log
+logs/
+
+tmp/
+temp/
+.cache/
+
+*.tmp
+*.temp
+
+
+# ------------------------------------------------------------
+# Node.js / Cloudflare Worker
+# infra/telegram-relay-worker/
+# ------------------------------------------------------------
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+infra/telegram-relay-worker/dist/
+
+
+# ------------------------------------------------------------
+# Local tooling
+# ------------------------------------------------------------
+
+.DS_Store
+.vscode-test/
+
+
+# ------------------------------------------------------------
+# Local scratch / manual experiments
+# ------------------------------------------------------------
+
+scratch/
+sandbox/
+local/
