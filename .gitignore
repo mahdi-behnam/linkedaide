@@ -204,9 +204,9 @@ infra/telegram-relay-worker/dist/
 # Local tooling
 # ------------------------------------------------------------
 
+.agent
 .DS_Store
 .vscode-test/
-
 
 # ------------------------------------------------------------
 # Local scratch / manual experiments
