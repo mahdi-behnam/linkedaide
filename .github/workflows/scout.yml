@@ -13,7 +13,7 @@ on:
         default: false
 
 concurrency:
-  group: linkedin-browser-lock
+  group: linkedin-agent-single-flight
   cancel-in-progress: false
 
 permissions:
@@ -22,7 +22,9 @@ permissions:
 jobs:
   scout:
     name: Discover & Draft Candidates
+    if: ${{ vars.AGENT_PAUSED != 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,12 +35,19 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: "latest"
+          enable-cache: true
 
       - name: Set up Python
         run: uv python install 3.14
 
       - name: Install Dependencies
-        run: uv sync --all-groups
+        run: uv sync --frozen
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
 
       - name: Install Playwright Chromium
         run: uv run playwright install --with-deps chromium
@@ -47,18 +56,7 @@ jobs:
         env:
           SESSION_ENCRYPTION_KEY: ${{ secrets.SESSION_ENCRYPTION_KEY }}
           LINKEDIN_SESSION_STATE_ENC: ${{ secrets.LINKEDIN_SESSION_STATE_ENC }}
-        run: |
-          uv run python -c "
-          import os
-          from pathlib import Path
-          from pydantic import SecretStr
-          from agent.browser.session import decrypt_storage_state
-
-          key = SecretStr(os.environ['SESSION_ENCRYPTION_KEY'])
-          enc = os.environ['LINKEDIN_SESSION_STATE_ENC']
-          out = Path('/tmp/runner_storage_state.json')
-          decrypt_storage_state(enc, key, out)
-          "
+        run: uv run python -m agent.browser.session decrypt --out "/tmp/runner_storage_state.json"
 
       - name: Execute Scout Flow
         env:
@@ -78,9 +76,19 @@ jobs:
         run: rm -f /tmp/runner_storage_state.json
 
       - name: Commit and Push Updated State
-        if: success()
+        if: ${{ vars.DRY_RUN != 'true' }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "linkedin-agent-bot"
+          git config user.email "actions@users.noreply.github.com"
           git add state/
-          git diff --staged --quiet || (git commit -m "chore(state): record scout feed updates [skip ci]" && git push)
+          git diff --staged --quiet || (git commit -m "chore(state): scout run [skip ci]" && git push)
+
+      - name: Upload debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scout-debug-${{ github.run_id }}
+          path: |
+            debug/screenshots/**
+            debug/traces/**
+          retention-days: 7
