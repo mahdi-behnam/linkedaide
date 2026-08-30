@@ -139,6 +139,11 @@ class Settings(BaseSettings):
         description="Base64 encrypted LinkedIn Playwright storage state string",
         validation_alias=AliasChoices("LINKEDIN_SESSION_STATE_ENC", "linkedin_session_state_enc"),
     )
+    linkedin_storage_state_path: Path = Field(
+        default=Path("storage_state.json"),
+        description="Path to decrypted Playwright storage_state.json",
+        validation_alias=AliasChoices("LINKEDIN_STORAGE_STATE_PATH", "linkedin_storage_state_path"),
+    )
 
     # Persona & Focus Areas
     user_focus_areas: list[str] = Field(
