@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import SecretStr
 from pydantic.fields import FieldInfo
 
 from agent.config import ComplexValueDecoderMixin, Settings, load_settings
@@ -37,7 +38,8 @@ class TestSettings:
             state_dir=Path("state"),
         )
 
-        assert settings.nvidia_nim_api_key == "nvapi-test-key"
+        assert isinstance(settings.nvidia_nim_api_key, SecretStr)
+        assert settings.nvidia_nim_api_key.get_secret_value() == "nvapi-test-key"
         assert settings.effective_triage_model == "meta/llama-3.3-70b-instruct"
         assert settings.telegram_authorized_chat_id == 987654321
         assert settings.dry_run is True
@@ -108,8 +110,10 @@ class TestSettings:
         monkeypatch.setenv("USER_FOCUS_AREAS", "Python, LangGraph")
 
         settings = load_settings()
-        assert settings.nvidia_nim_api_key == "nvapi-env-key"
-        assert settings.telegram_bot_token == "999:TOKEN"
+        assert isinstance(settings.nvidia_nim_api_key, SecretStr)
+        assert settings.nvidia_nim_api_key.get_secret_value() == "nvapi-env-key"
+        assert isinstance(settings.telegram_bot_token, SecretStr)
+        assert settings.telegram_bot_token.get_secret_value() == "999:TOKEN"
         assert settings.telegram_authorized_chat_id == 555123
         assert settings.dry_run is True
         assert settings.max_comments_per_day == 10

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import AliasChoices, Field, ValidationError, field_validator
+from pydantic import AliasChoices, Field, SecretStr, ValidationError, field_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     )
 
     # NVIDIA NIM LLM Configuration
-    nvidia_nim_api_key: str = Field(
+    nvidia_nim_api_key: SecretStr | str = Field(
         description="API key for NVIDIA NIM endpoints",
         validation_alias=AliasChoices("NVIDIA_NIM_API_KEY", "nvidia_nim_api_key"),
     )
@@ -87,6 +87,13 @@ class Settings(BaseSettings):
         description="Temperature for LLM generation",
         validation_alias=AliasChoices("NIM_TEMPERATURE", "nim_temperature"),
     )
+    nim_top_p: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Top-p sampling probability",
+        validation_alias=AliasChoices("NIM_TOP_P", "nim_top_p"),
+    )
     nim_timeout_seconds: float = Field(
         default=60.0,
         ge=1.0,
@@ -99,9 +106,20 @@ class Settings(BaseSettings):
         description="Maximum tokens generated per NIM response",
         validation_alias=AliasChoices("NIM_MAX_TOKENS", "nim_max_tokens"),
     )
+    nim_base_url: str | None = Field(
+        default=None,
+        description="Custom base URL for NVIDIA NIM endpoint",
+        validation_alias=AliasChoices("NIM_BASE_URL", "nim_base_url"),
+    )
+    nim_max_concurrency: int = Field(
+        default=4,
+        ge=1,
+        description="Maximum concurrent requests to NVIDIA NIM",
+        validation_alias=AliasChoices("NIM_MAX_CONCURRENCY", "nim_max_concurrency"),
+    )
 
     # Telegram Configuration
-    telegram_bot_token: str = Field(
+    telegram_bot_token: SecretStr | str = Field(
         description="Telegram bot token obtained from @BotFather",
         validation_alias=AliasChoices("TELEGRAM_BOT_TOKEN", "telegram_bot_token"),
     )
@@ -111,12 +129,12 @@ class Settings(BaseSettings):
     )
 
     # LinkedIn Session & Encryption
-    session_encryption_key: str | None = Field(
+    session_encryption_key: SecretStr | str | None = Field(
         default=None,
         description="Fernet 32-byte url-safe base64 key for encrypting storage state",
         validation_alias=AliasChoices("SESSION_ENCRYPTION_KEY", "session_encryption_key"),
     )
-    linkedin_session_state_enc: str | None = Field(
+    linkedin_session_state_enc: SecretStr | str | None = Field(
         default=None,
         description="Base64 encrypted LinkedIn Playwright storage state string",
         validation_alias=AliasChoices("LINKEDIN_SESSION_STATE_ENC", "linkedin_session_state_enc"),
@@ -132,6 +150,13 @@ class Settings(BaseSettings):
         default="",
         description="User persona and professional background guidance for LLM generation",
         validation_alias=AliasChoices("USER_PERSONA", "user_persona"),
+    )
+    max_comment_words: int = Field(
+        default=80,
+        ge=10,
+        le=200,
+        description="Target maximum word count for drafted comments",
+        validation_alias=AliasChoices("MAX_COMMENT_WORDS", "max_comment_words"),
     )
 
     # Safety, Rate Limits, and Operational Controls
@@ -195,6 +220,22 @@ class Settings(BaseSettings):
             FlexibleDotEnvSettingsSource(settings_cls, env_file=".env", env_file_encoding="utf-8"),
             file_secret_settings,
         )
+
+    @field_validator("nvidia_nim_api_key", "telegram_bot_token", mode="after")
+    @classmethod
+    def ensure_secret_str(cls, v: SecretStr | str) -> SecretStr:
+        """Ensure secret fields are wrapped in SecretStr."""
+        if isinstance(v, str):
+            return SecretStr(v)
+        return v
+
+    @field_validator("session_encryption_key", "linkedin_session_state_enc", mode="after")
+    @classmethod
+    def ensure_optional_secret_str(cls, v: SecretStr | str | None) -> SecretStr | None:
+        """Ensure optional secret fields are wrapped in SecretStr."""
+        if isinstance(v, str):
+            return SecretStr(v)
+        return v
 
     @field_validator("user_focus_areas", mode="before")
     @classmethod
