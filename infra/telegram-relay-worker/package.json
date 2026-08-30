@@ -1,0 +1,17 @@
+{
+  "name": "telegram-relay-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker webhook relay translating Telegram inline button callbacks to GitHub repository_dispatch events",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240405.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.5.0",
+    "wrangler": "^3.50.0"
+  }
+}

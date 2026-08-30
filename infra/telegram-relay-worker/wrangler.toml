@@ -1,0 +1,11 @@
+name = "linkedin-agent-telegram-relay"
+main = "src/index.ts"
+compatibility_date = "2024-04-01"
+
+# Environment secrets required in Cloudflare Worker dashboard:
+# - TELEGRAM_WEBHOOK_SECRET
+# - TELEGRAM_BOT_TOKEN
+# - TELEGRAM_AUTHORIZED_CHAT_ID
+# - GITHUB_DISPATCH_PAT
+# - GITHUB_REPO_OWNER
+# - GITHUB_REPO_NAME
