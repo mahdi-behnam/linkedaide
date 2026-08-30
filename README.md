@@ -1,0 +1,133 @@
+# LinkedIn Human-in-the-Loop AI Agent
+
+An enterprise-grade, human-supervised LinkedIn automation agent orchestrating candidate discovery, LLM triage, human approval via Telegram, and verified Playwright browser execution.
+
+## Architecture & Invariants
+
+```text
+LinkedIn feed
+    ↓
+ScoutGraph (Playwright Scraper)
+    ↓
+LLM Triage (NVIDIA NIM via LangChain)
+    ↓
+LLM Draft (Structured Pydantic Output)
+    ↓
+Persist Pending Action (state/pending/)
+    ↓
+Telegram Approval Request (Inline Buttons)
+    ↓
+Human Approve / Reject
+    ↓
+Telegram Relay / GitHub Repository Dispatch
+    ↓
+ExecuteGraph (Re-validation & Safety Checks)
+    ↓
+Playwright LinkedIn Action Execution
+```
+
+### Core Invariants
+
+1. **Human Approval is Mandatory**: No LinkedIn write action (comment, post) may occur without explicit human authorization via Telegram.
+2. **LangGraph Orchestrates Workflows**: Business logic and state transitions are deterministically coordinated using compiled LangGraph state graphs (`ScoutGraph`, `ExecuteGraph`, `HealthCheckGraph`).
+3. **LangChain Owns LLM Integration**: Centralized LLM interactions via `ChatNVIDIA` with structured Pydantic schema validation.
+4. **Deterministic Safety Enforcement**: Circuit breakers, daily action caps, pending action TTLs, authorized Telegram identity validation, and duplicate-action protection are strictly enforced in code—never solely via prompts.
+5. **Durable Repository State**: All application state resides in version-controlled JSON/JSONL records under `state/`.
+
+---
+
+## Repository Structure
+
+```text
+.
+├── .github/
+│   └── workflows/          # GitHub Actions CI/CD and scheduled cron workflows
+├── infra/
+│   └── telegram-relay-worker/ # Cloudflare Worker relaying Telegram callbacks to GitHub
+├── src/
+│   └── agent/
+│       ├── config.py       # Pydantic Settings configuration
+│       ├── errors.py       # Custom exception hierarchy
+│       ├── models/         # Pydantic domain & persistence schemas
+│       ├── llm/            # LangChain & NVIDIA NIM models, prompts, services
+│       ├── graphs/         # LangGraph state graphs (Scout, Execute, HealthCheck)
+│       ├── browser/        # Playwright session management, stealth, scraper, executor
+│       ├── telegram/       # Telegram bot client and interactive keyboards
+│       ├── state/          # GitStateStore persistence manager
+│       ├── safety/         # Rate limiter and circuit breaker controls
+│       └── orchestration/  # Flow entrypoints
+├── state/                  # Durable version-controlled application state
+│   ├── pending/            # Consumable pending action records
+│   ├── seen_posts.json     # Tracking scraped post IDs to avoid re-evaluation
+│   ├── history.jsonl       # Append-only audit log of executed actions
+│   └── daily_counters.json # Daily rate-limit counters
+├── tests/                  # Unit and integration test suites
+├── AGENTS.md               # Coding guidelines and invariants for automated agents
+├── SECURITY.md             # Security policy and secret handling rules
+└── pyproject.toml          # Project configuration and dependencies
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python `>= 3.14`
+- [`uv`](https://docs.astral.sh/uv/) package manager
+- NVIDIA NIM API Key (`NVIDIA_NIM_API_KEY`)
+- Telegram Bot Token (`TELEGRAM_BOT_TOKEN`) & Authorized Chat ID (`TELEGRAM_AUTHORIZED_CHAT_ID`)
+- Encrypted LinkedIn Playwright storage state
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/mahdi-behnam/linkedin-hitl-agent.git
+cd linkedin-hitl-agent
+
+# Install dependencies and sync virtual environment
+uv sync
+```
+
+### Environment Configuration
+
+Copy the sample environment file and configure your credentials:
+
+```bash
+cp .env.example .env
+```
+
+Refer to [`.env.example`](.env.example) for detailed variable documentation.
+
+---
+
+## Development & Testing
+
+```bash
+# Run test suite
+uv run pytest
+
+# Run linter checks
+uv run ruff check .
+
+# Check formatting
+uv run ruff format --check .
+
+# Type checking
+uv run mypy src
+```
+
+---
+
+## Safety & Security
+
+- **Dry-Run Mode**: Set `DRY_RUN=true` to test the entire scouting, triage, drafting, and Telegram delivery pipeline without performing any live browser write actions on LinkedIn.
+- **Bot & Challenge Protection**: If LinkedIn presents a CAPTCHA, checkpoint, or unusual activity challenge, execution halts immediately and trips the circuit breaker.
+- **Credential Hygiene**: Authenticated session states and credentials are never stored in plaintext and never committed to Git. See [`SECURITY.md`](SECURITY.md) for full security practices.
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
