@@ -44,6 +44,10 @@ Playwright LinkedIn Action Execution
 │   └── workflows/          # GitHub Actions CI/CD and scheduled cron workflows
 ├── infra/
 │   └── telegram-relay-worker/ # Cloudflare Worker relaying Telegram callbacks to GitHub
+├── scripts/                # Local CLI utilities (session extraction, webhook setup, dry run)
+│   ├── extract_linkedin_session.py
+│   ├── register_telegram_webhook.py
+│   └── run_scout_dry.py
 ├── src/
 │   └── agent/
 │       ├── config.py       # Pydantic Settings configuration
@@ -115,8 +119,19 @@ uv run ruff check .
 uv run ruff format --check .
 
 # Type checking
-uv run mypy src
+uv run mypy src tests scripts
 ```
+
+---
+
+## Documentation
+
+Comprehensive guides and technical documentation are available in [`docs/`](docs/):
+
+- **[End-to-End Setup & Deployment Guide](docs/setup-guide.md)**: Step-by-step instructions for Telegram bot setup, LinkedIn session encryption, Cloudflare Worker deployment, and GitHub Actions configuration.
+- **[System Architecture & Design](docs/architecture.md)**: Deep dive into LangGraph state machines (`ScoutGraph`, `ExecuteGraph`, `HealthCheckGraph`), LLM triage pipelines, and Git-backed persistence.
+- **[Configuration Reference](docs/configuration.md)**: Exhaustive reference of all runtime settings, environment variables, persona tuning, and safety limits.
+- **[Operational Troubleshooting](docs/troubleshooting.md)**: Diagnostics for session expiry, circuit breaker recovery (`state/incident.json`), and selector maintenance.
 
 ---
 
@@ -125,6 +140,13 @@ uv run mypy src
 - **Dry-Run Mode**: Set `DRY_RUN=true` to test the entire scouting, triage, drafting, and Telegram delivery pipeline without performing any live browser write actions on LinkedIn.
 - **Bot & Challenge Protection**: If LinkedIn presents a CAPTCHA, checkpoint, or unusual activity challenge, execution halts immediately and trips the circuit breaker.
 - **Credential Hygiene**: Authenticated session states and credentials are never stored in plaintext and never committed to Git. See [`SECURITY.md`](SECURITY.md) for full security practices.
+- **Legal Disclaimer**: Automated interaction on LinkedIn carries inherent platform risks. See [`DISCLAIMER.md`](DISCLAIMER.md) before deploying.
+
+---
+
+## Contributing
+
+We welcome contributions! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup instructions, quality checks, and architectural guidelines, and review our [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ---
 

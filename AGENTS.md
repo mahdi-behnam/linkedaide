@@ -163,9 +163,9 @@ src/agent/
 │   └── service.py
 ├── graphs/
 │   ├── state.py
-│   ├── scout.py
-│   ├── execute.py
-│   └── health_check.py
+│   ├── scout_graph.py
+│   ├── execute_graph.py
+│   └── health_graph.py
 ├── browser/
 │   ├── session.py
 │   ├── stealth.py
