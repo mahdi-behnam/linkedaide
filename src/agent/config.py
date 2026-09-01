@@ -219,10 +219,16 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
+        env_file = getattr(dotenv_settings, "env_file", ".env")
+        env_file_encoding = getattr(dotenv_settings, "env_file_encoding", "utf-8")
         return (
             init_settings,
             FlexibleEnvSettingsSource(settings_cls),
-            FlexibleDotEnvSettingsSource(settings_cls, env_file=".env", env_file_encoding="utf-8"),
+            FlexibleDotEnvSettingsSource(
+                settings_cls,
+                env_file=env_file,
+                env_file_encoding=env_file_encoding,
+            ),
             file_secret_settings,
         )
 

@@ -31,3 +31,26 @@ def test_delete_webhook_success() -> None:
 
         success = delete_webhook(bot_token="123:bot_token")
         assert success is True
+
+
+def test_generate_secrets_functions() -> None:
+    from cryptography.fernet import Fernet
+    from scripts.generate_secrets import (
+        generate_session_encryption_key,
+        generate_telegram_webhook_secret,
+    )
+
+    key = generate_session_encryption_key()
+    assert isinstance(key, str)
+    # Validate it is a valid Fernet key
+    f = Fernet(key.encode("utf-8"))
+    token = f.encrypt(b"test")
+    assert f.decrypt(token) == b"test"
+
+    webhook_sec = generate_telegram_webhook_secret()
+    assert isinstance(webhook_sec, str)
+    assert len(webhook_sec) >= 32
+    # Telegram allows characters [A-Za-z0-9_-]
+    for ch in webhook_sec:
+        assert ch.isalnum() or ch in ("_", "-")
+

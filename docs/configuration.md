@@ -42,6 +42,11 @@ Settings can be provided via environment variables, a local `.env` file, or GitH
 | **Logging & Storage** | | | | |
 | `LOG_LEVEL` | `string` | `INFO` | No | Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 | `STATE_DIR` | `Path` | `state` | No | Path to directory containing version-controlled JSON state. |
+| **Cloudflare Relay Worker (infra/telegram-relay-worker)** | | | | |
+| `TELEGRAM_WEBHOOK_SECRET` | `string` | *(Required)* | **Yes** | Shared secret token verified via `X-Telegram-Bot-Api-Secret-Token`. Generate with `uv run python scripts/generate_secrets.py --type webhook`. |
+| `GITHUB_DISPATCH_PAT` | `string` | *(Required)* | **Yes** | GitHub PAT with `repo` / `Contents: Read and write` permissions to trigger `repository_dispatch`. |
+| `GITHUB_REPO_OWNER` | `string` | *(Required)* | No | GitHub username or organization name. |
+| `GITHUB_REPO_NAME` | `string` | *(Required)* | No | GitHub repository name (e.g. `linkedin-hitl-agent`). |
 
 ---
 
