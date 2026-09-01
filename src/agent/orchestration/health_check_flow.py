@@ -54,9 +54,7 @@ async def run_health_check_flow(
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         try:
-            context_pw = await new_stealth_context(
-                browser, storage_state_path=storage_state_path
-            )
+            context_pw = await new_stealth_context(browser, storage_state_path=storage_state_path)
             page = await context_pw.new_page()
 
             try:

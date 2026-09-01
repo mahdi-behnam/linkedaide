@@ -271,7 +271,7 @@ class LLMService:
     def _is_transient_error(self, err: Exception) -> bool:
         """Check if an exception represents a transient failure eligible for retry."""
         if isinstance(
-            err, (NIMRateLimitError, NIMTimeoutError, TimeoutError, asyncio.TimeoutError)
+            err, NIMRateLimitError | NIMTimeoutError | TimeoutError | asyncio.TimeoutError
         ):
             return True
         err_msg = str(err).lower()
@@ -297,13 +297,13 @@ class LLMService:
     def _raise_typed_nim_error(self, err: Exception) -> NoReturn:
         """Translate lower-level exceptions into typed NIMError sub-exceptions."""
         err_msg = str(err).lower()
-        if isinstance(err, (NIMRateLimitError, NIMTimeoutError, NIMSchemaValidationError)):
+        if isinstance(err, NIMRateLimitError | NIMTimeoutError | NIMSchemaValidationError):
             raise err
         if "429" in err_msg or "rate limit" in err_msg:
             raise NIMRateLimitError(f"NVIDIA NIM rate limit exceeded: {err}") from err
         if "timeout" in err_msg or "timed out" in err_msg:
             raise NIMTimeoutError(f"NVIDIA NIM request timed out: {err}") from err
-        if isinstance(err, (ValidationError, ValueError, json.JSONDecodeError)):
+        if isinstance(err, ValidationError | ValueError | json.JSONDecodeError):
             raise NIMSchemaValidationError(
                 f"NVIDIA NIM structured output schema validation failed: {err}"
             ) from err

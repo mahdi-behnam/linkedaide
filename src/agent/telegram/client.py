@@ -7,6 +7,8 @@ Architecture Invariants:
 - Strict authorization check validates sender against TELEGRAM_AUTHORIZED_CHAT_ID.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 

@@ -178,7 +178,7 @@ class ActionExecutor:
         except Exception as err:
             screenshot = await self._capture_screenshot(f"failed_comment_{item_id}")
             if isinstance(
-                err, (BotDetectionError, PostNoLongerAvailableError, SessionExpiredError)
+                err, BotDetectionError | PostNoLongerAvailableError | SessionExpiredError
             ):
                 raise
             raise ExecutionError(f"Failed to post comment: {err}") from err

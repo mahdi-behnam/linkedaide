@@ -222,7 +222,12 @@ class FeedScraper:
                             if not urn:
                                 href = await inner_urn.get_attribute("href") or ""
                                 if "urn:li:activity:" in href:
-                                    urn = "urn:li:activity:" + href.split("urn:li:activity:")[1].split("/")[0].split("?")[0]
+                                    urn = (
+                                        "urn:li:activity:"
+                                        + href.split("urn:li:activity:")[1]
+                                        .split("/")[0]
+                                        .split("?")[0]
+                                    )
                     except Exception:
                         pass
 
@@ -283,5 +288,7 @@ class FeedScraper:
                 logger.debug("Failed to parse card %d: %s", i, parse_err)
                 continue
 
-        logger.info("Scraped %d new candidate post(s) from %d DOM cards", len(candidates), card_count)
+        logger.info(
+            "Scraped %d new candidate post(s) from %d DOM cards", len(candidates), card_count
+        )
         return candidates

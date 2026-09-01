@@ -6,6 +6,8 @@ Architecture Invariants:
 - Telegram approval callback payloads are compact and opaque.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal

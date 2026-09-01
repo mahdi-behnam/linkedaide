@@ -31,7 +31,8 @@ def test_setup_logging_suppresses_file_under_pytest() -> None:
     setup_logging(log_level="INFO")
     root_logger = logging.getLogger()
     debug_handlers = [
-        h for h in root_logger.handlers
+        h
+        for h in root_logger.handlers
         if isinstance(h, logging.FileHandler) and "debug" in getattr(h, "baseFilename", "")
     ]
     # No file handler targeting default debug/logs/agent.log should be added

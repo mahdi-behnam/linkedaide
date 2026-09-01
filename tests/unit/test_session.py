@@ -104,7 +104,6 @@ def test_ensure_session_file_missing_raises(tmp_path: Path) -> None:
         session_encryption_key=None,
         linkedin_session_state_enc=None,
         linkedin_storage_state_path=non_existing,
-        _env_file=None,
     )
     with pytest.raises(SessionError, match="LinkedIn session state not found"):
         ensure_session_file(settings)

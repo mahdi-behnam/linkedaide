@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+from cryptography.fernet import Fernet
+
+from scripts.generate_secrets import (
+    generate_session_encryption_key,
+    generate_telegram_webhook_secret,
+)
 from scripts.register_telegram_webhook import delete_webhook, register_webhook
 
 
@@ -34,12 +40,6 @@ def test_delete_webhook_success() -> None:
 
 
 def test_generate_secrets_functions() -> None:
-    from cryptography.fernet import Fernet
-    from scripts.generate_secrets import (
-        generate_session_encryption_key,
-        generate_telegram_webhook_secret,
-    )
-
     key = generate_session_encryption_key()
     assert isinstance(key, str)
     # Validate it is a valid Fernet key
@@ -53,4 +53,3 @@ def test_generate_secrets_functions() -> None:
     # Telegram allows characters [A-Za-z0-9_-]
     for ch in webhook_sec:
         assert ch.isalnum() or ch in ("_", "-")
-

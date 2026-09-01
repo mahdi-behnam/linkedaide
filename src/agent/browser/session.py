@@ -6,11 +6,15 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from cryptography.fernet import Fernet, InvalidToken
 from pydantic import SecretStr
 
 from agent.errors import SessionError
+
+if TYPE_CHECKING:
+    from agent.config import Settings
 
 
 def generate_encryption_key() -> str:
@@ -85,7 +89,7 @@ def decrypt_storage_state(ciphertext_b64: str, key: SecretStr | str, out_path: P
         raise SessionError(f"Failed to write decrypted session file to {out_path}: {err}") from err
 
 
-def ensure_session_file(settings: Any) -> Path:
+def ensure_session_file(settings: Settings | Any) -> Path:
     """Ensure a valid decrypted storage_state.json exists on disk, auto-decrypting if needed.
 
     Args:

@@ -67,9 +67,7 @@ async def run_scout_flow(
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=headless)
         try:
-            context_pw = await new_stealth_context(
-                browser, storage_state_path=storage_state_path
-            )
+            context_pw = await new_stealth_context(browser, storage_state_path=storage_state_path)
             page = await context_pw.new_page()
 
             # Navigate to LinkedIn feed

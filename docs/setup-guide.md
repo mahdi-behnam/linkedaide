@@ -112,7 +112,7 @@ To allow browser automation to securely access your LinkedIn feed without storin
    The script outputs both credentials directly to your terminal:
    - `SESSION_ENCRYPTION_KEY`: The 32-byte Fernet key used to encrypt the payload.
    - `LINKEDIN_SESSION_STATE_ENC`: The base64-encoded encrypted storage state string.
-   
+
    Save both values to your local `.env` file and GitHub Repository Secrets.
 
 > [!CAUTION]

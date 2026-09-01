@@ -65,7 +65,9 @@ def print_full_guide(session_key: str, webhook_secret: str) -> None:
     print("    --worker-url https://telegram-relay-worker.<your-subdomain>.workers.dev \\")
     print(f"    --secret-token {webhook_secret}")
 
-    print("\n--- D. Add to GitHub Repository Secrets (Settings -> Secrets & Variables -> Actions) ---")
+    print(
+        "\n--- D. Add to GitHub Repository Secrets (Settings -> Secrets & Variables -> Actions) ---"
+    )
     print("  Name: SESSION_ENCRYPTION_KEY")
     print(f"  Value: {session_key}")
     print(banner + "\n")

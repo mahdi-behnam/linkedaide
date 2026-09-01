@@ -144,7 +144,12 @@ async def test_post_comment_live_success(base_settings: Settings) -> None:
         loc = MagicMock()
         if "submit" in selector or "submit-button" in selector:
             loc.first = submit_btn
-        elif "textbox" in selector or "ql-editor" in selector or "ProseMirror" in selector or "tiptap" in selector:
+        elif (
+            "textbox" in selector
+            or "ql-editor" in selector
+            or "ProseMirror" in selector
+            or "tiptap" in selector
+        ):
             loc.first = comment_box
         elif "comment-button" in selector or "button" in selector:
             loc.first = comment_btn

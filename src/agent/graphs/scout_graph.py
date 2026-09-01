@@ -108,7 +108,11 @@ async def triage_batch(state: ScoutState, config: RunnableConfig) -> dict[str, A
             results.append(item)
 
     qualifying_count = sum(1 for _, t in results if t.recommendation == "comment")
-    logger.info("Triage complete: %d/%d post(s) qualified for comment drafting", qualifying_count, len(results))
+    logger.info(
+        "Triage complete: %d/%d post(s) qualified for comment drafting",
+        qualifying_count,
+        len(results),
+    )
 
     return {"triage_results": results, "errors": errors}
 
