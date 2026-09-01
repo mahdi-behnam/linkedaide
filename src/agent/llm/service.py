@@ -60,6 +60,8 @@ class LLMService:
         self._chains = chains or build_structured_chains(settings)
         if fallback_chains:
             self._fallback_chains = fallback_chains
+        elif chains:
+            self._fallback_chains = chains
         else:
             fallback_model = build_chat_model(settings, role="fallback")
             self._fallback_chains = build_structured_chains(
@@ -68,7 +70,12 @@ class LLMService:
                 generation_model=fallback_model,
             )
 
-        self._repair_model = repair_model or build_chat_model(settings, role="fallback")
+        if repair_model is not None:
+            self._repair_model = repair_model
+        elif chains:
+            self._repair_model = None
+        else:
+            self._repair_model = build_chat_model(settings, role="fallback")
         self._repair_prompt = build_repair_prompt()
 
     async def evaluate_post(self, post: PostRecord) -> TriageResult:

@@ -79,6 +79,10 @@ async def test_scraper_extracts_posts_and_deduplicates(mock_settings: Settings) 
             loc.first = actor1
         elif "text" in selector or "description" in selector:
             loc.first = text1
+        else:
+            unmatched = MagicMock()
+            unmatched.count = AsyncMock(return_value=0)
+            loc.first = unmatched
         return loc
 
     card1.locator = MagicMock(side_effect=card1_locator)

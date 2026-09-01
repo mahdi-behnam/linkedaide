@@ -142,12 +142,12 @@ async def test_post_comment_live_success(base_settings: Settings) -> None:
 
     def locator_side_effect(selector: str) -> MagicMock:
         loc = MagicMock()
-        if "Comment" in selector or "comment-button" in selector:
-            loc.first = comment_btn
-        elif "ql-editor" in selector or "textbox" in selector:
-            loc.first = comment_box
-        elif "submit" in selector or "Post" in selector:
+        if "submit" in selector or "submit-button" in selector:
             loc.first = submit_btn
+        elif "textbox" in selector or "ql-editor" in selector or "ProseMirror" in selector or "tiptap" in selector:
+            loc.first = comment_box
+        elif "comment-button" in selector or "button" in selector:
+            loc.first = comment_btn
         else:
             loc.first = MagicMock(count=AsyncMock(return_value=0))
         return loc

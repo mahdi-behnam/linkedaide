@@ -7,7 +7,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from agent.browser.stealth import detect_challenge_page, humanized_type
+from agent.browser.stealth import (
+    detect_challenge_page,
+    humanized_type,
+    is_authwall_or_login,
+)
 from agent.config import Settings
 from agent.errors import (
     BotDetectionError,
@@ -56,8 +60,8 @@ class ActionExecutor:
         if detect_challenge_page(self.page):
             raise BotDetectionError(f"Challenge page detected during login check: {self.page.url}")
 
-        if "/login" in self.page.url or "authwall" in self.page.url:
-            raise SessionExpiredError("LinkedIn session expired; redirected to login/authwall")
+        if is_authwall_or_login(self.page):
+            raise SessionExpiredError(f"LinkedIn session expired; redirected to {self.page.url}")
 
         nav_or_feed = self.page.locator("nav.global-nav, main, div.scaffold-layout")
         return await nav_or_feed.count() > 0
@@ -82,7 +86,7 @@ class ActionExecutor:
             return False
 
         post_article = self.page.locator(
-            "article, div.feed-shared-update-v2, div.feed-shared-update-v2__content"
+            "article, div.feed-shared-update-v2, div.feed-shared-update-v2__content, div[componentkey], a[href*='/in/']"
         )
         return await post_article.count() > 0
 
@@ -135,15 +139,15 @@ class ActionExecutor:
 
         # Live write submission path
         try:
-            # Locate comment box
+            # Locate comment button
             comment_btn = self.page.locator(
-                "button[aria-label*='Comment'], button.comment-button"
+                "button[aria-label*='Comment'], button:has-text('Comment'), button.comment-button"
             ).first
             if await comment_btn.count() > 0:
                 await comment_btn.click()
 
             comment_box = self.page.locator(
-                "div.ql-editor, div[role='textbox'], div[aria-label*='comment']"
+                "div.tiptap.ProseMirror, div[role='textbox'][aria-label*='comment' i], div[role='textbox'][contenteditable='true'], div.ql-editor, textarea[name='comment']"
             ).first
             if await comment_box.count() == 0:
                 raise ExecutionError("Comment input box not found in DOM")
@@ -151,7 +155,7 @@ class ActionExecutor:
             await humanized_type(comment_box, comment_text)
 
             submit_btn = self.page.locator(
-                "button.comments-comment-box__submit-button, button:has-text('Post')"
+                "button.comments-comment-box__submit-button, button:has-text('Comment'), button:has-text('Post'), button[type='submit']"
             ).first
             if await submit_btn.count() == 0:
                 raise ExecutionError("Comment submit button not found in DOM")

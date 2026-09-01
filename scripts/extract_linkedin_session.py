@@ -58,6 +58,10 @@ async def extract_session(
         raw_bytes = temp_state_file.read_bytes()
         temp_state_file.unlink(missing_ok=True)
 
+        # Save local storage state for immediate local workstation use
+        local_storage_file = Path("storage_state.json")
+        local_storage_file.write_bytes(raw_bytes)
+
         encrypted_token = encrypt_storage_state(raw_bytes, key)
 
         if output_path:
@@ -67,7 +71,8 @@ async def extract_session(
         print("=" * 60)
         print("EXTRACTION SUCCESSFUL!")
         print("=" * 60)
-        print("Save these secrets in GitHub Secrets / .env:")
+        print("1. Local session written to: storage_state.json (ready for local dry runs)")
+        print("2. Save these secrets in GitHub Secrets / .env:")
         print(f"SESSION_ENCRYPTION_KEY={key}")
         print(f"LINKEDIN_SESSION_STATE_ENC={encrypted_token}")
         print("=" * 60)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import logging
 import sys
@@ -11,11 +12,13 @@ from typing import Any, cast
 from playwright.async_api import async_playwright
 
 from agent.browser.scraper import FeedScraper
+from agent.browser.session import ensure_session_file
 from agent.browser.stealth import new_stealth_context
 from agent.config import Settings, load_settings
 from agent.graphs.scout_graph import build_scout_graph
 from agent.graphs.state import GraphContext, ScoutState
 from agent.llm.service import LLMService
+from agent.logging import setup_logging
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state.store import GitStateStore
@@ -25,13 +28,16 @@ logger = logging.getLogger("agent.orchestration.scout_flow")
 
 
 async def run_scout_flow(
-    settings: Settings | None = None, repo_root: Path | None = None
+    settings: Settings | None = None,
+    repo_root: Path | None = None,
+    headless: bool = True,
 ) -> dict[str, Any]:
     """Execute the Scout workflow from CLI or GitHub Actions cron trigger.
 
     Args:
         settings: Optional pre-loaded Settings instance.
         repo_root: Optional repository root path.
+        headless: Whether to launch Playwright in headless mode (default: True).
 
     Returns:
         dict[str, Any]: Final Scout graph state.
@@ -39,10 +45,8 @@ async def run_scout_flow(
     cfg = settings or load_settings()
     root = repo_root or Path.cwd()
 
-    logging.basicConfig(
-        level=cfg.log_level, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
-    logger.info("Initializing LinkedIn Scout flow (dry_run=%s)", cfg.dry_run)
+    setup_logging(cfg.log_level)
+    logger.info("Initializing LinkedIn Scout flow (dry_run=%s, headless=%s)", cfg.dry_run, headless)
 
     # 1. Guard check
     halted, reason = is_halted(root, cfg)
@@ -56,12 +60,15 @@ async def run_scout_flow(
     llm = LLMService(cfg)
     enforcer = DailyCapEnforcer(cfg)
 
-    # 3. Launch browser session
+    # 3. Ensure valid decrypted session state file
+    storage_state_path = ensure_session_file(cfg)
+
+    # 4. Launch browser session
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=True)
+        browser = await playwright.chromium.launch(headless=headless)
         try:
             context_pw = await new_stealth_context(
-                browser, storage_state_path=cfg.linkedin_storage_state_path
+                browser, storage_state_path=storage_state_path
             )
             page = await context_pw.new_page()
 
@@ -75,7 +82,7 @@ async def run_scout_flow(
 
             scraper = FeedScraper(page, cfg)
 
-            # 4. Construct GraphContext
+            # 5. Construct GraphContext
             graph_context = GraphContext(
                 settings=cfg,
                 llm=llm,
@@ -85,7 +92,7 @@ async def run_scout_flow(
                 enforcer=enforcer,
             )
 
-            # 5. Build and execute graph
+            # 6. Build and execute graph
             graph = build_scout_graph()
             initial_state: ScoutState = {}
             result = await graph.ainvoke(
@@ -105,8 +112,25 @@ async def run_scout_flow(
 
 def main() -> None:
     """CLI script runner."""
+    parser = argparse.ArgumentParser(description="Run LinkedIn Scout flow")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Execute in dry-run mode (prevents live LinkedIn writes)",
+    )
+    parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Launch visible Chromium browser window for local inspection",
+    )
+    args = parser.parse_args()
+
+    cfg = load_settings()
+    if args.dry_run:
+        cfg = cfg.model_copy(update={"dry_run": True})
+
     try:
-        result = asyncio.run(run_scout_flow())
+        result = asyncio.run(run_scout_flow(settings=cfg, headless=not args.headed))
         if result.get("status") in ("halted_bot_detection", "scrape_error"):
             sys.exit(1)
         sys.exit(0)

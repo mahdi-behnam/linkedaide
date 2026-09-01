@@ -85,6 +85,41 @@ def decrypt_storage_state(ciphertext_b64: str, key: SecretStr | str, out_path: P
         raise SessionError(f"Failed to write decrypted session file to {out_path}: {err}") from err
 
 
+def ensure_session_file(settings: Any) -> Path:
+    """Ensure a valid decrypted storage_state.json exists on disk, auto-decrypting if needed.
+
+    Args:
+        settings: Settings instance containing storage state path and encryption keys.
+
+    Returns:
+        Path: Path to decrypted storage_state.json.
+
+    Raises:
+        SessionError: If no valid session file exists and credentials cannot decrypt one.
+    """
+    target_path = Path(settings.linkedin_storage_state_path).resolve()
+    if target_path.exists() and target_path.stat().st_size > 0:
+        return target_path
+
+    # Attempt auto-decryption if ciphertext and key are present in settings
+    enc_token = getattr(settings, "linkedin_session_state_enc", None)
+    enc_key = getattr(settings, "session_encryption_key", None)
+
+    if enc_token and enc_key:
+        token_str = (
+            enc_token.get_secret_value() if isinstance(enc_token, SecretStr) else str(enc_token)
+        )
+        key_str = enc_key.get_secret_value() if isinstance(enc_key, SecretStr) else str(enc_key)
+        if token_str and key_str and token_str.strip() and key_str.strip():
+            return decrypt_storage_state(token_str.strip(), key_str.strip(), target_path)
+
+    raise SessionError(
+        f"LinkedIn session state not found at '{settings.linkedin_storage_state_path}' and "
+        "LINKEDIN_SESSION_STATE_ENC / SESSION_ENCRYPTION_KEY are not configured. "
+        "Please run 'uv run python scripts/extract_linkedin_session.py' to extract and save your session."
+    )
+
+
 def main() -> None:
     """CLI entrypoint for decrypting session state in CI workflows."""
     parser = argparse.ArgumentParser(description="Decrypt LinkedIn Playwright storage state")

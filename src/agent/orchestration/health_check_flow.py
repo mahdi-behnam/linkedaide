@@ -11,10 +11,12 @@ from typing import Any, cast
 from playwright.async_api import async_playwright
 
 from agent.browser.executor import ActionExecutor
+from agent.browser.session import ensure_session_file
 from agent.browser.stealth import new_stealth_context
 from agent.config import Settings, load_settings
 from agent.graphs.health_graph import build_health_graph
 from agent.graphs.state import GraphContext, HealthCheckState
+from agent.logging import setup_logging
 from agent.safety.circuit_breaker import is_halted
 from agent.state.store import GitStateStore
 from agent.telegram.client import TelegramClient
@@ -37,9 +39,7 @@ async def run_health_check_flow(
     cfg = settings or load_settings()
     root = repo_root or Path.cwd()
 
-    logging.basicConfig(
-        level=cfg.log_level, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
+    setup_logging(cfg.log_level)
     logger.info("Running LinkedIn session health check")
 
     halted, reason = is_halted(root, cfg)
@@ -49,12 +49,13 @@ async def run_health_check_flow(
 
     state_store = GitStateStore(root)
     telegram = TelegramClient(cfg)
+    storage_state_path = ensure_session_file(cfg)
 
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         try:
             context_pw = await new_stealth_context(
-                browser, storage_state_path=cfg.linkedin_storage_state_path
+                browser, storage_state_path=storage_state_path
             )
             page = await context_pw.new_page()
 

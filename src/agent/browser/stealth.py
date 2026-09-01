@@ -12,7 +12,6 @@ from playwright.async_api import Browser, BrowserContext, Locator, Page
 CHALLENGE_PATTERNS: tuple[str, ...] = (
     "/checkpoint/",
     "/challenge/",
-    "/uas/login",
     "checkpoint/challenge",
     "security-verification",
     "captcha",
@@ -138,3 +137,21 @@ def detect_challenge_page(page: Page) -> bool:
             return True
 
     return False
+
+
+def is_authwall_or_login(page: Page) -> bool:
+    """Check if the current page is a standard unauthenticated login or authwall page.
+
+    Args:
+        page: Playwright Page instance.
+
+    Returns:
+        bool: True if redirected to login or authwall.
+    """
+    url_lower = page.url.lower()
+    return (
+        "/uas/login" in url_lower
+        or "/login" in url_lower
+        or "authwall" in url_lower
+        or "/checkpoint/lg/login-submit" in url_lower
+    )

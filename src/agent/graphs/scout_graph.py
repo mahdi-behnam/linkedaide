@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from agent.errors import BotDetectionError, ScrapeError
+from agent.errors import BotDetectionError, ScrapeError, SessionExpiredError
 from agent.graphs.state import ScoutState, get_graph_context
 from agent.models.schemas import CommentDraft, PendingAction, PostRecord, TriageResult
 from agent.safety.circuit_breaker import is_halted, trip_breaker
+
+logger = logging.getLogger(__name__)
 
 
 async def check_halted(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
@@ -21,6 +24,7 @@ async def check_halted(state: ScoutState, config: RunnableConfig) -> dict[str, A
     context = get_graph_context(config)
     halted, reason = is_halted(context.settings.state_dir.parent, context.settings)
     if halted:
+        logger.warning("Scout graph check_halted: halted (%s)", reason)
         return {"halted_reason": reason, "status": "halted"}
     return {"halted_reason": None, "status": "active"}
 
@@ -31,6 +35,7 @@ async def load_seen(state: ScoutState, config: RunnableConfig) -> dict[str, Any]
     seen_hashes: set[str] = set()
     if context.state_store:
         seen_hashes = context.state_store.load_seen_hashes(ttl_days=30)
+    logger.info("Loaded %d previously seen post hashes", len(seen_hashes))
     return {"seen_hashes": seen_hashes}
 
 
@@ -46,14 +51,24 @@ async def scrape_feed(state: ScoutState, config: RunnableConfig) -> dict[str, An
             max_posts=context.settings.max_suggestions_per_run * 3,
             seen_hashes=seen_hashes,
         )
+        logger.info("Scraped %d new candidate post(s) from feed", len(posts))
         return {"posts": posts, "status": "scraped"}
     except BotDetectionError as err:
+        logger.error("Bot challenge encountered during feed scrape: %s", err)
         if context.state_store:
             trip_breaker(context.settings.state_dir.parent, reason=str(err))
         if context.telegram:
             await context.telegram.send_notification(f"⚠️ Circuit breaker tripped: {err}")
         return {"halted_reason": str(err), "status": "halted_bot_detection", "posts": []}
+    except SessionExpiredError as err:
+        logger.warning("LinkedIn session expired or unauthenticated: %s", err)
+        if context.telegram:
+            await context.telegram.send_notification(
+                f"🔑 LinkedIn session expired or unauthenticated: {err}. Please re-authenticate using scripts/extract_linkedin_session.py"
+            )
+        return {"errors": [str(err)], "posts": [], "status": "session_expired"}
     except ScrapeError as err:
+        logger.error("Scrape error encountered: %s", err)
         return {"errors": [str(err)], "posts": [], "status": "scrape_error"}
 
 
@@ -81,7 +96,19 @@ async def triage_batch(state: ScoutState, config: RunnableConfig) -> dict[str, A
 
     for item in evaluated:
         if item is not None:
+            post, triage = item
+            logger.info(
+                "Triage [%s] by '%s' -> %s (conf: %.2f) - Reason: %s",
+                post.post_urn,
+                post.author_name,
+                triage.recommendation.upper(),
+                triage.confidence,
+                triage.reasoning,
+            )
             results.append(item)
+
+    qualifying_count = sum(1 for _, t in results if t.recommendation == "comment")
+    logger.info("Triage complete: %d/%d post(s) qualified for comment drafting", qualifying_count, len(results))
 
     return {"triage_results": results, "errors": errors}
 
@@ -116,6 +143,7 @@ async def draft_batch(state: ScoutState, config: RunnableConfig) -> dict[str, An
         if item is not None:
             drafts.append(item)
 
+    logger.info("Successfully generated %d comment draft(s)", len(drafts))
     return {"drafts": drafts, "errors": errors}
 
 
