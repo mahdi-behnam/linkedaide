@@ -15,6 +15,15 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+class EngagementStyle(StrEnum):
+    """Contextual engagement styles for comment triage and drafting."""
+
+    TECHNICAL_DEEP_DIVE = "technical_deep_dive"
+    INQUISITIVE_QUESTION = "inquisitive_question"
+    CONTRARIAN_PERSPECTIVE = "contrarian_perspective"
+    SUPPORTIVE_SYNTHESIS = "supportive_synthesis"
+
+
 class RiskFlag(StrEnum):
     """Risk indicators identified during feed post triage."""
 
@@ -53,6 +62,10 @@ class TriageResult(BaseModel):
         default_factory=list,
         description="List of detected risk factors, if any",
     )
+    engagement_style: EngagementStyle | None = Field(
+        default=None,
+        description="Recommended engagement style if commenting (technical_deep_dive, inquisitive_question, contrarian_perspective, supportive_synthesis)",
+    )
 
 
 class CommentDraft(BaseModel):
@@ -69,6 +82,10 @@ class CommentDraft(BaseModel):
         default_factory=list,
         max_length=5,
         description="Key topic tags relevant to the comment (max 5)",
+    )
+    engagement_style: EngagementStyle | None = Field(
+        default=None,
+        description="Engagement style applied in the drafted comment",
     )
 
 
@@ -125,6 +142,10 @@ class PendingAction(BaseModel):
         description="Triage/generation confidence score",
     )
     reasoning: str = Field(default="", description="Rationale presented to the human approver")
+    engagement_style: EngagementStyle | str | None = Field(
+        default=None,
+        description="Engagement style selected for this comment action",
+    )
     telegram_chat_id: int | None = Field(
         default=None, description="Telegram chat ID where suggestion was sent"
     )

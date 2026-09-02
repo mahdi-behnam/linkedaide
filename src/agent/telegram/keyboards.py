@@ -75,6 +75,15 @@ def build_suggestion_message(item: PendingAction) -> str:
         f"<b>Type:</b> {action_label}",
     ]
 
+    if item.engagement_style:
+        style_raw = (
+            item.engagement_style.value
+            if hasattr(item.engagement_style, "value")
+            else str(item.engagement_style)
+        )
+        style_label = " ".join(w.capitalize() for w in style_raw.replace("_", " ").split())
+        lines.append(f"<b>Style:</b> {html.escape(style_label)}")
+
     if item.author_name:
         lines.append(f"<b>Author:</b> {html.escape(item.author_name)}")
 

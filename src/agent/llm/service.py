@@ -27,6 +27,7 @@ from agent.llm.models import build_chat_model
 from agent.llm.prompts import build_repair_prompt
 from agent.models.schemas import (
     CommentDraft,
+    EngagementStyle,
     PostIdea,
     PostIdeationContext,
     PostRecord,
@@ -90,6 +91,7 @@ class LLMService:
                 confidence=1.0,
                 reasoning="Post text is empty or contains only whitespace.",
                 risk_flags=[RiskFlag.LOW_SIGNAL],
+                engagement_style=None,
             )
 
         focus_areas_str = (
@@ -107,18 +109,45 @@ class LLMService:
 
         return await self._execute_with_resilience("triage", input_data, TriageResult)
 
-    async def draft_comment(self, post: PostRecord, triage: TriageResult) -> CommentDraft:
+    async def draft_comment(
+        self,
+        post: PostRecord,
+        triage: TriageResult,
+        *,
+        engagement_style: EngagementStyle | str | None = None,
+    ) -> CommentDraft:
         """Draft a substantive, value-adding LinkedIn comment."""
         raw_text = post.post_text.strip() if post.post_text else ""
+        selected_style = (
+            engagement_style or triage.engagement_style or EngagementStyle.TECHNICAL_DEEP_DIVE
+        )
+        style_str = (
+            selected_style.value
+            if isinstance(selected_style, EngagementStyle)
+            else str(selected_style)
+        )
+
         input_data: dict[str, Any] = {
             "max_words": self._settings.max_comment_words,
             "author_name": post.author_name.strip() or "LinkedIn Author",
             "post_url": post.post_url,
             "post_text": raw_text,
             "triage_reasoning": triage.reasoning,
+            "engagement_style": style_str,
         }
 
-        return await self._execute_with_resilience("comment", input_data, CommentDraft)
+        draft = await self._execute_with_resilience("comment", input_data, CommentDraft)
+        if draft.engagement_style is None:
+            resolved_enum: EngagementStyle | None = None
+            if isinstance(selected_style, EngagementStyle):
+                resolved_enum = selected_style
+            else:
+                try:
+                    resolved_enum = EngagementStyle(style_str)
+                except ValueError:
+                    resolved_enum = EngagementStyle.TECHNICAL_DEEP_DIVE
+            draft = draft.model_copy(update={"engagement_style": resolved_enum})
+        return draft
 
     async def draft_post_idea(self, context: PostIdeationContext) -> PostIdea | None:
         """Propose an original LinkedIn post idea."""

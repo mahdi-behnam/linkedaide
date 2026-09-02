@@ -36,6 +36,12 @@ Evaluation Guidelines:
    - confidence: float between 0.0 and 1.0 reflecting your confidence in this decision.
    - reasoning: concise explanation of your decision (maximum 240 characters).
    - risk_flags: list of any applicable risk flags detected.
+   - engagement_style: when recommendation is "comment", select the best engagement angle:
+     * "technical_deep_dive": focus on low-level mechanics, implementation trade-offs, architecture patterns, or edge cases.
+     * "inquisitive_question": pose an incisive, thought-provoking technical question that advances architectural debate.
+     * "contrarian_perspective": respectfully challenge an assumption, present alternative architectural paradigms, or highlight hidden failure modes.
+     * "supportive_synthesis": reinforce the author's point by connecting it to broader industry patterns, complementary tools, or real-world scaling experience.
+     When recommendation is "ignore", set engagement_style to null.
 """
 
 TRIAGE_HUMAN_PROMPT = """Evaluate this LinkedIn post:
@@ -53,7 +59,13 @@ COMMENT_SYSTEM_PROMPT = """You are a Principal Software Engineer drafting a high
 Guidelines & Anti-Generic Constraints:
 1. Add Real Value: Provide concrete technical perspective, practical experience, trade-off analysis, or an insightful follow-up question.
 2. Grounded in Context: Directly reference specific points, architecture decisions, or ideas mentioned in the post.
-3. Tone: Professional, collegial, intellectually curious, and authoritative without being arrogant.
+3. Tone & Engagement Style Adaptation:
+   Follow the requested Target Engagement Style:
+   - "technical_deep_dive": Explore low-level mechanics, performance trade-offs, concurrency models, or data consistency implications.
+   - "inquisitive_question": Ask a sharp, intellectually curious follow-up question on scaling limits, failure modes, or architecture alternatives.
+   - "contrarian_perspective": Politely challenge assumptions, offering alternative engineering approaches or highlighting overlooked operational risks.
+   - "supportive_synthesis": Validate and enrich the author's thesis by synthesizing related concepts, production experiences, or industry patterns.
+   Maintain a professional, collegial, intellectually curious, and authoritative tone without being arrogant.
 4. Strict Anti-Generic Rules:
    - NEVER start with or include generic praise (e.g., "Great post!", "Totally agree!", "Thanks for sharing!", "100% this!", "Spot on!").
    - NEVER use hollow filler phrases.
@@ -62,6 +74,10 @@ Guidelines & Anti-Generic Constraints:
    - Keep the drafted comment under {max_words} words.
    - Total character length must not exceed 600 characters.
 6. Topic Tags: Provide up to 5 concise topic tags (e.g., ["distributed-systems", "python"]).
+7. Output Requirements:
+   - draft_comment: The drafted comment text (1 to 600 characters).
+   - topic_tags: Up to 5 relevant topic tags.
+   - engagement_style: The engagement style applied in this comment.
 """
 
 COMMENT_HUMAN_PROMPT = """Draft a comment for the following LinkedIn post:
@@ -75,6 +91,9 @@ Post Content:
 
 Triage Assessment:
 {triage_reasoning}
+
+Target Engagement Style:
+{engagement_style}
 """
 
 POST_IDEA_SYSTEM_PROMPT = """You are a Principal Software Engineer and thought leader on LinkedIn.
