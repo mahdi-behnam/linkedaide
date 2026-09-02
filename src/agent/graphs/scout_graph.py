@@ -29,6 +29,38 @@ async def check_halted(state: ScoutState, config: RunnableConfig) -> dict[str, A
     return {"halted_reason": None, "status": "active"}
 
 
+async def prune_expired(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
+    """Prune expired pending actions from durable state and update Telegram messages."""
+    context = get_graph_context(config)
+    if not context.state_store:
+        return {"pruned_items": []}
+
+    ttl_hours = context.settings.pending_action_ttl_hours
+    pruned = context.state_store.prune_expired_pending(ttl_hours=ttl_hours)
+    logger.info("Pruned %d expired pending action(s) (TTL=%dh)", len(pruned), ttl_hours)
+
+    if context.telegram and pruned:
+        for item in pruned:
+            chat_id = item.telegram_chat_id or context.settings.telegram_authorized_chat_id
+            msg_id = item.telegram_message_id
+            if msg_id and msg_id > 0:
+                try:
+                    await context.telegram.edit_to_outcome(
+                        chat_id=chat_id,
+                        message_id=msg_id,
+                        outcome_text="⏱️ Suggestion expired (exceeded approval TTL)",
+                    )
+                except Exception as err:
+                    logger.warning(
+                        "Failed to update Telegram outcome for expired item %s (msg_id=%s): %s",
+                        item.item_id,
+                        msg_id,
+                        err,
+                    )
+
+    return {"pruned_items": pruned}
+
+
 async def load_seen(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
     """Load previously seen post hashes from durable state."""
     context = get_graph_context(config)
@@ -176,6 +208,7 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
             draft_text=draft.draft_comment,
             confidence=triage.confidence,
             reasoning=triage.reasoning,
+            engagement_style=draft.engagement_style or triage.engagement_style,
             telegram_chat_id=context.settings.telegram_authorized_chat_id,
             telegram_message_id=0,
         )
@@ -230,7 +263,7 @@ async def send_telegram_suggestions(state: ScoutState, config: RunnableConfig) -
 def route_after_halt_check(state: ScoutState) -> str:
     if state.get("halted_reason"):
         return END
-    return "load_seen"
+    return "prune_expired"
 
 
 def route_after_scrape(state: ScoutState) -> str:
@@ -252,6 +285,7 @@ def build_scout_graph() -> Any:
     graph = StateGraph(ScoutState)
 
     graph.add_node("check_halted", check_halted)
+    graph.add_node("prune_expired", prune_expired)
     graph.add_node("load_seen", load_seen)
     graph.add_node("scrape_feed", scrape_feed)
     graph.add_node("triage_batch", triage_batch)
@@ -261,7 +295,8 @@ def build_scout_graph() -> Any:
     graph.add_node("send_telegram_suggestions", send_telegram_suggestions)
 
     graph.add_edge(START, "check_halted")
-    graph.add_conditional_edges("check_halted", route_after_halt_check, [END, "load_seen"])
+    graph.add_conditional_edges("check_halted", route_after_halt_check, [END, "prune_expired"])
+    graph.add_edge("prune_expired", "load_seen")
     graph.add_edge("load_seen", "scrape_feed")
     graph.add_conditional_edges("scrape_feed", route_after_scrape, [END, "triage_batch"])
     graph.add_conditional_edges("triage_batch", route_after_triage, [END, "draft_batch"])

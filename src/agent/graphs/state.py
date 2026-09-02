@@ -31,6 +31,7 @@ class ScoutState(TypedDict, total=False):
     triage_results: list[tuple[PostRecord, TriageResult]]
     drafts: list[tuple[PostRecord, TriageResult, CommentDraft]]
     pending_items: list[PendingAction]
+    pruned_items: list[PendingAction]
     errors: list[str]
     halted_reason: str | None
     status: str

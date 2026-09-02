@@ -86,6 +86,52 @@ class GitStateStore:
         results.sort(key=lambda x: x.created_at)
         return results
 
+    def prune_expired_pending(
+        self, ttl_hours: int = 12, now: datetime | None = None
+    ) -> list[PendingAction]:
+        """Scan and prune pending actions that have exceeded their approval TTL.
+
+        For each expired pending action:
+        - Appends an 'expired' HistoryEntry to state/history.jsonl.
+        - Deletes the pending item JSON file from state/pending/.
+        - Collects the item in the returned pruned list.
+
+        Args:
+            ttl_hours: Time-to-live in hours before a pending action is considered expired.
+            now: Optional current timestamp (defaults to UTC now).
+
+        Returns:
+            list[PendingAction]: List of pruned pending action records.
+        """
+        current_time = now or datetime.now(UTC)
+        if current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=UTC)
+
+        pruned_items: list[PendingAction] = []
+        pending_items = self.list_pending()
+
+        for item in pending_items:
+            created_at = item.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+
+            elapsed_seconds = (current_time - created_at).total_seconds()
+            if elapsed_seconds > (ttl_hours * 3600):
+                entry = HistoryEntry(
+                    item_id=item.item_id,
+                    action_type=item.action_type,
+                    final_status="expired",
+                    decided_at=None,
+                    executed_at=current_time,
+                    screenshot_path=None,
+                    error=f"Pending approval expired (exceeded {ttl_hours}h TTL)",
+                )
+                self.append_history(entry)
+                self.delete_pending(item.item_id)
+                pruned_items.append(item)
+
+        return pruned_items
+
     # -------------------------------------------------------------------------
     # History (JSONL Append-Only)
     # -------------------------------------------------------------------------
