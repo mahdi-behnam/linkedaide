@@ -199,6 +199,16 @@ class Settings(BaseSettings):
         description="When True, prevents all live LinkedIn writes and logs actions",
         validation_alias=AliasChoices("DRY_RUN", "dry_run"),
     )
+    enable_pre_comment_reaction: bool = Field(
+        default=False,
+        description="Whether to perform an organic reaction before commenting",
+        validation_alias=AliasChoices("ENABLE_PRE_COMMENT_REACTION", "enable_pre_comment_reaction"),
+    )
+    default_reaction_type: str = Field(
+        default="like",
+        description="Default reaction type (like, insightful, celebrate, support, love, funny)",
+        validation_alias=AliasChoices("DEFAULT_REACTION_TYPE", "default_reaction_type"),
+    )
     log_level: str = Field(
         default="INFO",
         description="Logging level",

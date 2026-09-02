@@ -121,6 +121,20 @@ async def humanized_scroll(page: Page, screens: int = 2) -> None:
         await asyncio.sleep(random.uniform(1.0, 2.5))
 
 
+async def humanized_dwell(
+    min_seconds: float = 1.5,
+    max_seconds: float = 3.5,
+) -> None:
+    """Pause asynchronously for a randomized human reading/dwell duration.
+
+    Args:
+        min_seconds: Minimum dwell duration in seconds.
+        max_seconds: Maximum dwell duration in seconds.
+    """
+    delay = random.uniform(min_seconds, max_seconds)
+    await asyncio.sleep(delay)
+
+
 def detect_challenge_page(page: Page) -> bool:
     """Check if the current page contains a LinkedIn security checkpoint or bot challenge.
 

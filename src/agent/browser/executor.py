@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from agent.browser.stealth import (
     detect_challenge_page,
+    humanized_dwell,
     humanized_type,
     is_authwall_or_login,
 )
@@ -342,6 +343,94 @@ class ActionExecutor:
         )
         return await post_article.count() > 0
 
+    async def react_to_post(
+        self,
+        reaction_type: str = "like",
+        item_id: str = "item_action",
+        dry_run: bool | None = None,
+    ) -> bool:
+        """React to a LinkedIn post with humanized dwell and graceful degradation.
+
+        Args:
+            reaction_type: Reaction name ('like', 'insightful', 'celebrate', 'support', 'love', 'funny').
+            item_id: Action item ID for audit logging.
+            dry_run: Override dry-run setting.
+
+        Returns:
+            bool: True if reaction succeeded, was skipped because already reacted, or dry-run simulated.
+        """
+        is_dry_run = dry_run if dry_run is not None else self.settings.dry_run
+
+        if detect_challenge_page(self.page):
+            await self._capture_screenshot(f"challenge_react_{item_id}")
+            raise BotDetectionError(f"Bot challenge during reaction check: {self.page.url}")
+
+        if is_authwall_or_login(self.page):
+            raise SessionExpiredError(
+                f"LinkedIn session expired during reaction check; redirected to {self.page.url}"
+            )
+
+        if is_dry_run:
+            logger.info("DRY_RUN: Simulated reaction '%s' on %s", reaction_type, self.page.url)
+            return True
+
+        try:
+            react_btn = self.page.locator(
+                "button[aria-label*='React Like'], button[aria-label*='Like' i], "
+                "button.react-button__trigger, button.reactions-react-button, "
+                "button.feed-shared-social-action-bar__action-button:has-text('Like'), button:has-text('Like')"
+            ).first
+
+            if await react_btn.count() == 0:
+                logger.warning("Reaction button not found on %s", self.page.url)
+                return False
+
+            # Check if already reacted
+            aria_pressed = (await react_btn.get_attribute("aria-pressed") or "").strip().lower()
+            aria_label = (await react_btn.get_attribute("aria-label") or "").lower()
+            if aria_pressed in ("true", "1") or "unreact" in aria_label or "unlike" in aria_label:
+                logger.info("Post %s already reacted; skipping click", self.page.url)
+                return True
+
+            norm_type = reaction_type.strip().lower()
+            if norm_type in ("", "like"):
+                await react_btn.click()
+                return True
+
+            # Non-default reaction (e.g. insightful, celebrate, etc.)
+            try:
+                await react_btn.hover()
+                await asyncio.sleep(0.4)
+                reaction_menu_item = self.page.locator(
+                    f"button[aria-label*='{norm_type.capitalize()}' i], "
+                    f"button[data-test-reaction-type='{norm_type}'], "
+                    f"div.reactions-menu button:has-text('{norm_type.capitalize()}')"
+                ).first
+
+                if await reaction_menu_item.count() > 0:
+                    await reaction_menu_item.click()
+                    return True
+                else:
+                    logger.warning(
+                        "Specific reaction button '%s' not found, falling back to Like", norm_type
+                    )
+                    await react_btn.click()
+                    return True
+            except Exception as e:
+                logger.warning(
+                    "Failed to trigger specific reaction '%s' (%s), falling back to Like",
+                    norm_type,
+                    e,
+                )
+                await react_btn.click()
+                return True
+
+        except (BotDetectionError, SessionExpiredError):
+            raise
+        except Exception as err:
+            logger.warning("Non-fatal error during reaction attempt on %s: %s", self.page.url, err)
+            return False
+
     async def post_comment(
         self,
         post_url: str,
@@ -349,6 +438,8 @@ class ActionExecutor:
         item_id: str = "item_action",
         dry_run: bool | None = None,
         verification_timeout: float = 6.0,
+        reaction_type: str | None = None,
+        simulate_dwell: bool = True,
     ) -> ExecutionResult:
         """Post an approved comment on a LinkedIn post.
 
@@ -358,6 +449,8 @@ class ActionExecutor:
             item_id: Action item ID for audit logging.
             dry_run: Override dry-run setting.
             verification_timeout: Maximum timeout in seconds to verify DOM outcome.
+            reaction_type: Optional reaction type ('like', 'insightful', etc.) to perform before commenting.
+            simulate_dwell: Whether to simulate humanized reading/dwelling pauses.
 
         Returns:
             ExecutionResult: Execution outcome with screenshot.
@@ -375,8 +468,17 @@ class ActionExecutor:
             screenshot = await self._capture_screenshot(f"missing_post_{item_id}")
             raise PostNoLongerAvailableError(f"Post at {post_url} is no longer available")
 
+        # Determine effective reaction
+        effective_reaction = reaction_type or (
+            self.settings.default_reaction_type
+            if self.settings.enable_pre_comment_reaction
+            else None
+        )
+
         # Dry run safety guarantee: zero write submission
         if is_dry_run:
+            if effective_reaction:
+                logger.info("DRY_RUN: Simulated reaction '%s' on %s", effective_reaction, post_url)
             logger.info("DRY_RUN: Simulated comment on %s: %s", post_url, comment_text)
             screenshot = await self._capture_screenshot(f"dryrun_comment_{item_id}")
             return ExecutionResult(
@@ -393,6 +495,18 @@ class ActionExecutor:
 
         # Live write submission path
         try:
+            # Pre-comment reaction simulation if enabled
+            if effective_reaction:
+                if simulate_dwell:
+                    await humanized_dwell(1.5, 3.5)
+                await self.react_to_post(
+                    reaction_type=effective_reaction,
+                    item_id=item_id,
+                    dry_run=False,
+                )
+                if simulate_dwell:
+                    await humanized_dwell(1.0, 2.5)
+
             # Locate comment button
             comment_btn = self.page.locator(
                 "button[aria-label*='Comment'], button:has-text('Comment'), button.comment-button"
