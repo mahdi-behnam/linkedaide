@@ -1,0 +1,594 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import worker, {
+  escapeHtml,
+  formatTelegramErrorMessage,
+  notifyTelegramFailure,
+  Env,
+} from "../src/index";
+
+describe("Telegram Relay Worker", () => {
+  const mockEnv: Env = {
+    TELEGRAM_WEBHOOK_SECRET: "my-secret-token-123",
+    TELEGRAM_BOT_TOKEN: "123456:TEST_TOKEN",
+    TELEGRAM_AUTHORIZED_CHAT_ID: "987654321",
+    GITHUB_DISPATCH_PAT: "ghp_mockpat1234567890",
+    GITHUB_REPO_OWNER: "test-owner",
+    GITHUB_REPO_NAME: "test-repo",
+  };
+
+  const createMockContext = () => ({
+    waitUntil: vi.fn((promise: Promise<unknown>) => promise),
+    passThroughOnException: vi.fn(),
+    props: {},
+  });
+
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  describe("Utility Functions", () => {
+    describe("escapeHtml", () => {
+      it("escapes all HTML special characters: &, <, >, \", '", () => {
+        const input = `<script>alert("xss" & 'test')</script>`;
+        const output = escapeHtml(input);
+        expect(output).toBe(
+          "&lt;script&gt;alert(&quot;xss&quot; &amp; &#039;test&#039;)&lt;/script&gt;"
+        );
+      });
+
+      it("returns plain text unchanged when no special characters exist", () => {
+        expect(escapeHtml("plain text 123")).toBe("plain text 123");
+      });
+
+      it("escapes multiple occurrences of special characters", () => {
+        expect(escapeHtml("a < b && c > d")).toBe("a &lt; b &amp;&amp; c &gt; d");
+      });
+    });
+
+    describe("formatTelegramErrorMessage", () => {
+      it("formats error message with action, itemId, summary, and details", () => {
+        const msg = formatTelegramErrorMessage(
+          "approve",
+          "item-123",
+          "401 Unauthorized",
+          "Bad credentials"
+        );
+        expect(msg).toContain("⚠️ <b>GitHub Dispatch Failed</b>");
+        expect(msg).toContain("<b>Action:</b> approve");
+        expect(msg).toContain("<b>Item ID:</b> <code>item-123</code>");
+        expect(msg).toContain("<b>Error:</b> <code>401 Unauthorized</code>");
+        expect(msg).toContain("<b>Details:</b> <code>Bad credentials</code>");
+      });
+
+      it("escapes special characters in error details and parameters", () => {
+        const msg = formatTelegramErrorMessage(
+          "<approve>",
+          "item&1",
+          "500 <Internal>",
+          'Error: "Invalid <tag>"'
+        );
+        expect(msg).toContain("<b>Action:</b> &lt;approve&gt;");
+        expect(msg).toContain("<b>Item ID:</b> <code>item&amp;1</code>");
+        expect(msg).toContain("<b>Error:</b> <code>500 &lt;Internal&gt;</code>");
+        expect(msg).toContain(
+          "<b>Details:</b> <code>Error: &quot;Invalid &lt;tag&gt;&quot;</code>"
+        );
+      });
+
+      it("truncates error details if longer than 500 characters", () => {
+        const longDetail = "x".repeat(600);
+        const msg = formatTelegramErrorMessage("approve", "item-1", "Error", longDetail);
+        expect(msg).toContain(`<code>${"x".repeat(500)}</code>`);
+        expect(msg).not.toContain("x".repeat(501));
+      });
+
+      it("omits details line when errorDetails is omitted or empty", () => {
+        const msg = formatTelegramErrorMessage("reject", "item-456", "404 Not Found");
+        expect(msg).not.toContain("<b>Details:</b>");
+      });
+    });
+
+    describe("notifyTelegramFailure", () => {
+      it("calls editMessageText when messageId is provided and strips keyboard", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+        globalThis.fetch = fetchMock;
+
+        await notifyTelegramFailure(mockEnv, 987654321, 12345, "Error text");
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(
+          `https://api.telegram.org/bot${mockEnv.TELEGRAM_BOT_TOKEN}/editMessageText`
+        );
+        expect(options.method).toBe("POST");
+        const body = JSON.parse(options.body);
+        expect(body).toEqual({
+          chat_id: 987654321,
+          message_id: 12345,
+          text: "Error text",
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+          reply_markup: { inline_keyboard: [] },
+        });
+      });
+
+      it("calls sendMessage when messageId is null", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+        globalThis.fetch = fetchMock;
+
+        await notifyTelegramFailure(mockEnv, 987654321, null, "Error text");
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(
+          `https://api.telegram.org/bot${mockEnv.TELEGRAM_BOT_TOKEN}/sendMessage`
+        );
+        const body = JSON.parse(options.body);
+        expect(body).toEqual({
+          chat_id: 987654321,
+          text: "Error text",
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+        });
+      });
+
+      it("swallows Telegram API exceptions without throwing", async () => {
+        const fetchMock = vi.fn().mockRejectedValue(new Error("Telegram network failure"));
+        globalThis.fetch = fetchMock;
+
+        await expect(
+          notifyTelegramFailure(mockEnv, 987654321, 12345, "Error text")
+        ).resolves.toBeUndefined();
+      });
+    });
+  });
+
+  describe("Worker Fetch Handler", () => {
+    const makeRequest = (
+      body: unknown,
+      headers: Record<string, string> = {
+        "X-Telegram-Bot-Api-Secret-Token": mockEnv.TELEGRAM_WEBHOOK_SECRET,
+        "Content-Type": "application/json",
+      },
+      method = "POST"
+    ) => {
+      return new Request("https://worker.local/webhook", {
+        method,
+        headers,
+        body: typeof body === "string" ? body : JSON.stringify(body),
+      });
+    };
+
+    describe("HTTP Method & Secret Validation", () => {
+      it("returns 405 when HTTP method is not POST", async () => {
+        const req = new Request("https://worker.local/webhook", { method: "GET" });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(405);
+        expect(await res.text()).toBe("Method Not Allowed");
+      });
+
+      it("returns 401 when X-Telegram-Bot-Api-Secret-Token header is missing", async () => {
+        const req = new Request("https://worker.local/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(401);
+        expect(await res.text()).toBe("Unauthorized Webhook Secret");
+      });
+
+      it("returns 401 when X-Telegram-Bot-Api-Secret-Token header is invalid", async () => {
+        const req = makeRequest({}, { "X-Telegram-Bot-Api-Secret-Token": "wrong-secret" });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(401);
+        expect(await res.text()).toBe("Unauthorized Webhook Secret");
+      });
+    });
+
+    describe("Payload & Sender Validation", () => {
+      it("returns 400 when request payload is not valid JSON", async () => {
+        const req = makeRequest("invalid-json{");
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(400);
+        expect(await res.text()).toBe("Invalid JSON Payload");
+      });
+
+      it("returns 200 when update contains no callback_query", async () => {
+        const req = makeRequest({ update_id: 1, message: { text: "hello" } });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(200);
+        expect(await res.text()).toBe("Ignored non-callback update");
+      });
+
+      it("returns 200 when callback_query has no data", async () => {
+        const req = makeRequest({
+          update_id: 1,
+          callback_query: { id: "cb1", from: { id: 987654321 } },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(200);
+        expect(await res.text()).toBe("Ignored non-callback update");
+      });
+
+      it("returns 403 when sender ID is not the authorized chat ID", async () => {
+        const req = makeRequest({
+          update_id: 1,
+          callback_query: {
+            id: "cb1",
+            from: { id: 111222333, is_bot: false, first_name: "Attacker" },
+            data: "ac:item1",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(403);
+        expect(await res.text()).toBe("Unauthorized Sender ID");
+      });
+    });
+
+    describe("Callback Data Parsing", () => {
+      it("returns 400 when callback_data is not colon-delimited", async () => {
+        const req = makeRequest({
+          update_id: 1,
+          callback_query: {
+            id: "cb1",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            data: "approve_no_colon",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(400);
+        expect(await res.text()).toBe("Invalid callback_data format");
+      });
+
+      it("returns 400 when action code is unknown", async () => {
+        const req = makeRequest({
+          update_id: 1,
+          callback_query: {
+            id: "cb1",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            data: "unknown_code:item123",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(400);
+        expect(await res.text()).toBe("Unknown action code");
+      });
+    });
+
+    describe("Successful Dispatch Paths", () => {
+      it.each([
+        ["ac", "approve"],
+        ["ap", "approve"],
+        ["apv", "approve"],
+      ])("handles approval action prefix '%s' -> '%s'", async (prefix, expectedAction) => {
+        const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+          if (url.includes("answerCallbackQuery")) {
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("/dispatches")) {
+            return new Response(null, { status: 204 });
+          }
+          return new Response("Not found", { status: 404 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const req = makeRequest({
+          update_id: 1,
+          callback_query: {
+            id: "cb_approval",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 555, chat: { id: 987654321 } },
+            data: `${prefix}:post_xyz_123`,
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data).toEqual({
+          status: "dispatched",
+          action: expectedAction,
+          item_id: "post_xyz_123",
+        });
+
+        // Verify GitHub dispatch payload
+        const dispatchCall = fetchMock.mock.calls.find(([url]) => url.includes("/dispatches"));
+        expect(dispatchCall).toBeDefined();
+        const [dispatchUrl, dispatchOptions] = dispatchCall!;
+        expect(dispatchUrl).toBe(
+          `https://api.github.com/repos/${mockEnv.GITHUB_REPO_OWNER}/${mockEnv.GITHUB_REPO_NAME}/dispatches`
+        );
+        expect(dispatchOptions.headers["Authorization"]).toBe(
+          `Bearer ${mockEnv.GITHUB_DISPATCH_PAT}`
+        );
+        const body = JSON.parse(dispatchOptions.body);
+        expect(body).toEqual({
+          event_type: "telegram-approval-action",
+          client_payload: {
+            action: expectedAction,
+            item_id: "post_xyz_123",
+            telegram_chat_id: 987654321,
+            telegram_message_id: 555,
+            telegram_callback_query_id: "cb_approval",
+          },
+        });
+      });
+
+      it.each([
+        ["rc", "reject"],
+        ["rp", "reject"],
+        ["rej", "reject"],
+      ])("handles rejection action prefix '%s' -> '%s'", async (prefix, expectedAction) => {
+        const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+          if (url.includes("answerCallbackQuery")) {
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("/dispatches")) {
+            return new Response(null, { status: 204 });
+          }
+          return new Response("Not found", { status: 404 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const req = makeRequest({
+          update_id: 2,
+          callback_query: {
+            id: "cb_rejection",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 556, chat: { id: 987654321 } },
+            data: `${prefix}:post_abc_456`,
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data).toEqual({
+          status: "dispatched",
+          action: expectedAction,
+          item_id: "post_abc_456",
+        });
+
+        // Verify GitHub dispatch payload
+        const dispatchCall = fetchMock.mock.calls.find(([url]) => url.includes("/dispatches"));
+        expect(dispatchCall).toBeDefined();
+        const [, dispatchOptions] = dispatchCall!;
+        const body = JSON.parse(dispatchOptions.body);
+        expect(body.client_payload.action).toBe("reject");
+      });
+    });
+
+    describe("GitHub Dispatch Failure & Telegram Error Notification", () => {
+      it.each([
+        [401, "Unauthorized", '{"message":"Bad credentials"}'],
+        [403, "Forbidden", '{"message":"Resource not accessible by personal access token"}'],
+        [404, "Not Found", '{"message":"Not Found"}'],
+        [422, "Unprocessable Entity", '{"message":"Validation Failed"}'],
+        [500, "Internal Server Error", "Internal Server Error"],
+      ])(
+        "catches GitHub %i %s, edits Telegram message with error, and returns 502",
+        async (statusCode, statusText, responseBody) => {
+          let editMessageCalled = false;
+          let editMessageBody: any = null;
+
+          const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+            if (url.includes("answerCallbackQuery")) {
+              return new Response("{}", { status: 200 });
+            }
+            if (url.includes("/dispatches")) {
+              return new Response(responseBody, {
+                status: statusCode,
+                statusText,
+              });
+            }
+            if (url.includes("editMessageText")) {
+              editMessageCalled = true;
+              editMessageBody = JSON.parse(opts.body);
+              return new Response("{}", { status: 200 });
+            }
+            return new Response("Not found", { status: 404 });
+          });
+          globalThis.fetch = fetchMock;
+
+          const req = makeRequest({
+            update_id: 3,
+            callback_query: {
+              id: "cb_err",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 777, chat: { id: 987654321 } },
+              data: "ac:item_err_1",
+            },
+          });
+          const ctx = createMockContext();
+          const res = await worker.fetch(req, mockEnv, ctx as any);
+
+          // Assert 502 Bad Gateway response
+          expect(res.status).toBe(502);
+          const resJson = await res.json();
+          expect(resJson).toEqual({
+            error: "GitHub dispatch failed",
+            status_code: statusCode,
+            status_text: statusText,
+            details: responseBody,
+            action: "approve",
+            item_id: "item_err_1",
+          });
+
+          // Assert ctx.waitUntil called with notifyTelegramFailure
+          expect(ctx.waitUntil).toHaveBeenCalled();
+
+          // Wait for any pending async operations passed to ctx.waitUntil
+          await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+
+          // Assert Telegram editMessageText was called
+          expect(editMessageCalled).toBe(true);
+          expect(editMessageBody).toEqual({
+            chat_id: 987654321,
+            message_id: 777,
+            text: expect.stringContaining("⚠️ <b>GitHub Dispatch Failed</b>"),
+            parse_mode: "HTML",
+            link_preview_options: { is_disabled: true },
+            reply_markup: { inline_keyboard: [] },
+          });
+          expect(editMessageBody.text).toContain(`<b>Item ID:</b> <code>item_err_1</code>`);
+          expect(editMessageBody.text).toContain(`<b>Error:</b> <code>${statusCode} ${statusText}</code>`);
+        }
+      );
+
+      it("catches network / DNS / fetch exception, edits Telegram message, and returns 502", async () => {
+        let editMessageCalled = false;
+        let editMessageBody: any = null;
+
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("answerCallbackQuery")) {
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("/dispatches")) {
+            throw new TypeError("fetch failed: connection refused");
+          }
+          if (url.includes("editMessageText")) {
+            editMessageCalled = true;
+            editMessageBody = JSON.parse(opts.body);
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("Not found", { status: 404 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const req = makeRequest({
+          update_id: 4,
+          callback_query: {
+            id: "cb_net_err",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 888, chat: { id: 987654321 } },
+            data: "ac:net_fail_item",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(502);
+        const resJson = await res.json();
+        expect(resJson).toEqual({
+          error: "GitHub dispatch network failure",
+          details: "fetch failed: connection refused",
+          action: "approve",
+          item_id: "net_fail_item",
+        });
+
+        // Wait for waitUntil promises
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+
+        expect(editMessageCalled).toBe(true);
+        expect(editMessageBody.text).toContain("Network/Fetch Error");
+        expect(editMessageBody.text).toContain("fetch failed: connection refused");
+        expect(editMessageBody.reply_markup).toEqual({ inline_keyboard: [] });
+      });
+
+      it("handles fallback to sendMessage when message_id is not present", async () => {
+        let sendMessageCalled = false;
+        let sendMessageBody: any = null;
+
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("answerCallbackQuery")) {
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("/dispatches")) {
+            return new Response("Unauthorized", { status: 401, statusText: "Unauthorized" });
+          }
+          if (url.includes("sendMessage")) {
+            sendMessageCalled = true;
+            sendMessageBody = JSON.parse(opts.body);
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("Not found", { status: 404 });
+        });
+        globalThis.fetch = fetchMock;
+
+        // Note: callback_query has no message object
+        const req = makeRequest({
+          update_id: 5,
+          callback_query: {
+            id: "cb_no_msg",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            data: "ac:item_no_msg",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(502);
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+
+        expect(sendMessageCalled).toBe(true);
+        expect(sendMessageBody.chat_id).toBe(987654321);
+        expect(sendMessageBody.text).toContain("GitHub Dispatch Failed");
+      });
+
+      it("returns 502 cleanly even if Telegram notification itself throws an error", async () => {
+        const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+          if (url.includes("answerCallbackQuery")) {
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("/dispatches")) {
+            return new Response("Server error", { status: 500, statusText: "Internal Server Error" });
+          }
+          if (url.includes("editMessageText")) {
+            throw new Error("Telegram API outage");
+          }
+          return new Response("Not found", { status: 404 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const req = makeRequest({
+          update_id: 6,
+          callback_query: {
+            id: "cb_tg_fail",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 999, chat: { id: 987654321 } },
+            data: "ac:item_double_fail",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(502);
+        const resJson = (await res.json()) as any;
+        expect(resJson.error).toBe("GitHub dispatch failed");
+        expect(resJson.status_code).toBe(500);
+
+        // Ensure waitUntil promise doesn't throw unhandled rejection
+        await expect(
+          Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p))
+        ).resolves.toBeDefined();
+      });
+    });
+  });
+});

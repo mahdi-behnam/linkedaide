@@ -37,6 +37,80 @@ export interface TelegramUpdate {
   callback_query?: TelegramCallbackQuery;
 }
 
+/** HTML entity escaping helper for Telegram HTML parse_mode */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/** Formats user-friendly error message for Telegram */
+export function formatTelegramErrorMessage(
+  action: string,
+  itemId: string,
+  errorSummary: string,
+  errorDetails?: string
+): string {
+  const safeAction = escapeHtml(action);
+  const safeItemId = escapeHtml(itemId);
+  const safeSummary = escapeHtml(errorSummary);
+  const safeDetails = errorDetails ? escapeHtml(errorDetails.slice(0, 500)) : "";
+
+  let msg =
+    `⚠️ <b>GitHub Dispatch Failed</b>\n\n` +
+    `<b>Action:</b> ${safeAction}\n` +
+    `<b>Item ID:</b> <code>${safeItemId}</code>\n` +
+    `<b>Error:</b> <code>${safeSummary}</code>`;
+
+  if (safeDetails) {
+    msg += `\n<b>Details:</b> <code>${safeDetails}</code>`;
+  }
+
+  msg += `\n\n<i>Please check repository permissions, GitHub token, and runner status.</i>`;
+  return msg;
+}
+
+/** Notifies Telegram of failure by editing message or sending alert */
+export async function notifyTelegramFailure(
+  env: Env,
+  chatId: number,
+  messageId: number | null,
+  text: string
+): Promise<void> {
+  try {
+    if (messageId) {
+      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          text,
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+          reply_markup: { inline_keyboard: [] },
+        }),
+      });
+    } else {
+      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+        }),
+      });
+    }
+  } catch {
+    // Silently continue if Telegram notification fails to preserve primary response
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method !== "POST") {
@@ -95,36 +169,81 @@ export default {
           text: toastText,
           show_alert: false,
         }),
-      })
+      }).catch(() => {})
     );
 
     // 5. Dispatch GitHub Actions repository_dispatch event
     const dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
+    const targetChatId = cb.message?.chat.id ?? authorizedId;
+    const targetMessageId = cb.message?.message_id ?? null;
+
     const clientPayload = {
-      action: action,
+      action,
       item_id: itemId,
-      telegram_chat_id: cb.message?.chat.id ?? authorizedId,
-      telegram_message_id: cb.message?.message_id ?? null,
+      telegram_chat_id: targetChatId,
+      telegram_message_id: targetMessageId,
       telegram_callback_query_id: cb.id,
     };
 
-    const dispatchResponse = await fetch(dispatchUrl, {
-      method: "POST",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
-        "User-Agent": "Telegram-Relay-Worker",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      body: JSON.stringify({
-        event_type: "telegram-approval-action",
-        client_payload: clientPayload,
-      }),
-    });
+    let dispatchResponse: Response;
+    try {
+      dispatchResponse = await fetch(dispatchUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
+          "User-Agent": "Telegram-Relay-Worker",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({
+          event_type: "telegram-approval-action",
+          client_payload: clientPayload,
+        }),
+      });
+    } catch (networkError: unknown) {
+      const errMsg =
+        networkError instanceof Error
+          ? networkError.message
+          : typeof networkError === "string"
+            ? networkError
+            : "Network request failed";
+      const tgText = formatTelegramErrorMessage(action, itemId, "Network/Fetch Error", errMsg);
+      ctx.waitUntil(notifyTelegramFailure(env, targetChatId, targetMessageId, tgText));
+
+      return new Response(
+        JSON.stringify({
+          error: "GitHub dispatch network failure",
+          details: errMsg,
+          action,
+          item_id: itemId,
+        }),
+        {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
     if (!dispatchResponse.ok) {
       const errText = await dispatchResponse.text();
-      return new Response(`GitHub dispatch failed: ${errText}`, { status: 502 });
+      const statusSummary = `${dispatchResponse.status} ${dispatchResponse.statusText || ""}`.trim();
+      const tgText = formatTelegramErrorMessage(action, itemId, statusSummary, errText);
+      ctx.waitUntil(notifyTelegramFailure(env, targetChatId, targetMessageId, tgText));
+
+      return new Response(
+        JSON.stringify({
+          error: "GitHub dispatch failed",
+          status_code: dispatchResponse.status,
+          status_text: dispatchResponse.statusText,
+          details: errText,
+          action,
+          item_id: itemId,
+        }),
+        {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     return new Response(JSON.stringify({ status: "dispatched", action, item_id: itemId }), {
