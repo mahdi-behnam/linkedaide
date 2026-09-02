@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -258,18 +259,30 @@ class GitStateStore:
     # Git Persistence
     # -------------------------------------------------------------------------
 
-    def commit_and_push(self, message: str, push: bool = False) -> bool:
-        """Stage state/ directory and commit state changes.
+    def commit_and_push(
+        self,
+        message: str,
+        push: bool = False,
+        max_retries: int = 3,
+        backoff_factor: float = 0.5,
+        remote: str | None = None,
+        branch: str | None = None,
+    ) -> bool:
+        """Stage state/ directory and commit state changes with rebase resilience.
 
         Args:
             message: Git commit message.
             push: Whether to push to remote (default False, used in CI workflows).
+            max_retries: Maximum number of push/rebase retry attempts (default 3).
+            backoff_factor: Exponential backoff base delay in seconds (default 0.5).
+            remote: Optional remote name (default None -> git tracking upstream).
+            branch: Optional branch name (default None -> current branch).
 
         Returns:
             bool: True if changes were committed, False if working tree had no state diff.
 
         Raises:
-            StateStoreError: If git command fails.
+            StateStoreError: If git command fails or rebase encounters an unresolvable conflict.
         """
         try:
             # Stage state directory
@@ -292,7 +305,7 @@ class GitStateStore:
             if diff_check.returncode == 0:
                 return False
 
-            # Commit
+            # Commit locally to preserve state in git database
             subprocess.run(
                 ["git", "commit", "-m", message],
                 cwd=str(self.repo_root),
@@ -301,18 +314,70 @@ class GitStateStore:
                 text=True,
             )
 
-            if push:
-                subprocess.run(
-                    ["git", "push"],
-                    cwd=str(self.repo_root),
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
+            if not push:
+                return True
+
+            # Prepare push and pull commands
+            push_cmd = ["git", "push"]
+            pull_cmd = ["git", "pull", "--rebase"]
+            if remote:
+                push_cmd.append(remote)
+                pull_cmd.append(remote)
+                if branch:
+                    push_cmd.append(branch)
+                    pull_cmd.append(branch)
+
+            for attempt in range(1, max_retries + 1):
+                try:
+                    subprocess.run(
+                        push_cmd,
+                        cwd=str(self.repo_root),
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    return True
+                except subprocess.CalledProcessError as push_err:
+                    err_msg = push_err.stderr.strip() if push_err.stderr else str(push_err)
+
+                    if attempt >= max_retries:
+                        raise StateStoreError(
+                            f"Git push failed after {max_retries} attempts: {err_msg}"
+                        ) from push_err
+
+                    # Attempt pull --rebase
+                    try:
+                        subprocess.run(
+                            pull_cmd,
+                            cwd=str(self.repo_root),
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                    except subprocess.CalledProcessError as rebase_err:
+                        # Abort rebase to guarantee clean repository state
+                        subprocess.run(
+                            ["git", "rebase", "--abort"],
+                            cwd=str(self.repo_root),
+                            capture_output=True,
+                        )
+                        rebase_err_msg = (
+                            rebase_err.stderr.strip() if rebase_err.stderr else str(rebase_err)
+                        )
+                        raise StateStoreError(
+                            f"Git pull --rebase failed during push retry (attempt {attempt}/{max_retries}): {rebase_err_msg}"
+                        ) from rebase_err
+
+                    # Exponential backoff delay
+                    if backoff_factor > 0:
+                        time.sleep(backoff_factor * (2 ** (attempt - 1)))
 
             return True
+
         except subprocess.CalledProcessError as err:
             err_msg = err.stderr.strip() if err.stderr else str(err)
             raise StateStoreError(f"Git commit/push failed: {err_msg}") from err
+        except StateStoreError:
+            raise
         except Exception as err:
             raise StateStoreError(f"Unexpected git state error: {err}") from err

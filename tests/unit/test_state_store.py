@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from agent.errors import StateStoreError
 from agent.models.schemas import HistoryEntry, PendingAction, PostRecord
 from agent.state.store import GitStateStore
 
@@ -17,7 +18,9 @@ def temp_git_repo(tmp_path: Path) -> Path:
     """Initialize a clean local git repository fixture for testing state storage."""
     repo = tmp_path / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main"], cwd=str(repo), check=True, capture_output=True
+    )
     subprocess.run(
         ["git", "config", "user.name", "Test User"],
         cwd=str(repo),
@@ -47,6 +50,86 @@ def temp_git_repo(tmp_path: Path) -> Path:
 @pytest.fixture
 def state_store(temp_git_repo: Path) -> GitStateStore:
     return GitStateStore(temp_git_repo)
+
+
+@pytest.fixture
+def multi_repo(tmp_path: Path) -> tuple[GitStateStore, GitStateStore, Path]:
+    """Create a bare remote and two independent clone clients for concurrency testing."""
+    bare = tmp_path / "remote.git"
+    bare.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["git", "init", "--bare", "--initial-branch=main"],
+        cwd=str(bare),
+        check=True,
+        capture_output=True,
+    )
+
+    client_a_path = tmp_path / "client_a"
+    client_a_path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main"],
+        cwd=str(client_a_path),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Client A"],
+        cwd=str(client_a_path),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "a@example.com"],
+        cwd=str(client_a_path),
+        check=True,
+        capture_output=True,
+    )
+
+    state_dir_a = client_a_path / "state"
+    state_dir_a.mkdir(parents=True, exist_ok=True)
+    (state_dir_a / ".gitkeep").write_text("", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=str(client_a_path), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=str(client_a_path),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=str(client_a_path),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", "main"],
+        cwd=str(client_a_path),
+        check=True,
+        capture_output=True,
+    )
+
+    client_b_path = tmp_path / "client_b"
+    subprocess.run(
+        ["git", "clone", str(bare), str(client_b_path)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Client B"],
+        cwd=str(client_b_path),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "b@example.com"],
+        cwd=str(client_b_path),
+        check=True,
+        capture_output=True,
+    )
+
+    store_a = GitStateStore(client_a_path)
+    store_b = GitStateStore(client_b_path)
+    return store_a, store_b, bare
 
 
 def test_pending_actions_crud(state_store: GitStateStore) -> None:
@@ -194,11 +277,11 @@ def test_daily_counters_rollover_and_increment(state_store: GitStateStore) -> No
     assert c2.suggestions_sent == 0
 
 
-def test_commit_and_push(state_store: GitStateStore) -> None:
+def test_commit_and_push_local(state_store: GitStateStore) -> None:
     # 1. No changes staged
     assert state_store.commit_and_push("No changes") is False
 
-    # 2. Add pending item and commit
+    # 2. Add pending item and commit locally
     item = PendingAction(
         item_id="testcommit",
         action_type="approve_comment",
@@ -214,7 +297,227 @@ def test_commit_and_push(state_store: GitStateStore) -> None:
         telegram_message_id=1,
     )
     state_store.write_pending(item)
-    assert state_store.commit_and_push("feat: state update") is True
+    assert state_store.commit_and_push("feat: state update", push=False) is True
 
     # 3. Subsequent commit returns False
-    assert state_store.commit_and_push("No changes") is False
+    assert state_store.commit_and_push("No changes", push=False) is False
+
+
+def test_commit_and_push_fast_forward(
+    multi_repo: tuple[GitStateStore, GitStateStore, Path],
+) -> None:
+    store_a, store_b, _ = multi_repo
+
+    item_a = PendingAction(
+        item_id="item_a123",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:100",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:100/",
+        author_name="Alice",
+        post_excerpt="Fast forward test",
+        draft_text="Alice draft text",
+        confidence=0.95,
+        reasoning="Relevant topic",
+        telegram_chat_id=1234,
+        telegram_message_id=10,
+    )
+    store_a.write_pending(item_a)
+
+    # Push from Client A
+    assert store_a.commit_and_push("feat: add item a", push=True) is True
+
+    # Pull in Client B
+    subprocess.run(["git", "pull"], cwd=str(store_b.repo_root), check=True, capture_output=True)
+    loaded_b = store_b.read_pending("item_a123")
+    assert loaded_b is not None
+    assert loaded_b.item_id == "item_a123"
+    assert loaded_b.draft_text == "Alice draft text"
+
+
+def test_commit_and_push_rebase_retry_on_remote_movement(
+    multi_repo: tuple[GitStateStore, GitStateStore, Path],
+) -> None:
+    store_a, store_b, _ = multi_repo
+
+    item_a = PendingAction(
+        item_id="item_a_move",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:201",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:201/",
+        author_name="Alice",
+        post_excerpt="Movement test A",
+        draft_text="Comment A",
+        confidence=0.88,
+        reasoning="Reason A",
+        telegram_chat_id=1234,
+        telegram_message_id=21,
+    )
+    store_a.write_pending(item_a)
+    assert store_a.commit_and_push("feat: add item a", push=True) is True
+
+    # Client B concurrently creates item_b without pulling Client A's commit
+    item_b = PendingAction(
+        item_id="item_b_move",
+        action_type="approve_post",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:202",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:202/",
+        author_name="Bob",
+        post_excerpt="Movement test B",
+        draft_text="Comment B",
+        confidence=0.91,
+        reasoning="Reason B",
+        telegram_chat_id=1234,
+        telegram_message_id=22,
+    )
+    store_b.write_pending(item_b)
+
+    # Client B pushes with rebase retry (backoff_factor=0.0 for speed)
+    pushed = store_b.commit_and_push(
+        "feat: add item b", push=True, max_retries=3, backoff_factor=0.0
+    )
+    assert pushed is True
+
+    # Sync Client A with remote to verify both items survived rebase
+    subprocess.run(["git", "pull"], cwd=str(store_a.repo_root), check=True, capture_output=True)
+
+    # Both items must be present in both repositories
+    assert store_a.read_pending("item_a_move") is not None
+    assert store_a.read_pending("item_b_move") is not None
+    assert store_b.read_pending("item_a_move") is not None
+    assert store_b.read_pending("item_b_move") is not None
+
+
+def test_commit_and_push_rebase_conflict_aborts_and_cleans_repo(
+    multi_repo: tuple[GitStateStore, GitStateStore, Path],
+) -> None:
+    store_a, store_b, _ = multi_repo
+
+    conflict_file_a = store_a.state_dir / "conflict.txt"
+    conflict_file_a.write_text("Client A conflicting version\n", encoding="utf-8")
+    assert store_a.commit_and_push("feat: conflict change A", push=True) is True
+
+    # Client B writes conflicting content to the same file
+    conflict_file_b = store_b.state_dir / "conflict.txt"
+    conflict_file_b.write_text("Client B conflicting version\n", encoding="utf-8")
+
+    # Client B pushes with rebase retry; should abort rebase on conflict and raise StateStoreError
+    with pytest.raises(StateStoreError) as exc_info:
+        store_b.commit_and_push(
+            "feat: conflict change B", push=True, max_retries=3, backoff_factor=0.0
+        )
+
+    assert "Git pull --rebase failed" in str(exc_info.value)
+
+    # Verify Client B working tree is left completely clean (no in-progress rebase)
+    status_proc = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=str(store_b.repo_root),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert status_proc.stdout.strip() == ""
+    assert not (store_b.repo_root / ".git" / "rebase-merge").exists()
+    assert not (store_b.repo_root / ".git" / "rebase-apply").exists()
+
+
+def test_commit_and_push_max_retries_exhausted(
+    multi_repo: tuple[GitStateStore, GitStateStore, Path],
+) -> None:
+    store_a, _, bare = multi_repo
+
+    # Install a rejecting pre-receive hook on the bare remote to force push rejection
+    hook_dir = bare / "hooks"
+    hook_dir.mkdir(exist_ok=True)
+    hook_file = hook_dir / "pre-receive"
+    hook_file.write_text("#!/bin/sh\necho 'Hook rejected' >&2\nexit 1\n", encoding="utf-8")
+
+    item = PendingAction(
+        item_id="item_retry_exhaust",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:300",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:300/",
+        author_name="Charlie",
+        post_excerpt="Retry exhaust",
+        draft_text="Draft retry",
+        confidence=0.85,
+        reasoning="Test retry exhaust",
+        telegram_chat_id=1234,
+        telegram_message_id=30,
+    )
+    store_a.write_pending(item)
+
+    with pytest.raises(StateStoreError) as exc_info:
+        store_a.commit_and_push("feat: doomed commit", push=True, max_retries=3, backoff_factor=0.0)
+
+    assert "Git push failed after 3 attempts" in str(exc_info.value)
+
+
+def test_commit_and_push_explicit_remote_and_branch(
+    multi_repo: tuple[GitStateStore, GitStateStore, Path],
+) -> None:
+    store_a, store_b, _ = multi_repo
+
+    item = PendingAction(
+        item_id="item_explicit_rb",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:400",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:400/",
+        author_name="Diana",
+        post_excerpt="Explicit remote branch test",
+        draft_text="Explicit remote branch draft",
+        confidence=0.9,
+        reasoning="Test explicit params",
+        telegram_chat_id=1234,
+        telegram_message_id=40,
+    )
+    store_a.write_pending(item)
+
+    assert (
+        store_a.commit_and_push(
+            "feat: explicit remote branch",
+            push=True,
+            remote="origin",
+            branch="main",
+            backoff_factor=0.0,
+        )
+        is True
+    )
+
+    # Verify pull in client B
+    subprocess.run(["git", "pull"], cwd=str(store_b.repo_root), check=True, capture_output=True)
+    loaded = store_b.read_pending("item_explicit_rb")
+    assert loaded is not None
+    assert loaded.item_id == "item_explicit_rb"
+
+
+def test_commit_and_push_non_repo_error(tmp_path: Path) -> None:
+    non_repo_dir = tmp_path / "not_a_repo"
+    non_repo_dir.mkdir(parents=True, exist_ok=True)
+    store = GitStateStore(non_repo_dir)
+
+    item = PendingAction(
+        item_id="item_non_repo",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:500",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:500/",
+        author_name="Eve",
+        post_excerpt="Non repo test",
+        draft_text="Draft non repo",
+        confidence=0.8,
+        reasoning="Test non repo",
+        telegram_chat_id=1234,
+        telegram_message_id=50,
+    )
+    store.write_pending(item)
+
+    with pytest.raises(StateStoreError) as exc_info:
+        store.commit_and_push("feat: should fail", push=False)
+
+    assert "Git commit/push failed" in str(exc_info.value)
