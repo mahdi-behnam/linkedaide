@@ -186,3 +186,33 @@ class TestSettings:
                 nim_temperature=3.5,  # Valid range: 0.0 .. 2.0
             )
         assert "nim_temperature" in str(exc_info.value)
+
+    def test_reaction_settings_defaults_and_explicit(self) -> None:
+        settings_default = Settings(
+            nvidia_nim_api_key="key",
+            telegram_bot_token="tok",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings_default.enable_pre_comment_reaction is False
+        assert settings_default.default_reaction_type == "like"
+
+        settings_custom = Settings(
+            nvidia_nim_api_key="key",
+            telegram_bot_token="tok",
+            telegram_authorized_chat_id=123,
+            enable_pre_comment_reaction=True,
+            default_reaction_type="insightful",
+        )
+        assert settings_custom.enable_pre_comment_reaction is True
+        assert settings_custom.default_reaction_type == "insightful"
+
+    def test_load_reaction_settings_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("NVIDIA_NIM_API_KEY", "key")
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+        monkeypatch.setenv("TELEGRAM_AUTHORIZED_CHAT_ID", "123")
+        monkeypatch.setenv("ENABLE_PRE_COMMENT_REACTION", "true")
+        monkeypatch.setenv("DEFAULT_REACTION_TYPE", "celebrate")
+
+        settings = load_settings()
+        assert settings.enable_pre_comment_reaction is True
+        assert settings.default_reaction_type == "celebrate"

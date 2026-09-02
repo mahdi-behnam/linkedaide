@@ -13,6 +13,7 @@ from agent.models.schemas import (
     CallbackDataPayload,
     CommentDraft,
     DailyCounters,
+    EngagementStyle,
     ExecutionResult,
     HistoryEntry,
     HistoryStatus,
@@ -24,6 +25,26 @@ from agent.models.schemas import (
     RiskFlag,
     TriageResult,
 )
+
+
+class TestEngagementStyle:
+    """Test suite for EngagementStyle enum."""
+
+    def test_enum_values(self) -> None:
+        assert EngagementStyle.TECHNICAL_DEEP_DIVE.value == "technical_deep_dive"
+        assert EngagementStyle.INQUISITIVE_QUESTION.value == "inquisitive_question"
+        assert EngagementStyle.CONTRARIAN_PERSPECTIVE.value == "contrarian_perspective"
+        assert EngagementStyle.SUPPORTIVE_SYNTHESIS.value == "supportive_synthesis"
+
+    def test_all_expected_styles_present(self) -> None:
+        expected = {
+            "technical_deep_dive",
+            "inquisitive_question",
+            "contrarian_perspective",
+            "supportive_synthesis",
+        }
+        actual = {style.value for style in EngagementStyle}
+        assert actual == expected
 
 
 class TestTriageResult:
@@ -40,6 +61,33 @@ class TestTriageResult:
         assert triage.confidence == 0.95
         assert triage.reasoning.startswith("High signal")
         assert triage.risk_flags == [RiskFlag.LOW_SIGNAL]
+        assert triage.engagement_style is None
+
+    def test_triage_result_with_engagement_style(self) -> None:
+        triage = TriageResult(
+            recommendation="comment",
+            confidence=0.9,
+            reasoning="Valid technical deep dive post",
+            engagement_style=EngagementStyle.TECHNICAL_DEEP_DIVE,
+        )
+        assert triage.engagement_style == EngagementStyle.TECHNICAL_DEEP_DIVE
+
+        triage_str = TriageResult(
+            recommendation="comment",
+            confidence=0.85,
+            reasoning="Inquisitive post",
+            engagement_style="inquisitive_question",  # type: ignore[arg-type]
+        )
+        assert triage_str.engagement_style == EngagementStyle.INQUISITIVE_QUESTION
+
+    def test_triage_result_invalid_engagement_style(self) -> None:
+        with pytest.raises(ValidationError):
+            TriageResult(
+                recommendation="comment",
+                confidence=0.8,
+                reasoning="Reason",
+                engagement_style="invalid_style",  # type: ignore[arg-type]
+            )
 
     def test_invalid_recommendation(self) -> None:
         with pytest.raises(ValidationError):
@@ -87,6 +135,29 @@ class TestCommentDraft:
         )
         assert "fencing tokens" in draft.draft_comment
         assert len(draft.topic_tags) == 2
+        assert draft.engagement_style is None
+
+    def test_comment_draft_with_engagement_style(self) -> None:
+        draft = CommentDraft(
+            draft_comment="Respectfully challenging the thesis with alternative consensus model.",
+            topic_tags=["distributed-systems"],
+            engagement_style=EngagementStyle.CONTRARIAN_PERSPECTIVE,
+        )
+        assert draft.engagement_style == EngagementStyle.CONTRARIAN_PERSPECTIVE
+
+        draft_str = CommentDraft(
+            draft_comment="Connecting this pattern to real-world cloud scaling.",
+            topic_tags=["cloud"],
+            engagement_style="supportive_synthesis",  # type: ignore[arg-type]
+        )
+        assert draft_str.engagement_style == EngagementStyle.SUPPORTIVE_SYNTHESIS
+
+    def test_comment_draft_invalid_engagement_style(self) -> None:
+        with pytest.raises(ValidationError):
+            CommentDraft(
+                draft_comment="Valid draft comment text.",
+                engagement_style="invalid_style",  # type: ignore[arg-type]
+            )
 
     def test_empty_comment_rejected(self) -> None:
         with pytest.raises(ValidationError):
@@ -153,6 +224,7 @@ class TestPendingAction:
             draft_text="Fascinating contrast between mailbox pressure and queue depth.",
             confidence=0.92,
             reasoning="Directly aligns with distributed systems focus area.",
+            engagement_style=EngagementStyle.TECHNICAL_DEEP_DIVE,
             telegram_chat_id=123456789,
             telegram_message_id=42,
         )
@@ -160,6 +232,7 @@ class TestPendingAction:
         assert action.action_type == "approve_comment"
         assert isinstance(action.created_at, datetime)
         assert action.telegram_message_id == 42
+        assert action.engagement_style == EngagementStyle.TECHNICAL_DEEP_DIVE
 
     def test_serialization_round_trip(self) -> None:
         action = PendingAction(
@@ -168,12 +241,14 @@ class TestPendingAction:
             draft_text="Original post draft about architectural fitness functions.",
             confidence=0.88,
             reasoning="Scheduled weekly thought leadership post.",
+            engagement_style="supportive_synthesis",
         )
         raw_json = action.model_dump_json()
         restored = PendingAction.model_validate_json(raw_json)
         assert restored.item_id == action.item_id
         assert restored.action_type == "approve_post"
         assert restored.draft_text == action.draft_text
+        assert restored.engagement_style == "supportive_synthesis"
 
 
 class TestHistoryEntry:

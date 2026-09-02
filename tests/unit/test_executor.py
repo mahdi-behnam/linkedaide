@@ -763,3 +763,427 @@ async def test_post_comment_missing_submit_button_raises_execution_error(
         )
 
     assert "Comment submit button not found in DOM" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_dry_run(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    executor = ActionExecutor(page, base_settings)
+
+    result = await executor.react_to_post(
+        reaction_type="like", item_id="dryrun_react", dry_run=True
+    )
+    assert result is True
+    page.locator.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_challenge_raises_bot_detection(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/checkpoint/challenge"
+    page.screenshot = AsyncMock()
+    executor = ActionExecutor(page, base_settings)
+
+    with pytest.raises(BotDetectionError):
+        await executor.react_to_post(reaction_type="like", item_id="chal_react", dry_run=False)
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_session_expired_raises(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/login"
+    executor = ActionExecutor(page, base_settings)
+
+    with pytest.raises(SessionExpiredError):
+        await executor.react_to_post(reaction_type="like", item_id="exp_react", dry_run=False)
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_missing_button_returns_false(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    empty_loc = MagicMock(count=AsyncMock(return_value=0))
+    empty_loc.first = empty_loc
+    page.locator = MagicMock(return_value=empty_loc)
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(
+        reaction_type="like", item_id="missing_react_btn", dry_run=False
+    )
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_already_reacted_skips_click(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    react_btn = MagicMock()
+    react_btn.count = AsyncMock(return_value=1)
+    react_btn.get_attribute = AsyncMock(
+        side_effect=lambda attr: "true" if attr == "aria-pressed" else "React Like"
+    )
+    react_btn.click = AsyncMock()
+    react_btn.first = react_btn
+    page.locator = MagicMock(return_value=react_btn)
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(
+        reaction_type="like", item_id="already_reacted", dry_run=False
+    )
+    assert result is True
+    react_btn.click.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_live_like_success(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    react_btn = MagicMock()
+    react_btn.count = AsyncMock(return_value=1)
+    react_btn.get_attribute = AsyncMock(
+        side_effect=lambda attr: "false" if attr == "aria-pressed" else "React Like"
+    )
+    react_btn.click = AsyncMock()
+    react_btn.first = react_btn
+    page.locator = MagicMock(return_value=react_btn)
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(
+        reaction_type="like", item_id="like_success", dry_run=False
+    )
+    assert result is True
+    react_btn.click.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_live_insightful_hover_menu_success(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    react_btn = MagicMock()
+    react_btn.count = AsyncMock(return_value=1)
+    react_btn.get_attribute = AsyncMock(
+        side_effect=lambda attr: "false" if attr == "aria-pressed" else "React Like"
+    )
+    react_btn.hover = AsyncMock()
+    react_btn.first = react_btn
+
+    menu_item = MagicMock()
+    menu_item.count = AsyncMock(return_value=1)
+    menu_item.click = AsyncMock()
+    menu_item.first = menu_item
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        if "Insightful" in selector or "insightful" in selector:
+            return menu_item
+        return react_btn
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(
+        reaction_type="insightful", item_id="insightful_success", dry_run=False
+    )
+    assert result is True
+    react_btn.hover.assert_called_once()
+    menu_item.click.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_live_insightful_menu_missing_fallback_to_like(
+    base_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    react_btn = MagicMock()
+    react_btn.count = AsyncMock(return_value=1)
+    react_btn.get_attribute = AsyncMock(
+        side_effect=lambda attr: "false" if attr == "aria-pressed" else "React Like"
+    )
+    react_btn.hover = AsyncMock()
+    react_btn.click = AsyncMock()
+    react_btn.first = react_btn
+
+    empty_menu = MagicMock()
+    empty_menu.count = AsyncMock(return_value=0)
+    empty_menu.first = empty_menu
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        if "Insightful" in selector or "insightful" in selector:
+            return empty_menu
+        return react_btn
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(
+        reaction_type="insightful", item_id="fallback_like", dry_run=False
+    )
+    assert result is True
+    react_btn.hover.assert_called_once()
+    react_btn.click.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_unexpected_error_returns_false(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    page.locator = MagicMock(side_effect=RuntimeError("DOM disconnected"))
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(reaction_type="like", item_id="err_react", dry_run=False)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_post_comment_with_pre_reaction_live(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    page.screenshot = AsyncMock()
+
+    comment_btn = MagicMock(count=AsyncMock(return_value=1), click=AsyncMock())
+    comment_box = MagicMock(
+        count=AsyncMock(return_value=1),
+        focus=AsyncMock(),
+        press_sequentially=AsyncMock(),
+        inner_text=AsyncMock(return_value="Pre-reaction comment test"),
+    )
+    submit_btn = MagicMock(
+        count=AsyncMock(return_value=1),
+        click=AsyncMock(),
+        is_disabled=AsyncMock(return_value=False),
+    )
+    comment_item = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Pre-reaction comment test"),
+    )
+    comment_item.first = comment_item
+    comment_item.filter = MagicMock(return_value=MagicMock(count=AsyncMock(return_value=1)))
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "submit" in selector or "submit-button" in selector:
+            loc.first = submit_btn
+            loc.count = submit_btn.count
+        elif (
+            "textbox" in selector
+            or "ql-editor" in selector
+            or "ProseMirror" in selector
+            or "tiptap" in selector
+        ):
+            loc.first = comment_box
+            loc.count = comment_box.count
+        elif "comment-item" in selector or "comments-list" in selector:
+            return comment_item
+        elif "toast" in selector or "alert" in selector or "feedback" in selector:
+            loc.first = MagicMock(
+                count=AsyncMock(return_value=0), is_visible=AsyncMock(return_value=False)
+            )
+            loc.count = AsyncMock(return_value=0)
+        elif "comment-button" in selector or "button" in selector:
+            loc.first = comment_btn
+            loc.count = comment_btn.count
+        else:
+            loc.first = MagicMock(count=AsyncMock(return_value=0))
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+    executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    result = await executor.post_comment(
+        post_url=page.url,
+        comment_text="Pre-reaction comment test",
+        item_id="pre_react_001",
+        dry_run=False,
+        verification_timeout=1.0,
+        reaction_type="like",
+        simulate_dwell=False,
+    )
+
+    assert result.success is True
+    executor.react_to_post.assert_called_once_with(
+        reaction_type="like",
+        item_id="pre_react_001",
+        dry_run=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_post_comment_with_pre_reaction_from_settings(base_settings: Settings) -> None:
+    base_settings.enable_pre_comment_reaction = True
+    base_settings.default_reaction_type = "insightful"
+
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    page.screenshot = AsyncMock()
+
+    comment_btn = MagicMock(count=AsyncMock(return_value=1), click=AsyncMock())
+    comment_box = MagicMock(
+        count=AsyncMock(return_value=1),
+        focus=AsyncMock(),
+        press_sequentially=AsyncMock(),
+        inner_text=AsyncMock(return_value="Settings reaction comment"),
+    )
+    submit_btn = MagicMock(
+        count=AsyncMock(return_value=1),
+        click=AsyncMock(),
+        is_disabled=AsyncMock(return_value=False),
+    )
+    comment_item = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Settings reaction comment"),
+    )
+    comment_item.first = comment_item
+    comment_item.filter = MagicMock(return_value=MagicMock(count=AsyncMock(return_value=1)))
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "submit" in selector or "submit-button" in selector:
+            loc.first = submit_btn
+            loc.count = submit_btn.count
+        elif (
+            "textbox" in selector
+            or "ql-editor" in selector
+            or "ProseMirror" in selector
+            or "tiptap" in selector
+        ):
+            loc.first = comment_box
+            loc.count = comment_box.count
+        elif "comment-item" in selector or "comments-list" in selector:
+            return comment_item
+        elif "toast" in selector or "alert" in selector or "feedback" in selector:
+            loc.first = MagicMock(
+                count=AsyncMock(return_value=0), is_visible=AsyncMock(return_value=False)
+            )
+            loc.count = AsyncMock(return_value=0)
+        elif "comment-button" in selector or "button" in selector:
+            loc.first = comment_btn
+            loc.count = comment_btn.count
+        else:
+            loc.first = MagicMock(count=AsyncMock(return_value=0))
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+    executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    result = await executor.post_comment(
+        post_url=page.url,
+        comment_text="Settings reaction comment",
+        item_id="pre_react_settings",
+        dry_run=False,
+        verification_timeout=1.0,
+        simulate_dwell=False,
+    )
+
+    assert result.success is True
+    executor.react_to_post.assert_called_once_with(
+        reaction_type="insightful",
+        item_id="pre_react_settings",
+        dry_run=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_post_comment_with_pre_reaction_dry_run(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    page.screenshot = AsyncMock()
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    result = await executor.post_comment(
+        post_url=page.url,
+        comment_text="Dry run with reaction",
+        item_id="dryrun_react_001",
+        dry_run=True,
+        reaction_type="insightful",
+    )
+
+    assert result.success is True
+    assert result.action_type == "approve_comment"
+    page.locator.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_post_comment_reaction_failure_fallback_continues_commenting(
+    base_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    page.screenshot = AsyncMock()
+
+    comment_btn = MagicMock(count=AsyncMock(return_value=1), click=AsyncMock())
+    comment_box = MagicMock(
+        count=AsyncMock(return_value=1),
+        focus=AsyncMock(),
+        press_sequentially=AsyncMock(),
+        inner_text=AsyncMock(return_value="Non-fatal fallback test"),
+    )
+    submit_btn = MagicMock(
+        count=AsyncMock(return_value=1),
+        click=AsyncMock(),
+        is_disabled=AsyncMock(return_value=False),
+    )
+    comment_item = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Non-fatal fallback test"),
+    )
+    comment_item.first = comment_item
+    comment_item.filter = MagicMock(return_value=MagicMock(count=AsyncMock(return_value=1)))
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "submit" in selector or "submit-button" in selector:
+            loc.first = submit_btn
+            loc.count = submit_btn.count
+        elif (
+            "textbox" in selector
+            or "ql-editor" in selector
+            or "ProseMirror" in selector
+            or "tiptap" in selector
+        ):
+            loc.first = comment_box
+            loc.count = comment_box.count
+        elif "comment-item" in selector or "comments-list" in selector:
+            return comment_item
+        elif "toast" in selector or "alert" in selector or "feedback" in selector:
+            loc.first = MagicMock(
+                count=AsyncMock(return_value=0), is_visible=AsyncMock(return_value=False)
+            )
+            loc.count = AsyncMock(return_value=0)
+        elif "comment-button" in selector or "button" in selector:
+            loc.first = comment_btn
+            loc.count = comment_btn.count
+        else:
+            loc.first = MagicMock(count=AsyncMock(return_value=0))
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+    executor.react_to_post = AsyncMock(return_value=False)  # type: ignore[method-assign]
+
+    result = await executor.post_comment(
+        post_url=page.url,
+        comment_text="Non-fatal fallback test",
+        item_id="fallback_001",
+        dry_run=False,
+        verification_timeout=1.0,
+        reaction_type="like",
+        simulate_dwell=False,
+    )
+
+    assert result.success is True
+    assert result.comment_text == "Non-fatal fallback test"
+    assert submit_btn.click.called

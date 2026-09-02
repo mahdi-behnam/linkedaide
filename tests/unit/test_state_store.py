@@ -521,3 +521,166 @@ def test_commit_and_push_non_repo_error(tmp_path: Path) -> None:
         store.commit_and_push("feat: should fail", push=False)
 
     assert "Git commit/push failed" in str(exc_info.value)
+
+
+def test_prune_expired_pending_empty_store(state_store: GitStateStore) -> None:
+    pruned = state_store.prune_expired_pending(ttl_hours=12)
+    assert pruned == []
+    assert state_store.read_history() == []
+
+
+def test_prune_expired_pending_only_fresh_items(state_store: GitStateStore) -> None:
+    now = datetime.now(UTC)
+    item1 = PendingAction(
+        item_id="fresh_01",
+        action_type="approve_comment",
+        created_at=now - timedelta(hours=1),
+        post_urn="urn:li:activity:101",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:101/",
+        author_name="Alice",
+        post_excerpt="Excerpt 1",
+        draft_text="Draft 1",
+        confidence=0.9,
+        reasoning="Reason 1",
+        telegram_chat_id=123,
+        telegram_message_id=101,
+    )
+    item2 = PendingAction(
+        item_id="fresh_02",
+        action_type="approve_post",
+        created_at=now - timedelta(hours=5),
+        post_urn="",
+        post_url="",
+        author_name="",
+        post_excerpt="",
+        draft_text="Draft post 2",
+        confidence=0.85,
+        reasoning="Reason 2",
+        telegram_chat_id=123,
+        telegram_message_id=102,
+    )
+    state_store.write_pending(item1)
+    state_store.write_pending(item2)
+
+    pruned = state_store.prune_expired_pending(ttl_hours=12, now=now)
+    assert pruned == []
+    assert len(state_store.list_pending()) == 2
+    assert state_store.read_history() == []
+
+
+def test_prune_expired_pending_mixed_items(state_store: GitStateStore) -> None:
+    now = datetime(2026, 9, 2, 12, 0, 0, tzinfo=UTC)
+
+    # 1. Expired item 1 (24 hours old)
+    item_exp1 = PendingAction(
+        item_id="exp_01",
+        action_type="approve_comment",
+        created_at=now - timedelta(hours=24),
+        post_urn="urn:li:activity:201",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:201/",
+        author_name="Bob",
+        post_excerpt="Excerpt Exp 1",
+        draft_text="Draft Exp 1",
+        confidence=0.92,
+        reasoning="Reason Exp 1",
+        telegram_chat_id=123,
+        telegram_message_id=201,
+    )
+    # 2. Fresh item (2 hours old)
+    item_fresh = PendingAction(
+        item_id="fresh_01",
+        action_type="approve_comment",
+        created_at=now - timedelta(hours=2),
+        post_urn="urn:li:activity:202",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:202/",
+        author_name="Charlie",
+        post_excerpt="Excerpt Fresh 1",
+        draft_text="Draft Fresh 1",
+        confidence=0.88,
+        reasoning="Reason Fresh 1",
+        telegram_chat_id=123,
+        telegram_message_id=202,
+    )
+    # 3. Expired item 2 (48 hours old)
+    item_exp2 = PendingAction(
+        item_id="exp_02",
+        action_type="approve_post",
+        created_at=now - timedelta(hours=48),
+        post_urn="",
+        post_url="",
+        author_name="",
+        post_excerpt="",
+        draft_text="Draft Exp Post 2",
+        confidence=0.8,
+        reasoning="Reason Exp 2",
+        telegram_chat_id=123,
+        telegram_message_id=203,
+    )
+
+    state_store.write_pending(item_exp1)
+    state_store.write_pending(item_fresh)
+    state_store.write_pending(item_exp2)
+
+    assert len(state_store.list_pending()) == 3
+
+    pruned = state_store.prune_expired_pending(ttl_hours=12, now=now)
+    assert len(pruned) == 2
+    pruned_ids = {p.item_id for p in pruned}
+    assert pruned_ids == {"exp_01", "exp_02"}
+
+    # Disk assertions
+    assert state_store.read_pending("exp_01") is None
+    assert state_store.read_pending("exp_02") is None
+    loaded_fresh = state_store.read_pending("fresh_01")
+    assert loaded_fresh is not None
+    assert loaded_fresh.item_id == "fresh_01"
+    assert len(state_store.list_pending()) == 1
+
+    # History audit trail assertions
+    history = state_store.read_history()
+    assert len(history) == 2
+    h_by_id = {h.item_id: h for h in history}
+
+    assert "exp_01" in h_by_id
+    assert h_by_id["exp_01"].final_status == "expired"
+    assert h_by_id["exp_01"].action_type == "approve_comment"
+    assert h_by_id["exp_01"].decided_at is None
+    assert h_by_id["exp_01"].executed_at == now
+    assert h_by_id["exp_01"].error == "Pending approval expired (exceeded 12h TTL)"
+
+    assert "exp_02" in h_by_id
+    assert h_by_id["exp_02"].final_status == "expired"
+    assert h_by_id["exp_02"].action_type == "approve_post"
+    assert h_by_id["exp_02"].decided_at is None
+    assert h_by_id["exp_02"].executed_at == now
+    assert h_by_id["exp_02"].error == "Pending approval expired (exceeded 12h TTL)"
+
+
+def test_prune_expired_pending_naive_datetimes(state_store: GitStateStore) -> None:
+    # Test naive datetime handling
+    naive_created = datetime(2026, 9, 1, 0, 0, 0)
+    naive_now = datetime(2026, 9, 2, 12, 0, 0)
+
+    item = PendingAction(
+        item_id="naive_exp",
+        action_type="approve_comment",
+        created_at=naive_created,
+        post_urn="urn:li:activity:301",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:301/",
+        author_name="Diana",
+        post_excerpt="Excerpt",
+        draft_text="Draft",
+        confidence=0.9,
+        reasoning="Reason",
+        telegram_chat_id=123,
+        telegram_message_id=301,
+    )
+    state_store.write_pending(item)
+
+    pruned = state_store.prune_expired_pending(ttl_hours=12, now=naive_now)
+    assert len(pruned) == 1
+    assert pruned[0].item_id == "naive_exp"
+    assert state_store.read_pending("naive_exp") is None
+    history = state_store.read_history()
+    assert len(history) == 1
+    assert history[0].final_status == "expired"

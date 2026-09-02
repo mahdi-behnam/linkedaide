@@ -27,6 +27,7 @@ from agent.llm.prompts import (
 from agent.llm.service import LLMService
 from agent.models.schemas import (
     CommentDraft,
+    EngagementStyle,
     PostIdea,
     PostIdeationContext,
     PostRecord,
@@ -125,12 +126,14 @@ class TestPrompts:
             post_url="https://linkedin.com/456",
             post_text="Microservices architecture post.",
             triage_reasoning="High relevance to distributed systems.",
+            engagement_style=EngagementStyle.TECHNICAL_DEEP_DIVE.value,
         )
         assert len(messages) == 2
         assert "75 words" in messages[0].content
         assert "NEVER start with or include generic praise" in messages[0].content
         assert "Charlie" in messages[1].content
         assert "High relevance" in messages[1].content
+        assert "technical_deep_dive" in messages[1].content
 
     def test_post_idea_prompt_rendering(self) -> None:
         prompt = build_post_idea_prompt()
