@@ -65,6 +65,10 @@ class ExecutionError(AgentError):
     """Base exception for action execution errors."""
 
 
+class SubmissionVerificationError(ExecutionError):
+    """Raised when post-submission DOM verification fails to confirm action outcome."""
+
+
 class PostNoLongerAvailableError(ExecutionError):
     """Raised when target post was deleted or is no longer accessible on LinkedIn."""
 
