@@ -9,10 +9,13 @@ from agent.browser.stealth import (
     humanized_type,
     new_stealth_context,
 )
+from agent.browser.telemetry import capture_dom_telemetry, sanitize_dom_tree
 
 __all__ = [
     "ActionExecutor",
     "FeedScraper",
+    "capture_dom_telemetry",
+    "sanitize_dom_tree",
     "decrypt_storage_state",
     "encrypt_storage_state",
     "detect_challenge_page",

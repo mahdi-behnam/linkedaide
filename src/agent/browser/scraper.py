@@ -7,13 +7,14 @@ import hashlib
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent.browser.stealth import (
     detect_challenge_page,
     humanized_scroll,
     is_authwall_or_login,
 )
+from agent.browser.telemetry import capture_dom_telemetry
 from agent.config import Settings
 from agent.errors import (
     BotDetectionError,
@@ -49,6 +50,24 @@ class FeedScraper:
         except Exception:
             return ""
 
+    async def _capture_telemetry(
+        self,
+        trigger: str,
+        target_selector: str | None = None,
+        item_id: str | None = None,
+    ) -> str | None:
+        """Capture DOM telemetry defensively without disrupting error handling."""
+        try:
+            call_kwargs: dict[str, Any] = {"trigger": trigger}
+            if target_selector is not None:
+                call_kwargs["target_selector"] = target_selector
+            if item_id is not None:
+                call_kwargs["item_id"] = item_id
+            return await capture_dom_telemetry(self.page, **call_kwargs)
+        except Exception as err:
+            logger.debug("Failed capturing DOM telemetry for %s: %s", trigger, err)
+            return None
+
     async def scrape_feed(self, *, max_posts: int, seen_hashes: set[str]) -> list[PostRecord]:
         """Scrape new, unseen posts from the feed.
 
@@ -68,6 +87,7 @@ class FeedScraper:
         # 1. Challenge check (True bot challenge / CAPTCHA)
         if detect_challenge_page(self.page):
             screenshot_path = await self._capture_screenshot("feed_challenge")
+            await self._capture_telemetry("feed_challenge")
             raise BotDetectionError(
                 f"Bot detection challenge encountered on feed page: {self.page.url} (screenshot: {screenshot_path})"
             )
@@ -89,6 +109,10 @@ class FeedScraper:
                 if is_authwall_or_login(self.page):
                     raise SessionExpiredError("Scraper redirected to login / authwall")
                 screenshot_path = await self._capture_screenshot("feed_selector_drift")
+                await self._capture_telemetry(
+                    trigger="feed_container_drift",
+                    target_selector="main, div.scaffold-finite-scroll, div.feed-shared-update-v2, div.scaffold-layout__main",
+                )
                 raise SelectorDriftError(
                     f"Feed root container not found in DOM (screenshot: {screenshot_path})"
                 )
@@ -117,6 +141,7 @@ class FeedScraper:
 
         if detect_challenge_page(self.page):
             screenshot_path = await self._capture_screenshot("feed_challenge_after_scroll")
+            await self._capture_telemetry("feed_challenge")
             raise BotDetectionError(f"Bot challenge triggered during feed scroll: {self.page.url}")
 
         # Capture diagnostic screenshot of the feed
@@ -161,6 +186,12 @@ class FeedScraper:
             card_count = await post_locators.count()
             logger.info("Fallback card locator found %d card(s)", card_count)
 
+        if card_count == 0:
+            await self._capture_telemetry(
+                trigger="feed_cards_drift",
+                target_selector=", ".join(card_selectors),
+            )
+
         candidates: list[PostRecord] = []
         now = datetime.now(UTC)
 
@@ -196,6 +227,7 @@ class FeedScraper:
             "p",
         ]
 
+        parsed_card_count = 0
         for i in range(card_count):
             if len(candidates) >= max_posts:
                 break
@@ -262,6 +294,8 @@ class FeedScraper:
                 if not post_text:
                     continue
 
+                parsed_card_count += 1
+
                 content_hash = hashlib.sha256(post_text.encode("utf-8")).hexdigest()
                 if content_hash in seen_hashes:
                     logger.debug("Skipping already seen post: %s (author: %s)", urn, author_name)
@@ -287,6 +321,16 @@ class FeedScraper:
             except Exception as parse_err:
                 logger.debug("Failed to parse card %d: %s", i, parse_err)
                 continue
+
+        if card_count > 0 and parsed_card_count == 0:
+            logger.warning(
+                "Feed card layout drift: %d card(s) detected but text extraction failed on all of them",
+                card_count,
+            )
+            await self._capture_telemetry(
+                trigger="feed_card_layout_drift",
+                target_selector=", ".join(text_selectors),
+            )
 
         logger.info(
             "Scraped %d new candidate post(s) from %d DOM cards", len(candidates), card_count

@@ -7,7 +7,7 @@ import logging
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent.browser.stealth import (
     detect_challenge_page,
@@ -15,6 +15,7 @@ from agent.browser.stealth import (
     humanized_type,
     is_authwall_or_login,
 )
+from agent.browser.telemetry import capture_dom_telemetry
 from agent.config import Settings
 from agent.errors import (
     BotDetectionError,
@@ -50,6 +51,24 @@ class ActionExecutor:
             return str(path)
         except Exception:
             return ""
+
+    async def _capture_telemetry(
+        self,
+        trigger: str,
+        target_selector: str | None = None,
+        item_id: str | None = None,
+    ) -> str | None:
+        """Capture DOM telemetry defensively without disrupting error handling."""
+        try:
+            call_kwargs: dict[str, Any] = {"trigger": trigger}
+            if target_selector is not None:
+                call_kwargs["target_selector"] = target_selector
+            if item_id is not None:
+                call_kwargs["item_id"] = item_id
+            return await capture_dom_telemetry(self.page, **call_kwargs)
+        except Exception as err:
+            logger.debug("Failed capturing DOM telemetry for %s: %s", trigger, err)
+            return None
 
     async def _check_error_toasts(self) -> str | None:
         """Check for LinkedIn error toast notifications or inline error alerts.
@@ -192,6 +211,10 @@ class ActionExecutor:
             await asyncio.sleep(min(poll_interval, max(0.01, remaining)))
 
         screenshot = await self._capture_screenshot(f"failed_verify_comment_{item_id}")
+        await self._capture_telemetry(
+            trigger="comment_verification_timeout",
+            item_id=item_id,
+        )
         raise SubmissionVerificationError(
             f"Comment submission could not be verified in DOM within {timeout:.1f}s",
             details={"screenshot_path": screenshot, "item_id": item_id},
@@ -295,6 +318,10 @@ class ActionExecutor:
             await asyncio.sleep(min(poll_interval, max(0.01, remaining)))
 
         screenshot = await self._capture_screenshot(f"failed_verify_post_{item_id}")
+        await self._capture_telemetry(
+            trigger="create_post_verification_timeout",
+            item_id=item_id,
+        )
         raise SubmissionVerificationError(
             f"Post creation could not be verified in DOM within {timeout:.1f}s (modal remained open)",
             details={"screenshot_path": screenshot, "item_id": item_id},
@@ -514,18 +541,32 @@ class ActionExecutor:
             if await comment_btn.count() > 0:
                 await comment_btn.click()
 
-            comment_box = self.page.locator(
-                "div.tiptap.ProseMirror, div[role='textbox'][aria-label*='comment' i], div[role='textbox'][contenteditable='true'], div.ql-editor, textarea[name='comment']"
-            ).first
+            comment_box_selector = (
+                "div.tiptap.ProseMirror, div[role='textbox'][aria-label*='comment' i], "
+                "div[role='textbox'][contenteditable='true'], div.ql-editor, textarea[name='comment']"
+            )
+            comment_box = self.page.locator(comment_box_selector).first
             if await comment_box.count() == 0:
+                await self._capture_telemetry(
+                    trigger="comment_box_drift",
+                    item_id=item_id,
+                    target_selector=comment_box_selector,
+                )
                 raise ExecutionError("Comment input box not found in DOM")
 
             await humanized_type(comment_box, comment_text)
 
-            submit_btn = self.page.locator(
-                "button.comments-comment-box__submit-button, button:has-text('Comment'), button:has-text('Post'), button[type='submit']"
-            ).first
+            submit_btn_selector = (
+                "button.comments-comment-box__submit-button, button:has-text('Comment'), "
+                "button:has-text('Post'), button[type='submit']"
+            )
+            submit_btn = self.page.locator(submit_btn_selector).first
             if await submit_btn.count() == 0:
+                await self._capture_telemetry(
+                    trigger="comment_submit_btn_drift",
+                    item_id=item_id,
+                    target_selector=submit_btn_selector,
+                )
                 raise ExecutionError("Comment submit button not found in DOM")
 
             await submit_btn.click()
@@ -607,10 +648,16 @@ class ActionExecutor:
             )
 
         try:
-            start_post_btn = self.page.locator(
+            start_post_selector = (
                 "button:has-text('Start a post'), button.share-box-feed-entry__trigger"
-            ).first
+            )
+            start_post_btn = self.page.locator(start_post_selector).first
             if await start_post_btn.count() == 0:
+                await self._capture_telemetry(
+                    trigger="create_post_ui_drift",
+                    item_id=item_id,
+                    target_selector=start_post_selector,
+                )
                 raise ExecutionError("Start a post button not found in DOM")
 
             await start_post_btn.click()
@@ -619,16 +666,26 @@ class ActionExecutor:
                 "div.share-box-modal, div.artdeco-modal[role='dialog'], div.share-creation-state"
             ).first
 
-            editor = self.page.locator("div.ql-editor, div[role='textbox']").first
+            editor_selector = "div.ql-editor, div[role='textbox']"
+            editor = self.page.locator(editor_selector).first
             if await editor.count() == 0:
+                await self._capture_telemetry(
+                    trigger="create_post_ui_drift",
+                    item_id=item_id,
+                    target_selector=editor_selector,
+                )
                 raise ExecutionError("Post editor textbox not found in DOM")
 
             await humanized_type(editor, post_text)
 
-            post_btn = self.page.locator(
-                "button.share-actions__primary-action, button:has-text('Post')"
-            ).first
+            post_btn_selector = "button.share-actions__primary-action, button:has-text('Post')"
+            post_btn = self.page.locator(post_btn_selector).first
             if await post_btn.count() == 0:
+                await self._capture_telemetry(
+                    trigger="create_post_ui_drift",
+                    item_id=item_id,
+                    target_selector=post_btn_selector,
+                )
                 raise ExecutionError("Publish post button not found in DOM")
 
             await post_btn.click()
