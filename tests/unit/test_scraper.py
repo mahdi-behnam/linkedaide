@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
@@ -114,3 +114,133 @@ async def test_scraper_extracts_posts_and_deduplicates(mock_settings: Settings) 
     # Second pass with same seen_hashes should skip
     posts2 = await scraper.scrape_feed(max_posts=5, seen_hashes=seen_hashes)
     assert len(posts2) == 0
+
+
+@pytest.mark.asyncio
+async def test_scraper_challenge_detection_captures_telemetry(mock_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/checkpoint/challenge"
+
+    with patch(
+        "agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock
+    ) as mock_telemetry:
+        scraper = FeedScraper(page, mock_settings)
+        with pytest.raises(BotDetectionError):
+            await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        mock_telemetry.assert_awaited_once_with(page, trigger="feed_challenge")
+
+
+@pytest.mark.asyncio
+async def test_scraper_container_drift_captures_telemetry(mock_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    locator = MagicMock()
+    locator.count = AsyncMock(return_value=0)
+    page.locator = MagicMock(return_value=locator)
+
+    with patch(
+        "agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock
+    ) as mock_telemetry:
+        scraper = FeedScraper(page, mock_settings)
+        with pytest.raises(SelectorDriftError):
+            await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        mock_telemetry.assert_awaited_once()
+        call_kwargs = mock_telemetry.call_args.kwargs
+        assert call_kwargs["trigger"] == "feed_container_drift"
+        assert "main" in call_kwargs["target_selector"]
+
+
+@pytest.mark.asyncio
+async def test_scraper_card_resolution_drift_captures_telemetry(mock_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    empty_cards_loc = MagicMock()
+    empty_cards_loc.count = AsyncMock(return_value=0)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return empty_cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch(
+            "agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock
+        ) as mock_telemetry,
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        candidates = await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        assert len(candidates) == 0
+        mock_telemetry.assert_awaited_once()
+        call_kwargs = mock_telemetry.call_args.kwargs
+        assert call_kwargs["trigger"] == "feed_cards_drift"
+
+
+@pytest.mark.asyncio
+async def test_scraper_card_layout_drift_captures_telemetry(mock_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    # 1 card found, but neither author nor text selectors resolve text
+    card = MagicMock()
+    card.get_attribute = AsyncMock(return_value="urn:li:activity:9999")
+    unmatched = MagicMock()
+    unmatched.count = AsyncMock(return_value=0)
+    card.locator.return_value.first = unmatched
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=1)
+    cards_loc.nth = MagicMock(return_value=card)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch(
+            "agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock
+        ) as mock_telemetry,
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        candidates = await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        assert len(candidates) == 0
+        mock_telemetry.assert_awaited_once()
+        call_kwargs = mock_telemetry.call_args.kwargs
+        assert call_kwargs["trigger"] == "feed_card_layout_drift"
+
+
+@pytest.mark.asyncio
+async def test_scraper_telemetry_failure_does_not_break_error_workflow(
+    mock_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/checkpoint/challenge"
+
+    with patch(
+        "agent.browser.scraper.capture_dom_telemetry",
+        new_callable=AsyncMock,
+        side_effect=Exception("Telemetry storage disk error"),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        with pytest.raises(BotDetectionError):
+            await scraper.scrape_feed(max_posts=5, seen_hashes=set())

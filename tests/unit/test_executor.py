@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
@@ -1187,3 +1187,291 @@ async def test_post_comment_reaction_failure_fallback_continues_commenting(
     assert result.success is True
     assert result.comment_text == "Non-fatal fallback test"
     assert submit_btn.click.called
+
+
+@pytest.mark.asyncio
+async def test_post_comment_missing_box_captures_telemetry(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:123"
+
+    comment_btn = MagicMock()
+    comment_btn.count = AsyncMock(return_value=0)
+
+    comment_box = MagicMock()
+    comment_box.count = AsyncMock(return_value=0)
+
+    def locator_mock(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "Comment" in selector and "button" in selector:
+            loc.first = comment_btn
+            loc.count = AsyncMock(return_value=0)
+        else:
+            loc.first = comment_box
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_mock)
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+    executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    with patch(
+        "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+    ) as mock_telemetry:
+        with pytest.raises(ExecutionError, match="Comment input box not found"):
+            await executor.post_comment(
+                post_url=page.url,
+                comment_text="Nice post!",
+                item_id="item_drift_box",
+                dry_run=False,
+            )
+
+        mock_telemetry.assert_awaited_once()
+        kwargs = mock_telemetry.call_args.kwargs
+        assert kwargs["trigger"] == "comment_box_drift"
+        assert kwargs["item_id"] == "item_drift_box"
+
+
+@pytest.mark.asyncio
+async def test_post_comment_missing_submit_button_captures_telemetry(
+    base_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:123"
+
+    comment_btn = MagicMock()
+    comment_btn.count = AsyncMock(return_value=0)
+    comment_btn.click = AsyncMock()
+
+    comment_box = MagicMock()
+    comment_box.count = AsyncMock(return_value=1)
+    comment_box.click = AsyncMock()
+
+    submit_btn = MagicMock()
+    submit_btn.count = AsyncMock(return_value=0)
+
+    def locator_mock(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "comments-comment-box__submit-button" in selector:
+            loc.first = submit_btn
+            loc.count = AsyncMock(return_value=0)
+        elif "button[aria-label*='Comment']" in selector or "comment-button" in selector:
+            loc.first = comment_btn
+            loc.count = AsyncMock(return_value=0)
+        else:
+            loc.first = comment_box
+            loc.count = AsyncMock(return_value=1)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_mock)
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+    executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    with (
+        patch(
+            "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+        ) as mock_telemetry,
+        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+    ):
+        with pytest.raises(ExecutionError, match="Comment submit button not found"):
+            await executor.post_comment(
+                post_url=page.url,
+                comment_text="Great update!",
+                item_id="item_drift_btn",
+                dry_run=False,
+                simulate_dwell=False,
+            )
+
+        mock_telemetry.assert_awaited_once()
+        kwargs = mock_telemetry.call_args.kwargs
+        assert kwargs["trigger"] == "comment_submit_btn_drift"
+        assert kwargs["item_id"] == "item_drift_btn"
+
+
+@pytest.mark.asyncio
+async def test_post_comment_verification_timeout_captures_telemetry(
+    base_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:123"
+
+    comment_btn = MagicMock()
+    comment_btn.count = AsyncMock(return_value=0)
+    comment_btn.click = AsyncMock()
+
+    comment_box = MagicMock()
+    comment_box.count = AsyncMock(return_value=1)
+    comment_box.click = AsyncMock()
+    comment_box.inner_text = AsyncMock(return_value="Still has text")
+
+    submit_btn = MagicMock()
+    submit_btn.count = AsyncMock(return_value=1)
+    submit_btn.click = AsyncMock()
+    submit_btn.is_visible = AsyncMock(return_value=True)
+    submit_btn.get_attribute = AsyncMock(return_value=None)
+
+    def locator_mock(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "submit-button" in selector:
+            loc.first = submit_btn
+            loc.count = AsyncMock(return_value=1)
+        elif "button[aria-label*='Comment']" in selector or "comment-button" in selector:
+            loc.first = comment_btn
+            loc.count = AsyncMock(return_value=0)
+        elif "comment-item" in selector:
+            loc.count = AsyncMock(return_value=0)
+        elif "toast" in selector or "alert" in selector or "feedback" in selector:
+            loc.count = AsyncMock(return_value=0)
+        else:
+            loc.first = comment_box
+            loc.count = AsyncMock(return_value=1)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_mock)
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+    executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    with (
+        patch(
+            "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+        ) as mock_telemetry,
+        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+    ):
+        with pytest.raises(SubmissionVerificationError):
+            await executor.post_comment(
+                post_url=page.url,
+                comment_text="Verifying timeout...",
+                item_id="item_verify_timeout",
+                dry_run=False,
+                verification_timeout=0.1,
+                simulate_dwell=False,
+            )
+
+        mock_telemetry.assert_awaited_once()
+        kwargs = mock_telemetry.call_args.kwargs
+        assert kwargs["trigger"] == "comment_verification_timeout"
+        assert kwargs["item_id"] == "item_verify_timeout"
+
+
+@pytest.mark.asyncio
+async def test_create_post_ui_drift_captures_telemetry(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    start_btn = MagicMock()
+    start_btn.count = AsyncMock(return_value=0)
+    page.locator.return_value.first = start_btn
+
+    executor = ActionExecutor(page, base_settings)
+
+    with patch(
+        "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+    ) as mock_telemetry:
+        with pytest.raises(ExecutionError, match="Start a post button not found"):
+            await executor.create_post(
+                post_text="New post test",
+                item_id="post_ui_drift_1",
+                dry_run=False,
+            )
+
+        mock_telemetry.assert_awaited_once()
+        kwargs = mock_telemetry.call_args.kwargs
+        assert kwargs["trigger"] == "create_post_ui_drift"
+        assert kwargs["item_id"] == "post_ui_drift_1"
+
+
+@pytest.mark.asyncio
+async def test_create_post_verification_timeout_captures_telemetry(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    start_btn = MagicMock()
+    start_btn.count = AsyncMock(return_value=1)
+    start_btn.click = AsyncMock()
+
+    editor = MagicMock()
+    editor.count = AsyncMock(return_value=1)
+
+    post_btn = MagicMock()
+    post_btn.count = AsyncMock(return_value=1)
+    post_btn.click = AsyncMock()
+
+    modal = MagicMock()
+    modal.is_visible = AsyncMock(return_value=True)
+
+    def locator_mock(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "Start a post" in selector:
+            loc.first = start_btn
+            loc.count = AsyncMock(return_value=1)
+        elif "share-box-modal" in selector:
+            loc.first = modal
+            loc.count = AsyncMock(return_value=1)
+        elif "ql-editor" in selector or "textbox" in selector:
+            loc.first = editor
+            loc.count = AsyncMock(return_value=1)
+        elif "share-actions__primary-action" in selector:
+            loc.first = post_btn
+            loc.count = AsyncMock(return_value=1)
+        elif "toast" in selector or "alert" in selector:
+            loc.count = AsyncMock(return_value=0)
+        else:
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_mock)
+
+    executor = ActionExecutor(page, base_settings)
+
+    with (
+        patch(
+            "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+        ) as mock_telemetry,
+        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+    ):
+        with pytest.raises(SubmissionVerificationError):
+            await executor.create_post(
+                post_text="New post timeout test",
+                item_id="post_timeout_001",
+                dry_run=False,
+                verification_timeout=0.1,
+            )
+
+        mock_telemetry.assert_awaited_once()
+        kwargs = mock_telemetry.call_args.kwargs
+        assert kwargs["trigger"] == "create_post_verification_timeout"
+        assert kwargs["item_id"] == "post_timeout_001"
+
+
+@pytest.mark.asyncio
+async def test_executor_telemetry_failure_does_not_break_error_workflow(
+    base_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:123"
+
+    comment_box = MagicMock()
+    comment_box.count = AsyncMock(return_value=0)
+    page.locator.return_value.first = comment_box
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+    executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    with patch(
+        "agent.browser.executor.capture_dom_telemetry",
+        new_callable=AsyncMock,
+        side_effect=Exception("Disk full or timeout in telemetry"),
+    ):
+        with pytest.raises(ExecutionError, match="Comment input box not found"):
+            await executor.post_comment(
+                post_url=page.url,
+                comment_text="Testing resilience",
+                item_id="resilience_item",
+                dry_run=False,
+            )
