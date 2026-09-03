@@ -258,12 +258,16 @@ ACTION_CODE_APPROVE_COMMENT = "ac"
 ACTION_CODE_REJECT_COMMENT = "rc"
 ACTION_CODE_APPROVE_POST = "ap"
 ACTION_CODE_REJECT_POST = "rp"
+ACTION_CODE_EDIT = "ed"
 
 CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_APPROVE_COMMENT: "approve_comment",
     ACTION_CODE_REJECT_COMMENT: "reject_comment",
     ACTION_CODE_APPROVE_POST: "approve_post",
     ACTION_CODE_REJECT_POST: "reject_post",
+    ACTION_CODE_EDIT: "edit",
+    "edit": "edit",
+    "ed": "edit",
     "apv": "approve_comment",
     "rej": "reject_comment",
 }
@@ -273,6 +277,8 @@ REVERSE_ACTION_MAP: dict[str, str] = {
     "reject_comment": ACTION_CODE_REJECT_COMMENT,
     "approve_post": ACTION_CODE_APPROVE_POST,
     "reject_post": ACTION_CODE_REJECT_POST,
+    "edit": ACTION_CODE_EDIT,
+    "ed": ACTION_CODE_EDIT,
 }
 
 
@@ -284,7 +290,7 @@ class CallbackDataPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    action_code: str = Field(description="Compact action code (e.g. ac, rc, ap, rp)")
+    action_code: str = Field(description="Compact action code (e.g. ac, rc, ap, rp, ed)")
     item_id: str = Field(description="Unique item identifier")
 
     @field_validator("action_code")
@@ -339,6 +345,15 @@ class CallbackDataPayload(BaseModel):
             "reject_comment",
             "reject_post",
             "rej",
+        )
+
+    @property
+    def is_edit(self) -> bool:
+        """Check if action represents an edit request."""
+        return self.action_code in (
+            ACTION_CODE_EDIT,
+            "edit",
+            "ed",
         )
 
     @property

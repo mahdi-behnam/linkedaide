@@ -86,6 +86,33 @@ class GitStateStore:
         results.sort(key=lambda x: x.created_at)
         return results
 
+    def find_pending_by_message_id(self, message_id: int) -> PendingAction | None:
+        """Find a pending action by its telegram_message_id. Returns None if not found."""
+        for item in self.list_pending():
+            if item.telegram_message_id == message_id:
+                return item
+        return None
+
+    def update_pending_draft(self, item_id: str, new_draft_text: str) -> PendingAction | None:
+        """Update the draft text of an existing pending action atomically via .tmp swap.
+
+        Args:
+            item_id: Unique identifier for the pending action.
+            new_draft_text: Revised draft text content.
+
+        Returns:
+            Updated PendingAction record if found and updated, None if not found.
+
+        Raises:
+            StateStoreError: If file reading or writing fails.
+        """
+        item = self.read_pending(item_id)
+        if item is None:
+            return None
+        updated = item.model_copy(update={"draft_text": new_draft_text})
+        self.write_pending(updated)
+        return updated
+
     def prune_expired_pending(
         self, ttl_hours: int = 12, now: datetime | None = None
     ) -> list[PendingAction]:

@@ -12,6 +12,7 @@ from typing import Any
 from agent.models.schemas import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_POST,
+    ACTION_CODE_EDIT,
     ACTION_CODE_REJECT_COMMENT,
     ACTION_CODE_REJECT_POST,
     PendingAction,
@@ -19,7 +20,7 @@ from agent.models.schemas import (
 
 
 def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment") -> dict[str, Any]:
-    """Construct inline keyboard with Approve and Reject buttons for a pending action.
+    """Construct inline keyboard with Approve, Reject, and Edit buttons for a pending action.
 
     Args:
         item_id: Unique identifier for the pending action item.
@@ -38,10 +39,13 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
         approve_code = ACTION_CODE_APPROVE_COMMENT
         reject_code = ACTION_CODE_REJECT_COMMENT
 
+    edit_code = ACTION_CODE_EDIT
+
     approve_cb = f"{approve_code}:{item_id.strip()}"
     reject_cb = f"{reject_code}:{item_id.strip()}"
+    edit_cb = f"{edit_code}:{item_id.strip()}"
 
-    for cb in (approve_cb, reject_cb):
+    for cb in (approve_cb, reject_cb, edit_cb):
         byte_len = len(cb.encode("utf-8"))
         if byte_len > 64:
             raise ValueError(
@@ -53,7 +57,10 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
             [
                 {"text": "✅ Approve", "callback_data": approve_cb},
                 {"text": "❌ Reject", "callback_data": reject_cb},
-            ]
+            ],
+            [
+                {"text": "✏️ Edit", "callback_data": edit_cb},
+            ],
         ]
     }
 

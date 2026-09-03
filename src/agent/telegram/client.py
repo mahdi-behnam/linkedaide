@@ -168,6 +168,113 @@ class TelegramClient:
             raise TelegramAPIError(f"Telegram sendMessage notification missing message_id: {data}")
         return message_id
 
+    async def edit_message_text(
+        self,
+        chat_id: int,
+        message_id: int,
+        text: str,
+        reply_markup: dict[str, Any] | None = None,
+    ) -> None:
+        """Edit message text and optionally update or refresh its inline keyboard.
+
+        Args:
+            chat_id: Target Telegram chat ID.
+            message_id: ID of the message to edit.
+            text: Updated message text (supports HTML formatting).
+            reply_markup: Optional inline keyboard markup.
+
+        Raises:
+            TelegramAPIError: If editing fails (except for harmless 'message is not modified').
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "link_preview_options": {"is_disabled": True},
+        }
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+
+        try:
+            await self._post("editMessageText", payload)
+            logger.info(f"Edited Telegram message {message_id} in chat {chat_id}.")
+        except TelegramAPIError as e:
+            err_msg = str(e).lower()
+            if "message is not modified" in err_msg:
+                logger.debug(
+                    f"Telegram message {message_id} was not modified. Treating as graceful no-op."
+                )
+                return
+            raise
+
+    async def answer_callback_query(
+        self,
+        callback_query_id: str,
+        text: str | None = None,
+        show_alert: bool = False,
+    ) -> None:
+        """Acknowledge a Telegram callback query with optional notification or alert.
+
+        Args:
+            callback_query_id: Unique identifier for the query to be answered.
+            text: Optional notification text to display to the user.
+            show_alert: If True, show an alert instead of a toast notification.
+
+        Raises:
+            TelegramAPIError: If the API call fails.
+        """
+        payload: dict[str, Any] = {
+            "callback_query_id": callback_query_id,
+        }
+        if text is not None:
+            payload["text"] = text
+        if show_alert:
+            payload["show_alert"] = True
+
+        await self._post("answerCallbackQuery", payload)
+        logger.debug(f"Answered Telegram callback query {callback_query_id}")
+
+    async def send_message(
+        self,
+        chat_id: int,
+        text: str,
+        reply_markup: dict[str, Any] | None = None,
+        reply_to_message_id: int | None = None,
+    ) -> int:
+        """Send a formatted message to a Telegram chat with optional keyboard and reply threading.
+
+        Args:
+            chat_id: Target Telegram chat ID.
+            text: Message text (supports HTML formatting).
+            reply_markup: Optional reply markup (e.g. inline keyboard).
+            reply_to_message_id: Optional message ID to reply to.
+
+        Returns:
+            Telegram message_id of the sent message.
+
+        Raises:
+            TelegramAPIError: If delivery fails.
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "link_preview_options": {"is_disabled": True},
+        }
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+        if reply_to_message_id is not None:
+            payload["reply_to_message_id"] = reply_to_message_id
+
+        data = await self._post("sendMessage", payload)
+        message_id = data.get("result", {}).get("message_id")
+        if not message_id or not isinstance(message_id, int):
+            raise TelegramAPIError(
+                f"Telegram sendMessage response missing integer message_id: {data}"
+            )
+        return message_id
+
     async def _post(self, method: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Execute a POST request against the Telegram Bot API."""
         url = f"{self._base_url}/{method}"
