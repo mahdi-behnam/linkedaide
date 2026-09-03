@@ -23,6 +23,10 @@ def is_halted(repo_root: Path, settings: Settings) -> tuple[bool, str | None]:
     if settings.agent_paused:
         return True, "Agent is paused via AGENT_PAUSED configuration"
 
+    paused_file = repo_root / "state" / "paused.json"
+    if paused_file.exists():
+        return True, "Agent is paused via remote operator command (state/paused.json present)"
+
     incident_file = repo_root / "state" / "incident.json"
     if incident_file.exists():
         try:

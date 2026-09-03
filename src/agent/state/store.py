@@ -24,6 +24,7 @@ class GitStateStore:
         self.history_path = self.state_dir / "history.jsonl"
         self.daily_counters_path = self.state_dir / "daily_counters.json"
         self.incident_path = self.state_dir / "incident.json"
+        self.pause_path = self.state_dir / "paused.json"
 
         self._ensure_dirs()
 
@@ -327,6 +328,59 @@ class GitStateStore:
         )
         self.save_daily_counters(updated)
         return updated
+
+    # -------------------------------------------------------------------------
+    # Safety and Pause State Management
+    # -------------------------------------------------------------------------
+
+    def is_paused(self) -> bool:
+        """Check whether the agent has been remotely paused via state/paused.json."""
+        return self.pause_path.exists()
+
+    def set_paused(self, paused: bool) -> None:
+        """Set or clear the remote pause state file state/paused.json.
+
+        Args:
+            paused: True to pause the agent, False to resume.
+        """
+        if paused:
+            self._atomic_write_json(self.pause_path, {"paused_at": datetime.now(UTC).isoformat()})
+        else:
+            if self.pause_path.exists():
+                self.pause_path.unlink()
+
+    def read_incident(self) -> dict[str, Any] | None:
+        """Read the circuit breaker incident file if present.
+
+        Returns:
+            dict[str, Any] | None: Parsed incident data, or None if absent or unreadable.
+        """
+        if not self.incident_path.exists():
+            return None
+        try:
+            data = json.loads(self.incident_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+            return None
+        except Exception:
+            return {"reason": "Corrupted incident.json file"}
+
+    def clear_incident(self) -> bool:
+        """Safely clear state/incident.json if present to reset the circuit breaker.
+
+        Returns:
+            bool: True if incident was present and cleared, False if absent.
+
+        Raises:
+            StateStoreError: If deleting the file fails unexpectedly.
+        """
+        if self.incident_path.exists():
+            try:
+                self.incident_path.unlink()
+                return True
+            except Exception as err:
+                raise StateStoreError(f"Failed to clear incident file: {err}") from err
+        return False
 
     # -------------------------------------------------------------------------
     # Git Persistence
