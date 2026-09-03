@@ -42,6 +42,18 @@ def test_is_halted_when_paused(tmp_path: Path, base_settings: Settings) -> None:
     assert "paused" in reason.lower()
 
 
+def test_is_halted_when_paused_file_exists(tmp_path: Path, base_settings: Settings) -> None:
+    state_dir = tmp_path / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    pause_file = state_dir / "paused.json"
+    pause_file.write_text('{"paused_at": "2026-09-03T19:00:00+00:00"}', encoding="utf-8")
+
+    halted, reason = is_halted(tmp_path, base_settings)
+    assert halted is True
+    assert reason is not None
+    assert "paused" in reason.lower()
+
+
 def test_is_halted_when_clean(tmp_path: Path, base_settings: Settings) -> None:
     halted, reason = is_halted(tmp_path, base_settings)
     assert halted is False

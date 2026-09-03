@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from agent.models.schemas import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_POST,
+    ACTION_CODE_EDIT,
     ACTION_CODE_REJECT_COMMENT,
     ACTION_CODE_REJECT_POST,
     CallbackDataPayload,
@@ -393,6 +394,38 @@ class TestCallbackDataPayload:
         assert approve_post.canonical_action_type == "approve_post"
         assert reject_post.is_rejection is True
         assert reject_post.canonical_action_type == "reject_post"
+
+    def test_edit_properties(self) -> None:
+        payload = CallbackDataPayload(
+            action_code=ACTION_CODE_EDIT,
+            item_id="item_edit_999",
+        )
+        assert payload.is_edit is True
+        assert payload.is_approval is False
+        assert payload.is_rejection is False
+        assert payload.canonical_action_type == "edit"
+
+        raw = payload.to_callback_data()
+        assert raw == "ed:item_edit_999"
+
+        parsed = CallbackDataPayload.from_callback_data(raw)
+        assert parsed.action_code == ACTION_CODE_EDIT
+        assert parsed.item_id == "item_edit_999"
+        assert parsed.is_edit is True
+        assert parsed.canonical_action_type == "edit"
+
+    def test_edit_aliases(self) -> None:
+        payload_alias = CallbackDataPayload(
+            action_code="edit",
+            item_id="item_edit_1",
+        )
+        assert payload_alias.is_edit is True
+
+        payload_ed = CallbackDataPayload(
+            action_code="ed",
+            item_id="item_edit_2",
+        )
+        assert payload_ed.is_edit is True
 
     def test_exceeds_64_byte_limit(self) -> None:
         long_item_id = "x" * 63

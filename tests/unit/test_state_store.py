@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -176,6 +177,61 @@ def test_pending_actions_crud(state_store: GitStateStore) -> None:
     assert state_store.delete_pending("a1b2c3d4") is False
     assert state_store.read_pending("a1b2c3d4") is None
     assert len(state_store.list_pending()) == 1
+
+
+def test_find_pending_by_message_id(state_store: GitStateStore) -> None:
+    item1 = PendingAction(
+        item_id="item_msg_1",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        draft_text="Draft text 1",
+        telegram_message_id=1001,
+    )
+    item2 = PendingAction(
+        item_id="item_msg_2",
+        action_type="approve_post",
+        created_at=datetime.now(UTC),
+        draft_text="Draft text 2",
+        telegram_message_id=1002,
+    )
+    state_store.write_pending(item1)
+    state_store.write_pending(item2)
+
+    found1 = state_store.find_pending_by_message_id(1001)
+    assert found1 is not None
+    assert found1.item_id == "item_msg_1"
+
+    found2 = state_store.find_pending_by_message_id(1002)
+    assert found2 is not None
+    assert found2.item_id == "item_msg_2"
+
+    assert state_store.find_pending_by_message_id(9999) is None
+
+
+def test_update_pending_draft(state_store: GitStateStore) -> None:
+    item = PendingAction(
+        item_id="item_draft_update",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        draft_text="Initial draft text",
+        telegram_message_id=2001,
+    )
+    state_store.write_pending(item)
+
+    # Valid update
+    updated = state_store.update_pending_draft("item_draft_update", "Revised improved draft text")
+    assert updated is not None
+    assert updated.item_id == "item_draft_update"
+    assert updated.draft_text == "Revised improved draft text"
+    assert updated.telegram_message_id == 2001
+
+    # Verify on disk
+    loaded = state_store.read_pending("item_draft_update")
+    assert loaded is not None
+    assert loaded.draft_text == "Revised improved draft text"
+
+    # Non-existent item returns None
+    assert state_store.update_pending_draft("nonexistent_item", "Some text") is None
 
 
 def test_history_jsonl_append_and_read(state_store: GitStateStore) -> None:
@@ -684,3 +740,50 @@ def test_prune_expired_pending_naive_datetimes(state_store: GitStateStore) -> No
     history = state_store.read_history()
     assert len(history) == 1
     assert history[0].final_status == "expired"
+
+
+def test_pause_state_management(state_store: GitStateStore) -> None:
+    assert state_store.is_paused() is False
+
+    # Pause
+    state_store.set_paused(True)
+    assert state_store.is_paused() is True
+    assert state_store.pause_path.exists() is True
+
+    # Resume
+    state_store.set_paused(False)
+    assert state_store.is_paused() is False
+    assert state_store.pause_path.exists() is False
+
+
+def test_incident_state_management(state_store: GitStateStore) -> None:
+    # Initially no incident
+    assert state_store.read_incident() is None
+    assert state_store.clear_incident() is False
+
+    # Create incident
+    incident_data = {
+        "created_at": "2026-09-03T19:00:00+00:00",
+        "tripped_at": "2026-09-03T19:00:00+00:00",
+        "reason": "Test incident reason",
+        "context": {"key": "val"},
+    }
+    state_store.incident_path.write_text(json.dumps(incident_data), encoding="utf-8")
+
+    # Read incident
+    read_data = state_store.read_incident()
+    assert read_data is not None
+    assert read_data["reason"] == "Test incident reason"
+
+    # Clear incident
+    cleared = state_store.clear_incident()
+    assert cleared is True
+    assert state_store.incident_path.exists() is False
+    assert state_store.read_incident() is None
+
+    # Test corrupted incident file
+    state_store.incident_path.write_text("invalid json {{{", encoding="utf-8")
+    corrupted_data = state_store.read_incident()
+    assert corrupted_data is not None
+    assert "Corrupted" in corrupted_data["reason"]
+    assert state_store.clear_incident() is True
