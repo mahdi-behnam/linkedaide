@@ -1,4 +1,4 @@
-"""Empirical Challenger 1 Comprehensive Stress-Test Suite for Milestone 1 (Targeted Scouting).
+"""Comprehensive stress-test suite for targeted scouting edge cases.
 
 Tests:
 1. `hashtag_to_feed_url` boundary inputs (unicode, punctuation, empty strings, spaces, multiple hashes, full URLs).

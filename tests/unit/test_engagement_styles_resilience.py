@@ -1,4 +1,4 @@
-"""Adversarial resilience and bot challenge stress tests for Milestone 2.
+"""Adversarial resilience and bot challenge stress tests for engagement styles and reactions.
 
 Empirically challenges:
 1. Bot challenge detection before and during pre-comment reaction (BotDetectionError + screenshot).

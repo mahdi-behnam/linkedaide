@@ -1,4 +1,4 @@
-"""Adversarial challenge and stress-testing suite for Milestone 1 state pruning."""
+"""Adversarial challenge and stress-testing suite for state pruning."""
 
 from __future__ import annotations
 

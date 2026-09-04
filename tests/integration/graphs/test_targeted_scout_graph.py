@@ -1,4 +1,4 @@
-"""Empirical Challenger 2 Verification Suite for Milestone 1 (Targeted Scouting).
+"""Integration test suite for targeted scouting in ScoutGraph.
 
 Tests ScoutGraph multi-source iteration, dwell delays, early break on quota fulfillment,
 BotDetectionError circuit breaker tripping and halting, and ScrapeError isolation.

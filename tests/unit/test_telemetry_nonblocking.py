@@ -1,4 +1,4 @@
-"""Adversarial stress and non-blocking verification suite for Milestone 1 DOM telemetry.
+"""Adversarial stress and non-blocking verification suite for DOM telemetry.
 
 Empirically challenges:
 1. Indefinite page.evaluate and page.content hangs (>10s) and timeout cancellation bounds.

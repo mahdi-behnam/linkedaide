@@ -1,4 +1,4 @@
-"""Empirical stress tests and adversarial edge cases for Milestone 2.
+"""Empirical stress tests and adversarial edge cases for reactions and dwell timing.
 
 Covers:
 1. Reaction button selector fallback and menu popups.
