@@ -20,6 +20,8 @@ from agent.orchestration.execute_flow import main as execute_main
 from agent.orchestration.execute_flow import run_execute_flow
 from agent.orchestration.health_check_flow import main as health_check_main
 from agent.orchestration.health_check_flow import run_health_check_flow
+from agent.orchestration.ideation_flow import main as ideation_main
+from agent.orchestration.ideation_flow import run_ideation_flow
 from agent.orchestration.poll_flow import main as poll_main
 from agent.orchestration.poll_flow import run_poll_flow
 from agent.orchestration.scout_flow import main as scout_main
@@ -161,6 +163,7 @@ async def test_scout_flow_default_args(test_repo: Path, base_settings: Settings)
     with (
         patch("agent.orchestration.scout_flow.load_settings", return_value=base_settings),
         patch("agent.orchestration.scout_flow.Path.cwd", return_value=test_repo),
+        patch("agent.orchestration.scout_flow.LLMService"),
         patch(
             "agent.orchestration.scout_flow.ensure_session_file",
             return_value=test_repo / "session.json",
@@ -822,4 +825,142 @@ def test_poll_flow_dunder_main(base_settings: Settings) -> None:
     ):
         with pytest.raises(SystemExit) as exc:
             runpy.run_module("agent.orchestration.poll_flow", run_name="__main__")
+        assert exc.value.code == 0
+
+
+# ============================================================================
+# Ideation Flow Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_ideation_flow_halted_guard(test_repo: Path, base_settings: Settings) -> None:
+    paused_settings = base_settings.model_copy(update={"agent_paused": True})
+    result = await run_ideation_flow(settings=paused_settings, repo_root=test_repo)
+    assert result["status"] == "halted"
+    assert "paused" in result["halted_reason"].lower()
+
+
+@pytest.mark.asyncio
+async def test_ideation_flow_success_execution(test_repo: Path, base_settings: Settings) -> None:
+    mock_graph = MagicMock()
+    mock_graph.ainvoke = AsyncMock(
+        return_value={"status": "completed", "pending_items": [MagicMock()], "errors": []}
+    )
+
+    with (
+        patch("agent.orchestration.ideation_flow.LLMService"),
+        patch("agent.orchestration.ideation_flow.TelegramClient"),
+        patch(
+            "agent.orchestration.ideation_flow.build_ideation_graph",
+            return_value=mock_graph,
+        ),
+    ):
+        result = await run_ideation_flow(settings=base_settings, repo_root=test_repo)
+
+        assert result["status"] == "completed"
+        assert len(result["pending_items"]) == 1
+        mock_graph.ainvoke.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ideation_flow_default_args(test_repo: Path, base_settings: Settings) -> None:
+    mock_graph = MagicMock()
+    mock_graph.ainvoke = AsyncMock(
+        return_value={"status": "completed", "pending_items": [], "errors": []}
+    )
+
+    with (
+        patch("agent.orchestration.ideation_flow.load_settings", return_value=base_settings),
+        patch("agent.orchestration.ideation_flow.Path.cwd", return_value=test_repo),
+        patch("agent.orchestration.ideation_flow.LLMService"),
+        patch("agent.orchestration.ideation_flow.TelegramClient"),
+        patch(
+            "agent.orchestration.ideation_flow.build_ideation_graph",
+            return_value=mock_graph,
+        ),
+    ):
+        result = await run_ideation_flow(settings=None, repo_root=None)
+        assert result["status"] == "completed"
+
+
+def test_ideation_main_success_default_args(base_settings: Settings) -> None:
+    with (
+        patch("sys.argv", ["ideation_flow"]),
+        patch("agent.orchestration.ideation_flow.load_settings", return_value=base_settings),
+        patch(
+            "agent.orchestration.ideation_flow.run_ideation_flow",
+            new_callable=AsyncMock,
+        ) as mock_run,
+    ):
+        mock_run.return_value = {"status": "completed"}
+        with pytest.raises(SystemExit) as exc:
+            ideation_main()
+        assert exc.value.code == 0
+        mock_run.assert_called_once_with(settings=base_settings)
+
+
+def test_ideation_main_dry_run(base_settings: Settings) -> None:
+    with (
+        patch("sys.argv", ["ideation_flow", "--dry-run"]),
+        patch("agent.orchestration.ideation_flow.load_settings", return_value=base_settings),
+        patch(
+            "agent.orchestration.ideation_flow.run_ideation_flow",
+            new_callable=AsyncMock,
+        ) as mock_run,
+    ):
+        mock_run.return_value = {"status": "completed_dry_run"}
+        with pytest.raises(SystemExit) as exc:
+            ideation_main()
+        assert exc.value.code == 0
+        assert mock_run.call_args.kwargs["settings"].dry_run is True
+
+
+@pytest.mark.parametrize("error_status", ["failed", "llm_unavailable"])
+def test_ideation_main_error_statuses(base_settings: Settings, error_status: str) -> None:
+    with (
+        patch("sys.argv", ["ideation_flow"]),
+        patch("agent.orchestration.ideation_flow.load_settings", return_value=base_settings),
+        patch(
+            "agent.orchestration.ideation_flow.run_ideation_flow",
+            new_callable=AsyncMock,
+        ) as mock_run,
+    ):
+        mock_run.return_value = {"status": error_status}
+        with pytest.raises(SystemExit) as exc:
+            ideation_main()
+        assert exc.value.code == 1
+
+
+def test_ideation_main_exception(
+    base_settings: Settings, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with (
+        patch("sys.argv", ["ideation_flow"]),
+        patch("agent.orchestration.ideation_flow.load_settings", return_value=base_settings),
+        patch(
+            "agent.orchestration.ideation_flow.run_ideation_flow",
+            new_callable=AsyncMock,
+        ) as mock_run,
+    ):
+        mock_run.side_effect = RuntimeError("Fatal LLM crash")
+        with pytest.raises(SystemExit) as exc:
+            ideation_main()
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Fatal Ideation error: Fatal LLM crash" in captured.err
+
+
+def test_ideation_flow_dunder_main(base_settings: Settings) -> None:
+    def fake_asyncio_run(coro: Any) -> Any:
+        coro.close()
+        return {"status": "completed"}
+
+    with (
+        patch("sys.argv", ["ideation_flow"]),
+        patch("agent.config.load_settings", return_value=base_settings),
+        patch("asyncio.run", side_effect=fake_asyncio_run),
+    ):
+        with pytest.raises(SystemExit) as exc:
+            runpy.run_module("agent.orchestration.ideation_flow", run_name="__main__")
         assert exc.value.code == 0
