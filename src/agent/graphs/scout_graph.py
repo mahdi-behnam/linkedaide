@@ -11,12 +11,44 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
+from agent.browser.scraper import hashtag_to_feed_url
+from agent.browser.stealth import humanized_dwell
+from agent.config import Settings
 from agent.errors import BotDetectionError, ScrapeError, SessionExpiredError
 from agent.graphs.state import ScoutState, get_graph_context
 from agent.models.schemas import CommentDraft, PendingAction, PostRecord, TriageResult
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 
 logger = logging.getLogger(__name__)
+
+
+def get_scout_target_sources(settings: Settings) -> list[str | None]:
+    """Resolve configured target sources (URLs and hashtags) for feed scraping.
+
+    Combines explicit target URLs from scout_target_urls and resolved hashtag search
+    URLs from target_hashtags. Preserves encounter order and deduplicates URLs.
+    If no targets are configured, falls back to [None] (default feed).
+    """
+    sources: list[str | None] = []
+
+    if settings.scout_target_urls:
+        for url in settings.scout_target_urls:
+            clean_url = url.strip()
+            if clean_url and clean_url not in sources:
+                sources.append(clean_url)
+
+    if settings.target_hashtags:
+        for tag in settings.target_hashtags:
+            clean_tag = tag.strip()
+            if clean_tag:
+                hashtag_url = hashtag_to_feed_url(clean_tag)
+                if hashtag_url and hashtag_url not in sources:
+                    sources.append(hashtag_url)
+
+    if not sources:
+        sources.append(None)
+
+    return sources
 
 
 async def check_halted(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
@@ -72,36 +104,84 @@ async def load_seen(state: ScoutState, config: RunnableConfig) -> dict[str, Any]
 
 
 async def scrape_feed(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
-    """Scrape candidate posts from LinkedIn feed."""
+    """Scrape candidate posts across configured LinkedIn feed sources."""
     context = get_graph_context(config)
     if not context.scraper:
         return {"posts": [], "status": "no_scraper"}
 
     seen_hashes = set(state.get("seen_hashes", []))
-    try:
-        posts = await context.scraper.scrape_feed(
-            max_posts=context.settings.max_suggestions_per_run * 3,
-            seen_hashes=seen_hashes,
-        )
-        logger.info("Scraped %d new candidate post(s) from feed", len(posts))
-        return {"posts": posts, "status": "scraped"}
-    except BotDetectionError as err:
-        logger.error("Bot challenge encountered during feed scrape: %s", err)
-        if context.state_store:
-            trip_breaker(context.settings.state_dir.parent, reason=str(err))
-        if context.telegram:
-            await context.telegram.send_notification(f"⚠️ Circuit breaker tripped: {err}")
-        return {"halted_reason": str(err), "status": "halted_bot_detection", "posts": []}
-    except SessionExpiredError as err:
-        logger.warning("LinkedIn session expired or unauthenticated: %s", err)
-        if context.telegram:
-            await context.telegram.send_notification(
-                f"🔑 LinkedIn session expired or unauthenticated: {err}. Please re-authenticate using scripts/extract_linkedin_session.py"
+    target_sources = get_scout_target_sources(context.settings)
+    max_total_posts = context.settings.max_suggestions_per_run * 3
+
+    all_posts: list[PostRecord] = []
+    errors: list[str] = list(state.get("errors", []))
+
+    for idx, target_url in enumerate(target_sources):
+        if len(all_posts) >= max_total_posts:
+            logger.info(
+                "Reached candidate post limit (%d/%d), skipping remaining %d target source(s)",
+                len(all_posts),
+                max_total_posts,
+                len(target_sources) - idx,
             )
-        return {"errors": [str(err)], "posts": [], "status": "session_expired"}
-    except ScrapeError as err:
-        logger.error("Scrape error encountered: %s", err)
-        return {"errors": [str(err)], "posts": [], "status": "scrape_error"}
+            break
+
+        if idx > 0:
+            logger.info(
+                "Dwelling between scout target navigations (%d/%d)...",
+                idx + 1,
+                len(target_sources),
+            )
+            await humanized_dwell(min_seconds=1.5, max_seconds=3.5)
+
+        remaining = max_total_posts - len(all_posts)
+        try:
+            posts = await context.scraper.scrape_feed(
+                max_posts=remaining,
+                seen_hashes=seen_hashes,
+                target_url=target_url,
+            )
+            all_posts.extend(posts)
+            for p in posts:
+                seen_hashes.add(p.content_hash)
+            logger.info(
+                "Target source '%s' yielded %d post(s) (total candidates: %d/%d)",
+                target_url or "default_feed",
+                len(posts),
+                len(all_posts),
+                max_total_posts,
+            )
+        except BotDetectionError as err:
+            logger.error("Bot challenge encountered during feed scrape: %s", err)
+            if context.state_store:
+                trip_breaker(context.settings.state_dir.parent, reason=str(err))
+            if context.telegram:
+                await context.telegram.send_notification(f"⚠️ Circuit breaker tripped: {err}")
+            return {"halted_reason": str(err), "status": "halted_bot_detection", "posts": []}
+        except SessionExpiredError as err:
+            logger.warning(
+                "LinkedIn session expired or unauthenticated on target '%s': %s",
+                target_url or "default_feed",
+                err,
+            )
+            if context.telegram:
+                await context.telegram.send_notification(
+                    f"🔑 LinkedIn session expired or unauthenticated: {err}. Please re-authenticate using scripts/extract_linkedin_session.py"
+                )
+            return {"errors": [str(err)], "posts": [], "status": "session_expired"}
+        except ScrapeError as err:
+            logger.warning(
+                "Scrape error encountered for target '%s': %s",
+                target_url or "default_feed",
+                err,
+            )
+            errors.append(f"Target '{target_url or 'default_feed'}': {err}")
+            continue
+
+    if not all_posts and errors:
+        return {"errors": errors, "posts": [], "status": "scrape_error"}
+
+    return {"posts": all_posts, "seen_hashes": seen_hashes, "status": "scraped", "errors": errors}
 
 
 async def triage_batch(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:

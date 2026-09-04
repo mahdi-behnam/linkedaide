@@ -22,23 +22,32 @@ from pydantic_settings import (
 
 from agent.errors import ConfigError
 
+COMPLEX_LIST_FIELDS: frozenset[str] = frozenset(
+    {"user_focus_areas", "scout_target_urls", "target_hashtags"}
+)
+
+
+def _parse_raw_string_list(value: str) -> list[str]:
+    """Parse a comma-separated or JSON list string into a list of non-empty stripped strings."""
+    v_str = value.strip()
+    if not v_str:
+        return []
+    if v_str.startswith("[") and v_str.endswith("]"):
+        try:
+            parsed = json.loads(v_str)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+        except json.JSONDecodeError:
+            pass
+    return [part.strip() for part in v_str.split(",") if part.strip()]
+
 
 class ComplexValueDecoderMixin:
     """Mixin supporting comma-separated and JSON list parsing for complex settings fields."""
 
     def decode_complex_value(self, field_name: str, field_info: FieldInfo, value: Any) -> Any:
-        if field_name == "user_focus_areas" and isinstance(value, str):
-            v_str = value.strip()
-            if not v_str:
-                return []
-            if v_str.startswith("[") and v_str.endswith("]"):
-                try:
-                    parsed = json.loads(v_str)
-                    if isinstance(parsed, list):
-                        return [str(item).strip() for item in parsed if str(item).strip()]
-                except json.JSONDecodeError:
-                    pass
-            return [part.strip() for part in v_str.split(",") if part.strip()]
+        if field_name.lower() in COMPLEX_LIST_FIELDS and isinstance(value, str):
+            return _parse_raw_string_list(value)
         return super().decode_complex_value(field_name, field_info, value)  # type: ignore[misc]
 
 
@@ -151,6 +160,17 @@ class Settings(BaseSettings):
         description="Domain areas of interest for filtering and comment focus",
         validation_alias=AliasChoices("USER_FOCUS_AREAS", "user_focus_areas"),
     )
+    # Targeted Scouting Configuration
+    scout_target_urls: list[str] = Field(
+        default_factory=list,
+        description="Explicit LinkedIn feed URLs to scout (e.g. hashtag feeds, creator activity pages)",
+        validation_alias=AliasChoices("SCOUT_TARGET_URLS", "scout_target_urls"),
+    )
+    target_hashtags: list[str] = Field(
+        default_factory=list,
+        description="Target LinkedIn hashtags to scout (e.g. ['python', 'ai', '#agentic'])",
+        validation_alias=AliasChoices("TARGET_HASHTAGS", "target_hashtags"),
+    )
     user_persona: str = Field(
         default="",
         description="User persona and professional background guidance for LLM generation",
@@ -258,25 +278,40 @@ class Settings(BaseSettings):
             return SecretStr(v)
         return v
 
-    @field_validator("user_focus_areas", mode="before")
+    @field_validator("user_focus_areas", "scout_target_urls", "target_hashtags", mode="before")
     @classmethod
-    def parse_user_focus_areas(cls, v: Any) -> list[str]:
+    def parse_string_list(cls, v: Any) -> list[str]:
         """Parse comma-separated string, JSON list, or list of strings into list[str]."""
         if isinstance(v, list):
             return [str(item).strip() for item in v if str(item).strip()]
         if isinstance(v, str):
-            v_str = v.strip()
-            if not v_str:
-                return []
-            if v_str.startswith("[") and v_str.endswith("]"):
-                try:
-                    parsed = json.loads(v_str)
-                    if isinstance(parsed, list):
-                        return [str(item).strip() for item in parsed if str(item).strip()]
-                except json.JSONDecodeError:
-                    pass
-            return [part.strip() for part in v_str.split(",") if part.strip()]
+            return _parse_raw_string_list(v)
         return []
+
+    # Preserve backward-compatible alias if referenced dynamically
+    parse_user_focus_areas = parse_string_list
+
+    @field_validator("target_hashtags", mode="after")
+    @classmethod
+    def normalize_target_hashtags(cls, v: list[str]) -> list[str]:
+        """Normalize hashtags: strip whitespace, strip leading '#', and filter empty entries."""
+        normalized: list[str] = []
+        for tag in v:
+            clean = tag.strip().lstrip("#").strip()
+            if clean and clean not in normalized:
+                normalized.append(clean)
+        return normalized
+
+    @field_validator("scout_target_urls", mode="after")
+    @classmethod
+    def normalize_scout_target_urls(cls, v: list[str]) -> list[str]:
+        """Normalize scout URLs: strip whitespace, filter empty entries, and deduplicate."""
+        normalized: list[str] = []
+        for url in v:
+            clean = url.strip()
+            if clean and clean not in normalized:
+                normalized.append(clean)
+        return normalized
 
     @property
     def effective_triage_model(self) -> str:

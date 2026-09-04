@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import urllib.parse
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -28,6 +29,30 @@ if TYPE_CHECKING:
     from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
+
+
+def hashtag_to_feed_url(hashtag: str) -> str:
+    """Convert a hashtag or keyword into a LinkedIn hashtag feed URL.
+
+    Handles leading '#', leading/trailing whitespace, full URLs, and URL encoding.
+
+    Examples:
+        'python' -> 'https://www.linkedin.com/feed/hashtag/?keywords=python'
+        '#Python' -> 'https://www.linkedin.com/feed/hashtag/?keywords=python'
+        '#ai_agents' -> 'https://www.linkedin.com/feed/hashtag/?keywords=ai_agents'
+        'https://www.linkedin.com/feed/hashtag/?keywords=custom' -> 'https://www.linkedin.com/feed/hashtag/?keywords=custom'
+
+    Raises:
+        ValueError: If hashtag is empty or contains only whitespace/hashes.
+    """
+    clean = hashtag.strip()
+    if clean.startswith("http://") or clean.startswith("https://"):
+        return clean
+    clean = clean.lstrip("#").strip()
+    if not clean:
+        raise ValueError(f"Invalid empty hashtag: {hashtag!r}")
+    encoded = urllib.parse.quote_plus(clean.lower())
+    return f"https://www.linkedin.com/feed/hashtag/?keywords={encoded}"
 
 
 class FeedScraper:
@@ -68,12 +93,19 @@ class FeedScraper:
             logger.debug("Failed capturing DOM telemetry for %s: %s", trigger, err)
             return None
 
-    async def scrape_feed(self, *, max_posts: int, seen_hashes: set[str]) -> list[PostRecord]:
-        """Scrape new, unseen posts from the feed.
+    async def scrape_feed(
+        self,
+        *,
+        max_posts: int,
+        seen_hashes: set[str],
+        target_url: str | None = None,
+    ) -> list[PostRecord]:
+        """Scrape new, unseen posts from the feed or a target URL.
 
         Args:
             max_posts: Maximum candidate posts to return.
             seen_hashes: Set of previously seen post content hashes.
+            target_url: Optional specific LinkedIn feed or hashtag URL to navigate to.
 
         Returns:
             list[PostRecord]: List of discovered new posts.
@@ -84,6 +116,20 @@ class FeedScraper:
             SelectorDriftError: If feed root structure is missing from the DOM.
             ScrapeError: On unrecoverable scraping failure.
         """
+        # Optional navigation to target feed
+        if target_url:
+            clean_target = target_url.strip()
+            if clean_target:
+                logger.info("Navigating scraper to target feed: %s", clean_target)
+                try:
+                    await self.page.goto(clean_target, wait_until="domcontentloaded", timeout=30000)
+                except Exception as err:
+                    logger.warning(
+                        "Navigation to target URL '%s' completed with warning: %s",
+                        clean_target,
+                        err,
+                    )
+
         # 1. Challenge check (True bot challenge / CAPTCHA)
         if detect_challenge_page(self.page):
             screenshot_path = await self._capture_screenshot("feed_challenge")
