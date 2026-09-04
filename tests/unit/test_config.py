@@ -216,3 +216,125 @@ class TestSettings:
         settings = load_settings()
         assert settings.enable_pre_comment_reaction is True
         assert settings.default_reaction_type == "celebrate"
+
+    def test_scout_settings_defaults(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings.scout_target_urls == []
+        assert settings.target_hashtags == []
+
+    def test_scout_target_urls_comma_separated(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            scout_target_urls="https://a.com,  https://b.com , https://a.com,",  # type: ignore[arg-type]
+        )
+        assert settings.scout_target_urls == ["https://a.com", "https://b.com"]
+
+    def test_scout_target_urls_json_string(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            scout_target_urls='["https://a.com", "https://b.com", "https://a.com"]',  # type: ignore[arg-type]
+        )
+        assert settings.scout_target_urls == ["https://a.com", "https://b.com"]
+
+    def test_scout_target_urls_empty_and_whitespace(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            scout_target_urls="   ",  # type: ignore[arg-type]
+        )
+        assert settings.scout_target_urls == []
+
+        settings_list = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            scout_target_urls=["", "   "],
+        )
+        assert settings_list.scout_target_urls == []
+
+    def test_target_hashtags_comma_separated(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            target_hashtags="#python,  ai,   #DistributedSystems , #python",  # type: ignore[arg-type]
+        )
+        assert settings.target_hashtags == ["python", "ai", "DistributedSystems"]
+
+    def test_target_hashtags_json_string(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            target_hashtags='["#python", "#AI", "cloud"]',  # type: ignore[arg-type]
+        )
+        assert settings.target_hashtags == ["python", "AI", "cloud"]
+
+    def test_target_hashtags_stripping_and_empty(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            target_hashtags=["#", "##", "   ", "##tech", "#  python "],
+        )
+        assert settings.target_hashtags == ["tech", "python"]
+
+    def test_load_scout_settings_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("NVIDIA_NIM_API_KEY", "nvapi-env-key")
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "999:TOKEN")
+        monkeypatch.setenv("TELEGRAM_AUTHORIZED_CHAT_ID", "555123")
+        monkeypatch.setenv(
+            "SCOUT_TARGET_URLS",
+            "https://linkedin.com/feed/1, https://linkedin.com/feed/2, https://linkedin.com/feed/1",
+        )
+        monkeypatch.setenv("TARGET_HASHTAGS", "#python, ai, #agentic, #python")
+
+        settings = load_settings()
+        assert settings.scout_target_urls == [
+            "https://linkedin.com/feed/1",
+            "https://linkedin.com/feed/2",
+        ]
+        assert settings.target_hashtags == ["python", "ai", "agentic"]
+
+    def test_load_scout_settings_from_env_json(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("NVIDIA_NIM_API_KEY", "nvapi-env-key")
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "999:TOKEN")
+        monkeypatch.setenv("TELEGRAM_AUTHORIZED_CHAT_ID", "555123")
+        monkeypatch.setenv("SCOUT_TARGET_URLS", '["https://linkedin.com/feed/1"]')
+        monkeypatch.setenv("TARGET_HASHTAGS", '["#python", "ai"]')
+
+        settings = load_settings()
+        assert settings.scout_target_urls == ["https://linkedin.com/feed/1"]
+        assert settings.target_hashtags == ["python", "ai"]
+
+    def test_complex_decoder_mixin_scout_fields(self) -> None:
+        class DummyBase:
+            def decode_complex_value(self, field_name: str, field_info: Any, value: Any) -> Any:
+                return value
+
+        class TestDecoder(ComplexValueDecoderMixin, DummyBase):
+            pass
+
+        decoder = TestDecoder()
+        field_info = FieldInfo()
+        assert decoder.decode_complex_value(
+            "scout_target_urls", field_info, "https://a.com, https://b.com"
+        ) == ["https://a.com", "https://b.com"]
+        assert decoder.decode_complex_value("target_hashtags", field_info, "#python, ai") == [
+            "#python",
+            "ai",
+        ]
+        assert decoder.decode_complex_value("target_hashtags", field_info, '["#python", "ai"]') == [
+            "#python",
+            "ai",
+        ]
+        assert decoder.decode_complex_value("target_hashtags", field_info, "  ") == []

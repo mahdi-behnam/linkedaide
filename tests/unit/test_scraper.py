@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from agent.browser.scraper import FeedScraper
+from agent.browser.scraper import FeedScraper, hashtag_to_feed_url
 from agent.config import Settings
 from agent.errors import BotDetectionError, SelectorDriftError
 
@@ -244,3 +244,206 @@ async def test_scraper_telemetry_failure_does_not_break_error_workflow(
         scraper = FeedScraper(page, mock_settings)
         with pytest.raises(BotDetectionError):
             await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+
+# ---------------------------------------------------------------------------
+# Tests for hashtag_to_feed_url helper
+# ---------------------------------------------------------------------------
+
+
+def test_hashtag_to_feed_url_standard_keywords() -> None:
+    """Helper converts standard keywords and tags to canonical hashtag URLs."""
+    assert hashtag_to_feed_url("python") == "https://www.linkedin.com/feed/hashtag/?keywords=python"
+    assert hashtag_to_feed_url("ai") == "https://www.linkedin.com/feed/hashtag/?keywords=ai"
+    assert (
+        hashtag_to_feed_url("machinelearning")
+        == "https://www.linkedin.com/feed/hashtag/?keywords=machinelearning"
+    )
+
+
+def test_hashtag_to_feed_url_with_hashes_casing_and_whitespace() -> None:
+    """Helper handles leading '#', multiple hashes, casing, and whitespace."""
+    assert (
+        hashtag_to_feed_url("#Python") == "https://www.linkedin.com/feed/hashtag/?keywords=python"
+    )
+    assert (
+        hashtag_to_feed_url("  #AI_Agents  ")
+        == "https://www.linkedin.com/feed/hashtag/?keywords=ai_agents"
+    )
+    assert (
+        hashtag_to_feed_url("###DeepLearning")
+        == "https://www.linkedin.com/feed/hashtag/?keywords=deeplearning"
+    )
+
+
+def test_hashtag_to_feed_url_preserves_full_urls() -> None:
+    """Helper returns existing HTTP/HTTPS URLs without modification."""
+    url1 = "https://www.linkedin.com/feed/hashtag/?keywords=python"
+    assert hashtag_to_feed_url(url1) == url1
+
+    url2 = "https://www.linkedin.com/in/somecreator/recent-activity/all/"
+    assert hashtag_to_feed_url(url2) == url2
+
+    url3 = "http://example.com/custom/feed"
+    assert hashtag_to_feed_url(url3) == url3
+
+
+def test_hashtag_to_feed_url_encodes_special_characters_and_spaces() -> None:
+    """Helper URL-encodes special characters and spaces."""
+    assert hashtag_to_feed_url("c++") == "https://www.linkedin.com/feed/hashtag/?keywords=c%2B%2B"
+    assert hashtag_to_feed_url("#c#") == "https://www.linkedin.com/feed/hashtag/?keywords=c%23"
+    assert (
+        hashtag_to_feed_url("data science")
+        == "https://www.linkedin.com/feed/hashtag/?keywords=data+science"
+    )
+
+
+def test_hashtag_to_feed_url_invalid_empty_raises_value_error() -> None:
+    """Helper raises ValueError on empty string or string containing only hashes."""
+    with pytest.raises(ValueError, match="Invalid empty hashtag"):
+        hashtag_to_feed_url("")
+
+    with pytest.raises(ValueError, match="Invalid empty hashtag"):
+        hashtag_to_feed_url("   ")
+
+    with pytest.raises(ValueError, match="Invalid empty hashtag"):
+        hashtag_to_feed_url("#")
+
+    with pytest.raises(ValueError, match="Invalid empty hashtag"):
+        hashtag_to_feed_url("###")
+
+
+# ---------------------------------------------------------------------------
+# Tests for FeedScraper targeted URL navigation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scraper_navigates_to_target_url(mock_settings: Settings) -> None:
+    """Scraper navigates to target URL when target_url is provided."""
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/hashtag/?keywords=python"
+    page.goto = AsyncMock()
+
+    # Mock container locator
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=0)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch("agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock),
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        await scraper.scrape_feed(
+            max_posts=5,
+            seen_hashes=set(),
+            target_url="https://www.linkedin.com/feed/hashtag/?keywords=python",
+        )
+
+        page.goto.assert_awaited_once_with(
+            "https://www.linkedin.com/feed/hashtag/?keywords=python",
+            wait_until="domcontentloaded",
+            timeout=30000,
+        )
+
+
+@pytest.mark.asyncio
+async def test_scraper_no_navigation_when_target_url_none(mock_settings: Settings) -> None:
+    """Scraper does not call page.goto when target_url is None (backwards compatible)."""
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+    page.goto = AsyncMock()
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=0)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch("agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock),
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        await scraper.scrape_feed(max_posts=5, seen_hashes=set(), target_url=None)
+
+        page.goto.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_scraper_navigation_warning_does_not_break_scraping(
+    mock_settings: Settings,
+) -> None:
+    """Scraper logs warning on soft page.goto timeout but proceeds with scraping."""
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/hashtag/?keywords=python"
+    page.goto = AsyncMock(side_effect=TimeoutError("Soft navigation timeout"))
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=0)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch("agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock),
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        # Should NOT raise TimeoutError; warning logged and container checked
+        candidates = await scraper.scrape_feed(
+            max_posts=5,
+            seen_hashes=set(),
+            target_url="https://www.linkedin.com/feed/hashtag/?keywords=python",
+        )
+        assert candidates == []
+        page.goto.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_scraper_target_url_bot_challenge_detection(mock_settings: Settings) -> None:
+    """Scraper detects bot challenge after navigating to target URL."""
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/checkpoint/challenge"
+    page.goto = AsyncMock()
+
+    with patch(
+        "agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock
+    ) as mock_telemetry:
+        scraper = FeedScraper(page, mock_settings)
+        with pytest.raises(BotDetectionError, match="challenge"):
+            await scraper.scrape_feed(
+                max_posts=5,
+                seen_hashes=set(),
+                target_url="https://www.linkedin.com/feed/hashtag/?keywords=python",
+            )
+
+        page.goto.assert_awaited_once()
+        mock_telemetry.assert_awaited_once_with(page, trigger="feed_challenge")
