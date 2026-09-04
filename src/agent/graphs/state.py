@@ -15,6 +15,7 @@ from agent.models.schemas import (
     CommentDraft,
     HistoryEntry,
     PendingAction,
+    PostIdea,
     PostRecord,
     TriageResult,
 )
@@ -58,6 +59,19 @@ class HealthCheckState(TypedDict, total=False):
     is_healthy: bool
     halted_reason: str | None
     error: str | None
+    status: str
+
+
+class IdeationState(TypedDict, total=False):
+    """Workflow state for IdeationGraph."""
+
+    user_focus_areas: list[str]
+    recent_topics: list[str]
+    candidate_ideas: list[PostIdea]
+    filtered_ideas: list[PostIdea]
+    pending_items: list[PendingAction]
+    errors: list[str]
+    halted_reason: str | None
     status: str
 
 

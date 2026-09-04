@@ -1,0 +1,64 @@
+name: LinkedIn Post Ideation
+
+on:
+  schedule:
+    # Runs daily at 09:00 UTC
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry Run Mode (No real Telegram suggestion delivery)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: linkedin-agent-single-flight
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ideate:
+    name: Draft Post Ideas
+    if: ${{ vars.AGENT_PAUSED != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install Dependencies
+        run: uv sync --frozen
+
+      - name: Execute Ideation Flow
+        env:
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          NIM_MODEL_PRIMARY: ${{ vars.NIM_MODEL_PRIMARY || 'meta/llama-3.3-70b-instruct' }}
+          NIM_MODEL_FALLBACK: ${{ vars.NIM_MODEL_FALLBACK || 'mistralai/mixtral-8x22b-instruct-v0.1' }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
+          USER_FOCUS_AREAS: ${{ vars.USER_FOCUS_AREAS || '["AI Agents", "Python", "Distributed Systems"]' }}
+          MAX_SUGGESTIONS_PER_RUN: ${{ vars.MAX_SUGGESTIONS_PER_RUN || 3 }}
+          DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || false }}
+        run: uv run python -m agent.orchestration.ideation_flow
+
+      - name: Commit and Push Updated State
+        if: ${{ vars.DRY_RUN != 'true' }}
+        run: |
+          git config user.name "linkedin-agent-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add state/
+          git diff --staged --quiet || (git commit -m "chore(state): ideation run [skip ci]" && git push)
