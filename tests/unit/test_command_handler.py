@@ -134,7 +134,7 @@ class TestCommandHandlerStatus:
     ) -> None:
         test_state_store.write_pending(sample_pending_action)
         counters = DailyCounters(
-            date="2026-09-03",
+            date=datetime.now(UTC).strftime("%Y-%m-%d"),
             comments_executed=2,
             posts_executed=0,
             suggestions_sent=3,
