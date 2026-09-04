@@ -312,6 +312,27 @@ def test_hashtag_to_feed_url_invalid_empty_raises_value_error() -> None:
     with pytest.raises(ValueError, match="Invalid empty hashtag"):
         hashtag_to_feed_url("###")
 
+    with pytest.raises(ValueError, match="Invalid empty hashtag"):
+        hashtag_to_feed_url("# #")
+
+    with pytest.raises(ValueError, match="Invalid empty hashtag"):
+        hashtag_to_feed_url("# # #")
+
+    with pytest.raises(ValueError, match="Invalid empty hashtag"):
+        hashtag_to_feed_url("  #   #  ")
+
+
+def test_hashtag_to_feed_url_preserves_uppercase_and_mixed_case_urls() -> None:
+    """Helper preserves URLs with uppercase or mixed-case HTTP/HTTPS schemes."""
+    upper_https = "HTTPS://www.linkedin.com/feed/hashtag/?keywords=python"
+    assert hashtag_to_feed_url(upper_https) == upper_https
+
+    mixed_http = "Http://example.com/custom/feed"
+    assert hashtag_to_feed_url(mixed_http) == mixed_http
+
+    padded_upper = "  HTTPS://www.linkedin.com/in/creator/recent-activity/all/  "
+    assert hashtag_to_feed_url(padded_upper) == padded_upper.strip()
+
 
 # ---------------------------------------------------------------------------
 # Tests for FeedScraper targeted URL navigation

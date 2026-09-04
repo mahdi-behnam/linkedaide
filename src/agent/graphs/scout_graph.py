@@ -41,9 +41,12 @@ def get_scout_target_sources(settings: Settings) -> list[str | None]:
         for tag in settings.target_hashtags:
             clean_tag = tag.strip()
             if clean_tag:
-                hashtag_url = hashtag_to_feed_url(clean_tag)
-                if hashtag_url and hashtag_url not in sources:
-                    sources.append(hashtag_url)
+                try:
+                    hashtag_url = hashtag_to_feed_url(clean_tag)
+                    if hashtag_url and hashtag_url not in sources:
+                        sources.append(hashtag_url)
+                except ValueError as err:
+                    logger.warning("Skipping invalid target hashtag %r: %s", clean_tag, err)
 
     if not sources:
         sources.append(None)

@@ -36,7 +36,9 @@ def _parse_raw_string_list(value: str) -> list[str]:
         try:
             parsed = json.loads(v_str)
             if isinstance(parsed, list):
-                return [str(item).strip() for item in parsed if str(item).strip()]
+                return [
+                    str(item).strip() for item in parsed if item is not None and str(item).strip()
+                ]
         except json.JSONDecodeError:
             pass
     return [part.strip() for part in v_str.split(",") if part.strip()]
@@ -283,7 +285,7 @@ class Settings(BaseSettings):
     def parse_string_list(cls, v: Any) -> list[str]:
         """Parse comma-separated string, JSON list, or list of strings into list[str]."""
         if isinstance(v, list):
-            return [str(item).strip() for item in v if str(item).strip()]
+            return [str(item).strip() for item in v if item is not None and str(item).strip()]
         if isinstance(v, str):
             return _parse_raw_string_list(v)
         return []
@@ -297,8 +299,10 @@ class Settings(BaseSettings):
         """Normalize hashtags: strip whitespace, strip leading '#', and filter empty entries."""
         normalized: list[str] = []
         for tag in v:
-            clean = tag.strip().lstrip("#").strip()
-            if clean and clean not in normalized:
+            clean = tag.strip()
+            while clean.startswith("#") or clean.startswith(" "):
+                clean = clean.lstrip("#").strip()
+            if clean and not set(clean).issubset({"#", " "}) and clean not in normalized:
                 normalized.append(clean)
         return normalized
 

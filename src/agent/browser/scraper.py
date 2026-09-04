@@ -46,10 +46,10 @@ def hashtag_to_feed_url(hashtag: str) -> str:
         ValueError: If hashtag is empty or contains only whitespace/hashes.
     """
     clean = hashtag.strip()
-    if clean.startswith("http://") or clean.startswith("https://"):
+    if clean.lower().startswith(("http://", "https://")):
         return clean
     clean = clean.lstrip("#").strip()
-    if not clean:
+    if not clean or set(clean).issubset({"#", " "}):
         raise ValueError(f"Invalid empty hashtag: {hashtag!r}")
     encoded = urllib.parse.quote_plus(clean.lower())
     return f"https://www.linkedin.com/feed/hashtag/?keywords={encoded}"

@@ -288,6 +288,42 @@ class TestSettings:
         )
         assert settings.target_hashtags == ["tech", "python"]
 
+    def test_target_hashtags_space_separated_hashes_discarded(self) -> None:
+        """Tags consisting only of hashes and spaces are stripped to empty and discarded."""
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            target_hashtags=["# #", "# # #", " # # ", "## #", "   #   #  ", "#valid"],
+        )
+        assert settings.target_hashtags == ["valid"]
+
+    def test_parse_string_list_filters_none_entries(self) -> None:
+        """parse_string_list filters out None items before string conversion."""
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            scout_target_urls=[None, "https://example.com/feed", None],  # type: ignore[list-item]
+            target_hashtags=[None, "#python", None],  # type: ignore[list-item]
+            user_focus_areas=[None, "AI", None],  # type: ignore[list-item]
+        )
+        assert settings.scout_target_urls == ["https://example.com/feed"]
+        assert settings.target_hashtags == ["python"]
+        assert settings.user_focus_areas == ["AI"]
+
+    def test_parse_string_list_json_filters_null_entries(self) -> None:
+        """_parse_raw_string_list filters out JSON null items."""
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            scout_target_urls='["https://example.com/feed", null]',  # type: ignore[arg-type]
+            target_hashtags='[null, "#python"]',  # type: ignore[arg-type]
+        )
+        assert settings.scout_target_urls == ["https://example.com/feed"]
+        assert settings.target_hashtags == ["python"]
+
     def test_load_scout_settings_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("NVIDIA_NIM_API_KEY", "nvapi-env-key")
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "999:TOKEN")
