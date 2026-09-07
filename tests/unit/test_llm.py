@@ -41,9 +41,9 @@ def mock_settings() -> Settings:
     """Create test settings fixture."""
     return Settings(
         nvidia_nim_api_key="nvapi-mock-key-12345",
-        nim_model_primary="meta/llama-3.3-70b-instruct",
-        nim_model_fallback="meta/llama-3.1-8b-instruct",
-        nim_model_triage="meta/llama-3.1-8b-instruct-triage",
+        nim_model_primary="nvidia/nemotron-3-super-120b-a12b",
+        nim_model_fallback="openai/gpt-oss-20b",
+        nim_model_triage="openai/gpt-oss-20b-triage",
         nim_temperature=0.2,
         nim_top_p=0.95,
         nim_timeout_seconds=30.0,
@@ -80,7 +80,7 @@ class TestChatModelFactory:
         # Triage role
         build_chat_model(mock_settings, role="triage")
         mock_chat_nvidia.assert_called_with(
-            model="meta/llama-3.1-8b-instruct-triage",
+            model="openai/gpt-oss-20b-triage",
             nvidia_api_key="nvapi-mock-key-12345",
             temperature=0.2,
             max_completion_tokens=512,
@@ -91,11 +91,11 @@ class TestChatModelFactory:
 
         # Generation role
         build_chat_model(mock_settings, role="generation")
-        assert mock_chat_nvidia.call_args[1]["model"] == "meta/llama-3.3-70b-instruct"
+        assert mock_chat_nvidia.call_args[1]["model"] == "nvidia/nemotron-3-super-120b-a12b"
 
         # Fallback role
         build_chat_model(mock_settings, role="fallback")
-        assert mock_chat_nvidia.call_args[1]["model"] == "meta/llama-3.1-8b-instruct"
+        assert mock_chat_nvidia.call_args[1]["model"] == "openai/gpt-oss-20b"
 
         # Explicit model name override
         build_chat_model(mock_settings, model_name="custom/model-v1")

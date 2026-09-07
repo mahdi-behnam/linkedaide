@@ -26,7 +26,7 @@ def mock_settings(tmp_path: Path) -> Settings:
     return Settings(
         nvidia_nim_api_key=SecretStr("nvapi-test-key-12345"),
         nim_model_primary="nvidia/nemotron-3-super-120b-a12b",
-        nim_model_fallback="meta/llama-3.3-70b-instruct",
+        nim_model_fallback="openai/gpt-oss-20b",
         telegram_bot_token=SecretStr("123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"),
         telegram_authorized_chat_id=987654321,
         linkedin_storage_state_path=tmp_path / "storage_state.json",

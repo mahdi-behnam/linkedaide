@@ -77,12 +77,12 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("NVIDIA_NIM_API_KEY", "nvidia_nim_api_key"),
     )
     nim_model_primary: str = Field(
-        default="meta/llama-3.3-70b-instruct",
+        default="nvidia/nemotron-3-super-120b-a12b",
         description="Primary model for comment and post drafting",
         validation_alias=AliasChoices("NIM_MODEL_PRIMARY", "nim_model_primary"),
     )
     nim_model_fallback: str = Field(
-        default="meta/llama-3.1-8b-instruct",
+        default="openai/gpt-oss-20b",
         description="Fallback model if primary encounters rate limit or failure",
         validation_alias=AliasChoices("NIM_MODEL_FALLBACK", "nim_model_fallback"),
     )

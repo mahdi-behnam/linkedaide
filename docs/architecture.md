@@ -116,8 +116,8 @@ LLM integration is managed by `LLMService` in `src/agent/llm/service.py`:
   1. **Triage**: High-speed, cost-effective evaluation of scraped posts against configured `USER_FOCUS_AREAS` and `USER_PERSONA`. Produces a structured `TriageResult` (`recommendation: "comment" | "ignore"`, `confidence`, `reasoning`, `risk_flags`).
   2. **Drafting**: Deep generation producing `CommentDraft` with strict anti-generic constraints, specific professional insights, and character length bounds.
 - **Resilience & Fallback**:
-  - Primary model: `meta/llama-3.3-70b-instruct`
-  - Fallback model: `meta/llama-3.1-8b-instruct` / `mistralai/mixtral-8x22b-instruct-v0.1`
+  - Primary model: `nvidia/nemotron-3-super-120b-a12b`
+  - Fallback model: `openai/gpt-oss-20b`
   - Automatic fallback on rate-limits (HTTP 429), timeouts, or provider 5xx errors.
 
 ---

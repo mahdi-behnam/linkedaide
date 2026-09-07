@@ -17,8 +17,8 @@ class TestSettings:
     def test_valid_settings_explicit(self) -> None:
         settings = Settings(
             nvidia_nim_api_key="nvapi-test-key",
-            nim_model_primary="meta/llama-3.3-70b-instruct",
-            nim_model_fallback="meta/llama-3.1-8b-instruct",
+            nim_model_primary="nvidia/nemotron-3-super-120b-a12b",
+            nim_model_fallback="openai/gpt-oss-20b",
             nim_model_triage=None,
             nim_temperature=0.3,
             nim_timeout_seconds=45.0,
@@ -40,20 +40,33 @@ class TestSettings:
 
         assert isinstance(settings.nvidia_nim_api_key, SecretStr)
         assert settings.nvidia_nim_api_key.get_secret_value() == "nvapi-test-key"
-        assert settings.effective_triage_model == "meta/llama-3.3-70b-instruct"
+        assert settings.nim_model_primary == "nvidia/nemotron-3-super-120b-a12b"
+        assert settings.nim_model_fallback == "openai/gpt-oss-20b"
+        assert settings.effective_triage_model == "nvidia/nemotron-3-super-120b-a12b"
         assert settings.telegram_authorized_chat_id == 987654321
         assert settings.dry_run is True
         assert len(settings.user_focus_areas) == 2
 
-    def test_effective_triage_model_override(self) -> None:
+    def test_settings_default_models(self) -> None:
         settings = Settings(
+            _env_file=None,
             nvidia_nim_api_key="nvapi-test-key",
-            nim_model_primary="meta/llama-3.3-70b-instruct",
-            nim_model_triage="meta/llama-3.1-8b-instruct",
             telegram_bot_token="123456:ABC",
             telegram_authorized_chat_id=123,
         )
-        assert settings.effective_triage_model == "meta/llama-3.1-8b-instruct"
+        assert settings.nim_model_primary == "nvidia/nemotron-3-super-120b-a12b"
+        assert settings.nim_model_fallback == "openai/gpt-oss-20b"
+        assert settings.effective_triage_model == "nvidia/nemotron-3-super-120b-a12b"
+
+    def test_effective_triage_model_override(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            nim_model_primary="nvidia/nemotron-3-super-120b-a12b",
+            nim_model_triage="openai/gpt-oss-20b",
+            telegram_bot_token="123456:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings.effective_triage_model == "openai/gpt-oss-20b"
 
     def test_user_focus_areas_comma_separated(self) -> None:
         settings = Settings(

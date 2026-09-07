@@ -12,8 +12,8 @@ Settings can be provided via environment variables, a local `.env` file, or GitH
 |---|---|---|:---:|---|
 | **NVIDIA NIM LLM** | | | | |
 | `NVIDIA_NIM_API_KEY` | `string` | *(Required)* | **Yes** | NVIDIA NIM API key (`nvapi-...`). |
-| `NIM_MODEL_PRIMARY` | `string` | `meta/llama-3.3-70b-instruct` | No | Primary LLM model for comment and post drafting. |
-| `NIM_MODEL_FALLBACK` | `string` | `meta/llama-3.1-8b-instruct` | No | Fallback LLM model if primary encounters rate limit or provider error. |
+| `NIM_MODEL_PRIMARY` | `string` | `nvidia/nemotron-3-super-120b-a12b` | No | Primary LLM model for comment and post drafting. |
+| `NIM_MODEL_FALLBACK` | `string` | `openai/gpt-oss-20b` | No | Fallback LLM model if primary encounters rate limit or provider error. |
 | `NIM_MODEL_TRIAGE` | `string` | `None` (uses primary) | No | Optional lightweight LLM dedicated exclusively to fast post triage. |
 | `NIM_TEMPERATURE` | `float` (`0.0`-`2.0`) | `0.2` | No | Sampling temperature for LLM text generation. |
 | `NIM_TOP_P` | `float` (`0.0`-`1.0`) | `None` | No | Optional nucleus sampling probability. |
@@ -64,7 +64,7 @@ USER_PERSONA="Principal AI Systems Engineer sharing technical insights, architec
 ```
 
 ### 2. Tuning Model Concurrency & Performance
-- For high-throughput feeds, configure `NIM_MODEL_TRIAGE="meta/llama-3.1-8b-instruct"` for fast initial screening, while retaining `NIM_MODEL_PRIMARY="meta/llama-3.3-70b-instruct"` for comment drafting.
+- For high-throughput feeds, configure `NIM_MODEL_TRIAGE="openai/gpt-oss-20b"` for fast initial screening, while retaining `NIM_MODEL_PRIMARY="nvidia/nemotron-3-super-120b-a12b"` for comment drafting.
 - Adjust `NIM_MAX_CONCURRENCY=4` to balance throughput with NIM rate limits.
 
 ### 3. Adjusting Safety Caps
