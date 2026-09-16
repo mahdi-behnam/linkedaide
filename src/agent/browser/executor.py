@@ -366,7 +366,8 @@ class ActionExecutor:
             return False
 
         post_article = self.page.locator(
-            "article, div.feed-shared-update-v2, div.feed-shared-update-v2__content, div[componentkey], a[href*='/in/']"
+            "article, div[id^='expanded'][id*='FEED'], div.feed-shared-update-v2, "
+            "div.feed-shared-update-v2__content, div[componentkey], a[href*='/in/']"
         )
         return await post_article.count() > 0
 
@@ -403,8 +404,8 @@ class ActionExecutor:
 
         try:
             react_btn = self.page.locator(
-                "button[aria-label*='React Like'], button[aria-label*='Like' i], "
-                "button.react-button__trigger, button.reactions-react-button, "
+                "button[aria-label*='Reaction button state' i], button[aria-label*='React Like'], "
+                "button[aria-label*='Like' i], button.react-button__trigger, button.reactions-react-button, "
                 "button.feed-shared-social-action-bar__action-button:has-text('Like'), button:has-text('Like')"
             ).first
 
@@ -415,8 +416,16 @@ class ActionExecutor:
             # Check if already reacted
             aria_pressed = (await react_btn.get_attribute("aria-pressed") or "").strip().lower()
             aria_label = (await react_btn.get_attribute("aria-label") or "").lower()
-            if aria_pressed in ("true", "1") or "unreact" in aria_label or "unlike" in aria_label:
-                logger.info("Post %s already reacted; skipping click", self.page.url)
+            is_already_reacted = (
+                aria_pressed in ("true", "1")
+                or "unreact" in aria_label
+                or "unlike" in aria_label
+                or ("reaction button state" in aria_label and "no reaction" not in aria_label)
+            )
+            if is_already_reacted:
+                logger.info(
+                    "Post %s already reacted (%s); skipping click", self.page.url, aria_label
+                )
                 return True
 
             norm_type = reaction_type.strip().lower()
@@ -536,14 +545,20 @@ class ActionExecutor:
 
             # Locate comment button
             comment_btn = self.page.locator(
-                "button[aria-label*='Comment'], button:has-text('Comment'), button.comment-button"
+                "button[aria-label*='Comment'], button[aria-label*='comment' i], "
+                "button.comment-button, "
+                "button.feed-shared-social-action-bar__action-button:has-text('Comment'), "
+                "button:has-text('Comment')"
             ).first
             if await comment_btn.count() > 0:
                 await comment_btn.click()
 
             comment_box_selector = (
-                "div.tiptap.ProseMirror, div[role='textbox'][aria-label*='comment' i], "
-                "div[role='textbox'][contenteditable='true'], div.ql-editor, textarea[name='comment']"
+                "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror, "
+                "div.tiptap.ProseMirror, "
+                "div[role='textbox'][aria-label*='comment' i], "
+                "div[role='textbox'][contenteditable='true'], "
+                "div.ql-editor, textarea[name='comment']"
             )
             comment_box = self.page.locator(comment_box_selector).first
             if await comment_box.count() == 0:
@@ -557,8 +572,13 @@ class ActionExecutor:
             await humanized_type(comment_box, comment_text)
 
             submit_btn_selector = (
-                "button.comments-comment-box__submit-button, button:has-text('Comment'), "
-                "button:has-text('Post'), button[type='submit']"
+                "button[componentkey*='commentButtonSection'], "
+                "div[id*='commentButtonSection'] button, "
+                "button.comments-comment-box__submit-button, "
+                "div.comments-comment-box button[type='submit'], "
+                "button[type='submit']:has-text('Comment'), "
+                "button[type='submit']:has-text('Post'), "
+                "button:has-text('Comment')"
             )
             submit_btn = self.page.locator(submit_btn_selector).first
             if await submit_btn.count() == 0:
@@ -649,7 +669,10 @@ class ActionExecutor:
 
         try:
             start_post_selector = (
-                "button:has-text('Start a post'), button.share-box-feed-entry__trigger"
+                "div[role='button']:has-text('Start a post'), "
+                "button:has-text('Start a post'), "
+                "button.share-box-feed-entry__trigger, "
+                "[data-view-name*='share-box'] [role='button']"
             )
             start_post_btn = self.page.locator(start_post_selector).first
             if await start_post_btn.count() == 0:
@@ -666,7 +689,7 @@ class ActionExecutor:
                 "div.share-box-modal, div.artdeco-modal[role='dialog'], div.share-creation-state"
             ).first
 
-            editor_selector = "div.ql-editor, div[role='textbox']"
+            editor_selector = "div.tiptap.ProseMirror, div.ql-editor, div[role='textbox']"
             editor = self.page.locator(editor_selector).first
             if await editor.count() == 0:
                 await self._capture_telemetry(

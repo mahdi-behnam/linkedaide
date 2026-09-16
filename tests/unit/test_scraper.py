@@ -468,3 +468,157 @@ async def test_scraper_target_url_bot_challenge_detection(mock_settings: Setting
 
         page.goto.assert_awaited_once()
         mock_telemetry.assert_awaited_once_with(page, trigger="feed_challenge")
+
+
+@pytest.mark.asyncio
+async def test_scraper_extracts_posts_from_expanded_feed_cards(mock_settings: Settings) -> None:
+    """Scraper resolves posts using div[id^='expanded'][id$='MAIN_FEED_RELEVANCE'] and extracts URN from id."""
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    # Mock card with URN in ID attribute
+    card = MagicMock()
+    card.get_attribute = AsyncMock(
+        side_effect=lambda attr: "expanded-desktop-feed-update-urn:li:activity:7999888777-MAIN_FEED_RELEVANCE"
+        if attr == "id"
+        else None
+    )
+
+    actor = MagicMock()
+    actor.count = AsyncMock(return_value=1)
+    actor.inner_text = AsyncMock(return_value="Bob Developer • 1st\nPrincipal Architect")
+
+    text = MagicMock()
+    text.count = AsyncMock(return_value=1)
+    text.inner_text = AsyncMock(
+        return_value="Here is a detailed post about building reliable distributed systems with Python and LangGraph. …see more"
+    )
+
+    def card_locator(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "actor" in selector:
+            loc.first = actor
+        elif "text" in selector:
+            loc.first = text
+        else:
+            unmatched = MagicMock()
+            unmatched.count = AsyncMock(return_value=0)
+            loc.first = unmatched
+        return loc
+
+    card.locator = MagicMock(side_effect=card_locator)
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=1)
+    cards_loc.nth = MagicMock(return_value=card)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        if "div[id^='expanded'][id$='MAIN_FEED_RELEVANCE']" in selector:
+            return cards_loc
+        empty = MagicMock()
+        empty.count = AsyncMock(return_value=0)
+        return empty
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch("agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock),
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        posts = await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        assert len(posts) == 1
+        assert posts[0].post_urn == "urn:li:activity:7999888777"
+        assert posts[0].author_name == "Bob Developer"
+        assert "distributed systems with Python" in posts[0].post_text
+        assert not posts[0].post_text.endswith("…see more")
+
+
+@pytest.mark.asyncio
+async def test_scraper_filters_sidebar_navigation_and_short_texts(mock_settings: Settings) -> None:
+    """Scraper skips short texts (< 30 chars) and known navigation artifacts."""
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    # Card 1: Sidebar item "Saved items" (11 chars)
+    card1 = MagicMock()
+    card1.get_attribute = AsyncMock(return_value=None)
+    actor1 = MagicMock()
+    actor1.count = AsyncMock(return_value=0)
+    text1 = MagicMock()
+    text1.count = AsyncMock(return_value=1)
+    text1.inner_text = AsyncMock(return_value="Saved items")
+
+    def card1_locator(s: str) -> MagicMock:
+        loc = MagicMock()
+        if "text" in s:
+            loc.first = text1
+        else:
+            unmatched = MagicMock()
+            unmatched.count = AsyncMock(return_value=0)
+            loc.first = unmatched
+        return loc
+
+    card1.locator = MagicMock(side_effect=card1_locator)
+
+    # Card 2: Valid post (> 30 chars)
+    card2 = MagicMock()
+    card2.get_attribute = AsyncMock(
+        side_effect=lambda attr: "urn:li:activity:888111222" if attr == "data-urn" else None
+    )
+    actor2 = MagicMock()
+    actor2.count = AsyncMock(return_value=1)
+    actor2.inner_text = AsyncMock(return_value="Charlie Engineer")
+    text2 = MagicMock()
+    text2.count = AsyncMock(return_value=1)
+    text2.inner_text = AsyncMock(
+        return_value="Comprehensive guide to microservices orchestration and resilience patterns."
+    )
+
+    def card2_locator(s: str) -> MagicMock:
+        loc = MagicMock()
+        if "actor" in s:
+            loc.first = actor2
+        elif "text" in s:
+            loc.first = text2
+        else:
+            unmatched = MagicMock()
+            unmatched.count = AsyncMock(return_value=0)
+            loc.first = unmatched
+        return loc
+
+    card2.locator = MagicMock(side_effect=card2_locator)
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=2)
+    cards_loc.nth = MagicMock(side_effect=lambda idx: card1 if idx == 0 else card2)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch("agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock),
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        scraper = FeedScraper(page, mock_settings)
+        posts = await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        # Only card 2 should be accepted, card 1 must be filtered out
+        assert len(posts) == 1
+        assert posts[0].post_urn == "urn:li:activity:888111222"
+        assert posts[0].author_name == "Charlie Engineer"

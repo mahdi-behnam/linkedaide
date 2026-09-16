@@ -49,7 +49,7 @@ class TestSettings:
 
     def test_settings_default_models(self) -> None:
         settings = Settings(
-            _env_file=None,
+            _env_file=None,  # type: ignore[call-arg]
             nvidia_nim_api_key="nvapi-test-key",
             telegram_bot_token="123456:ABC",
             telegram_authorized_chat_id=123,

@@ -836,6 +836,50 @@ async def test_react_to_post_already_reacted_skips_click(base_settings: Settings
 
 
 @pytest.mark.asyncio
+async def test_react_to_post_modern_aria_already_reacted(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    react_btn = MagicMock()
+    react_btn.count = AsyncMock(return_value=1)
+    react_btn.get_attribute = AsyncMock(
+        side_effect=lambda attr: None if attr == "aria-pressed" else "Reaction button state: Like"
+    )
+    react_btn.click = AsyncMock()
+    react_btn.first = react_btn
+    page.locator = MagicMock(return_value=react_btn)
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(
+        reaction_type="like", item_id="already_reacted_modern", dry_run=False
+    )
+    assert result is True
+    react_btn.click.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_react_to_post_modern_aria_no_reaction_clicks(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
+    react_btn = MagicMock()
+    react_btn.count = AsyncMock(return_value=1)
+    react_btn.get_attribute = AsyncMock(
+        side_effect=lambda attr: None
+        if attr == "aria-pressed"
+        else "Reaction button state: no reaction"
+    )
+    react_btn.click = AsyncMock()
+    react_btn.first = react_btn
+    page.locator = MagicMock(return_value=react_btn)
+
+    executor = ActionExecutor(page, base_settings)
+    result = await executor.react_to_post(
+        reaction_type="like", item_id="like_modern", dry_run=False
+    )
+    assert result is True
+    react_btn.click.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_react_to_post_live_like_success(base_settings: Settings) -> None:
     page = MagicMock()
     page.url = "https://www.linkedin.com/feed/update/urn:li:activity:100/"
