@@ -387,3 +387,145 @@ class TestSettings:
             "ai",
         ]
         assert decoder.decode_complex_value("target_hashtags", field_info, "  ") == []
+
+    def test_llm_provider_defaults_and_normalization(self) -> None:
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings.llm_provider == "nvidia"
+
+        settings_openai = Settings(
+            llm_provider="  OPENAI  ",
+            openai_api_key="sk-test",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings_openai.llm_provider == "openai"
+
+    def test_llm_provider_unsupported_raises_config_error(self) -> None:
+        with pytest.raises(ConfigError) as exc_info:
+            load_settings(
+                llm_provider="unsupported_backend",
+                telegram_bot_token="123:ABC",
+                telegram_authorized_chat_id=123,
+            )
+        assert "Unsupported LLM provider" in str(exc_info.value)
+
+    def test_llm_provider_keys_and_endpoints(self) -> None:
+        settings = Settings(
+            llm_provider="openai",
+            openai_api_key="sk-openai-123",
+            anthropic_api_key="sk-ant-456",
+            gemini_api_key="gm-789",
+            groq_api_key="gsk-abc",
+            ollama_base_url="http://custom-ollama:11434",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert isinstance(settings.openai_api_key, SecretStr)
+        assert settings.openai_api_key.get_secret_value() == "sk-openai-123"
+        assert isinstance(settings.anthropic_api_key, SecretStr)
+        assert settings.anthropic_api_key.get_secret_value() == "sk-ant-456"
+        assert isinstance(settings.gemini_api_key, SecretStr)
+        assert settings.gemini_api_key.get_secret_value() == "gm-789"
+        assert isinstance(settings.groq_api_key, SecretStr)
+        assert settings.groq_api_key.get_secret_value() == "gsk-abc"
+        assert settings.ollama_base_url == "http://custom-ollama:11434"
+
+    def test_provider_default_and_effective_models(self) -> None:
+        providers_expected = {
+            "openai": ("gpt-4o", "gpt-4o-mini", "gpt-4o-mini"),
+            "anthropic": (
+                "claude-3-5-sonnet-latest",
+                "claude-3-5-haiku-latest",
+                "claude-3-5-haiku-latest",
+            ),
+            "gemini": ("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash"),
+            "groq": (
+                "llama-3.3-70b-versatile",
+                "llama-3.1-8b-instant",
+                "llama-3.1-8b-instant",
+            ),
+            "ollama": ("llama3.2", "llama3.2", "llama3.2"),
+        }
+
+        for provider, (exp_primary, exp_fallback, exp_triage) in providers_expected.items():
+            settings = Settings(
+                llm_provider=provider,
+                telegram_bot_token="123:ABC",
+                telegram_authorized_chat_id=123,
+            )
+            assert settings.default_primary_model == exp_primary
+            assert settings.default_fallback_model == exp_fallback
+            assert settings.default_triage_model == exp_triage
+            assert settings.effective_primary_model == exp_primary
+            assert settings.effective_fallback_model == exp_fallback
+            assert settings.effective_triage_model == exp_triage
+            assert settings.get_model_for_role("generation") == exp_primary
+            assert settings.get_model_for_role("fallback") == exp_fallback
+            assert settings.get_model_for_role("triage") == exp_triage
+
+    def test_provider_effective_models_override(self) -> None:
+        settings = Settings(
+            llm_provider="openai",
+            nim_model_primary="gpt-4-turbo",
+            nim_model_fallback="gpt-3.5-turbo",
+            nim_model_triage="gpt-4o-mini",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings.effective_primary_model == "gpt-4-turbo"
+        assert settings.effective_fallback_model == "gpt-3.5-turbo"
+        assert settings.effective_triage_model == "gpt-4o-mini"
+
+    def test_get_api_key_for_provider(self) -> None:
+        settings = Settings(
+            llm_provider="anthropic",
+            anthropic_api_key="sk-ant-test",
+            openai_api_key="sk-open-test",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings.get_api_key_for_provider() is not None
+        assert (
+            isinstance(settings.get_api_key_for_provider(), SecretStr)
+            and settings.get_api_key_for_provider().get_secret_value() == "sk-ant-test"  # type: ignore[union-attr]
+        )
+        assert (
+            isinstance(settings.get_api_key_for_provider("openai"), SecretStr)
+            and settings.get_api_key_for_provider("openai").get_secret_value() == "sk-open-test"  # type: ignore[union-attr]
+        )
+
+    def test_load_multi_llm_settings_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk-env-key")
+        monkeypatch.setenv("LLM_MODEL_PRIMARY", "llama-3.3-70b-custom")
+        monkeypatch.setenv("LLM_MODEL_FALLBACK", "llama-3.1-8b-custom")
+        monkeypatch.setenv("LLM_MODEL_TRIAGE", "llama-3.1-8b-triage")
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "999:TOKEN")
+        monkeypatch.setenv("TELEGRAM_AUTHORIZED_CHAT_ID", "555123")
+
+        settings = load_settings()
+        assert settings.llm_provider == "groq"
+        assert isinstance(settings.groq_api_key, SecretStr)
+        assert settings.groq_api_key.get_secret_value() == "gsk-env-key"
+        assert settings.nim_model_primary == "llama-3.3-70b-custom"
+        assert settings.nim_model_fallback == "llama-3.1-8b-custom"
+        assert settings.nim_model_triage == "llama-3.1-8b-triage"
+        assert settings.effective_primary_model == "llama-3.3-70b-custom"
+        assert settings.effective_fallback_model == "llama-3.1-8b-custom"
+        assert settings.effective_triage_model == "llama-3.1-8b-triage"
+
+    def test_load_google_api_key_alias_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("LLM_PROVIDER", "gemini")
+        monkeypatch.setenv("GOOGLE_API_KEY", "AIzaSyFakeGoogleKey")
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "999:TOKEN")
+        monkeypatch.setenv("TELEGRAM_AUTHORIZED_CHAT_ID", "555123")
+
+        settings = load_settings()
+        assert settings.llm_provider == "gemini"
+        assert isinstance(settings.gemini_api_key, SecretStr)
+        assert settings.gemini_api_key.get_secret_value() == "AIzaSyFakeGoogleKey"
+

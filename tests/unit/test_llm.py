@@ -101,6 +101,180 @@ class TestChatModelFactory:
         build_chat_model(mock_settings, model_name="custom/model-v1")
         assert mock_chat_nvidia.call_args[1]["model"] == "custom/model-v1"
 
+    @patch("agent.llm.models.ChatOpenAI")
+    def test_build_chat_model_openai(
+        self, mock_chat_openai: MagicMock, mock_settings: Settings
+    ) -> None:
+        object.__setattr__(mock_settings, "llm_provider", "openai")
+        object.__setattr__(mock_settings, "openai_api_key", "sk-test-openai-12345")
+
+        # Generation role defaults to gpt-4o
+        build_chat_model(mock_settings, role="generation")
+        mock_chat_openai.assert_called_with(
+            model="gpt-4o",
+            temperature=0.2,
+            max_tokens=512,
+            timeout=30.0,
+            api_key="sk-test-openai-12345",
+            base_url="https://integrate.api.nvidia.com/v1",
+            top_p=0.95,
+        )
+
+        # Triage role defaults to gpt-4o-mini (when nim_model_triage is None)
+        object.__setattr__(mock_settings, "nim_model_triage", None)
+        build_chat_model(mock_settings, role="triage")
+        assert mock_chat_openai.call_args[1]["model"] == "gpt-4o-mini"
+
+        # Fallback role defaults to gpt-4o-mini
+        build_chat_model(mock_settings, role="fallback")
+        assert mock_chat_openai.call_args[1]["model"] == "gpt-4o-mini"
+
+        # Explicit model name override
+        build_chat_model(mock_settings, model_name="gpt-4-turbo")
+        assert mock_chat_openai.call_args[1]["model"] == "gpt-4-turbo"
+
+    @patch("agent.llm.models.ChatOpenAI")
+    def test_build_chat_model_openai_compatible(
+        self, mock_chat_openai: MagicMock, mock_settings: Settings
+    ) -> None:
+        object.__setattr__(mock_settings, "llm_provider", "openai-compatible")
+        object.__setattr__(mock_settings, "nim_base_url", "https://api.together.xyz/v1")
+        object.__setattr__(mock_settings, "openai_api_key", "sk-compat-key")
+
+        build_chat_model(mock_settings, model_name="meta-llama/Llama-3-70b-chat-hf")
+        mock_chat_openai.assert_called_with(
+            model="meta-llama/Llama-3-70b-chat-hf",
+            temperature=0.2,
+            max_tokens=512,
+            timeout=30.0,
+            api_key="sk-compat-key",
+            base_url="https://api.together.xyz/v1",
+            top_p=0.95,
+        )
+
+    @patch("agent.llm.models.ChatAnthropic")
+    def test_build_chat_model_anthropic(
+        self, mock_chat_anthropic: MagicMock, mock_settings: Settings
+    ) -> None:
+        object.__setattr__(mock_settings, "llm_provider", "anthropic")
+        object.__setattr__(mock_settings, "anthropic_api_key", "sk-ant-test-98765")
+        object.__setattr__(mock_settings, "nim_model_triage", None)
+
+        # Generation role defaults to claude-3-5-sonnet-latest
+        build_chat_model(mock_settings, role="generation")
+        mock_chat_anthropic.assert_called_with(
+            model="claude-3-5-sonnet-latest",
+            temperature=0.2,
+            max_tokens=512,
+            timeout=30.0,
+            api_key="sk-ant-test-98765",
+            top_p=0.95,
+        )
+
+        # Triage role defaults to claude-3-5-haiku-latest
+        build_chat_model(mock_settings, role="triage")
+        assert mock_chat_anthropic.call_args[1]["model"] == "claude-3-5-haiku-latest"
+
+        # Fallback role defaults to claude-3-5-haiku-latest
+        build_chat_model(mock_settings, role="fallback")
+        assert mock_chat_anthropic.call_args[1]["model"] == "claude-3-5-haiku-latest"
+
+    @patch("agent.llm.models.ChatGoogleGenerativeAI")
+    def test_build_chat_model_gemini(
+        self, mock_chat_gemini: MagicMock, mock_settings: Settings
+    ) -> None:
+        object.__setattr__(mock_settings, "llm_provider", "gemini")
+        object.__setattr__(mock_settings, "gemini_api_key", "AIzaSyFakeGeminiKey")
+        object.__setattr__(mock_settings, "nim_model_triage", None)
+
+        # Generation role defaults to gemini-2.0-flash
+        build_chat_model(mock_settings, role="generation")
+        mock_chat_gemini.assert_called_with(
+            model="gemini-2.0-flash",
+            temperature=0.2,
+            max_output_tokens=512,
+            timeout=30.0,
+            google_api_key="AIzaSyFakeGeminiKey",
+            top_p=0.95,
+        )
+
+        # Fallback role defaults to gemini-1.5-flash
+        build_chat_model(mock_settings, role="fallback")
+        assert mock_chat_gemini.call_args[1]["model"] == "gemini-1.5-flash"
+
+        # Triage role defaults to gemini-1.5-flash
+        build_chat_model(mock_settings, role="triage")
+        assert mock_chat_gemini.call_args[1]["model"] == "gemini-1.5-flash"
+
+    @patch("agent.llm.models.ChatGroq")
+    def test_build_chat_model_groq(
+        self, mock_chat_groq: MagicMock, mock_settings: Settings
+    ) -> None:
+        object.__setattr__(mock_settings, "llm_provider", "groq")
+        object.__setattr__(mock_settings, "groq_api_key", "gsk-test-groq-key")
+        object.__setattr__(mock_settings, "nim_model_triage", None)
+
+        # Generation role defaults to llama-3.3-70b-versatile
+        build_chat_model(mock_settings, role="generation")
+        mock_chat_groq.assert_called_with(
+            model="llama-3.3-70b-versatile",
+            temperature=0.2,
+            max_tokens=512,
+            timeout=30.0,
+            groq_api_key="gsk-test-groq-key",
+            top_p=0.95,
+        )
+
+        # Fallback role defaults to llama-3.1-8b-instant
+        build_chat_model(mock_settings, role="fallback")
+        assert mock_chat_groq.call_args[1]["model"] == "llama-3.1-8b-instant"
+
+        # Triage role defaults to llama-3.1-8b-instant
+        build_chat_model(mock_settings, role="triage")
+        assert mock_chat_groq.call_args[1]["model"] == "llama-3.1-8b-instant"
+
+    @patch("agent.llm.models.ChatOllama")
+    def test_build_chat_model_ollama(
+        self, mock_chat_ollama: MagicMock, mock_settings: Settings
+    ) -> None:
+        object.__setattr__(mock_settings, "llm_provider", "ollama")
+        object.__setattr__(mock_settings, "ollama_base_url", "http://localhost:11434")
+
+        build_chat_model(mock_settings, role="generation")
+        mock_chat_ollama.assert_called_with(
+            model="llama3.2",
+            base_url="http://localhost:11434",
+            temperature=0.2,
+            top_p=0.95,
+        )
+
+    def test_build_chat_model_unsupported_provider(self, mock_settings: Settings) -> None:
+        object.__setattr__(mock_settings, "llm_provider", "unsupported_provider")
+        with pytest.raises(ValueError, match="Unsupported LLM provider 'unsupported_provider'"):
+            build_chat_model(mock_settings)
+
+    @pytest.mark.parametrize(
+        ("provider", "cls_name", "expected_package"),
+        [
+            ("openai", "ChatOpenAI", "langchain-openai"),
+            ("anthropic", "ChatAnthropic", "langchain-anthropic"),
+            ("gemini", "ChatGoogleGenerativeAI", "langchain-google-genai"),
+            ("groq", "ChatGroq", "langchain-groq"),
+            ("ollama", "ChatOllama", "langchain-ollama"),
+        ],
+    )
+    def test_missing_optional_provider_package_raises_import_error(
+        self,
+        provider: str,
+        cls_name: str,
+        expected_package: str,
+        mock_settings: Settings,
+    ) -> None:
+        object.__setattr__(mock_settings, "llm_provider", provider)
+        with patch(f"agent.llm.models.{cls_name}", None):
+            with pytest.raises(ImportError, match=f"uv add {expected_package}"):
+                build_chat_model(mock_settings)
+
 
 class TestPrompts:
     """Test suite for prompt templates."""
