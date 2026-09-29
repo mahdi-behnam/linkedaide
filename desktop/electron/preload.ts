@@ -50,6 +50,12 @@ const api: ElectronAPI = {
 
   generateFernetKey: (): Promise<string> =>
     ipcRenderer.invoke("crypto:generateFernetKey"),
+
+  captureSession: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("auth:captureSession"),
+
+  checkSessionHealth: (): Promise<{ valid: boolean; daysRemaining?: number; details?: string }> =>
+    ipcRenderer.invoke("auth:checkSessionHealth"),
 };
 
 contextBridge.exposeInMainWorld("api", api);

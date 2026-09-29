@@ -91,4 +91,7 @@ export interface ElectronAPI {
   encryptSession: (data: string, base64Key: string) => Promise<string>;
   decryptSession: (token: string, base64Key: string) => Promise<string>;
   generateFernetKey: () => Promise<string>;
+  captureSession?: () => Promise<{ success: boolean; error?: string }>;
+  checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
 }
+

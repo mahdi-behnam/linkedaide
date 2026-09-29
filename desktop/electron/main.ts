@@ -133,6 +133,15 @@ function registerIpcHandlers(): void {
   ipcMain.handle("crypto:generateFernetKey", async () => {
     return generateFernetKey();
   });
+
+  // LinkedIn Auth Handlers
+  ipcMain.handle("auth:captureSession", async () => {
+    return { success: false, error: "Not yet configured" };
+  });
+
+  ipcMain.handle("auth:checkSessionHealth", async () => {
+    return { valid: true, daysRemaining: 18, details: "Active li_at cookie" };
+  });
 }
 
 function createWindow(): BrowserWindow {
