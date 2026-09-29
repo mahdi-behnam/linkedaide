@@ -23,9 +23,10 @@ secrets/
 *storage_state*.json
 *storage-state*.json
 
-auth/
+/auth/
 playwright/.auth/
 tests/.auth/
+!desktop/electron/auth/
 
 
 # ------------------------------------------------------------
@@ -188,6 +189,7 @@ temp/
 # ------------------------------------------------------------
 
 node_modules/
+node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

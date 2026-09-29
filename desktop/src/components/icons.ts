@@ -31,6 +31,8 @@ import {
   ChatTeardropText,
   Sparkle,
   Quotes,
+  Key,
+  Warning,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -69,4 +71,6 @@ export {
   ChatTeardropText,
   Sparkle,
   Quotes,
+  Key,
+  Warning,
 };
