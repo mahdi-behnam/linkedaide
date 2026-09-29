@@ -676,6 +676,7 @@ def test_adv_max_retries_exhaustion_preserves_local_commit(
     hook_file.write_text(
         "#!/bin/sh\necho 'Remote push rejected by server policy' >&2\nexit 1\n", encoding="utf-8"
     )
+    hook_file.chmod(0o755)
 
     item = PendingAction(
         item_id="item_doomed_001",

@@ -490,6 +490,7 @@ def test_commit_and_push_max_retries_exhausted(
     hook_dir.mkdir(exist_ok=True)
     hook_file = hook_dir / "pre-receive"
     hook_file.write_text("#!/bin/sh\necho 'Hook rejected' >&2\nexit 1\n", encoding="utf-8")
+    hook_file.chmod(0o755)
 
     item = PendingAction(
         item_id="item_retry_exhaust",
