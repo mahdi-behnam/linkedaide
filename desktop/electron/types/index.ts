@@ -76,6 +76,14 @@ export interface DesktopSettings {
   apiSecret: string;
   encryptionKey?: string;
   autoRefreshInterval?: number;
+  executionMode?: "cloud" | "local";
+  headless?: boolean;
+  minimizeToTray?: boolean;
+  notificationsEnabled?: boolean;
+  maxCommentsPerDay?: number;
+  maxPostsPerDay?: number;
+  maxSuggestionsPerRun?: number;
+  actionTtlHours?: number;
 }
 
 export interface ElectronAPI {

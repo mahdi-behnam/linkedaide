@@ -6,6 +6,7 @@
  */
 
 import { app, BrowserWindow, ipcMain, session } from "electron";
+import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { WorkerClient } from "./api/workerClient";
@@ -17,7 +18,7 @@ import {
 } from "./crypto/fernet";
 import { TrayManager } from "./tray/trayManager";
 import { PollingEngine } from "./tray/pollingEngine";
-import type { DesktopSettings } from "./types";
+import type { ActionResult, DesktopSettings } from "./types";
 
 interface QuittableApp extends Electron.App {
   isQuitting?: boolean;
@@ -40,6 +41,14 @@ function loadSettings(): DesktopSettings {
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
     autoRefreshInterval: 30,
+    executionMode: "cloud",
+    headless: true,
+    minimizeToTray: true,
+    notificationsEnabled: true,
+    maxCommentsPerDay: 15,
+    maxPostsPerDay: 3,
+    maxSuggestionsPerRun: 10,
+    actionTtlHours: 24,
   };
 
   try {
@@ -71,6 +80,11 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
       baseUrl: updated.workerUrl,
       apiSecret: updated.apiSecret,
     });
+
+    if (updated.autoRefreshInterval && pollingEngine) {
+      pollingEngine.setIntervalMs(updated.autoRefreshInterval * 1000);
+    }
+
     return true;
   } catch (err) {
     console.error("Failed to save desktop settings:", err);
@@ -79,7 +93,7 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
 }
 
 function registerIpcHandlers(): void {
-  // Cloudflare Worker API Handlers
+  // Cloudflare Worker & Local Runner API Handlers
   ipcMain.handle("api:fetchState", async () => {
     return await workerClient.fetchState();
   });
@@ -87,11 +101,53 @@ function registerIpcHandlers(): void {
   ipcMain.handle(
     "api:executeAction",
     async (_event, action: "approve" | "reject", itemId: string) => {
+      const settings = loadSettings();
+      if (settings.executionMode === "local" && action === "approve") {
+        return new Promise<ActionResult>((resolve) => {
+          const repoRoot = path.resolve(__dirname, "../..");
+          const child = spawn("uv", ["run", "agent", "execute", "--action-id", itemId], {
+            cwd: repoRoot,
+            env: { ...process.env, HEADLESS: String(settings.headless ?? true) },
+          });
+          child.on("close", (code) => {
+            resolve({
+              success: code === 0,
+              itemId,
+              action,
+              message: code === 0 ? "Local execution completed" : "Local execution failed",
+            });
+          });
+          child.on("error", (err) => {
+            resolve({
+              success: false,
+              itemId,
+              action,
+              error: err.message,
+            });
+          });
+        });
+      }
       return await workerClient.executeAction(action, itemId);
     }
   );
 
   ipcMain.handle("api:triggerScout", async () => {
+    const settings = loadSettings();
+    if (settings.executionMode === "local") {
+      return new Promise<boolean>((resolve) => {
+        const repoRoot = path.resolve(__dirname, "../..");
+        const child = spawn("uv", ["run", "agent", "scout"], {
+          cwd: repoRoot,
+          env: { ...process.env, HEADLESS: String(settings.headless ?? true) },
+        });
+        child.on("close", (code) => {
+          resolve(code === 0);
+        });
+        child.on("error", () => {
+          resolve(false);
+        });
+      });
+    }
     return await workerClient.triggerScout();
   });
 
@@ -209,7 +265,9 @@ function createWindow(): BrowserWindow {
   });
 
   win.on("close", (event) => {
-    if (!mainApp.isQuitting && trayManager) {
+    const settings = loadSettings();
+    const shouldMinimize = settings.minimizeToTray ?? true;
+    if (!mainApp.isQuitting && trayManager && shouldMinimize) {
       event.preventDefault();
       win.hide();
       return false;

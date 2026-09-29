@@ -63,6 +63,14 @@ export class PollingEngine {
     return this.intervalMs;
   }
 
+  public setIntervalMs(ms: number): void {
+    this.intervalMs = ms;
+    if (this.isRunning) {
+      this.stop();
+      this.start(false);
+    }
+  }
+
   public getIsRunning(): boolean {
     return this.isRunning;
   }
