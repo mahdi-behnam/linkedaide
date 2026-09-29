@@ -1199,7 +1199,10 @@ class TestCommandHandlerCallbackQueries:
                 "id": "cb_edit_test",
                 "from": {"id": mock_settings.telegram_authorized_chat_id},
                 "data": f"edit:{sample_pending_action.item_id}",
-                "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+                "message": {
+                    "message_id": 5001,
+                    "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                },
             }
 
             res = await cmd_handler.handle_callback_query(cb)
@@ -1239,7 +1242,10 @@ class TestCommandHandlerCallbackQueries:
                 "id": "cb_reg_test",
                 "from": {"id": mock_settings.telegram_authorized_chat_id},
                 "data": f"reg:{sample_pending_action.item_id}",
-                "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+                "message": {
+                    "message_id": 5001,
+                    "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                },
             }
 
             res = await cmd_handler.handle_callback_query(cb)
@@ -1297,7 +1303,10 @@ class TestCommandHandlerCallbackQueries:
                 "id": "cb_reg_llm",
                 "from": {"id": mock_settings.telegram_authorized_chat_id},
                 "data": f"reg:{action.item_id}",
-                "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+                "message": {
+                    "message_id": 5001,
+                    "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                },
             }
 
             res = await cmd_handler.handle_callback_query(cb)
@@ -1305,7 +1314,9 @@ class TestCommandHandlerCallbackQueries:
 
             updated_item = test_state_store.read_pending(action.item_id)
             assert updated_item is not None
-            assert updated_item.draft_text == "Here is an alternative contrarian angle on concurrency."
+            assert (
+                updated_item.draft_text == "Here is an alternative contrarian angle on concurrency."
+            )
 
             edits = [r for r in recorded if r["path"].endswith("/editMessageText")]
             assert len(edits) == 1
@@ -1409,7 +1420,10 @@ class TestPollFlowRegenerateCallback:
                     "callback_query": {
                         "id": "cb_reg_1",
                         "from": {"id": mock_settings.telegram_authorized_chat_id},
-                        "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+                        "message": {
+                            "message_id": 5001,
+                            "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                        },
                         "data": f"reg:{sample_pending_action.item_id}",
                     },
                 }

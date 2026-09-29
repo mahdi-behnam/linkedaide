@@ -28,7 +28,9 @@ class MockKVHandler:
         # Check simulated failure
         for fail_prefix, status_code in self.fail_paths.items():
             if fail_prefix in path:
-                return httpx.Response(status_code, json={"success": False, "errors": ["Simulated error"]})
+                return httpx.Response(
+                    status_code, json={"success": False, "errors": ["Simulated error"]}
+                )
 
         # Match /values/{key}
         if "/values/" in path:
@@ -36,21 +38,41 @@ class MockKVHandler:
             if request.method == "GET":
                 if key in self.kv:
                     return httpx.Response(200, text=self.kv[key])
-                return httpx.Response(404, json={"success": False, "errors": [{"code": 10009, "message": "key not found"}]})
+                return httpx.Response(
+                    404,
+                    json={
+                        "success": False,
+                        "errors": [{"code": 10009, "message": "key not found"}],
+                    },
+                )
 
             if request.method == "PUT":
                 self.kv[key] = request.content.decode("utf-8")
-                return httpx.Response(200, json={"success": True, "errors": [], "messages": [], "result": None})
+                return httpx.Response(
+                    200, json={"success": True, "errors": [], "messages": [], "result": None}
+                )
 
             if request.method == "DELETE":
                 if key in self.kv:
                     del self.kv[key]
-                    return httpx.Response(200, json={"success": True, "errors": [], "messages": [], "result": None})
-                return httpx.Response(404, json={"success": False, "errors": [{"code": 10009, "message": "key not found"}]})
+                    return httpx.Response(
+                        200, json={"success": True, "errors": [], "messages": [], "result": None}
+                    )
+                return httpx.Response(
+                    404,
+                    json={
+                        "success": False,
+                        "errors": [{"code": 10009, "message": "key not found"}],
+                    },
+                )
 
         # Match /keys
         if path.endswith("/keys"):
-            query = parse_qs(request.url.query.decode("utf-8") if isinstance(request.url.query, bytes) else str(request.url.query))
+            query = parse_qs(
+                request.url.query.decode("utf-8")
+                if isinstance(request.url.query, bytes)
+                else str(request.url.query)
+            )
             prefix = query.get("prefix", [""])[0]
             cursor_param = query.get("cursor", [""])[0]
             limit = int(query.get("limit", ["1000"])[0])
@@ -275,10 +297,12 @@ def test_seen_posts_and_ttl_pruning(kv_store: CloudflareKVStateStore) -> None:
     fresh_time = now.isoformat()
     old_time = (now - timedelta(days=35)).isoformat()
 
-    kv_store.save_seen_hashes({
-        "fresh_hash": fresh_time,
-        "old_hash": old_time,
-    })
+    kv_store.save_seen_hashes(
+        {
+            "fresh_hash": fresh_time,
+            "old_hash": old_time,
+        }
+    )
 
     # load_seen_hashes prunes entries older than 30 days
     valid_hashes = kv_store.load_seen_hashes(ttl_days=30)
@@ -342,7 +366,9 @@ def test_pause_and_incident_state(kv_store: CloudflareKVStateStore) -> None:
 
     # Incident state
     assert kv_store.read_incident() is None
-    kv_store.record_incident(reason="Challenge checkpoint detected", context={"url": "https://linkedin.com/checkpoint"})
+    kv_store.record_incident(
+        reason="Challenge checkpoint detected", context={"url": "https://linkedin.com/checkpoint"}
+    )
     incident = kv_store.read_incident()
     assert incident is not None
     assert incident["reason"] == "Challenge checkpoint detected"

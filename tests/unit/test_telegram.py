@@ -125,12 +125,21 @@ class TestKeyboardsAndMessages:
         # Target Post Author & Headline (with HTML escaping)
         assert "&lt;VP &amp; CTO&gt;" in card
         assert "VP of Engineering @ AI Corp" in card
-        assert "<b>Author:</b> Bob Builder &lt;VP &amp; CTO&gt; (<i>VP of Engineering @ AI Corp</i>)" in card
+        assert (
+            "<b>Author:</b> Bob Builder &lt;VP &amp; CTO&gt; (<i>VP of Engineering @ AI Corp</i>)"
+            in card
+        )
 
         # Clean excerpt blockquote
-        assert "<b>Post Excerpt:</b>\n<blockquote>Exploring scalable microservices with Rust &amp; Go.</blockquote>" in card
+        assert (
+            "<b>Post Excerpt:</b>\n<blockquote>Exploring scalable microservices with Rust &amp; Go.</blockquote>"
+            in card
+        )
         # Draft blockquote
-        assert "<b>Drafted Content:</b>\n<blockquote>Fascinating architecture! How do you handle distributed transaction rollback in this setup?</blockquote>" in card
+        assert (
+            "<b>Drafted Content:</b>\n<blockquote>Fascinating architecture! How do you handle distributed transaction rollback in this setup?</blockquote>"
+            in card
+        )
 
         # Metrics: char and word count
         char_count = len(item.draft_text)
@@ -139,12 +148,16 @@ class TestKeyboardsAndMessages:
 
         # Confidence and reasoning
         assert "<b>Confidence:</b> 94%" in card
-        assert "<b>Reasoning:</b> Strong systems engineering topic matching core focus area." in card
+        assert (
+            "<b>Reasoning:</b> Strong systems engineering topic matching core focus area." in card
+        )
 
         # ID footer
         assert "<i>ID: item_card_test_01</i>" in card
 
-    def test_telegram_client_format_suggestion_card(self, sample_pending_action: PendingAction) -> None:
+    def test_telegram_client_format_suggestion_card(
+        self, sample_pending_action: PendingAction
+    ) -> None:
         card1 = format_suggestion_card(sample_pending_action)
         card2 = TelegramClient.format_suggestion_card(sample_pending_action)
         assert card1 == card2

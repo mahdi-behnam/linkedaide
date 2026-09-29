@@ -528,4 +528,3 @@ class TestSettings:
         assert settings.llm_provider == "gemini"
         assert isinstance(settings.gemini_api_key, SecretStr)
         assert settings.gemini_api_key.get_secret_value() == "AIzaSyFakeGoogleKey"
-

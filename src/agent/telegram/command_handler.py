@@ -524,7 +524,9 @@ class CommandHandler:
                 pending = self.state_store.read_pending(matched_id)
                 if pending is not None:
                     target_message_id = (
-                        reply_msg_id if isinstance(reply_msg_id, int) else pending.telegram_message_id
+                        reply_msg_id
+                        if isinstance(reply_msg_id, int)
+                        else pending.telegram_message_id
                     )
 
         if pending is None:
@@ -740,9 +742,7 @@ class CommandHandler:
                     else getattr(draft_res, "comment_text", None)
                 )
                 if draft_text:
-                    updated = self.state_store.update_pending_draft(
-                        pending.item_id, draft_text
-                    )
+                    updated = self.state_store.update_pending_draft(pending.item_id, draft_text)
                     if updated is not None:
                         updated.engagement_style = alt_style
                         self.state_store.write_pending(updated)

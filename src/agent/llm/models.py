@@ -130,9 +130,7 @@ def _resolve_chat_groq() -> type:
 
         return cls
     except ImportError as e:
-        raise ImportError(
-            "To use Groq, install langchain-groq: uv add langchain-groq"
-        ) from e
+        raise ImportError("To use Groq, install langchain-groq: uv add langchain-groq") from e
 
 
 def _resolve_chat_ollama() -> type:
@@ -144,9 +142,7 @@ def _resolve_chat_ollama() -> type:
 
         return cls
     except ImportError as e:
-        raise ImportError(
-            "To use Ollama, install langchain-ollama: uv add langchain-ollama"
-        ) from e
+        raise ImportError("To use Ollama, install langchain-ollama: uv add langchain-ollama") from e
 
 
 def build_chat_model(

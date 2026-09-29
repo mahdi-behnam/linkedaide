@@ -429,9 +429,7 @@ def check_linkedin_session(settings: Settings | None) -> CheckResult:
     token_str = (
         enc_token.get_secret_value() if isinstance(enc_token, SecretStr) else str(enc_token or "")
     )
-    key_str = (
-        enc_key.get_secret_value() if isinstance(enc_key, SecretStr) else str(enc_key or "")
-    )
+    key_str = enc_key.get_secret_value() if isinstance(enc_key, SecretStr) else str(enc_key or "")
 
     if token_str.strip() and key_str.strip():
         try:
@@ -477,7 +475,9 @@ def run_doctor(
     Returns:
         int: 0 if all checks pass or only warnings; 1 if any check fails.
     """
-    root = repo_root or (Path(args.repo_root) if args and getattr(args, "repo_root", None) else None)
+    root = repo_root or (
+        Path(args.repo_root) if args and getattr(args, "repo_root", None) else None
+    )
 
     print("\n=== LinkedIn HITL Agent Doctor Diagnostics ===\n")
 
@@ -513,9 +513,7 @@ def run_doctor(
     warn_count = sum(1 for r in results if r.status == "WARN")
     fail_count = sum(1 for r in results if r.status == "FAIL")
 
-    print(
-        f"\nResult: {passed_count} passed, {warn_count} warning(s), {fail_count} failed."
-    )
+    print(f"\nResult: {passed_count} passed, {warn_count} warning(s), {fail_count} failed.")
 
     if fail_count > 0:
         print("🔴 Diagnostics failed. Please resolve the errors highlighted above.\n")
@@ -649,12 +647,16 @@ def run_setup(
         print_func(f"  [{num}] {name}")
 
     current_provider = existing.get("LLM_PROVIDER", "nvidia")
-    provider_choice = input_func(
-        f"Select LLM Provider (1-6 or name) [{current_provider}]: "
-    ).strip().lower()
-    selected_provider = provider_map.get(provider_choice, provider_choice if provider_choice else current_provider)
+    provider_choice = (
+        input_func(f"Select LLM Provider (1-6 or name) [{current_provider}]: ").strip().lower()
+    )
+    selected_provider = provider_map.get(
+        provider_choice, provider_choice if provider_choice else current_provider
+    )
     if selected_provider not in SUPPORTED_LLM_PROVIDERS:
-        print_func(f"Note: '{selected_provider}' is not in standard provider list, proceeding anyway.")
+        print_func(
+            f"Note: '{selected_provider}' is not in standard provider list, proceeding anyway."
+        )
     new_vars["LLM_PROVIDER"] = selected_provider
 
     if selected_provider == "nvidia":
@@ -695,9 +697,13 @@ def run_setup(
     # 3. State Persistence Backend
     print_func("\n--- 3. State Persistence Backend ---")
     curr_backend = existing.get("STATE_BACKEND", "git")
-    backend_choice = input_func(
-        f"Select State Backend ('kv' for Cloudflare KV, 'git' for Local/Git) [{curr_backend}]: "
-    ).strip().lower()
+    backend_choice = (
+        input_func(
+            f"Select State Backend ('kv' for Cloudflare KV, 'git' for Local/Git) [{curr_backend}]: "
+        )
+        .strip()
+        .lower()
+    )
     backend = backend_choice if backend_choice else curr_backend
     new_vars["STATE_BACKEND"] = backend
 
@@ -814,22 +820,16 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser = subparsers.add_parser(
         "doctor", help="Run comprehensive diagnostic suite and environment checks"
     )
-    doctor_parser.add_argument(
-        "--repo-root", default=None, help="Root repository path"
-    )
+    doctor_parser.add_argument("--repo-root", default=None, help="Root repository path")
 
     # setup
-    setup_parser = subparsers.add_parser(
-        "setup", help="Interactive onboarding setup wizard"
-    )
+    setup_parser = subparsers.add_parser("setup", help="Interactive onboarding setup wizard")
     setup_parser.add_argument(
         "--env-file", default=".env", help="Path to .env file to update (default: .env)"
     )
 
     # scout
-    scout_parser = subparsers.add_parser(
-        "scout", help="Run the LinkedIn feed scout workflow"
-    )
+    scout_parser = subparsers.add_parser("scout", help="Run the LinkedIn feed scout workflow")
     scout_parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -848,15 +848,9 @@ def build_parser() -> argparse.ArgumentParser:
     execute_parser.add_argument(
         "--action", choices=["approve", "reject"], default=None, help="Action to execute"
     )
-    execute_parser.add_argument(
-        "--item-id", default=None, help="Unique item ID for pending action"
-    )
-    execute_parser.add_argument(
-        "--chat-id", type=int, default=None, help="Telegram chat ID"
-    )
-    execute_parser.add_argument(
-        "--message-id", type=int, default=None, help="Telegram message ID"
-    )
+    execute_parser.add_argument("--item-id", default=None, help="Unique item ID for pending action")
+    execute_parser.add_argument("--chat-id", type=int, default=None, help="Telegram chat ID")
+    execute_parser.add_argument("--message-id", type=int, default=None, help="Telegram message ID")
     execute_parser.add_argument(
         "--callback-query-id", default=None, help="Telegram callback query ID"
     )
@@ -865,9 +859,7 @@ def build_parser() -> argparse.ArgumentParser:
     health_parser = subparsers.add_parser(
         "health", help="Run read-only session health check canary"
     )
-    health_parser.add_argument(
-        "--repo-root", default=None, help="Repository root path"
-    )
+    health_parser.add_argument("--repo-root", default=None, help="Repository root path")
 
     return parser
 

@@ -138,14 +138,14 @@ class CloudflareKVStateStore(BaseStateStore):
                     )
                 data = resp.json()
             except httpx.HTTPError as err:
-                raise StateStoreError(f"HTTP error listing KV keys with prefix '{prefix}': {err}") from err
+                raise StateStoreError(
+                    f"HTTP error listing KV keys with prefix '{prefix}': {err}"
+                ) from err
             except json.JSONDecodeError as err:
                 raise StateStoreError(f"Malformed JSON listing KV keys: {err}") from err
 
             if not data.get("success", False):
-                raise StateStoreError(
-                    f"Cloudflare KV list keys unsuccessful: {data.get('errors')}"
-                )
+                raise StateStoreError(f"Cloudflare KV list keys unsuccessful: {data.get('errors')}")
 
             result = data.get("result", [])
             for item in result:

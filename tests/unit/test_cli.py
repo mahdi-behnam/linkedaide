@@ -411,7 +411,9 @@ def test_check_linkedin_session_missing(tmp_path: Path) -> None:
 
 def test_format_check_result() -> None:
     pass_res = CheckResult(name="Test", status="PASS", message="Passed ok")
-    warn_res = CheckResult(name="Test", status="WARN", message="Warning notice", details="Extra info")
+    warn_res = CheckResult(
+        name="Test", status="WARN", message="Warning notice", details="Extra info"
+    )
     fail_res = CheckResult(name="Test", status="FAIL", message="Failed error")
 
     assert "🟢 Pass" in format_check_result(pass_res)
@@ -761,7 +763,10 @@ def test_run_health_dispatch() -> None:
 
 
 def test_main_doctor_dispatch() -> None:
-    with patch("agent.cli.run_doctor", return_value=0) as mock_doc, pytest.raises(SystemExit) as exc:
+    with (
+        patch("agent.cli.run_doctor", return_value=0) as mock_doc,
+        pytest.raises(SystemExit) as exc,
+    ):
         main(["doctor"])
     assert exc.value.code == 0
     mock_doc.assert_called_once()
