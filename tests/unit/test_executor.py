@@ -863,9 +863,9 @@ async def test_react_to_post_modern_aria_no_reaction_clicks(base_settings: Setti
     react_btn = MagicMock()
     react_btn.count = AsyncMock(return_value=1)
     react_btn.get_attribute = AsyncMock(
-        side_effect=lambda attr: None
-        if attr == "aria-pressed"
-        else "Reaction button state: no reaction"
+        side_effect=lambda attr: (
+            None if attr == "aria-pressed" else "Reaction button state: no reaction"
+        )
     )
     react_btn.click = AsyncMock()
     react_btn.first = react_btn

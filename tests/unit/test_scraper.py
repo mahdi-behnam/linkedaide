@@ -482,9 +482,11 @@ async def test_scraper_extracts_posts_from_expanded_feed_cards(mock_settings: Se
     # Mock card with URN in ID attribute
     card = MagicMock()
     card.get_attribute = AsyncMock(
-        side_effect=lambda attr: "expanded-desktop-feed-update-urn:li:activity:7999888777-MAIN_FEED_RELEVANCE"
-        if attr == "id"
-        else None
+        side_effect=lambda attr: (
+            "expanded-desktop-feed-update-urn:li:activity:7999888777-MAIN_FEED_RELEVANCE"
+            if attr == "id"
+            else None
+        )
     )
 
     actor = MagicMock()

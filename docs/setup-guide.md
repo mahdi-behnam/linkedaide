@@ -42,7 +42,7 @@ Before proceeding, here is a quick map of all secrets used in the system, where 
 ## Prerequisites
 
 Ensure you have installed:
-- **Python `>= 3.14`** and [`uv`](https://docs.astral.sh/uv/) package manager.
+- **Python `>= 3.11`** and [`uv`](https://docs.astral.sh/uv/) package manager.
 - [Node.js](https://nodejs.org/) `>= 18` (for deploying the Cloudflare Worker via Wrangler).
 - An active [LinkedIn](https://www.linkedin.com) account.
 - An [NVIDIA NIM](https://build.nvidia.com/) API account and API key.
