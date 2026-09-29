@@ -9,8 +9,12 @@ on:
 
 jobs:
   test:
-    name: Lint, Type Check & Test
+    name: Lint, Type Check & Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -21,7 +25,9 @@ jobs:
           version: "latest"
 
       - name: Set up Python
-        run: uv python install 3.14
+        run: |
+          uv python install ${{ matrix.python-version }}
+          uv python pin ${{ matrix.python-version }}
 
       - name: Install Dependencies
         run: uv sync --all-groups

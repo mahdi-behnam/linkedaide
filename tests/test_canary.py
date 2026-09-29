@@ -4,8 +4,8 @@ import sys
 
 
 def test_python_version() -> None:
-    """Ensure Python version is >= 3.14."""
-    assert sys.version_info >= (3, 14), f"Expected Python >= 3.14, got {sys.version}"
+    """Ensure Python version is >= 3.11."""
+    assert sys.version_info >= (3, 11), f"Expected Python >= 3.11, got {sys.version}"
 
 
 def test_core_dependencies_importable() -> None:

@@ -77,7 +77,7 @@ Playwright LinkedIn Action Execution
 
 ### Prerequisites
 
-- Python `>= 3.14`
+- Python `>= 3.11`
 - [`uv`](https://docs.astral.sh/uv/) package manager
 - NVIDIA NIM API Key (`NVIDIA_NIM_API_KEY`)
 - Telegram Bot Token (`TELEGRAM_BOT_TOKEN`) & Authorized Chat ID (`TELEGRAM_AUTHORIZED_CHAT_ID`)
