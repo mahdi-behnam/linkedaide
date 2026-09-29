@@ -224,3 +224,17 @@ class BaseStateStore(ABC):
         this method acts as a no-op returning True.
         """
         return True
+
+    # -------------------------------------------------------------------------
+    # Arbitrary Key/Value Storage
+    # -------------------------------------------------------------------------
+
+    @abstractmethod
+    def put_key(self, key: str, value: str) -> None:
+        """Store an arbitrary string value for a key."""
+        ...
+
+    def get_key(self, key: str) -> str | None:
+        """Retrieve an arbitrary string value for a key, or None if not found."""
+        return None
+

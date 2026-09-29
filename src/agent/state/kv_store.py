@@ -375,3 +375,16 @@ class CloudflareKVStateStore(BaseStateStore):
         if self._get_value("incident") is not None:
             return self._delete_key("incident")
         return False
+
+    # -------------------------------------------------------------------------
+    # Arbitrary Key/Value Storage
+    # -------------------------------------------------------------------------
+
+    def put_key(self, key: str, value: str) -> None:
+        """Store string value for key in Cloudflare KV."""
+        self._put_value(key, value)
+
+    def get_key(self, key: str) -> str | None:
+        """Retrieve string value for key from Cloudflare KV."""
+        return self._get_value(key)
+

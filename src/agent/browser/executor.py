@@ -9,10 +9,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agent.browser.biometrics import BiometricController
+from agent.browser.session_keeper import refresh_and_persist_session
 from agent.browser.stealth import (
     detect_challenge_page,
     humanized_dwell,
-    humanized_type,
     is_authwall_or_login,
     wait_for_login_redirect,
 )
@@ -30,17 +31,65 @@ from agent.models.schemas import ExecutionResult
 if TYPE_CHECKING:
     from playwright.async_api import Locator, Page
 
+    from agent.state.base import BaseStateStore
+
 logger = logging.getLogger(__name__)
 
 
 class ActionExecutor:
     """Executes validated LinkedIn write and read actions via Playwright."""
 
-    def __init__(self, page: Page, settings: Settings, debug_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        page: Page,
+        settings: Settings,
+        debug_dir: Path | None = None,
+        state_store: BaseStateStore | None = None,
+        biometrics: BiometricController | None = None,
+    ) -> None:
         self.page = page
         self.settings = settings
         self.debug_dir = debug_dir or (Path("debug") / "screenshots")
         self.debug_dir.mkdir(parents=True, exist_ok=True)
+        self.state_store = state_store
+        self.biometrics = biometrics or BiometricController(page)
+
+    async def refresh_session(self) -> dict[str, Any] | None:
+        """Refresh and persist authenticated session state."""
+        return await self._refresh_and_persist_session()
+
+    async def _refresh_and_persist_session(self) -> dict[str, Any] | None:
+        """Refresh and persist authenticated session state after successful action execution."""
+        enc_key = getattr(self.settings, "session_encryption_key", None)
+        if not enc_key:
+            return None
+
+        ctx = getattr(self.page, "context", None)
+        if not ctx:
+            return None
+
+        store = self.state_store
+        if store is None:
+            try:
+                from agent.state import get_state_store
+
+                store = get_state_store(self.settings, Path.cwd())
+            except Exception:
+                store = None
+
+        if store is None:
+            return None
+
+        try:
+            return await refresh_and_persist_session(
+                context=ctx,
+                session_encryption_key=enc_key,
+                state_store=store,
+            )
+        except Exception as err:
+            logger.warning("Rolling cookie keepalive refresh failed non-fatally: %s", err)
+            return None
+
 
     async def _capture_screenshot(self, name: str) -> str:
         """Capture audit screenshot and return relative path."""
@@ -435,7 +484,7 @@ class ActionExecutor:
 
             norm_type = reaction_type.strip().lower()
             if norm_type in ("", "like"):
-                await react_btn.click()
+                await self.biometrics.click_element(react_btn)
                 return True
 
             # Non-default reaction (e.g. insightful, celebrate, etc.)
@@ -449,13 +498,13 @@ class ActionExecutor:
                 ).first
 
                 if await reaction_menu_item.count() > 0:
-                    await reaction_menu_item.click()
+                    await self.biometrics.click_element(reaction_menu_item)
                     return True
                 else:
                     logger.warning(
                         "Specific reaction button '%s' not found, falling back to Like", norm_type
                     )
-                    await react_btn.click()
+                    await self.biometrics.click_element(react_btn)
                     return True
             except Exception as e:
                 logger.warning(
@@ -463,7 +512,7 @@ class ActionExecutor:
                     norm_type,
                     e,
                 )
-                await react_btn.click()
+                await self.biometrics.click_element(react_btn)
                 return True
 
         except (BotDetectionError, SessionExpiredError):
@@ -556,7 +605,7 @@ class ActionExecutor:
                 "button:has-text('Comment')"
             ).first
             if await comment_btn.count() > 0:
-                await comment_btn.click()
+                await self.biometrics.click_element(comment_btn)
 
             comment_box_selector = (
                 "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror, "
@@ -574,7 +623,7 @@ class ActionExecutor:
                 )
                 raise ExecutionError("Comment input box not found in DOM")
 
-            await humanized_type(comment_box, comment_text)
+            await self.biometrics.type_text(comment_box, comment_text)
 
             submit_btn_selector = (
                 "button[componentkey*='commentButtonSection'], "
@@ -594,7 +643,7 @@ class ActionExecutor:
                 )
                 raise ExecutionError("Comment submit button not found in DOM")
 
-            await submit_btn.click()
+            await self.biometrics.click_element(submit_btn)
 
             # Confirm submission in DOM (wait for box to clear or comment to appear)
             await self._verify_comment_submission(
@@ -605,6 +654,7 @@ class ActionExecutor:
                 timeout=verification_timeout,
             )
 
+            await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_comment_{item_id}")
             return ExecutionResult(
                 success=True,
@@ -688,7 +738,7 @@ class ActionExecutor:
                 )
                 raise ExecutionError("Start a post button not found in DOM")
 
-            await start_post_btn.click()
+            await self.biometrics.click_element(start_post_btn)
 
             modal_loc = self.page.locator(
                 "div.share-box-modal, div.artdeco-modal[role='dialog'], div.share-creation-state"
@@ -704,7 +754,7 @@ class ActionExecutor:
                 )
                 raise ExecutionError("Post editor textbox not found in DOM")
 
-            await humanized_type(editor, post_text)
+            await self.biometrics.type_text(editor, post_text)
 
             post_btn_selector = "button.share-actions__primary-action, button:has-text('Post')"
             post_btn = self.page.locator(post_btn_selector).first
@@ -716,7 +766,7 @@ class ActionExecutor:
                 )
                 raise ExecutionError("Publish post button not found in DOM")
 
-            await post_btn.click()
+            await self.biometrics.click_element(post_btn)
 
             # Active DOM post-submission verification
             await self._verify_post_submission(
@@ -726,6 +776,7 @@ class ActionExecutor:
                 timeout=verification_timeout,
             )
 
+            await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_post_{item_id}")
             return ExecutionResult(
                 success=True,

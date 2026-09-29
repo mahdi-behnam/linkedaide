@@ -513,3 +513,26 @@ class GitStateStore(BaseStateStore):
             raise
         except Exception as err:
             raise StateStoreError(f"Unexpected git state error: {err}") from err
+
+    # -------------------------------------------------------------------------
+    # Arbitrary Key/Value Storage
+    # -------------------------------------------------------------------------
+
+    def put_key(self, key: str, value: str) -> None:
+        """Store an arbitrary string value for key in state directory."""
+        target_path = self.state_dir / f"{key}.txt"
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = target_path.with_suffix(".tmp")
+        temp_path.write_text(value, encoding="utf-8")
+        temp_path.replace(target_path)
+
+    def get_key(self, key: str) -> str | None:
+        """Retrieve an arbitrary string value for key from state directory."""
+        target_path = self.state_dir / f"{key}.txt"
+        if target_path.exists():
+            return target_path.read_text(encoding="utf-8")
+        json_path = self.state_dir / f"{key}.json"
+        if json_path.exists():
+            return json_path.read_text(encoding="utf-8")
+        return None
+
