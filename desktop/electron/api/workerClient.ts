@@ -8,7 +8,6 @@
 import type {
   ActionResult,
   AgentState,
-  DesktopSettings,
   Incident,
 } from "../types";
 
