@@ -15,6 +15,7 @@ from agent.browser.stealth import (
     detect_challenge_page,
     humanized_scroll,
     is_authwall_or_login,
+    wait_for_login_redirect,
 )
 from agent.browser.telemetry import capture_dom_telemetry
 from agent.config import Settings
@@ -141,10 +142,12 @@ class FeedScraper:
 
         # 2. Check for login redirect / authwall (Session invalid/expired)
         if is_authwall_or_login(self.page):
-            screenshot_path = await self._capture_screenshot("feed_session_expired")
-            raise SessionExpiredError(
-                f"LinkedIn session expired or unauthenticated (redirected to: {self.page.url})"
-            )
+            is_authenticated = await wait_for_login_redirect(self.page, timeout=15.0)
+            if not is_authenticated:
+                screenshot_path = await self._capture_screenshot("feed_session_expired")
+                raise SessionExpiredError(
+                    f"LinkedIn session expired or unauthenticated (redirected to: {self.page.url})"
+                )
 
         # 3. Verify feed container
         feed_container = self.page.locator(
@@ -154,7 +157,9 @@ class FeedScraper:
             container_count = await feed_container.count()
             if container_count == 0:
                 if is_authwall_or_login(self.page):
-                    raise SessionExpiredError("Scraper redirected to login / authwall")
+                    is_authenticated = await wait_for_login_redirect(self.page, timeout=15.0)
+                    if not is_authenticated:
+                        raise SessionExpiredError("Scraper redirected to login / authwall")
                 screenshot_path = await self._capture_screenshot("feed_selector_drift")
                 await self._capture_telemetry(
                     trigger="feed_container_drift",

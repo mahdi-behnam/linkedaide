@@ -11,6 +11,8 @@ from agent.browser.stealth import (
     detect_challenge_page,
     humanized_dwell,
     is_authwall_or_login,
+    is_real_login_page,
+    wait_for_login_redirect,
 )
 
 
@@ -59,3 +61,137 @@ async def test_humanized_dwell_custom_bounds() -> None:
         mock_sleep.assert_called_once()
         delay = mock_sleep.call_args[0][0]
         assert 0.1 <= delay <= 0.2
+
+
+@pytest.mark.asyncio
+async def test_is_real_login_page_with_session_ids() -> None:
+    page = MagicMock()
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if selector in ("#session_key", "#session_password"):
+            loc.count = AsyncMock(return_value=1)
+        else:
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+    assert await is_real_login_page(page) is True
+
+
+@pytest.mark.asyncio
+async def test_is_real_login_page_with_email_password_types() -> None:
+    page = MagicMock()
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if selector in ("input[type='email']", "input[type='password']"):
+            loc.count = AsyncMock(return_value=1)
+        else:
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+    assert await is_real_login_page(page) is True
+
+
+@pytest.mark.asyncio
+async def test_is_real_login_page_handshake_returns_false() -> None:
+    # On handshake page ("Signing you in..."), no password/credential inputs exist
+    page = MagicMock()
+    empty_loc = MagicMock()
+    empty_loc.count = AsyncMock(return_value=0)
+    page.locator = MagicMock(return_value=empty_loc)
+
+    assert await is_real_login_page(page) is False
+
+
+@pytest.mark.asyncio
+async def test_is_real_login_page_handles_exception_gracefully() -> None:
+    page = MagicMock()
+    page.locator = MagicMock(side_effect=RuntimeError("Playwright locator crashed"))
+
+    assert await is_real_login_page(page) is False
+
+
+@pytest.mark.asyncio
+async def test_wait_for_login_redirect_immediate_when_already_authenticated() -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    result = await wait_for_login_redirect(page, timeout=15.0)
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_wait_for_login_redirect_returns_false_on_real_login_page() -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/login"
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if selector in ("#session_key", "#session_password"):
+            loc.count = AsyncMock(return_value=1)
+        else:
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+
+    result = await wait_for_login_redirect(page, timeout=15.0)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_wait_for_login_redirect_returns_false_on_challenge_page() -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/checkpoint/challenge"
+
+    result = await wait_for_login_redirect(page, timeout=15.0)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_wait_for_login_redirect_succeeds_when_handshake_redirects_to_feed() -> None:
+    page = MagicMock()
+    # Initially on login handshake page
+    page.url = (
+        "https://www.linkedin.com/login/?session_redirect=https%3A%2F%2Fwww.linkedin.com%2Ffeed%2F"
+    )
+
+    # No real login inputs on handshake page
+    empty_loc = MagicMock()
+    empty_loc.count = AsyncMock(return_value=0)
+    page.locator = MagicMock(return_value=empty_loc)
+
+    call_count = 0
+
+    async def fake_sleep(duration: float) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 2:
+            # Simulate LinkedIn redirecting to /feed/ after 2 polling iterations
+            page.url = "https://www.linkedin.com/feed/"
+
+    with patch("asyncio.sleep", side_effect=fake_sleep):
+        result = await wait_for_login_redirect(page, timeout=15.0)
+        assert result is True
+        assert call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_wait_for_login_redirect_times_out_when_stuck_on_authwall() -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/authwall"
+
+    empty_loc = MagicMock()
+    empty_loc.count = AsyncMock(return_value=0)
+    page.locator = MagicMock(return_value=empty_loc)
+
+    # Fast forward time to simulate 15s timeout
+    with (
+        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch("time.monotonic", side_effect=[0.0, 1.0, 16.0, 17.0]),
+    ):
+        result = await wait_for_login_redirect(page, timeout=15.0)
+        assert result is False

@@ -13,7 +13,11 @@ from playwright.async_api import async_playwright
 
 from agent.browser.scraper import FeedScraper
 from agent.browser.session import ensure_session_file
-from agent.browser.stealth import new_stealth_context
+from agent.browser.stealth import (
+    is_authwall_or_login,
+    new_stealth_context,
+    wait_for_login_redirect,
+)
 from agent.config import Settings, load_settings
 from agent.graphs.scout_graph import build_scout_graph
 from agent.graphs.state import GraphContext, ScoutState
@@ -78,6 +82,21 @@ async def run_scout_flow(
             except Exception as err:
                 logger.warning("Navigation to feed completed with warning: %s", err)
 
+            # If redirected to login/handshake, wait up to 15s for auto-redirect to complete
+            if is_authwall_or_login(page):
+                logger.info(
+                    "Detected login redirect/handshake; waiting up to 15s for auto-redirect..."
+                )
+                await wait_for_login_redirect(page, timeout=15.0)
+
+            # If successfully on an authenticated page, persist refreshed session cookies
+            if not is_authwall_or_login(page):
+                try:
+                    await context_pw.storage_state(path=str(storage_state_path))
+                    logger.debug("Refreshed session storage state saved to %s", storage_state_path)
+                except Exception as err:
+                    logger.debug("Could not refresh session storage state: %s", err)
+
             scraper = FeedScraper(page, cfg)
 
             # 5. Construct GraphContext
@@ -96,6 +115,17 @@ async def run_scout_flow(
             result = await graph.ainvoke(
                 initial_state, config={"configurable": {"context": graph_context}}
             )
+
+            # Persist updated session cookies after successful run
+            if result.get("status") not in (
+                "session_expired",
+                "halted_bot_detection",
+                "scrape_error",
+            ):
+                try:
+                    await context_pw.storage_state(path=str(storage_state_path))
+                except Exception:
+                    pass
 
             logger.info(
                 "Scout flow finished with status: %s (suggestions: %d, errors: %d)",

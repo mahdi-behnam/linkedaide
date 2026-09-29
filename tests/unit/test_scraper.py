@@ -10,7 +10,7 @@ from pydantic import SecretStr
 
 from agent.browser.scraper import FeedScraper, hashtag_to_feed_url
 from agent.config import Settings
-from agent.errors import BotDetectionError, SelectorDriftError
+from agent.errors import BotDetectionError, SelectorDriftError, SessionExpiredError
 
 
 @pytest.fixture
@@ -622,3 +622,59 @@ async def test_scraper_filters_sidebar_navigation_and_short_texts(mock_settings:
         assert len(posts) == 1
         assert posts[0].post_urn == "urn:li:activity:888111222"
         assert posts[0].author_name == "Charlie Engineer"
+
+
+@pytest.mark.asyncio
+async def test_scraper_session_expired_when_redirect_wait_fails(
+    mock_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/login"
+
+    with patch(
+        "agent.browser.scraper.wait_for_login_redirect", new_callable=AsyncMock
+    ) as mock_wait:
+        mock_wait.return_value = False
+        scraper = FeedScraper(page, mock_settings)
+
+        with pytest.raises(SessionExpiredError, match="session expired or unauthenticated"):
+            await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        mock_wait.assert_awaited_once_with(page, timeout=15.0)
+
+
+@pytest.mark.asyncio
+async def test_scraper_survives_when_login_redirect_succeeds(
+    mock_settings: Settings,
+) -> None:
+    page = MagicMock()
+    # Initially on login handshake URL
+    page.url = (
+        "https://www.linkedin.com/login/?session_redirect=https%3A%2F%2Fwww.linkedin.com%2Ffeed%2F"
+    )
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=0)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch("agent.browser.scraper.wait_for_login_redirect", new_callable=AsyncMock) as mock_wait,
+        patch("agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock),
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock),
+    ):
+        mock_wait.return_value = True
+        scraper = FeedScraper(page, mock_settings)
+        posts = await scraper.scrape_feed(max_posts=5, seen_hashes=set())
+
+        assert len(posts) == 0  # No cards found, but did not raise SessionExpiredError
+        mock_wait.assert_awaited_once_with(page, timeout=15.0)

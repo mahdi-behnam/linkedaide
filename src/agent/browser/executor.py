@@ -14,6 +14,7 @@ from agent.browser.stealth import (
     humanized_dwell,
     humanized_type,
     is_authwall_or_login,
+    wait_for_login_redirect,
 )
 from agent.browser.telemetry import capture_dom_telemetry
 from agent.config import Settings
@@ -341,7 +342,11 @@ class ActionExecutor:
             raise BotDetectionError(f"Challenge page detected during login check: {self.page.url}")
 
         if is_authwall_or_login(self.page):
-            raise SessionExpiredError(f"LinkedIn session expired; redirected to {self.page.url}")
+            is_authenticated = await wait_for_login_redirect(self.page, timeout=15.0)
+            if not is_authenticated:
+                raise SessionExpiredError(
+                    f"LinkedIn session expired; redirected to {self.page.url}"
+                )
 
         nav_or_feed = self.page.locator("nav.global-nav, main, div.scaffold-layout")
         return await nav_or_feed.count() > 0

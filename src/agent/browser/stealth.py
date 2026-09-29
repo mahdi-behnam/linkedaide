@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import time
 from pathlib import Path
 from typing import Any
 
@@ -144,7 +145,10 @@ def detect_challenge_page(page: Page) -> bool:
     Returns:
         bool: True if a challenge page is detected.
     """
-    url_lower = page.url.lower()
+    raw_url = getattr(page, "url", "")
+    if not isinstance(raw_url, str):
+        return False
+    url_lower = raw_url.lower()
 
     for pattern in CHALLENGE_PATTERNS:
         if pattern.lower() in url_lower:
@@ -162,10 +166,79 @@ def is_authwall_or_login(page: Page) -> bool:
     Returns:
         bool: True if redirected to login or authwall.
     """
-    url_lower = page.url.lower()
+    raw_url = getattr(page, "url", "")
+    if not isinstance(raw_url, str):
+        return False
+    url_lower = raw_url.lower()
     return (
         "/uas/login" in url_lower
         or "/login" in url_lower
         or "authwall" in url_lower
         or "/checkpoint/lg/login-submit" in url_lower
     )
+
+
+async def is_real_login_page(page: Page) -> bool:
+    """Check if the current page is a real login form requiring user credentials.
+
+    A real login page either contains:
+    1. Input elements with the id of '#session_key' and '#session_password', OR
+    2. Input elements with type of 'email' and 'password'.
+    """
+    try:
+        # Condition 1: input elements with id of '#session_key' and '#session_password'
+        key_loc = page.locator("#session_key")
+        pwd_loc = page.locator("#session_password")
+        key_cnt = await key_loc.count() if hasattr(key_loc, "count") else 0
+        pwd_cnt = await pwd_loc.count() if hasattr(pwd_loc, "count") else 0
+        if isinstance(key_cnt, int | float) and isinstance(pwd_cnt, int | float):
+            if key_cnt > 0 and pwd_cnt > 0:
+                return True
+
+        # Condition 2: input elements with type of 'email' and 'password'
+        email_loc = page.locator("input[type='email']")
+        type_pwd_loc = page.locator("input[type='password']")
+        email_cnt = await email_loc.count() if hasattr(email_loc, "count") else 0
+        type_pwd_cnt = await type_pwd_loc.count() if hasattr(type_pwd_loc, "count") else 0
+        if isinstance(email_cnt, int | float) and isinstance(type_pwd_cnt, int | float):
+            if email_cnt > 0 and type_pwd_cnt > 0:
+                return True
+    except Exception:
+        pass
+
+    return False
+
+
+async def wait_for_login_redirect(page: Page, timeout: float = 15.0) -> bool:
+    """Wait for LinkedIn login handshake or redirect to complete.
+
+    Args:
+        page: Playwright Page instance.
+        timeout: Maximum wait time in seconds (default: 15.0).
+
+    Returns:
+        bool: True if authenticated / redirected away from login or authwall.
+              False if confirmed on a real login page, challenge encountered, or timeout reached.
+    """
+    deadline = time.monotonic() + max(0.0, timeout)
+    poll_interval = 0.5
+
+    while True:
+        if detect_challenge_page(page):
+            return False
+
+        # If redirected away from login/authwall URLs
+        if not is_authwall_or_login(page):
+            return True
+
+        # If confirmed on a real login page requiring credentials
+        if await is_real_login_page(page):
+            return False
+
+        if time.monotonic() >= deadline:
+            break
+
+        remaining = deadline - time.monotonic()
+        await asyncio.sleep(min(poll_interval, max(0.01, remaining)))
+
+    return not is_authwall_or_login(page)
