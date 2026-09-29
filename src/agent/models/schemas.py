@@ -88,6 +88,11 @@ class CommentDraft(BaseModel):
         description="Engagement style applied in the drafted comment",
     )
 
+    @property
+    def comment_text(self) -> str:
+        """Alias for draft_comment providing backwards and idiomatic compatibility."""
+        return self.draft_comment
+
 
 class PostIdea(BaseModel):
     """Structured LLM draft for an original LinkedIn post."""

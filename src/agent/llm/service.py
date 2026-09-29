@@ -13,6 +13,7 @@ import random
 from typing import Any, NoReturn, TypeVar
 
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, ValidationError
 
 from agent.config import Settings
@@ -34,6 +35,7 @@ from agent.models.schemas import (
     RiskFlag,
     TriageResult,
 )
+from agent.safety.anti_cliche import AntiClicheScanner
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,7 @@ class LLMService:
         chains: LLMChains | None = None,
         fallback_chains: LLMChains | None = None,
         repair_model: BaseChatModel | Any | None = None,
+        anti_cliche_scanner: AntiClicheScanner | None = None,
         backoff_base: float = 1.5,
         max_attempts: int = 3,
     ) -> None:
@@ -57,6 +60,7 @@ class LLMService:
         self._backoff_base = backoff_base
         self._max_attempts = max_attempts
         self._semaphore = asyncio.Semaphore(settings.nim_max_concurrency)
+        self._anti_cliche_scanner = anti_cliche_scanner or AntiClicheScanner()
 
         self._chains = chains or build_structured_chains(settings)
         if fallback_chains:
@@ -78,6 +82,11 @@ class LLMService:
         else:
             self._repair_model = build_chat_model(settings, role="fallback")
         self._repair_prompt = build_repair_prompt()
+
+    @property
+    def anti_cliche_scanner(self) -> AntiClicheScanner:
+        """Access the deterministic anti-cliché scanner instance."""
+        return self._anti_cliche_scanner
 
     async def evaluate_post(self, post: PostRecord) -> TriageResult:
         """Triage a scraped feed post to determine if commenting is recommended.
@@ -147,7 +156,153 @@ class LLMService:
                 except ValueError:
                     resolved_enum = EngagementStyle.TECHNICAL_DEEP_DIVE
             draft = draft.model_copy(update={"engagement_style": resolved_enum})
+
+        # Anti-cliché scan and bounded 1-turn repair
+        scan_result = self._anti_cliche_scanner.scan(draft.comment_text)
+        if not scan_result.passed:
+            logger.warning(
+                f"Comment draft failed anti-cliché guardrails with {len(scan_result.violations)} violation(s). "
+                "Executing exactly one bounded corrective repair turn..."
+            )
+            repaired_draft = await self._attempt_anti_cliche_repair(
+                draft=draft,
+                violations=scan_result.violations,
+                post=post,
+                selected_style=style_str,
+            )
+
+            # Re-scan the repaired draft
+            if repaired_draft is not None:
+                re_scan = self._anti_cliche_scanner.scan(repaired_draft.comment_text)
+                if re_scan.passed:
+                    logger.info("Repaired comment draft passed anti-cliché guardrails.")
+                    if repaired_draft.engagement_style is None:
+                        repaired_draft = repaired_draft.model_copy(
+                            update={"engagement_style": draft.engagement_style}
+                        )
+                    return repaired_draft
+                logger.warning(
+                    f"Repaired draft still failed anti-cliché scan with {len(re_scan.violations)} violation(s). "
+                    "Proceeding to deterministic sanitization."
+                )
+                candidate_text = repaired_draft.comment_text
+            else:
+                candidate_text = draft.comment_text
+
+            # If it still fails, sanitize the opener deterministically or fallback cleanly
+            sanitized = self._anti_cliche_scanner.sanitize(candidate_text)
+            if sanitized:
+                final_scan = self._anti_cliche_scanner.scan(sanitized)
+                if final_scan.passed:
+                    logger.info("Deterministic sanitization of repaired draft passed guardrails.")
+                    return draft.model_copy(update={"draft_comment": sanitized})
+
+            # If candidate was repaired draft and failed sanitization, try sanitizing original draft
+            if candidate_text != draft.comment_text:
+                sanitized_orig = self._anti_cliche_scanner.sanitize(draft.comment_text)
+                if sanitized_orig:
+                    final_scan_orig = self._anti_cliche_scanner.scan(sanitized_orig)
+                    if final_scan_orig.passed:
+                        logger.info("Deterministic sanitization of original draft passed guardrails.")
+                        return draft.model_copy(update={"draft_comment": sanitized_orig})
+
+            # Clean fallback
+            logger.warning(
+                "Deterministic sanitization exhausted; returning clean technical fallback."
+            )
+            fallback_text = self._build_anti_cliche_fallback_comment(post)
+            return draft.model_copy(update={"draft_comment": fallback_text})
+
         return draft
+
+    async def _attempt_anti_cliche_repair(
+        self,
+        draft: CommentDraft,
+        violations: list[str],
+        post: PostRecord,
+        selected_style: str,
+    ) -> CommentDraft | None:
+        """Execute exactly one bounded corrective repair turn with the model."""
+        violations_formatted = "\n".join(f"- {v}" for v in violations)
+        repair_instruction = (
+            "Your previous draft was rejected by the anti-cliché safety guardrail due to the following violations:\n"
+            f"{violations_formatted}\n\n"
+            "Rewrite the comment strictly avoiding these phrases and jump directly into the technical observation."
+        )
+
+        messages = [
+            SystemMessage(
+                content=(
+                    f"You are a Principal Software Engineer drafting a high-signal LinkedIn comment under {self._settings.max_comment_words} words. "
+                    "Strictly avoid any generic praise, filler buzzwords, or sycophantic openers. "
+                    "Start immediately with the substance of your technical insight. "
+                    "Respond with a JSON object containing: 'draft_comment' (string) and 'topic_tags' (list of strings)."
+                )
+            ),
+            HumanMessage(
+                content=(
+                    f"Author: {post.author_name}\n"
+                    f"Post: \"\"\"\n{post.post_text}\n\"\"\"\n\n"
+                    f"Previous rejected draft:\n\"\"\"\n{draft.draft_comment}\n\"\"\"\n\n"
+                    f"{repair_instruction}"
+                )
+            ),
+        ]
+
+        repair_model = self._repair_model
+        if repair_model is None:
+            try:
+                repair_model = build_chat_model(self._settings, role="fallback")
+            except Exception:
+                repair_model = None
+
+        if repair_model is None:
+            return None
+
+        try:
+            response = await repair_model.ainvoke(messages)
+            if isinstance(response, CommentDraft):
+                return response
+            if isinstance(response, dict):
+                return CommentDraft.model_validate(response)
+
+            response_text = response.content if hasattr(response, "content") else str(response)
+            if isinstance(response_text, list):
+                response_text = " ".join(str(p) for p in response_text)
+
+            cleaned = str(response_text).strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.splitlines()
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                if lines and lines[-1].startswith("```"):
+                    lines = lines[:-1]
+                cleaned = "\n".join(lines).strip()
+
+            try:
+                data = json.loads(cleaned)
+                if isinstance(data, dict):
+                    if "draft_comment" in data:
+                        return CommentDraft.model_validate(data)
+                    if "comment" in data:
+                        return draft.model_copy(update={"draft_comment": data["comment"]})
+            except Exception:
+                pass
+
+            if cleaned:
+                return draft.model_copy(update={"draft_comment": cleaned})
+            return None
+        except Exception as e:
+            logger.warning(f"Anti-cliché repair invocation failed: {e}")
+            return None
+
+    def _build_anti_cliche_fallback_comment(self, post: PostRecord) -> str:
+        """Construct a clean, substantive, anti-cliché fallback technical comment."""
+        author = post.author_name.strip() if post.author_name else "the author"
+        return (
+            f"The architecture trade-offs highlighted by {author} emphasize key considerations around "
+            "system reliability and operational complexity in production."
+        )
 
     async def draft_post_idea(self, context: PostIdeationContext) -> PostIdea | None:
         """Propose an original LinkedIn post idea."""
