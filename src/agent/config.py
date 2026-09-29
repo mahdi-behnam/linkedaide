@@ -10,7 +10,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import AliasChoices, Field, SecretStr, ValidationError, field_validator
+from pydantic import (
+    AliasChoices,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -25,6 +32,48 @@ from agent.errors import ConfigError
 COMPLEX_LIST_FIELDS: frozenset[str] = frozenset(
     {"user_focus_areas", "scout_target_urls", "target_hashtags"}
 )
+
+SUPPORTED_LLM_PROVIDERS: frozenset[str] = frozenset(
+    {"nvidia", "openai", "anthropic", "gemini", "groq", "ollama", "openai-compatible"}
+)
+
+PROVIDER_DEFAULT_MODELS: dict[str, dict[str, str]] = {
+    "nvidia": {
+        "primary": "nvidia/nemotron-3-super-120b-a12b",
+        "fallback": "openai/gpt-oss-20b",
+        "triage": "openai/gpt-oss-20b",
+    },
+    "openai": {
+        "primary": "gpt-4o",
+        "fallback": "gpt-4o-mini",
+        "triage": "gpt-4o-mini",
+    },
+    "anthropic": {
+        "primary": "claude-3-5-sonnet-latest",
+        "fallback": "claude-3-5-haiku-latest",
+        "triage": "claude-3-5-haiku-latest",
+    },
+    "gemini": {
+        "primary": "gemini-2.0-flash",
+        "fallback": "gemini-1.5-flash",
+        "triage": "gemini-1.5-flash",
+    },
+    "groq": {
+        "primary": "llama-3.3-70b-versatile",
+        "fallback": "llama-3.1-8b-instant",
+        "triage": "llama-3.1-8b-instant",
+    },
+    "ollama": {
+        "primary": "llama3.2",
+        "fallback": "llama3.2",
+        "triage": "llama3.2",
+    },
+    "openai-compatible": {
+        "primary": "default",
+        "fallback": "default",
+        "triage": "default",
+    },
+}
 
 
 def _parse_raw_string_list(value: str) -> list[str]:
@@ -71,25 +120,68 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    # LLM Provider Configuration
+    llm_provider: str = Field(
+        default="nvidia",
+        description="LLM provider: nvidia, openai, anthropic, gemini, groq, ollama, openai-compatible",
+        validation_alias=AliasChoices("LLM_PROVIDER", "llm_provider"),
+    )
+
+    # Multi-provider API keys and endpoints
+    openai_api_key: SecretStr | str | None = Field(
+        default=None,
+        description="API key for OpenAI",
+        validation_alias=AliasChoices("OPENAI_API_KEY", "openai_api_key"),
+    )
+    anthropic_api_key: SecretStr | str | None = Field(
+        default=None,
+        description="API key for Anthropic",
+        validation_alias=AliasChoices("ANTHROPIC_API_KEY", "anthropic_api_key"),
+    )
+    gemini_api_key: SecretStr | str | None = Field(
+        default=None,
+        description="API key for Google Gemini",
+        validation_alias=AliasChoices(
+            "GEMINI_API_KEY", "gemini_api_key", "GOOGLE_API_KEY", "google_api_key"
+        ),
+    )
+    groq_api_key: SecretStr | str | None = Field(
+        default=None,
+        description="API key for Groq",
+        validation_alias=AliasChoices("GROQ_API_KEY", "groq_api_key"),
+    )
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        description="Base URL for Ollama service",
+        validation_alias=AliasChoices("OLLAMA_BASE_URL", "ollama_base_url"),
+    )
+
     # NVIDIA NIM LLM Configuration
-    nvidia_nim_api_key: SecretStr | str = Field(
+    nvidia_nim_api_key: SecretStr | str | None = Field(
+        default=None,
         description="API key for NVIDIA NIM endpoints",
         validation_alias=AliasChoices("NVIDIA_NIM_API_KEY", "nvidia_nim_api_key"),
     )
     nim_model_primary: str = Field(
         default="nvidia/nemotron-3-super-120b-a12b",
         description="Primary model for comment and post drafting",
-        validation_alias=AliasChoices("NIM_MODEL_PRIMARY", "nim_model_primary"),
+        validation_alias=AliasChoices(
+            "LLM_MODEL_PRIMARY", "llm_model_primary", "NIM_MODEL_PRIMARY", "nim_model_primary"
+        ),
     )
     nim_model_fallback: str = Field(
         default="openai/gpt-oss-20b",
         description="Fallback model if primary encounters rate limit or failure",
-        validation_alias=AliasChoices("NIM_MODEL_FALLBACK", "nim_model_fallback"),
+        validation_alias=AliasChoices(
+            "LLM_MODEL_FALLBACK", "llm_model_fallback", "NIM_MODEL_FALLBACK", "nim_model_fallback"
+        ),
     )
     nim_model_triage: str | None = Field(
         default=None,
         description="Optional lightweight model dedicated to post triage",
-        validation_alias=AliasChoices("NIM_MODEL_TRIAGE", "nim_model_triage"),
+        validation_alias=AliasChoices(
+            "LLM_MODEL_TRIAGE", "llm_model_triage", "NIM_MODEL_TRIAGE", "nim_model_triage"
+        ),
     )
     nim_temperature: float = Field(
         default=0.2,
@@ -264,7 +356,27 @@ class Settings(BaseSettings):
             file_secret_settings,
         )
 
-    @field_validator("nvidia_nim_api_key", "telegram_bot_token", mode="after")
+    @field_validator("llm_provider", mode="before")
+    @classmethod
+    def normalize_provider(cls, v: Any) -> str:
+        """Normalize and validate LLM provider name."""
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in SUPPORTED_LLM_PROVIDERS:
+                return clean
+            raise ValueError(
+                f"Unsupported LLM provider '{v}'. Supported: {', '.join(sorted(SUPPORTED_LLM_PROVIDERS))}"
+            )
+        return "nvidia"
+
+    @model_validator(mode="after")
+    def validate_provider_keys(self) -> "Settings":
+        """Validate that the required API key for the selected provider is supplied."""
+        if self.llm_provider == "nvidia" and not self.nvidia_nim_api_key:
+            raise ValueError("nvidia_nim_api_key is required when llm_provider is 'nvidia'")
+        return self
+
+    @field_validator("telegram_bot_token", mode="after")
     @classmethod
     def ensure_secret_str(cls, v: SecretStr | str) -> SecretStr:
         """Ensure secret fields are wrapped in SecretStr."""
@@ -272,7 +384,16 @@ class Settings(BaseSettings):
             return SecretStr(v)
         return v
 
-    @field_validator("session_encryption_key", "linkedin_session_state_enc", mode="after")
+    @field_validator(
+        "nvidia_nim_api_key",
+        "session_encryption_key",
+        "linkedin_session_state_enc",
+        "openai_api_key",
+        "anthropic_api_key",
+        "gemini_api_key",
+        "groq_api_key",
+        mode="after",
+    )
     @classmethod
     def ensure_optional_secret_str(cls, v: SecretStr | str | None) -> SecretStr | None:
         """Ensure optional secret fields are wrapped in SecretStr."""
@@ -317,10 +438,82 @@ class Settings(BaseSettings):
                 normalized.append(clean)
         return normalized
 
+    def get_default_models_for_provider(self, provider: str | None = None) -> dict[str, str]:
+        """Return default primary, fallback, and triage models for the specified or current provider."""
+        p = (provider or self.llm_provider).lower().strip()
+        return PROVIDER_DEFAULT_MODELS.get(p, PROVIDER_DEFAULT_MODELS["nvidia"])
+
+    @property
+    def default_primary_model(self) -> str:
+        """Default primary model for the configured LLM provider."""
+        return self.get_default_models_for_provider()["primary"]
+
+    @property
+    def default_fallback_model(self) -> str:
+        """Default fallback model for the configured LLM provider."""
+        return self.get_default_models_for_provider()["fallback"]
+
+    @property
+    def default_triage_model(self) -> str:
+        """Default triage model for the configured LLM provider."""
+        return self.get_default_models_for_provider()["triage"]
+
+    @property
+    def effective_primary_model(self) -> str:
+        """Effective primary model for the configured provider."""
+        if (
+            self.llm_provider != "nvidia"
+            and self.nim_model_primary == PROVIDER_DEFAULT_MODELS["nvidia"]["primary"]
+        ):
+            return self.default_primary_model
+        return self.nim_model_primary
+
+    @property
+    def effective_fallback_model(self) -> str:
+        """Effective fallback model for the configured provider."""
+        if (
+            self.llm_provider != "nvidia"
+            and self.nim_model_fallback == PROVIDER_DEFAULT_MODELS["nvidia"]["fallback"]
+        ):
+            return self.default_fallback_model
+        return self.nim_model_fallback
+
     @property
     def effective_triage_model(self) -> str:
         """Return the effective model to use for triage."""
-        return self.nim_model_triage or self.nim_model_primary
+        if self.nim_model_triage:
+            return self.nim_model_triage
+        if (
+            self.llm_provider != "nvidia"
+            and self.nim_model_primary == PROVIDER_DEFAULT_MODELS["nvidia"]["primary"]
+        ):
+            return self.default_triage_model
+        return self.effective_primary_model
+
+    def get_model_for_role(self, role: str = "generation") -> str:
+        """Return effective model name for a specific role ('generation', 'fallback', 'triage')."""
+        if role == "triage":
+            return self.effective_triage_model
+        if role == "fallback":
+            return self.effective_fallback_model
+        return self.effective_primary_model
+
+    def get_api_key_for_provider(self, provider: str | None = None) -> SecretStr | str | None:
+        """Return the configured API key for the specified or current provider."""
+        p = (provider or self.llm_provider).lower().strip()
+        if p == "nvidia":
+            return self.nvidia_nim_api_key
+        if p == "openai":
+            return self.openai_api_key
+        if p == "anthropic":
+            return self.anthropic_api_key
+        if p == "gemini":
+            return self.gemini_api_key
+        if p == "groq":
+            return self.groq_api_key
+        if p == "openai-compatible":
+            return self.openai_api_key or self.nvidia_nim_api_key
+        return None
 
 
 def load_settings(**kwargs: Any) -> Settings:
