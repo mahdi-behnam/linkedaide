@@ -198,6 +198,8 @@ pnpm-debug.log*
 .dev.vars.*
 
 infra/telegram-relay-worker/dist/
+desktop/dist/
+desktop/dist-electron/
 
 
 # ------------------------------------------------------------
