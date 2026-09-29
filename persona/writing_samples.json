@@ -1,0 +1,93 @@
+[
+  {
+    "id": "ws-01",
+    "topic": "distributed systems and consensus",
+    "tags": ["distributed-systems", "consensus", "raft", "paxos", "replication"],
+    "context": "Discussion on distributed consensus complexity and Raft vs Paxos in production databases.",
+    "sample": "Raft is easier to reason about on paper, but the operational edge cases around joint consensus and leader heartbeats under network partitions are where teams get burned. In production, leader lease renewals with monotonic clocks save you from split-brain scenarios far more reliably than trusting NTP sync across nodes. Have you benchmarked heartbeat jitter under sustained 90% CPU load?"
+  },
+  {
+    "id": "ws-02",
+    "topic": "agentic workflows and human-in-the-loop",
+    "tags": ["agentic-workflows", "hitl", "safety", "ai-agents", "human-in-the-loop"],
+    "context": "Debate regarding fully autonomous AI agents performing production actions versus human-in-the-loop boundaries.",
+    "sample": "Autonomous ReAct loops executing external side effects without an approval gate are an operational nightmare waiting to happen. The sweet spot is asynchronous human-in-the-loop: let the agent draft and triage at scale, but keep deterministic code enforcing rate limits, circuit breakers, and interactive human sign-off before hitting third-party APIs. Autonomy for research, determinism for execution."
+  },
+  {
+    "id": "ws-03",
+    "topic": "state stores and durable execution",
+    "tags": ["state-stores", "durability", "event-sourcing", "persistence", "kv-store"],
+    "context": "Post evaluating event-driven architectures vs checkpointed state stores for long-running workflows.",
+    "sample": "Ephemeral state in orchestrators is a debt that gets called during your first regional network blip. Checkpointing state transitions to an append-only WAL or durable edge KV store decouples workflow orchestration from process lifetimes. If your orchestrator restarts midway through a transaction, deterministic replay from the last committed snapshot is the only thing preventing duplicate side effects."
+  },
+  {
+    "id": "ws-04",
+    "topic": "vector memory and hybrid search",
+    "tags": ["vector-search", "rag", "embeddings", "retrieval", "hybrid-search"],
+    "context": "Evaluating whether vector search alone is sufficient for enterprise RAG and memory retrieval.",
+    "sample": "Dense embeddings excel at broad topical recall, but pure cosine similarity fails miserably on exact identifiers, temporal recency, and domain-specific acronyms. Hybrid retrieval pairing BM25 lexical search with dense vectors and metadata pre-filtering consistently cuts hallucinations by 40% in enterprise corpora. Vector similarity without structured metadata is just probabilistic guessing."
+  },
+  {
+    "id": "ws-05",
+    "topic": "determinism and llm safety",
+    "tags": ["determinism", "llm-safety", "guardrails", "system-design", "circuit-breaker"],
+    "context": "Discussion on using system prompts versus code-level guardrails for LLM application security.",
+    "sample": "Never entrust safety policy to an LLM system prompt. Prompts are advisory hints; deterministic gatekeepers in compiled code are contractual guarantees. Daily caps, pending action TTLs, schema validation, and circuit breakers belong in deterministic state machines that run outside the model's token prediction loop."
+  },
+  {
+    "id": "ws-06",
+    "topic": "structured outputs and schema validation",
+    "tags": ["structured-outputs", "pydantic", "json-schema", "type-safety", "constrained-decoding"],
+    "context": "Techniques for eliminating hallucinations and parsing errors when extracting structured data from LLMs.",
+    "sample": "Free-form JSON generation with regex extraction is fragile at scale. Forcing constrained decoding via tool-calling grammar or JSON schemas alongside strict Pydantic validation eliminates 99% of formatting drift. When validation fails, a single bounded repair turn with specific schema violation diffs works far better than unbounded re-prompting."
+  },
+  {
+    "id": "ws-07",
+    "topic": "cache invalidation and edge kv stores",
+    "tags": ["caching", "edge-computing", "kv-store", "latency", "concurrency"],
+    "context": "Post exploring globally distributed KV stores and eventual consistency challenges.",
+    "sample": "Edge KV storage offers sub-10ms read latencies globally, but eventual consistency across edge locations introduces nasty read-your-own-writes race conditions. For mutable coordination state, pairing edge KV with monotonic revision tokens and conditional put operations (optimistic concurrency control) is essential to prevent silent write stomping."
+  },
+  {
+    "id": "ws-08",
+    "topic": "fine-tuning vs few-shot in-context learning",
+    "tags": ["fine-tuning", "in-context-learning", "rag", "llm-optimization", "few-shot"],
+    "context": "Post debating when to fine-tune an LLM versus using few-shot prompt injection and dynamic memory.",
+    "sample": "Fine-tuning updates parametric weights, but it is notoriously brittle when underlying business rules or stylistic nuances evolve weekly. Dynamic few-shot injection using vector similarity retrieval over authentic writing samples achieves superior voice fidelity without catastrophic forgetting or the operational overhead of maintaining custom fine-tuned weights."
+  },
+  {
+    "id": "ws-09",
+    "topic": "database transactions and concurrency control",
+    "tags": ["databases", "concurrency", "acid", "isolation-levels", "postgresql"],
+    "context": "Discussion on PostgreSQL isolation levels and handling concurrent updates under high contention.",
+    "sample": "Read Committed is the default in Postgres, but assuming it protects against lost updates under concurrent write contention is a common trap. Explicit row locking with SELECT ... FOR UPDATE or switching to Serializable isolation with explicit retry logic at the application layer is required when multiple workers coordinate on shared queue items."
+  },
+  {
+    "id": "ws-10",
+    "topic": "observability and telemetry in distributed agents",
+    "tags": ["observability", "telemetry", "opentelemetry", "metrics", "tracing"],
+    "context": "Monitoring and tracing asynchronous LLM agent workflows in production.",
+    "sample": "Traditional APM metrics like CPU and heap tell you nothing about agent health. Production agent observability requires tracking token velocity, schema repair rates, tool invocation latency distributions, and human approval turnaround time. If your P95 time-to-approval spikes past 4 hours, your pending state TTL policy will silently drop actions."
+  },
+  {
+    "id": "ws-11",
+    "topic": "asynchronous messaging and rate limiting",
+    "tags": ["rate-limiting", "token-bucket", "asyncio", "backpressure", "resilience"],
+    "context": "Implementing resilient rate limiters and backpressure for third-party API integrations.",
+    "sample": "Naive sleep-based rate limiters break down under concurrent async tasks. Implementing distributed token-bucket rate limiting backed by atomic Redis or edge KV counters, combined with exponential backoff and decorrelated jitter, prevents synchronized thundering herd retries when upstream providers throw 429s."
+  },
+  {
+    "id": "ws-12",
+    "topic": "browser automation and stealth in scraping",
+    "tags": ["playwright", "browser-automation", "stealth", "reliability", "anti-bot"],
+    "context": "Post on headless browser challenges and anti-bot detection in feed scraping.",
+    "sample": "Bypassing bot detection isn't about throwing randomized delays into DOM clicks; it's about matching genuine human behavioral distributions—variable typing cadence, micro-movements, and preserving authenticated session cookies. When a challenge checkpoint is encountered, the only safe production response is a fatal circuit trip, not automated evasion."
+  },
+  {
+    "id": "ws-13",
+    "topic": "langgraph orchestration vs procedural scripts",
+    "tags": ["langgraph", "orchestration", "state-machine", "workflow", "acyclic-graph"],
+    "context": "Comparing procedural Python scripts with graph-based orchestrators like LangGraph.",
+    "sample": "Procedural Python scripts quickly become unmaintainable spaghetti when adding branching, circuit breakers, and async checkpoints. State-machine graphs with typed immutable state, explicit conditional transitions, and isolated single-responsibility nodes make failure domains visible and testable in isolation."
+  }
+]

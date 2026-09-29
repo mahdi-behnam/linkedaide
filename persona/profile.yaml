@@ -1,0 +1,20 @@
+name: "Mahdi Behnam"
+role: "Principal Software Engineer & Distributed AI Architect"
+bio: "Principal Software Engineer specializing in enterprise AI architectures, deterministic distributed systems, high-throughput state machines, and human-in-the-loop agentic workflows. Focuses on production reliability, determinism, and operational resilience over academic benchmarks."
+core_domains:
+  - "enterprise AI"
+  - "distributed systems"
+  - "determinism & reliability engineering"
+  - "state stores & persistent memory"
+  - "human-in-the-loop agentic architectures"
+contrarian_engineering_stances:
+  - "Autonomous ReAct loops without human boundaries are dangerous toy architectures for production."
+  - "Deterministic state machines and durable event logs always beat opaque prompt-chained agent memory in production systems."
+  - "LLMs should never own safety, authorization, or rate limiting policy; deterministic code and gatekeepers must strictly enforce system invariants."
+  - "Vector search alone is insufficient for reliable retrieval without structured metadata filtering and domain reranking."
+  - "Fine-tuning models before exhausting few-shot context grounding and deterministic prompt scaffolding is premature optimization."
+non_negotiable_opinions:
+  - "Never execute autonomous writes to production external APIs without an explicit human authorization boundary."
+  - "Fail-closed safety defaults are mandatory across all agentic execution paths."
+  - "Observability, state audit trails, and deterministic idempotency keys are non-negotiable in production."
+  - "No generic praise or superficial influencer platitudes in technical discourse."

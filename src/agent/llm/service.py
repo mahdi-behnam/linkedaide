@@ -26,6 +26,7 @@ from agent.errors import (
 from agent.llm.chains import LLMChains, build_structured_chains
 from agent.llm.models import build_chat_model
 from agent.llm.prompts import build_repair_prompt
+from agent.llm.voice_memory import VoiceMemoryStore
 from agent.models.schemas import (
     CommentDraft,
     EngagementStyle,
@@ -53,6 +54,7 @@ class LLMService:
         fallback_chains: LLMChains | None = None,
         repair_model: BaseChatModel | Any | None = None,
         anti_cliche_scanner: AntiClicheScanner | None = None,
+        voice_memory: VoiceMemoryStore | None = None,
         backoff_base: float = 1.5,
         max_attempts: int = 3,
     ) -> None:
@@ -61,6 +63,7 @@ class LLMService:
         self._max_attempts = max_attempts
         self._semaphore = asyncio.Semaphore(settings.nim_max_concurrency)
         self._anti_cliche_scanner = anti_cliche_scanner or AntiClicheScanner()
+        self._voice_memory = voice_memory or VoiceMemoryStore()
 
         self._chains = chains or build_structured_chains(settings)
         if fallback_chains:
@@ -87,6 +90,24 @@ class LLMService:
     def anti_cliche_scanner(self) -> AntiClicheScanner:
         """Access the deterministic anti-cliché scanner instance."""
         return self._anti_cliche_scanner
+
+    @property
+    def voice_memory(self) -> VoiceMemoryStore:
+        """Access the operator voice memory store."""
+        return self._voice_memory
+
+    def index_executed_comment(
+        self,
+        item_id: str,
+        comment_text: str,
+        post_excerpt: str = "",
+    ) -> None:
+        """Index an operator-approved executed comment into voice memory for continuous learning."""
+        self._voice_memory.index_executed_comment(
+            item_id=item_id,
+            comment_text=comment_text,
+            post_excerpt=post_excerpt,
+        )
 
     async def evaluate_post(self, post: PostRecord) -> TriageResult:
         """Triage a scraped feed post to determine if commenting is recommended.
@@ -136,6 +157,8 @@ class LLMService:
             else str(selected_style)
         )
 
+        voice_context = self._voice_memory.get_voice_context(post_text=raw_text)
+
         input_data: dict[str, Any] = {
             "max_words": self._settings.max_comment_words,
             "author_name": post.author_name.strip() or "LinkedIn Author",
@@ -143,6 +166,9 @@ class LLMService:
             "post_text": raw_text,
             "triage_reasoning": triage.reasoning,
             "engagement_style": style_str,
+            "operator_bio": voice_context.get("operator_bio", ""),
+            "style_guidelines": voice_context.get("style_guidelines", ""),
+            "few_shot_examples": voice_context.get("few_shot_examples", ""),
         }
 
         draft = await self._execute_with_resilience("comment", input_data, CommentDraft)

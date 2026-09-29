@@ -56,6 +56,12 @@ Content:
 
 COMMENT_SYSTEM_PROMPT = """You are a Principal Software Engineer drafting a high-signal LinkedIn comment.
 
+Operator Persona & Perspective:
+{operator_bio}
+
+Style & Tone Guidelines:
+{style_guidelines}
+
 Guidelines & Anti-Generic Constraints:
 1. Add Real Value: Provide concrete technical perspective, practical experience, trade-off analysis, or an insightful follow-up question.
 2. Grounded in Context: Directly reference specific points, architecture decisions, or ideas mentioned in the post.
@@ -78,6 +84,9 @@ Guidelines & Anti-Generic Constraints:
    - draft_comment: The drafted comment text (1 to 600 characters).
    - topic_tags: Up to 5 relevant topic tags.
    - engagement_style: The engagement style applied in this comment.
+
+Authentic Writing Samples & Few-Shot Demonstrations:
+{few_shot_examples}
 """
 
 COMMENT_HUMAN_PROMPT = """Draft a comment for the following LinkedIn post:
@@ -148,12 +157,18 @@ def build_triage_prompt() -> ChatPromptTemplate:
 
 def build_comment_prompt() -> ChatPromptTemplate:
     """Build the ChatPromptTemplate for drafting LinkedIn comments."""
-    return ChatPromptTemplate.from_messages(
+    prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessagePromptTemplate.from_template(COMMENT_SYSTEM_PROMPT),
             HumanMessagePromptTemplate.from_template(COMMENT_HUMAN_PROMPT),
         ]
     )
+    return prompt.partial(
+        operator_bio="Principal Software Engineer specializing in enterprise AI architectures, distributed systems, determinism, and state stores.",
+        style_guidelines="Technical depth, zero fluff, direct punchy sentences, realistic trade-off analysis.",
+        few_shot_examples="No specific few-shot examples provided.",
+    )
+
 
 
 def build_post_idea_prompt() -> ChatPromptTemplate:
