@@ -53,12 +53,8 @@ jobs:
           USER_FOCUS_AREAS: ${{ vars.USER_FOCUS_AREAS || '["AI Agents", "Python", "Distributed Systems"]' }}
           MAX_SUGGESTIONS_PER_RUN: ${{ vars.MAX_SUGGESTIONS_PER_RUN || 3 }}
           DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || false }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID || vars.CLOUDFLARE_KV_NAMESPACE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          STATE_BACKEND: ${{ vars.STATE_BACKEND || 'kv' }}
         run: uv run python -m agent.orchestration.ideation_flow
-
-      - name: Commit and Push Updated State
-        if: ${{ vars.DRY_RUN != 'true' }}
-        run: |
-          git config user.name "linkedin-agent-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add state/
-          git diff --staged --quiet || (git commit -m "chore(state): ideation run [skip ci]" && git push)

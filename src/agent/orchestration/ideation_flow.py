@@ -16,7 +16,7 @@ from agent.llm.service import LLMService
 from agent.logging import setup_logging
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
-from agent.state.store import GitStateStore
+from agent.state import get_state_store
 from agent.telegram.client import TelegramClient
 
 logger = logging.getLogger("agent.orchestration.ideation_flow")
@@ -48,7 +48,7 @@ async def run_ideation_flow(
         return {"status": "halted", "halted_reason": reason}
 
     # 2. Construct services
-    state_store = GitStateStore(root)
+    state_store = get_state_store(settings=cfg, repo_root=root)
     telegram = TelegramClient(cfg)
     llm = LLMService(cfg)
     enforcer = DailyCapEnforcer(cfg)

@@ -20,7 +20,7 @@ from agent.models.schemas import (
     TriageResult,
 )
 from agent.safety.rate_limiter import DailyCapEnforcer
-from agent.state.store import GitStateStore
+from agent.state.base import BaseStateStore
 from agent.telegram.client import TelegramClient
 
 
@@ -81,7 +81,7 @@ class GraphContext:
 
     settings: Settings
     llm: LLMService | None = None
-    state_store: GitStateStore | None = None
+    state_store: BaseStateStore | None = None
     telegram: TelegramClient | None = None
     scraper: FeedScraper | None = None
     executor: ActionExecutor | None = None

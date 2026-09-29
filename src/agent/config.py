@@ -242,6 +242,28 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("STATE_DIR", "state_dir"),
     )
 
+    # State Persistence Backend Configuration
+    state_backend: str = Field(
+        default="git",
+        description="State storage backend: git, kv, or local",
+        validation_alias=AliasChoices("STATE_BACKEND", "state_backend"),
+    )
+    cloudflare_account_id: str | None = Field(
+        default=None,
+        description="Cloudflare Account ID for KV state persistence",
+        validation_alias=AliasChoices("CLOUDFLARE_ACCOUNT_ID", "cloudflare_account_id"),
+    )
+    cloudflare_kv_namespace_id: str | None = Field(
+        default=None,
+        description="Cloudflare KV Namespace ID for state persistence",
+        validation_alias=AliasChoices("CLOUDFLARE_KV_NAMESPACE_ID", "cloudflare_kv_namespace_id"),
+    )
+    cloudflare_api_token: SecretStr | str | None = Field(
+        default=None,
+        description="Cloudflare API Token with Workers KV permissions",
+        validation_alias=AliasChoices("CLOUDFLARE_API_TOKEN", "cloudflare_api_token"),
+    )
+
     @classmethod
     def settings_customise_sources(
         cls,
@@ -272,7 +294,12 @@ class Settings(BaseSettings):
             return SecretStr(v)
         return v
 
-    @field_validator("session_encryption_key", "linkedin_session_state_enc", mode="after")
+    @field_validator(
+        "session_encryption_key",
+        "linkedin_session_state_enc",
+        "cloudflare_api_token",
+        mode="after",
+    )
     @classmethod
     def ensure_optional_secret_str(cls, v: SecretStr | str | None) -> SecretStr | None:
         """Ensure optional secret fields are wrapped in SecretStr."""

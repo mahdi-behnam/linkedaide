@@ -215,3 +215,10 @@ infra/telegram-relay-worker/dist/
 scratch/
 sandbox/
 local/
+
+# ------------------------------------------------------------
+# Worktrees & local state (Cloudflare KV persistence in production)
+# ------------------------------------------------------------
+
+.worktrees/
+/state/

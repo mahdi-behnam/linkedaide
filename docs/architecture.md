@@ -122,23 +122,36 @@ LLM integration is managed by `LLMService` in `src/agent/llm/service.py`:
 
 ---
 
-## 5. Durable Repository State Model
+## 5. Durable State Persistence Model (Cloudflare KV & Git Fallback)
 
-State is intentionally version-controlled under `state/` using `GitStateStore`:
+State persistence is abstracted via `BaseStateStore` (`src/agent/state/base.py`) with two implementations:
 
-```text
-state/
-├── pending/                # Individual JSON records for pending approvals (e.g., a1b2c3d4.json)
-├── seen_posts.json         # Array/map of scraped post IDs to prevent re-evaluation
-├── history.jsonl           # Append-only audit trail of all approved/rejected/executed actions
-├── daily_counters.json     # Tracks actions executed per UTC calendar day
-└── incident.json           # Created ONLY when the circuit breaker is tripped
-```
+### 5.1 Cloudflare KV State Backend (`CloudflareKVStateStore`)
+The primary production backend (`STATE_BACKEND=kv`). State records are persisted in a private Cloudflare Workers KV namespace via the REST API (`api.cloudflare.com/client/v4`):
 
-### Why Git-Backed State?
-- **Zero Database Infrastructure**: Eliminates the operational overhead and security exposure of managing remote PostgreSQL, Redis, or checkpointer servers.
-- **Auditability**: Every action, rate limit counter change, and post evaluation is committed with full Git history.
-- **Cross-Run Durability**: Works seamlessly within ephemeral GitHub Actions runners by checking out and pushing state commits (`[skip ci]`).
+- `pending:{item_id}` -> JSON string of `PendingAction`
+- `seen_posts` -> JSON map of `content_hash -> iso timestamp`
+- `history` -> JSON array of `HistoryEntry` audit logs
+- `daily_counters` -> JSON of `DailyCounters` (auto-rollover on UTC date boundary)
+- `incident` -> JSON of circuit breaker incident record (or 404 when normal)
+- `paused` -> JSON of remote operator pause state
+
+**Architectural Advantages of Cloudflare KV:**
+- **Zero Git Merge Conflicts**: Eliminates concurrent push collisions between scheduled scout runs and approval dispatches.
+- **Privacy on Public Repositories**: Keeps pending drafts, evaluated post excerpts, and operator history private inside Cloudflare KV rather than committed to a public Git repository.
+- **Fast-Path Rejections**: The Cloudflare Telegram relay worker directly updates KV upon operator rejection, removing the need to spin up a GitHub Actions runner (saving CI minutes).
+- **Clean Git History**: Prevents thousands of automated `chore(state): ... [skip ci]` commits from polluting git history.
+
+### 5.2 Git-as-Database Fallback (`GitStateStore`)
+Used for local offline development and testing (`STATE_BACKEND=git`):
+- `state/pending/{item_id}.json`
+- `state/seen_posts.json`
+- `state/history.jsonl`
+- `state/daily_counters.json`
+- `state/incident.json`
+- `state/paused.json`
+
+The local `state/` directory is in `.gitignore` to prevent committing operational state when working locally.
 
 ---
 

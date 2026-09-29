@@ -114,26 +114,23 @@ Deterministic code must enforce:
 
 Never encode these protections only in prompts.
 
-### 1.5 Repository state is durable application state
+### 1.5 Durable State Persistence (Cloudflare KV & Git Fallback)
 
-The `state/` directory is intentionally version-controlled.
+State persistence is managed via the `BaseStateStore` abstraction with two supported backends:
 
-Do not add `state/` to `.gitignore`.
+1. **Cloudflare KV (`CloudflareKVStateStore`)**: The primary production backend (`STATE_BACKEND=kv`). State is stored in a private Cloudflare Workers KV namespace. This completely eliminates Git merge conflicts, avoids polluting Git commit history with automated CI state commits, and protects operator privacy when running in a public repository (keeping pending drafts, seen posts, and approval logs private).
+2. **Git-as-Database (`GitStateStore`)**: Local development and testing fallback (`STATE_BACKEND=git`).
 
-Expected state includes:
+Expected state keys / structure:
 
-```text
-state/
-├── pending/
-├── seen_posts.json
-├── history.jsonl
-├── daily_counters.json
-└── incident.json
-```
+- `pending:{item_id}` -> JSON string of PendingAction
+- `seen_posts` -> JSON map of content_hash -> iso timestamp
+- `history` -> JSON list of HistoryEntry
+- `daily_counters` -> JSON of DailyCounters
+- `incident` -> JSON of incident (circuit breaker)
+- `paused` -> JSON of remote pause state
 
-`state/incident.json` should normally be absent. Its presence means the circuit breaker is active.
-
-Do not replace repository-backed state with Redis, Postgres, SQLite, a LangGraph production checkpointer, or another persistence system unless the implementation plan is explicitly being revised.
+The local `state/` directory is added to `.gitignore` so that local operational state is not accidentally committed to Git.
 
 ### 1.6 LangGraph checkpoints are not the approval database
 
@@ -594,15 +591,15 @@ Load and validate settings once near the process boundary.
 
 ## 11. State Store Rules
 
-All repository-backed persistence should go through `GitStateStore` or its successor abstraction.
+All state persistence must go through `BaseStateStore` implementations (`CloudflareKVStateStore` or `GitStateStore`), instantiated via `get_state_store(settings, repo_root)`.
 
-Do not write directly to `state/*.json` from unrelated modules.
+Do not write directly to local files or storage backends from unrelated modules.
 
 Persist Pydantic/domain models rather than ad hoc dictionaries where possible.
 
-State writes should be atomic from the application's perspective.
+State writes should be atomic from the application's perspective. In Cloudflare KV, updates are committed remotely to the edge without git push latency or merge conflicts.
 
-A git push conflict must fail loudly; do not silently discard state.
+When using GitStateStore fallback, a git push conflict must fail loudly; do not silently discard state.
 
 Never mutate history retroactively.
 

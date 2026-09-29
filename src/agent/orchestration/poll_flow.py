@@ -13,7 +13,7 @@ import httpx
 from agent.config import Settings, load_settings
 from agent.models.schemas import CallbackDataPayload
 from agent.orchestration.execute_flow import run_execute_flow
-from agent.state.store import GitStateStore
+from agent.state import get_state_store
 from agent.telegram.client import TelegramClient
 from agent.telegram.command_handler import CommandHandler
 from agent.telegram.draft_editor import handle_draft_edit, handle_edit_callback
@@ -40,7 +40,7 @@ async def run_poll_flow(
     """
     cfg = settings or load_settings()
     root = repo_root or Path.cwd()
-    state_store = GitStateStore(root)
+    state_store = get_state_store(settings=cfg, repo_root=root)
 
     bot_token = (
         cfg.telegram_bot_token.get_secret_value()

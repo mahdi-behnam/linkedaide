@@ -13,6 +13,7 @@ export interface Env {
   GITHUB_DISPATCH_PAT: string;
   GITHUB_REPO_OWNER: string;
   GITHUB_REPO_NAME: string;
+  LINKEDIN_AGENT_KV?: KVNamespace;
 }
 
 export interface TelegramCallbackQuery {
@@ -157,6 +158,98 @@ export default {
     }
 
     const action = isApproval ? "approve" : "reject";
+
+    // Fast-path: Handle rejections directly inside Cloudflare Worker via KV without GitHub Actions
+    if (isRejection && env.LINKEDIN_AGENT_KV) {
+      const targetChatId = cb.message?.chat.id ?? authorizedId;
+      const targetMessageId = cb.message?.message_id ?? null;
+
+      // 1. Determine action_type from pending item if present
+      let actionType = "approve_comment";
+      try {
+        const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+        if (rawPending) {
+          const pending = JSON.parse(rawPending);
+          actionType = pending.action_type || actionType;
+        }
+      } catch {
+        // Fallback actionType
+      }
+
+      // 2. Delete pending item from KV
+      try {
+        await env.LINKEDIN_AGENT_KV.delete(`pending:${itemId}`);
+      } catch {
+        // Continue
+      }
+
+      // 3. Read and append history in KV
+      try {
+        const rawHistory = await env.LINKEDIN_AGENT_KV.get("history");
+        let history: Array<Record<string, unknown>> = [];
+        if (rawHistory) {
+          try {
+            const parsed = JSON.parse(rawHistory);
+            if (Array.isArray(parsed)) {
+              history = parsed;
+            }
+          } catch {
+            history = [];
+          }
+        }
+        const nowIso = new Date().toISOString();
+        history.push({
+          item_id: itemId,
+          action_type: actionType,
+          final_status: "rejected",
+          decided_at: nowIso,
+          executed_at: nowIso,
+          screenshot_path: null,
+          error: "Rejected by operator via Telegram",
+        });
+        await env.LINKEDIN_AGENT_KV.put("history", JSON.stringify(history));
+      } catch {
+        // Continue
+      }
+
+      // 4. Answer callback query
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: "❌ Suggestion rejected",
+            show_alert: false,
+          }),
+        }).catch(() => {})
+      );
+
+      // 5. Edit Telegram message to "❌ Suggestion rejected" and remove inline keyboard
+      if (targetMessageId) {
+        ctx.waitUntil(
+          fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              message_id: targetMessageId,
+              text: "❌ Suggestion rejected",
+              reply_markup: { inline_keyboard: [] },
+            }),
+          }).catch(() => {})
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ status: "rejected_via_kv", action: "reject", item_id: itemId }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const toastText = isApproval ? "⏳ Approval received, executing..." : "⏳ Rejection received, updating...";
 
     // 4. Acknowledge callback query to dismiss loading spinner in Telegram

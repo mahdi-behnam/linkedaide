@@ -18,7 +18,7 @@ from agent.graphs.health_graph import build_health_graph
 from agent.graphs.state import GraphContext, HealthCheckState
 from agent.logging import setup_logging
 from agent.safety.circuit_breaker import is_halted
-from agent.state.store import GitStateStore
+from agent.state import get_state_store
 from agent.telegram.client import TelegramClient
 
 logger = logging.getLogger("agent.orchestration.health_check_flow")
@@ -47,7 +47,7 @@ async def run_health_check_flow(
         logger.warning("Health check skipped: %s", reason)
         return {"status": "halted", "halted_reason": reason, "is_healthy": False}
 
-    state_store = GitStateStore(root)
+    state_store = get_state_store(settings=cfg, repo_root=root)
     telegram = TelegramClient(cfg)
     storage_state_path = ensure_session_file(cfg)
 

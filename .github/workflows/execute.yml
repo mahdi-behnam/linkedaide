@@ -90,19 +90,15 @@ jobs:
           MAX_COMMENTS_PER_DAY: ${{ vars.MAX_COMMENTS_PER_DAY }}
           MAX_POSTS_PER_DAY: ${{ vars.MAX_POSTS_PER_DAY }}
           DRY_RUN: ${{ vars.DRY_RUN || false }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID || vars.CLOUDFLARE_KV_NAMESPACE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          STATE_BACKEND: ${{ vars.STATE_BACKEND || 'kv' }}
         run: uv run python -m agent.orchestration.execute_flow
 
       - name: Wipe Decrypted Storage State
         if: always()
         run: rm -f /tmp/runner_storage_state.json
-
-      - name: Commit and Push Updated State
-        if: always()
-        run: |
-          git config user.name "linkedin-agent-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add state/
-          git diff --staged --quiet || (git commit -m "chore(state): execute action [skip ci]" && git push)
 
       - name: Upload debug artifacts
         if: always()

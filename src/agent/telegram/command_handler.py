@@ -17,7 +17,7 @@ from typing import Any
 
 from agent.config import Settings
 from agent.safety.circuit_breaker import is_halted
-from agent.state.store import GitStateStore
+from agent.state.base import BaseStateStore
 from agent.telegram.client import TelegramClient
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class CommandHandler:
     def __init__(
         self,
         settings: Settings,
-        state_store: GitStateStore,
+        state_store: BaseStateStore,
         telegram: TelegramClient,
         repo_root: Path | None = None,
     ) -> None:
@@ -37,14 +37,18 @@ class CommandHandler:
 
         Args:
             settings: Runtime application configuration.
-            state_store: Durable repository state store.
+            state_store: Durable state store instance.
             telegram: Telegram client for message transmission.
             repo_root: Optional repository root path override.
         """
         self.settings = settings
         self.state_store = state_store
         self.telegram = telegram
-        self.repo_root = Path(repo_root).resolve() if repo_root else state_store.repo_root
+        self.repo_root = (
+            Path(repo_root).resolve()
+            if repo_root
+            else getattr(state_store, "repo_root", Path.cwd())
+        )
 
     async def handle_message(self, message: dict[str, Any]) -> bool:
         """Process an incoming Telegram message for operator commands.
