@@ -252,7 +252,7 @@ async def handle_draft_edit(
     if chat_id is not None:
         await telegram.send_message(
             chat_id=chat_id,
-            text="✅ Draft updated! Refreshed suggestion above with revised text.",
+            text="✏️ Draft updated successfully!",
             reply_to_message_id=message_id,
         )
 

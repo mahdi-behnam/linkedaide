@@ -21,6 +21,7 @@ from agent.models.schemas import PendingAction
 from agent.telegram.keyboards import (
     build_suggestion_keyboard,
     build_suggestion_message,
+    format_suggestion_card,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,11 @@ class TelegramClient:
             return False
         return chat_id == settings.telegram_authorized_chat_id
 
+    @staticmethod
+    def format_suggestion_card(item: PendingAction) -> str:
+        """Format an action suggestion card with rich HTML styling."""
+        return format_suggestion_card(item)
+
     async def send_suggestion(self, item: PendingAction) -> int:
         """Send an action approval suggestion to the authorized Telegram chat.
 
@@ -95,7 +101,8 @@ class TelegramClient:
         }
 
         data = await self._post("sendMessage", payload)
-        message_id = data.get("result", {}).get("message_id")
+        result = data.get("result")
+        message_id = result.get("message_id") if isinstance(result, dict) else None
         if not message_id or not isinstance(message_id, int):
             raise TelegramAPIError(
                 f"Telegram sendMessage response missing integer message_id: {data}"
@@ -163,7 +170,8 @@ class TelegramClient:
         }
 
         data = await self._post("sendMessage", payload)
-        message_id = data.get("result", {}).get("message_id")
+        result = data.get("result")
+        message_id = result.get("message_id") if isinstance(result, dict) else None
         if not message_id or not isinstance(message_id, int):
             raise TelegramAPIError(f"Telegram sendMessage notification missing message_id: {data}")
         return message_id
@@ -268,7 +276,8 @@ class TelegramClient:
             payload["reply_to_message_id"] = reply_to_message_id
 
         data = await self._post("sendMessage", payload)
-        message_id = data.get("result", {}).get("message_id")
+        result = data.get("result")
+        message_id = result.get("message_id") if isinstance(result, dict) else None
         if not message_id or not isinstance(message_id, int):
             raise TelegramAPIError(
                 f"Telegram sendMessage response missing integer message_id: {data}"

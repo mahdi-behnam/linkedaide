@@ -7,6 +7,7 @@ from agent.telegram.keyboards import (
     build_outcome_message,
     build_suggestion_keyboard,
     build_suggestion_message,
+    format_suggestion_card,
 )
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "build_outcome_message",
     "build_suggestion_keyboard",
     "build_suggestion_message",
+    "format_suggestion_card",
     "handle_draft_edit",
     "handle_edit_callback",
 ]

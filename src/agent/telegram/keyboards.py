@@ -12,7 +12,6 @@ from typing import Any
 from agent.models.schemas import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_POST,
-    ACTION_CODE_EDIT,
     ACTION_CODE_REJECT_COMMENT,
     ACTION_CODE_REJECT_POST,
     PendingAction,
@@ -20,7 +19,7 @@ from agent.models.schemas import (
 
 
 def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment") -> dict[str, Any]:
-    """Construct inline keyboard with Approve, Reject, and Edit buttons for a pending action.
+    """Construct inline keyboard with Approve, Reject, Regenerate, and Edit buttons.
 
     Args:
         item_id: Unique identifier for the pending action item.
@@ -32,6 +31,7 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
     Raises:
         ValueError: If callback_data exceeds Telegram's 64-byte limit.
     """
+    clean_id = item_id.strip()
     if action_type in ("approve_post", "post"):
         approve_code = ACTION_CODE_APPROVE_POST
         reject_code = ACTION_CODE_REJECT_POST
@@ -39,13 +39,12 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
         approve_code = ACTION_CODE_APPROVE_COMMENT
         reject_code = ACTION_CODE_REJECT_COMMENT
 
-    edit_code = ACTION_CODE_EDIT
+    approve_cb = f"{approve_code}:{clean_id}"
+    reject_cb = f"{reject_code}:{clean_id}"
+    reg_cb = f"reg:{clean_id}"
+    edit_cb = f"edit:{clean_id}"
 
-    approve_cb = f"{approve_code}:{item_id.strip()}"
-    reject_cb = f"{reject_code}:{item_id.strip()}"
-    edit_cb = f"{edit_code}:{item_id.strip()}"
-
-    for cb in (approve_cb, reject_cb, edit_cb):
+    for cb in (approve_cb, reject_cb, reg_cb, edit_cb):
         byte_len = len(cb.encode("utf-8"))
         if byte_len > 64:
             raise ValueError(
@@ -59,20 +58,24 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
                 {"text": "❌ Reject", "callback_data": reject_cb},
             ],
             [
+                {"text": "🔄 Regenerate", "callback_data": reg_cb},
                 {"text": "✏️ Edit", "callback_data": edit_cb},
             ],
         ]
     }
 
 
-def build_suggestion_message(item: PendingAction) -> str:
-    """Format a readable HTML suggestion message for Telegram delivery.
+def format_suggestion_card(item: PendingAction) -> str:
+    """Format an action suggestion card with rich HTML styling and metrics.
+
+    Includes target post author, headline, clean excerpt blockquotes,
+    character/word count metrics, confidence, and reasoning.
 
     Args:
         item: PendingAction containing context, author, draft, and confidence.
 
     Returns:
-        HTML formatted message string.
+        HTML formatted message card string.
     """
     is_post = item.action_type in ("approve_post", "post")
     action_label = "📝 Original Post" if is_post else "💬 Feed Comment"
@@ -91,8 +94,16 @@ def build_suggestion_message(item: PendingAction) -> str:
         style_label = " ".join(w.capitalize() for w in style_raw.replace("_", " ").split())
         lines.append(f"<b>Style:</b> {html.escape(style_label)}")
 
-    if item.author_name:
-        lines.append(f"<b>Author:</b> {html.escape(item.author_name)}")
+    author_name = (item.author_name or "").strip()
+    author_headline = (getattr(item, "author_headline", "") or "").strip()
+    if author_name and author_headline:
+        lines.append(
+            f"<b>Author:</b> {html.escape(author_name)} (<i>{html.escape(author_headline)}</i>)"
+        )
+    elif author_name:
+        lines.append(f"<b>Author:</b> {html.escape(author_name)}")
+    elif author_headline:
+        lines.append(f"<b>Author Headline:</b> <i>{html.escape(author_headline)}</i>")
 
     if item.post_url:
         lines.append(
@@ -108,6 +119,10 @@ def build_suggestion_message(item: PendingAction) -> str:
         f"<b>Drafted Content:</b>\n<blockquote>{html.escape(item.draft_text)}</blockquote>"
     )
 
+    char_count = len(item.draft_text)
+    word_count = len(item.draft_text.split())
+    lines.append(f"<b>Metrics:</b> {char_count} chars • {word_count} words")
+
     confidence_pct = int(item.confidence * 100)
     lines.append(f"<b>Confidence:</b> {confidence_pct}%")
 
@@ -117,6 +132,20 @@ def build_suggestion_message(item: PendingAction) -> str:
     lines.append(f"<i>ID: {html.escape(item.item_id)}</i>")
 
     return "\n\n".join(lines)
+
+
+def build_suggestion_message(item: PendingAction) -> str:
+    """Format a readable HTML suggestion message for Telegram delivery.
+
+    Backwards-compatible alias for format_suggestion_card.
+
+    Args:
+        item: PendingAction containing context, author, draft, and confidence.
+
+    Returns:
+        HTML formatted message string.
+    """
+    return format_suggestion_card(item)
 
 
 def build_outcome_message(
