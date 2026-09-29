@@ -9,6 +9,9 @@ compatibility_date = "2024-04-01"
 # - GITHUB_DISPATCH_PAT
 # - GITHUB_REPO_OWNER
 # - GITHUB_REPO_NAME
+# - DESKTOP_API_SECRET
+# - NVIDIA_NIM_API_KEY
+# - LLM_BASE_URL
 
 # Workers KV Namespace binding for state persistence:
 [[kv_namespaces]]
