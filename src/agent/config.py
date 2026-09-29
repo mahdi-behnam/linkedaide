@@ -334,6 +334,28 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("STATE_DIR", "state_dir"),
     )
 
+    # State Persistence Backend Configuration
+    state_backend: str = Field(
+        default="git",
+        description="State storage backend: git, kv, or local",
+        validation_alias=AliasChoices("STATE_BACKEND", "state_backend"),
+    )
+    cloudflare_account_id: str | None = Field(
+        default=None,
+        description="Cloudflare Account ID for KV state persistence",
+        validation_alias=AliasChoices("CLOUDFLARE_ACCOUNT_ID", "cloudflare_account_id"),
+    )
+    cloudflare_kv_namespace_id: str | None = Field(
+        default=None,
+        description="Cloudflare KV Namespace ID for state persistence",
+        validation_alias=AliasChoices("CLOUDFLARE_KV_NAMESPACE_ID", "cloudflare_kv_namespace_id"),
+    )
+    cloudflare_api_token: SecretStr | str | None = Field(
+        default=None,
+        description="Cloudflare API Token with Workers KV permissions",
+        validation_alias=AliasChoices("CLOUDFLARE_API_TOKEN", "cloudflare_api_token"),
+    )
+
     @classmethod
     def settings_customise_sources(
         cls,
@@ -392,6 +414,7 @@ class Settings(BaseSettings):
         "anthropic_api_key",
         "gemini_api_key",
         "groq_api_key",
+        "cloudflare_api_token",
         mode="after",
     )
     @classmethod

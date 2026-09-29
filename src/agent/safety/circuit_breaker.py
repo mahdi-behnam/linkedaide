@@ -5,23 +5,40 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agent.config import Settings
 
+if TYPE_CHECKING:
+    from agent.state.base import BaseStateStore
 
-def is_halted(repo_root: Path, settings: Settings) -> tuple[bool, str | None]:
+
+def is_halted(
+    repo_root: Path,
+    settings: Settings,
+    state_store: BaseStateStore | None = None,
+) -> tuple[bool, str | None]:
     """Check if the system is halted due to manual pause or active incident.
 
     Args:
         repo_root: Absolute path to the repository root directory.
         settings: Application settings instance.
+        state_store: Optional state store instance.
 
     Returns:
         tuple[bool, str | None]: (True, reason) if halted, otherwise (False, None).
     """
     if settings.agent_paused:
         return True, "Agent is paused via AGENT_PAUSED configuration"
+
+    if state_store is not None:
+        if state_store.is_paused():
+            return True, "Agent is paused via remote operator command (paused state present)"
+        incident = state_store.read_incident()
+        if incident:
+            reason = incident.get("reason", "Circuit breaker active")
+            return True, f"Circuit breaker tripped: {reason}"
+        return False, None
 
     paused_file = repo_root / "state" / "paused.json"
     if paused_file.exists():
@@ -39,16 +56,26 @@ def is_halted(repo_root: Path, settings: Settings) -> tuple[bool, str | None]:
     return False, None
 
 
-def trip_breaker(repo_root: Path, reason: str, context: dict[str, Any] | None = None) -> None:
-    """Trip the circuit breaker by persisting state/incident.json.
+def trip_breaker(
+    repo_root: Path,
+    reason: str,
+    context: dict[str, Any] | None = None,
+    state_store: BaseStateStore | None = None,
+) -> None:
+    """Trip the circuit breaker by persisting incident details.
 
-    Idempotent: preserve the earliest incident timestamp if file already exists.
+    Idempotent: preserve the earliest incident timestamp if incident already exists.
 
     Args:
         repo_root: Absolute path to the repository root directory.
         reason: Description of the fatal error or challenge detected.
         context: Optional dictionary containing error details, DOM diagnostics, etc.
+        state_store: Optional state store instance.
     """
+    if state_store is not None:
+        state_store.record_incident(reason=reason, context=context)
+        return
+
     incident_file = repo_root / "state" / "incident.json"
     incident_file.parent.mkdir(parents=True, exist_ok=True)
 

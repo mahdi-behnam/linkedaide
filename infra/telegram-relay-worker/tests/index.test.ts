@@ -590,5 +590,127 @@ describe("Telegram Relay Worker", () => {
         ).resolves.toBeDefined();
       });
     });
+
+    describe("Direct Cloudflare KV Rejection Handling", () => {
+      it("handles rejection directly in Worker via KV without GitHub Actions dispatch", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_kv_rej",
+          JSON.stringify({ item_id: "item_kv_rej", action_type: "approve_comment" })
+        );
+        kvStore.set("history", JSON.stringify([{ item_id: "old_item", final_status: "expired" }]));
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 10,
+          callback_query: {
+            id: "cb_kv_rej_1",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 555, chat: { id: 987654321 } },
+            data: "rej:item_kv_rej",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const resJson = (await res.json()) as any;
+        expect(resJson.status).toBe("rejected_via_kv");
+        expect(resJson.action).toBe("reject");
+        expect(resJson.item_id).toBe("item_kv_rej");
+
+        // Verify KV operations
+        expect(mockKv.delete).toHaveBeenCalledWith("pending:item_kv_rej");
+        expect(kvStore.has("pending:item_kv_rej")).toBe(false);
+        expect(mockKv.put).toHaveBeenCalledWith("history", expect.any(String));
+
+        const updatedHistory = JSON.parse(kvStore.get("history")!);
+        expect(updatedHistory).toHaveLength(2);
+        expect(updatedHistory[1].item_id).toBe("item_kv_rej");
+        expect(updatedHistory[1].final_status).toBe("rejected");
+        expect(updatedHistory[1].action_type).toBe("approve_comment");
+
+        // Verify Telegram message was edited to "❌ Suggestion rejected"
+        expect(fetchMock).toHaveBeenCalledWith(
+          `https://api.telegram.org/bot${mockEnv.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          expect.objectContaining({
+            method: "POST",
+            body: expect.stringContaining("❌ Suggestion rejected"),
+          })
+        );
+        expect(fetchMock).toHaveBeenCalledWith(
+          `https://api.telegram.org/bot${mockEnv.TELEGRAM_BOT_TOKEN}/editMessageText`,
+          expect.objectContaining({
+            method: "POST",
+            body: expect.stringContaining("❌ Suggestion rejected"),
+          })
+        );
+
+        // Verify NO call was made to GitHub Actions API
+        const githubCalls = fetchMock.mock.calls.filter(([url]: [string]) =>
+          url.includes("api.github.com")
+        );
+        expect(githubCalls).toHaveLength(0);
+      });
+
+      it("still dispatches approvals to GitHub Actions even when KV is configured", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const mockKv = {
+          get: vi.fn(),
+          put: vi.fn(),
+          delete: vi.fn(),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 11,
+          callback_query: {
+            id: "cb_kv_app_1",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 556, chat: { id: 987654321 } },
+            data: "ac:item_kv_app",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const resJson = (await res.json()) as any;
+        expect(resJson.status).toBe("dispatched");
+
+        // GitHub Actions API WAS called
+        const githubCalls = fetchMock.mock.calls.filter(([url]: [string]) =>
+          url.includes("api.github.com")
+        );
+        expect(githubCalls).toHaveLength(1);
+      });
+    });
   });
 });

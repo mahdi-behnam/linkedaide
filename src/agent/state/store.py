@@ -11,9 +11,10 @@ from typing import Any
 
 from agent.errors import StateStoreError
 from agent.models.schemas import DailyCounters, HistoryEntry, PendingAction, PostRecord
+from agent.state.base import BaseStateStore
 
 
-class GitStateStore:
+class GitStateStore(BaseStateStore):
     """Manages reading, writing, and atomic committing of durable repository state."""
 
     def __init__(self, repo_root: Path) -> None:
@@ -364,6 +365,10 @@ class GitStateStore:
             return None
         except Exception:
             return {"reason": "Corrupted incident.json file"}
+
+    def save_incident(self, incident_data: dict[str, Any]) -> None:
+        """Persist circuit breaker incident details to state/incident.json."""
+        self._atomic_write_json(self.incident_path, incident_data)
 
     def clear_incident(self) -> bool:
         """Safely clear state/incident.json if present to reset the circuit breaker.

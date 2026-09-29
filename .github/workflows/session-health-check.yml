@@ -58,16 +58,12 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
           LINKEDIN_STORAGE_STATE_PATH: /tmp/runner_storage_state.json
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID || vars.CLOUDFLARE_KV_NAMESPACE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          STATE_BACKEND: ${{ vars.STATE_BACKEND || 'kv' }}
         run: uv run python -m agent.orchestration.health_check_flow
 
       - name: Wipe Decrypted Storage State
         if: always()
         run: rm -f /tmp/runner_storage_state.json
-
-      - name: Commit and Push Breaker Incident State If Tripped
-        if: always()
-        run: |
-          git config user.name "linkedin-agent-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add state/incident.json || true
-          git diff --staged --quiet || (git commit -m "chore(safety): record circuit breaker incident state [skip ci]" && git push)

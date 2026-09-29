@@ -23,7 +23,7 @@ from agent.models.schemas import (
     PendingAction,
 )
 from agent.safety.circuit_breaker import is_halted
-from agent.state.store import GitStateStore
+from agent.state.base import BaseStateStore
 from agent.telegram.client import TelegramClient
 from agent.telegram.keyboards import (
     build_suggestion_keyboard,
@@ -46,7 +46,7 @@ class CommandHandler:
     def __init__(
         self,
         settings: Settings,
-        state_store: GitStateStore,
+        state_store: BaseStateStore,
         telegram: TelegramClient,
         repo_root: Path | None = None,
         llm_service: Any | None = None,
@@ -55,7 +55,7 @@ class CommandHandler:
 
         Args:
             settings: Runtime application configuration.
-            state_store: Durable repository state store.
+            state_store: Durable state store instance.
             telegram: Telegram client for message transmission.
             repo_root: Optional repository root path override.
             llm_service: Optional LLM service for draft regeneration.
@@ -63,7 +63,11 @@ class CommandHandler:
         self.settings = settings
         self.state_store = state_store
         self.telegram = telegram
-        self.repo_root = Path(repo_root).resolve() if repo_root else state_store.repo_root
+        self.repo_root = (
+            Path(repo_root).resolve()
+            if repo_root
+            else getattr(state_store, "repo_root", Path.cwd())
+        )
         self.llm_service = llm_service
 
     async def handle_message(self, message: dict[str, Any]) -> bool:

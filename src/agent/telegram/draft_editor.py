@@ -16,7 +16,7 @@ from typing import Any
 
 from agent.config import Settings
 from agent.models.schemas import CallbackDataPayload, PendingAction
-from agent.state.store import GitStateStore
+from agent.state.base import BaseStateStore
 from agent.telegram.client import TelegramClient
 from agent.telegram.keyboards import (
     build_suggestion_keyboard,
@@ -36,7 +36,7 @@ MAX_POST_DRAFT_LENGTH = 1200
 async def handle_edit_callback(
     callback_query: dict[str, Any] | None = None,
     settings: Settings | None = None,
-    state_store: GitStateStore | None = None,
+    state_store: BaseStateStore | None = None,
     telegram: TelegramClient | None = None,
     *,
     callback_query_id: str | None = None,
@@ -106,7 +106,7 @@ async def handle_edit_callback(
 async def handle_draft_edit(
     message: dict[str, Any] | None = None,
     settings: Settings | None = None,
-    state_store: GitStateStore | None = None,
+    state_store: BaseStateStore | None = None,
     telegram: TelegramClient | None = None,
     *,
     text: str | None = None,
