@@ -27,6 +27,10 @@ import {
   MagnifyingGlass,
   Copy,
   CheckFat,
+  MagicWand,
+  ChatTeardropText,
+  Sparkle,
+  Quotes,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -61,4 +65,8 @@ export {
   MagnifyingGlass,
   Copy,
   CheckFat,
+  MagicWand,
+  ChatTeardropText,
+  Sparkle,
+  Quotes,
 };
