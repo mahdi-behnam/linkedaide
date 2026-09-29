@@ -10,7 +10,31 @@
     "build:electron": "tsc -p tsconfig.electron.json && node -e \"fs.writeFileSync('dist-electron/package.json', JSON.stringify({type: 'commonjs'}))\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
+    "package": "npm run build && npm run build:electron",
     "start": "electron ."
+  },
+  "build": {
+    "appId": "com.linkedin.hitl.agent",
+    "productName": "LinkedIn HITL Agent",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    }
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.7",
