@@ -14,10 +14,20 @@ import {
   encryptSession,
   generateFernetKey,
 } from "./crypto/fernet";
+import { TrayManager } from "./tray/trayManager";
+import { PollingEngine } from "./tray/pollingEngine";
 import type { DesktopSettings } from "./types";
+
+interface QuittableApp extends Electron.App {
+  isQuitting?: boolean;
+}
+const mainApp = app as QuittableApp;
+mainApp.isQuitting = false;
 
 let mainWindow: BrowserWindow | null = null;
 let workerClient: WorkerClient;
+let trayManager: TrayManager | null = null;
+let pollingEngine: PollingEngine | null = null;
 
 function getSettingsPath(): string {
   return path.join(app.getPath("userData"), "settings.json");
@@ -165,6 +175,14 @@ function createWindow(): BrowserWindow {
     win.show();
   });
 
+  win.on("close", (event) => {
+    if (!mainApp.isQuitting && trayManager) {
+      event.preventDefault();
+      win.hide();
+      return false;
+    }
+  });
+
   const isDev =
     !app.isPackaged &&
     Boolean(
@@ -198,15 +216,49 @@ app.whenReady().then(() => {
   registerIpcHandlers();
   mainWindow = createWindow();
 
+  trayManager = new TrayManager(mainWindow, workerClient);
+  pollingEngine = new PollingEngine({
+    workerClient,
+    trayManager,
+    mainWindow,
+  });
+  pollingEngine.start();
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createWindow();
+      if (trayManager) {
+        trayManager.setMainWindow(mainWindow);
+      }
+      if (pollingEngine) {
+        pollingEngine.setMainWindow(mainWindow);
+      }
+    } else if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
     }
   });
 });
 
+app.on("before-quit", () => {
+  mainApp.isQuitting = true;
+  if (pollingEngine) {
+    pollingEngine.stop();
+    pollingEngine = null;
+  }
+  if (trayManager) {
+    trayManager.destroy();
+    trayManager = null;
+  }
+});
+
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
+  if (!trayManager || mainApp.isQuitting) {
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
   }
 });
