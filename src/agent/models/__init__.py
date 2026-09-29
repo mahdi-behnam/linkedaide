@@ -22,8 +22,11 @@ from agent.models.schemas import (
     RepositoryDispatchPayload,
     RiskFlag,
     ScheduledPost,
+    ScrapedPost,
+    ScrapedPostCard,
     TriageRecommendation,
     TriageResult,
+    VisualContext,
 )
 
 __all__ = [
@@ -48,6 +51,9 @@ __all__ = [
     "RepositoryDispatchPayload",
     "RiskFlag",
     "ScheduledPost",
+    "ScrapedPost",
+    "ScrapedPostCard",
     "TriageRecommendation",
     "TriageResult",
+    "VisualContext",
 ]

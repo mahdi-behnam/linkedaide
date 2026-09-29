@@ -14,6 +14,7 @@ from agent.browser.session_keeper import refresh_and_persist_session
 from agent.browser.stealth import (
     detect_challenge_page,
     humanized_dwell,
+    humanized_type,  # noqa: F401
     is_authwall_or_login,
     wait_for_login_redirect,
 )

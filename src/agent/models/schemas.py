@@ -205,6 +205,35 @@ class DailyCounters(BaseModel):
     )
 
 
+class VisualContext(BaseModel):
+    """Structured visual context extracted from an image or diagram in a LinkedIn post."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    has_diagram: bool = Field(
+        default=False,
+        description="Whether the image contains a technical diagram, chart, infographic, or code snippet",
+    )
+    diagram_type: Literal[
+        "architecture",
+        "benchmark_chart",
+        "code_snippet",
+        "infographic",
+        "photo_or_other",
+    ] = Field(
+        default="photo_or_other",
+        description="Classification of the visual content",
+    )
+    key_components: list[str] = Field(
+        default_factory=list,
+        description="Key components, systems, services, metrics, or entities identified in the visual",
+    )
+    visual_summary: str = Field(
+        default="",
+        description="Concise description or summary of what is visually depicted",
+    )
+
+
 class PostRecord(BaseModel):
     """Scraped feed post record used for deduplication and triage."""
 
@@ -219,6 +248,23 @@ class PostRecord(BaseModel):
         default_factory=lambda: datetime.now(UTC),
         description="UTC timestamp when post was scraped",
     )
+    image_url: str | None = Field(
+        default=None,
+        description="URL of primary attached media image, diagram, or carousel slide",
+    )
+    media_type: str | None = Field(
+        default=None,
+        description="Detected media type (e.g. 'image', 'carousel', 'document', 'video')",
+    )
+    visual_context: VisualContext | None = Field(
+        default=None,
+        description="Structured multimodal visual context extracted from attached media",
+    )
+
+
+# Aliases for flexible domain referencing
+ScrapedPost = PostRecord
+ScrapedPostCard = PostRecord
 
 
 class ExecutionResult(BaseModel):

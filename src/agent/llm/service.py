@@ -25,6 +25,7 @@ from agent.errors import (
 )
 from agent.llm.chains import LLMChains, build_structured_chains
 from agent.llm.models import build_chat_model
+from agent.llm.multimodal import MultimodalAnalyzer, format_visual_evidence
 from agent.llm.prompts import build_repair_prompt
 from agent.llm.voice_memory import VoiceMemoryStore
 from agent.models.schemas import (
@@ -35,6 +36,7 @@ from agent.models.schemas import (
     PostRecord,
     RiskFlag,
     TriageResult,
+    VisualContext,
 )
 from agent.safety.anti_cliche import AntiClicheScanner
 
@@ -55,6 +57,7 @@ class LLMService:
         repair_model: BaseChatModel | Any | None = None,
         anti_cliche_scanner: AntiClicheScanner | None = None,
         voice_memory: VoiceMemoryStore | None = None,
+        multimodal_analyzer: MultimodalAnalyzer | None = None,
         backoff_base: float = 1.5,
         max_attempts: int = 3,
     ) -> None:
@@ -64,6 +67,9 @@ class LLMService:
         self._semaphore = asyncio.Semaphore(settings.nim_max_concurrency)
         self._anti_cliche_scanner = anti_cliche_scanner or AntiClicheScanner()
         self._voice_memory = voice_memory or VoiceMemoryStore()
+        self._multimodal_analyzer = (
+            multimodal_analyzer if multimodal_analyzer is not None else MultimodalAnalyzer(settings)
+        )
 
         self._chains = chains or build_structured_chains(settings)
         if fallback_chains:
@@ -109,6 +115,11 @@ class LLMService:
             post_excerpt=post_excerpt,
         )
 
+    @property
+    def multimodal_analyzer(self) -> MultimodalAnalyzer | None:
+        """Access the multimodal vision analyzer instance."""
+        return self._multimodal_analyzer
+
     async def evaluate_post(self, post: PostRecord) -> TriageResult:
         """Triage a scraped feed post to determine if commenting is recommended.
 
@@ -145,6 +156,7 @@ class LLMService:
         triage: TriageResult,
         *,
         engagement_style: EngagementStyle | str | None = None,
+        visual_context: VisualContext | None = None,
     ) -> CommentDraft:
         """Draft a substantive, value-adding LinkedIn comment."""
         raw_text = post.post_text.strip() if post.post_text else ""
@@ -159,6 +171,22 @@ class LLMService:
 
         voice_context = self._voice_memory.get_voice_context(post_text=raw_text)
 
+        # Resolve visual context and inject visual evidence
+        effective_visual_context = visual_context or getattr(post, "visual_context", None)
+        if (
+            effective_visual_context is None
+            and getattr(post, "image_url", None)
+            and self._multimodal_analyzer is not None
+        ):
+            try:
+                effective_visual_context = await self._multimodal_analyzer.analyze(post)
+                if hasattr(post, "visual_context") and post.visual_context is None:
+                    post.visual_context = effective_visual_context
+            except Exception as err:
+                logger.warning("Visual analysis failed for post %s: %s", post.post_urn, err)
+
+        visual_evidence_str = format_visual_evidence(effective_visual_context)
+
         input_data: dict[str, Any] = {
             "max_words": self._settings.max_comment_words,
             "author_name": post.author_name.strip() or "LinkedIn Author",
@@ -169,6 +197,7 @@ class LLMService:
             "operator_bio": voice_context.get("operator_bio", ""),
             "style_guidelines": voice_context.get("style_guidelines", ""),
             "few_shot_examples": voice_context.get("few_shot_examples", ""),
+            "visual_evidence": visual_evidence_str,
         }
 
         draft = await self._execute_with_resilience("comment", input_data, CommentDraft)
@@ -195,6 +224,7 @@ class LLMService:
                 violations=scan_result.violations,
                 post=post,
                 selected_style=style_str,
+                visual_evidence=visual_evidence_str,
             )
 
             # Re-scan the repaired draft
@@ -247,6 +277,7 @@ class LLMService:
         violations: list[str],
         post: PostRecord,
         selected_style: str,
+        visual_evidence: str = "",
     ) -> CommentDraft | None:
         """Execute exactly one bounded corrective repair turn with the model."""
         violations_formatted = "\n".join(f"- {v}" for v in violations)
@@ -256,6 +287,7 @@ class LLMService:
             "Rewrite the comment strictly avoiding these phrases and jump directly into the technical observation."
         )
 
+        evidence_section = f"\n{visual_evidence}\n" if visual_evidence else "\n"
         messages = [
             SystemMessage(
                 content=(
@@ -268,7 +300,7 @@ class LLMService:
             HumanMessage(
                 content=(
                     f"Author: {post.author_name}\n"
-                    f"Post: \"\"\"\n{post.post_text}\n\"\"\"\n\n"
+                    f"Post: \"\"\"\n{post.post_text}\n\"\"\"{evidence_section}"
                     f"Previous rejected draft:\n\"\"\"\n{draft.draft_comment}\n\"\"\"\n\n"
                     f"{repair_instruction}"
                 )
