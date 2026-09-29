@@ -393,3 +393,46 @@ class RepositoryDispatchPayload(BaseModel):
         default_factory=dict,
         description="Arbitrary client payload dictionary",
     )
+
+
+class MediaAttachment(BaseModel):
+    """Media attachment for scheduled original posts (e.g. image, carousel PDF)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    media_type: Literal["image", "carousel_pdf"] = Field(
+        description="Type of media attachment"
+    )
+    file_name: str = Field(description="Original file name of attachment")
+    file_url: str = Field(default="", description="URL or local path to attachment file")
+    slide_count: int = Field(default=1, ge=1, description="Number of slides or pages")
+
+
+class ScheduledPost(BaseModel):
+    """Scheduled LinkedIn original post created via Post Composer Studio."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(description="Unique deterministic or generated identifier for scheduled post")
+    headline: str = Field(default="", description="Hook or working headline for post")
+    post_text: str = Field(description="Full drafted post text")
+    scheduled_time: datetime | str | None = Field(
+        default=None, description="Scheduled publication timestamp in ISO format"
+    )
+    status: Literal["draft", "scheduled", "published", "failed"] = Field(
+        default="draft", description="Status of the post lifecycle"
+    )
+    media: list[MediaAttachment] = Field(
+        default_factory=list, description="Attached media items (images, carousel PDFs)"
+    )
+    topic_pillar: str = Field(
+        default="", description="Topic pillar or category for content alignment"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="UTC timestamp of post creation",
+    )
+    approved_at: datetime | None = Field(
+        default=None, description="UTC timestamp of human operator approval"
+    )
+

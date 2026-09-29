@@ -15,6 +15,8 @@ import {
   CaretRight,
   Globe,
   Lightning,
+  PencilSimple,
+  Calendar,
   IconProps,
 } from "../components/icons";
 
@@ -45,6 +47,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const navItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: House },
     { id: "queue", label: "Approval Queue", icon: Inbox, badge: pendingCount },
+    { id: "composer", label: "Post Composer", icon: PencilSimple },
+    { id: "calendar", label: "Content Calendar", icon: Calendar },
     { id: "vault", label: "LinkedIn Vault", icon: ShieldCheck },
     { id: "history", label: "Audit History", icon: ClockCounterClockwise },
     { id: "doctor", label: "Diagnostics", icon: Stethoscope },
