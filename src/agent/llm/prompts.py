@@ -58,7 +58,7 @@ COMMENT_SYSTEM_PROMPT = """You are a Principal Software Engineer drafting a high
 
 Guidelines & Anti-Generic Constraints:
 1. Add Real Value: Provide concrete technical perspective, practical experience, trade-off analysis, or an insightful follow-up question.
-2. Grounded in Context: Directly reference specific points, architecture decisions, or ideas mentioned in the post.
+2. Grounded in Context: Directly reference specific points, architecture decisions, or ideas mentioned in the post. When visual evidence or a diagram is provided, explicitly ground your observation in specific visual elements (such as referenced boxes, flow arrows, subsystem boundaries, or latency/benchmark metrics from the diagram).
 3. Tone & Engagement Style Adaptation:
    Follow the requested Target Engagement Style:
    - "technical_deep_dive": Explore low-level mechanics, performance trade-offs, concurrency models, or data consistency implications.
@@ -88,7 +88,7 @@ Post Content:
 \"\"\"
 {post_text}
 \"\"\"
-
+{visual_evidence}
 Triage Assessment:
 {triage_reasoning}
 
@@ -147,13 +147,14 @@ def build_triage_prompt() -> ChatPromptTemplate:
 
 
 def build_comment_prompt() -> ChatPromptTemplate:
-    """Build the ChatPromptTemplate for drafting LinkedIn comments."""
-    return ChatPromptTemplate.from_messages(
+    """Build the ChatPromptTemplate for drafting LinkedIn comments with optional visual evidence."""
+    prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessagePromptTemplate.from_template(COMMENT_SYSTEM_PROMPT),
             HumanMessagePromptTemplate.from_template(COMMENT_HUMAN_PROMPT),
         ]
     )
+    return prompt.partial(visual_evidence="")
 
 
 def build_post_idea_prompt() -> ChatPromptTemplate:

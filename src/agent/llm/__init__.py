@@ -2,6 +2,7 @@
 
 from agent.llm.chains import LLMChains, build_structured_chains
 from agent.llm.models import build_chat_model
+from agent.llm.multimodal import MultimodalAnalyzer, format_visual_evidence
 from agent.llm.prompts import (
     build_comment_prompt,
     build_post_idea_prompt,
@@ -13,10 +14,12 @@ from agent.llm.service import LLMService
 __all__ = [
     "LLMChains",
     "LLMService",
+    "MultimodalAnalyzer",
     "build_chat_model",
     "build_comment_prompt",
     "build_post_idea_prompt",
     "build_repair_prompt",
     "build_structured_chains",
     "build_triage_prompt",
+    "format_visual_evidence",
 ]
