@@ -27,6 +27,8 @@ import {
   MagnifyingGlass,
   Copy,
   CheckFat,
+  Key,
+  Warning,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -61,4 +63,6 @@ export {
   MagnifyingGlass,
   Copy,
   CheckFat,
+  Key,
+  Warning,
 };
