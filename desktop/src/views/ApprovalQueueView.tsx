@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import {
   Check,
@@ -12,7 +12,10 @@ import {
   MagnifyingGlass,
   CheckCircle,
   WarningCircle,
+  Keyboard,
 } from "@phosphor-icons/react";
+import { useQueueShortcuts } from "../hooks/useQueueShortcuts";
+import { KeyboardShortcutsModal } from "../components/KeyboardShortcutsModal";
 
 export interface PendingItem {
   id: string;
@@ -95,6 +98,8 @@ const TONE_OPTIONS: ToneOption[] = [
   { label: "Shorter & Punchier", tone: "shorter" },
 ];
 
+const TONE_CYCLE = ["technical", "inquisitive", "contrarian", "shorter"];
+
 export interface ApprovalQueueViewProps {
   initialItems?: PendingItem[];
 }
@@ -114,6 +119,11 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState<boolean>(false);
+  const [currentToneIndex, setCurrentToneIndex] = useState<number>(-1);
+
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const queueListRef = useRef<HTMLDivElement | null>(null);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return items;
@@ -142,6 +152,10 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
   const handleRewrite = async (tone: string) => {
     if (!selectedItem || activeRewriteTone) return;
+    const toneIdx = TONE_CYCLE.indexOf(tone);
+    if (toneIdx !== -1) {
+      setCurrentToneIndex(toneIdx);
+    }
     setActiveRewriteTone(tone);
     setActionError(null);
     try {
@@ -249,6 +263,27 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
     }
   };
 
+  const handleCycleTone = () => {
+    if (!selectedItem || activeRewriteTone || isProcessing) return;
+    const nextIndex = (currentToneIndex + 1) % TONE_CYCLE.length;
+    setCurrentToneIndex(nextIndex);
+    handleRewrite(TONE_CYCLE[nextIndex]);
+  };
+
+  useQueueShortcuts({
+    items: filteredItems,
+    selectedId,
+    onSelectId: (id) => setSelectedId(id),
+    onApprove: handleApprove,
+    onReject: handleReject,
+    onCycleTone: handleCycleTone,
+    onToggleShortcuts: () => setIsShortcutsModalOpen((prev) => !prev),
+    onCloseShortcuts: () => setIsShortcutsModalOpen(false),
+    isShortcutsOpen: isShortcutsModalOpen,
+    textareaRef,
+    queueListRef,
+  });
+
   // Draft metrics for LinkedIn sweet-spot
   const currentText = selectedItem?.draftText ?? "";
   const charCount = currentText.length;
@@ -275,6 +310,20 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
               Human authorization boundary: Actions remain pending until explicitly approved or rejected.
             </p>
           </div>
+
+          <button
+            type="button"
+            data-testid="shortcuts-help-btn"
+            onClick={() => setIsShortcutsModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200"
+            title="Keyboard shortcuts cheat sheet (?)"
+          >
+            <Keyboard size={14} className="text-zinc-400" />
+            <span>Shortcuts</span>
+            <kbd className="rounded border border-zinc-700/60 bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+              ?
+            </kbd>
+          </button>
         </div>
 
         <div
@@ -291,6 +340,11 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
             All suggestions have been reviewed. Trigger a Scout cycle from Command Center to evaluate new feed posts.
           </p>
         </div>
+
+        <KeyboardShortcutsModal
+          isOpen={isShortcutsModalOpen}
+          onClose={() => setIsShortcutsModalOpen(false)}
+        />
       </div>
     );
   }
@@ -316,25 +370,41 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
           </p>
         </div>
 
-        {actionNotice && (
-          <div
-            data-testid="action-notice"
-            className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs text-emerald-300"
-          >
-            <CheckCircle size={14} className="text-emerald-400" />
-            <span>{actionNotice}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {actionNotice && (
+            <div
+              data-testid="action-notice"
+              className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs text-emerald-300"
+            >
+              <CheckCircle size={14} className="text-emerald-400" />
+              <span>{actionNotice}</span>
+            </div>
+          )}
 
-        {actionError && (
-          <div
-            data-testid="action-error"
-            className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3.5 py-1.5 text-xs text-rose-300"
+          {actionError && (
+            <div
+              data-testid="action-error"
+              className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3.5 py-1.5 text-xs text-rose-300"
+            >
+              <WarningCircle size={14} className="text-rose-400" />
+              <span>{actionError}</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            data-testid="shortcuts-help-btn"
+            onClick={() => setIsShortcutsModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200"
+            title="Keyboard shortcuts cheat sheet (?)"
           >
-            <WarningCircle size={14} className="text-rose-400" />
-            <span>{actionError}</span>
-          </div>
-        )}
+            <Keyboard size={14} className="text-zinc-400" />
+            <span>Shortcuts</span>
+            <kbd className="rounded border border-zinc-700/60 bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+              ?
+            </kbd>
+          </button>
+        </div>
       </div>
 
       {/* 2-Column Cockpit Layout */}
@@ -368,7 +438,11 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
           </div>
 
           {/* Cards List */}
-          <div className="space-y-2.5 max-h-[calc(100vh-230px)] overflow-y-auto pr-0.5">
+          <div
+            ref={queueListRef}
+            tabIndex={-1}
+            className="space-y-2.5 max-h-[calc(100vh-230px)] overflow-y-auto pr-0.5 outline-none"
+          >
             {filteredItems.map((item) => {
               const isSelected = item.id === selectedId;
               return (
@@ -556,6 +630,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
                 {/* Textarea */}
                 <div className="mt-3">
                   <textarea
+                    ref={textareaRef}
                     data-testid="draft-editor-textarea"
                     aria-label="Comment Draft Editor"
                     value={selectedItem.draftText}
@@ -568,9 +643,17 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
                 {/* Tone Quick-Pills Bar */}
                 <div className="mt-3 rounded-md border border-zinc-800/80 bg-zinc-950/50 p-2.5">
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 pb-2">
-                    <MagicWand size={13} className="text-amber-400" />
-                    <span>AI Tone Quick-Pills</span>
+                  <div className="flex items-center justify-between pb-2">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
+                      <MagicWand size={13} className="text-amber-400" />
+                      <span>AI Tone Quick-Pills</span>
+                      <kbd className="ml-1 rounded border border-zinc-700/50 bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                        T
+                      </kbd>
+                    </div>
+                    <span className="font-mono text-[10px] text-zinc-500">
+                      Press T to cycle
+                    </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {TONE_OPTIONS.map((opt) => {
@@ -631,6 +714,9 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
                     >
                       <X size={13} weight="bold" />
                       <span>Reject</span>
+                      <kbd className="ml-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[10px] text-rose-300">
+                        R
+                      </kbd>
                     </button>
 
                     <button
@@ -642,6 +728,9 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
                     >
                       <Check size={13} weight="bold" />
                       <span>Approve & Queue</span>
+                      <kbd className="ml-1 rounded border border-emerald-700/40 bg-emerald-700/30 px-1.5 py-0.5 font-mono text-[10px] text-zinc-900">
+                        A
+                      </kbd>
                     </button>
                   </div>
                 </div>
@@ -656,6 +745,11 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
           )}
         </div>
       </div>
+
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
     </div>
   );
 };
