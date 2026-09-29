@@ -2,6 +2,8 @@
  * API types and global window definition for Desktop Renderer process.
  */
 
+export type { ScheduledPost, MediaAttachment, ScheduledPostStatus, AutomatedCommentWindow } from "./index";
+
 export interface PendingAction {
   item_id: string;
   action_type: "approve_comment" | "approve_post" | string;

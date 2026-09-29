@@ -18,12 +18,14 @@ from agent.models.schemas import (
     ExecutionResult,
     HistoryEntry,
     HistoryStatus,
+    MediaAttachment,
     PendingAction,
     PostIdea,
     PostIdeationContext,
     PostRecord,
     RepositoryDispatchPayload,
     RiskFlag,
+    ScheduledPost,
     TriageResult,
 )
 
@@ -458,3 +460,76 @@ class TestRepositoryDispatchPayload:
         )
         assert dispatch.event_type == "execute_approval"
         assert dispatch.client_payload["item_id"] == "item_1"
+
+
+class TestMediaAttachment:
+    """Test suite for MediaAttachment schema."""
+
+    def test_valid_image_attachment(self) -> None:
+        attachment = MediaAttachment(
+            media_type="image",
+            file_name="architecture-diagram.png",
+            file_url="https://example.com/assets/arch.png",
+            slide_count=1,
+        )
+        assert attachment.media_type == "image"
+        assert attachment.file_name == "architecture-diagram.png"
+        assert attachment.slide_count == 1
+
+    def test_valid_carousel_pdf_attachment(self) -> None:
+        attachment = MediaAttachment(
+            media_type="carousel_pdf",
+            file_name="state-machine-guide.pdf",
+            slide_count=8,
+        )
+        assert attachment.media_type == "carousel_pdf"
+        assert attachment.slide_count == 8
+        assert attachment.file_url == ""
+
+    def test_invalid_slide_count(self) -> None:
+        with pytest.raises(ValidationError):
+            MediaAttachment(
+                media_type="carousel_pdf",
+                file_name="guide.pdf",
+                slide_count=0,
+            )
+
+
+class TestScheduledPost:
+    """Test suite for ScheduledPost schema."""
+
+    def test_valid_scheduled_post_defaults(self) -> None:
+        post = ScheduledPost(
+            id="post-abc123",
+            headline="Contrarian View on LLM Agents",
+            post_text="Most agent failures in production stem from uncontrolled state mutability.",
+        )
+        assert post.id == "post-abc123"
+        assert post.status == "draft"
+        assert post.media == []
+        assert post.topic_pillar == ""
+        assert post.scheduled_time is None
+        assert isinstance(post.created_at, datetime)
+
+    def test_scheduled_post_with_media_and_time(self) -> None:
+        sched_time = datetime(2026, 10, 15, 14, 30, tzinfo=UTC)
+        media_item = MediaAttachment(
+            media_type="carousel_pdf",
+            file_name="agent-playbook.pdf",
+            slide_count=6,
+        )
+        post = ScheduledPost(
+            id="post-xyz789",
+            headline="5 Rules for Production HITL Agents",
+            post_text="Detailed teardown of human-in-the-loop validation.",
+            scheduled_time=sched_time,
+            status="scheduled",
+            media=[media_item],
+            topic_pillar="Agent Architecture",
+        )
+        assert post.status == "scheduled"
+        assert len(post.media) == 1
+        assert post.media[0].file_name == "agent-playbook.pdf"
+        assert post.topic_pillar == "Agent Architecture"
+        assert post.scheduled_time == sched_time
+

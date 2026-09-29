@@ -6,6 +6,8 @@ import {
   AuditEntry,
   DoctorCheck,
   SystemTelemetry,
+  ScheduledPost,
+  AutomatedCommentWindow,
 } from "../types";
 
 export interface AppContextType {
@@ -25,6 +27,12 @@ export interface AppContextType {
   auditEntries: AuditEntry[];
   doctorChecks: DoctorCheck[];
   lastTriggerMessage: string | null;
+  scheduledPosts: ScheduledPost[];
+  saveScheduledPost: (post: ScheduledPost) => void;
+  deleteScheduledPost: (id: string) => void;
+  commentWindows: AutomatedCommentWindow[];
+  activePostForEditing: ScheduledPost | null;
+  setActivePostForEditing: (post: ScheduledPost | null) => void;
 }
 
 const initialTelemetry: SystemTelemetry = {
@@ -174,6 +182,85 @@ const initialDoctorChecks: DoctorCheck[] = [
   },
 ];
 
+const initialScheduledPosts: ScheduledPost[] = [
+  {
+    id: "post-001",
+    headline: "The 3 Invariants of Production LLM Agents",
+    post_text: "Most agent failures in production aren't model hallucinations. They are uncontrolled side effects.\n\nAfter auditing enterprise autonomous workflows, three non-negotiable architectural invariants emerged:\n\n1. Deterministic State Storage: Agents must never own persistent safety state in ephemeral checkpointers.\n2. Mandatory Human Authorization: No platform write actions without explicit cryptographic or relay sign-off.\n3. Dom-Verified Confirmations: Never assume an automated click succeeded without structural DOM verification.\n\nWhat safety invariant do you consider non-negotiable for enterprise deployment?",
+    scheduled_time: "2026-09-30T14:00:00Z",
+    status: "scheduled",
+    topic_pillar: "Agent Architecture",
+    media: [
+      {
+        media_type: "carousel_pdf",
+        file_name: "hitl-agent-architecture.pdf",
+        file_url: "mock://hitl-agent-architecture.pdf",
+        slide_count: 5,
+      },
+    ],
+    created_at: "2026-09-29T10:00:00Z",
+    approved_at: "2026-09-29T11:30:00Z",
+  },
+  {
+    id: "post-002",
+    headline: "Why Cloudflare KV Beats Git-as-Database for Live State",
+    post_text: "Running autonomous pipelines using git commit-and-push for live state creates three critical problems:\n- Merge conflict storms during concurrent runs\n- Commit history pollution with transient counters\n- Public exposure of pending drafts\n\nMigrating to edge key-value storage completely solved state race conditions with sub-40ms latency.",
+    scheduled_time: "2026-10-02T16:30:00Z",
+    status: "draft",
+    topic_pillar: "System Design",
+    media: [],
+    created_at: "2026-09-29T12:00:00Z",
+  },
+  {
+    id: "post-003",
+    headline: "Zero-Leak Session Vaults for Headless Browsers",
+    post_text: "How do you securely automate LinkedIn interactions without exposing raw authentication cookies in CI/CD logs?\n\nWe implemented symmetric Fernet encryption for browser storage states:\n- Decryption keys stay in runner memory\n- Cookies are purged immediately post-execution\n- Continuous health checks monitor session expiry\n\nResult: 18-day session longevity with zero token leakage.",
+    scheduled_time: "2026-09-28T09:00:00Z",
+    status: "published",
+    topic_pillar: "Security & Vaults",
+    media: [
+      {
+        media_type: "image",
+        file_name: "vault-encryption-flow.png",
+        file_url: "mock://vault-encryption-flow.png",
+        slide_count: 1,
+      },
+    ],
+    created_at: "2026-09-27T08:00:00Z",
+    approved_at: "2026-09-27T08:45:00Z",
+  },
+];
+
+const initialCommentWindows: AutomatedCommentWindow[] = [
+  {
+    id: "win-001",
+    title: "Morning Feed Scout",
+    start_time: "09:00",
+    end_time: "10:30",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    status: "active",
+    topic_filter: "AI Systems & LLM Architecture",
+  },
+  {
+    id: "win-002",
+    title: "Afternoon High-Signal Discussion",
+    start_time: "14:00",
+    end_time: "15:30",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    status: "active",
+    topic_filter: "Distributed Systems & Cloudflare Workers",
+  },
+  {
+    id: "win-003",
+    title: "Evening Industry Roundup",
+    start_time: "18:00",
+    end_time: "19:00",
+    days: ["Tue", "Thu"],
+    status: "standby",
+    topic_filter: "Autonomous Agents & Frameworks",
+  },
+];
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -187,6 +274,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [auditEntries] = useState<AuditEntry[]>(initialAuditEntries);
   const [doctorChecks, setDoctorChecks] = useState<DoctorCheck[]>(initialDoctorChecks);
   const [lastTriggerMessage, setLastTriggerMessage] = useState<string | null>(null);
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>(initialScheduledPosts);
+  const [commentWindows] = useState<AutomatedCommentWindow[]>(initialCommentWindows);
+  const [activePostForEditing, setActivePostForEditing] = useState<ScheduledPost | null>(null);
 
   const systemStatus: SystemStatusType = useMemo(() => {
     if (telemetry.circuitBreakerTripped) return "tripped";
@@ -232,6 +322,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  const saveScheduledPost = useCallback((post: ScheduledPost) => {
+    setScheduledPosts((prev) => {
+      const idx = prev.findIndex((p) => p.id === post.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = post;
+        return next;
+      }
+      return [post, ...prev];
+    });
+    setLastTriggerMessage(`Post saved successfully: "${post.headline || post.id}"`);
+  }, []);
+
+  const deleteScheduledPost = useCallback((id: string) => {
+    setScheduledPosts((prev) => prev.filter((p) => p.id !== id));
+    setLastTriggerMessage("Scheduled post removed");
+  }, []);
+
   const value = useMemo(
     () => ({
       currentTab,
@@ -250,6 +358,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       auditEntries,
       doctorChecks,
       lastTriggerMessage,
+      scheduledPosts,
+      saveScheduledPost,
+      deleteScheduledPost,
+      commentWindows,
+      activePostForEditing,
+      setActivePostForEditing,
     }),
     [
       currentTab,
@@ -266,6 +380,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       auditEntries,
       doctorChecks,
       lastTriggerMessage,
+      scheduledPosts,
+      saveScheduledPost,
+      deleteScheduledPost,
+      commentWindows,
+      activePostForEditing,
     ]
   );
 

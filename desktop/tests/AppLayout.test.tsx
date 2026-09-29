@@ -24,6 +24,8 @@ describe("AppLayout", () => {
     renderLayout();
     expect(screen.getByTestId("nav-dashboard")).toBeTruthy();
     expect(screen.getByTestId("nav-queue")).toBeTruthy();
+    expect(screen.getByTestId("nav-composer")).toBeTruthy();
+    expect(screen.getByTestId("nav-calendar")).toBeTruthy();
     expect(screen.getByTestId("nav-vault")).toBeTruthy();
     expect(screen.getByTestId("nav-history")).toBeTruthy();
     expect(screen.getByTestId("nav-doctor")).toBeTruthy();

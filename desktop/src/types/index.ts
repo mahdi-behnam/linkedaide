@@ -10,10 +10,43 @@ export type HistoryStatus =
 export type NavigationTab =
   | "dashboard"
   | "queue"
+  | "composer"
+  | "calendar"
   | "vault"
   | "history"
   | "doctor"
   | "settings";
+
+export type ScheduledPostStatus = "draft" | "scheduled" | "published" | "failed";
+
+export interface MediaAttachment {
+  media_type: "image" | "carousel_pdf";
+  file_name: string;
+  file_url: string;
+  slide_count: number;
+}
+
+export interface ScheduledPost {
+  id: string;
+  headline: string;
+  post_text: string;
+  scheduled_time?: string | null;
+  status: ScheduledPostStatus;
+  media: MediaAttachment[];
+  topic_pillar: string;
+  created_at: string;
+  approved_at?: string | null;
+}
+
+export interface AutomatedCommentWindow {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  days: string[];
+  status: "active" | "standby" | "paused";
+  topic_filter: string;
+}
 
 export interface DailyQuota {
   commentsExecuted: number;
