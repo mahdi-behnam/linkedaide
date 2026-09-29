@@ -52,6 +52,42 @@ Ensure you have installed:
 
 ---
 
+## Fast-Track Onboarding: Interactive CLI Setup & Doctor
+
+To accelerate setup, use the unified CLI tool to configure credentials and diagnose your environment:
+
+### 1. Interactive Setup Wizard
+Run the setup wizard to interactively configure your LLM provider, enter API keys, connect your Telegram bot, choose state persistence, and generate cryptographic encryption keys:
+
+```bash
+uv run agent setup
+```
+
+The wizard will:
+- Guide you through selecting your LLM provider (`nvidia`, `openai`, `anthropic`, `gemini`, `groq`, `ollama`) and saving the relevant API key.
+- Guide your Telegram reviewer bot setup (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_AUTHORIZED_CHAT_ID`).
+- Guide your state persistence choice (Cloudflare KV for production vs Git/Local for dev).
+- Automatically generate a 32-byte Fernet `SESSION_ENCRYPTION_KEY` if missing.
+- Safely write and update `.env` without overwriting unrelated variables.
+
+### 2. Diagnostic Health Check ("Doctor")
+Run the diagnostic suite at any time to verify system integrity and connectivity across all subsystems:
+
+```bash
+uv run agent doctor
+```
+
+The diagnostic suite checks and reports a checklist (🟢 Pass, 🟡 Warning, 🔴 Fail):
+- **Python Runtime**: Confirms Python `>= 3.11`.
+- **Playwright Chromium**: Checks that Chromium is installed and executable.
+- **Configuration**: Validates loaded settings from `.env` and environment variables.
+- **LLM Provider**: Tests model instantiation for the selected provider.
+- **Telegram Bot**: Calls `getMe` via HTTP to verify bot token and display bot handle.
+- **State Backend**: Verifies Cloudflare KV namespace access via REST API, or checks local `state/` directory write access.
+- **LinkedIn Session**: Verifies that `storage_state.json` or encrypted credentials exist and are decryptable.
+
+---
+
 ## Step 1: Generate Cryptographic Secrets
 
 The repository includes a secret generation script to produce the required cryptographic keys:

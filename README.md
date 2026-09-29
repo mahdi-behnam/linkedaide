@@ -94,15 +94,39 @@ cd linkedin-hitl-agent
 uv sync
 ```
 
-### Environment Configuration
+### Quick Start & Configuration
 
-Copy the sample environment file and configure your credentials:
+The repository includes a unified CLI (`agent`) with an interactive onboarding wizard and diagnostic suite:
 
+```bash
+# 1. Run the interactive setup wizard to configure LLM provider, keys, Telegram, and state backend:
+uv run agent setup
+
+# 2. Verify all dependencies, credentials, and API connectivity:
+uv run agent doctor
+
+# 3. Extract and encrypt your LinkedIn session:
+uv run python scripts/extract_linkedin_session.py
+
+# 4. Test scouting in dry-run mode:
+uv run agent scout --dry-run
+```
+
+Alternatively, copy `.env.example` directly:
 ```bash
 cp .env.example .env
 ```
-
 Refer to [`.env.example`](.env.example) for detailed variable documentation.
+
+### CLI Reference
+
+The unified `agent` command provides:
+
+- `uv run agent doctor`: Comprehensive diagnostic suite (Python runtime, Playwright Chromium, configuration, LLM provider, Telegram connectivity, State backend, LinkedIn session).
+- `uv run agent setup`: Interactive onboarding wizard guiding provider selection, API keys, Telegram credentials, Fernet encryption key generation, and state persistence.
+- `uv run agent scout [--dry-run] [--headed]`: Run feed scraping, LLM triage, comment drafting, and Telegram review delivery.
+- `uv run agent execute [--action approve|reject] [--item-id ID]`: Execute an approved or rejected LinkedIn action.
+- `uv run agent health`: Read-only session health check canary.
 
 ---
 
