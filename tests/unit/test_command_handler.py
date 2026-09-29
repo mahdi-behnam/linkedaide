@@ -13,7 +13,13 @@ import pytest
 from pydantic import SecretStr
 
 from agent.config import Settings
-from agent.models.schemas import DailyCounters, HistoryEntry, PendingAction
+from agent.models.schemas import (
+    CommentDraft,
+    DailyCounters,
+    EngagementStyle,
+    HistoryEntry,
+    PendingAction,
+)
 from agent.orchestration.poll_flow import run_poll_flow
 from agent.state.store import GitStateStore
 from agent.telegram.client import TelegramClient
@@ -888,3 +894,556 @@ class TestCommandHandlerCorruptedFilesResilience:
             report = await cmd_handler.handle_status(chat_id=987654321)
             assert "Halted (Circuit Breaker Tripped)" in report
             assert "Corrupted incident.json file" in report
+
+
+class TestCommandHandlerReplyEditing:
+    """Test suite for inline draft editing via Telegram reply."""
+
+    @pytest.mark.asyncio
+    async def test_reply_edit_success(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        action = sample_pending_action.model_copy(update={"telegram_message_id": 5001})
+        test_state_store.write_pending(action)
+
+        recorded_requests: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": str(request.url.path), "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 7001}})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "message_id": 6001,
+                "text": "This is a brilliantly revised comment draft.",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                "reply_to_message": {
+                    "message_id": 5001,
+                    "text": f"ID: {action.item_id}\nDraft: original",
+                },
+            }
+
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+
+            # Verify state updated
+            updated_pending = test_state_store.read_pending(action.item_id)
+            assert updated_pending is not None
+            assert updated_pending.draft_text == "This is a brilliantly revised comment draft."
+
+            # Verify editMessageText sent to update card
+            edit_reqs = [r for r in recorded_requests if r["path"].endswith("/editMessageText")]
+            assert len(edit_reqs) == 1
+            assert edit_reqs[0]["payload"]["message_id"] == 5001
+            assert "This is a brilliantly revised comment draft." in edit_reqs[0]["payload"]["text"]
+            assert edit_reqs[0]["payload"]["reply_markup"] is not None
+
+            # Verify confirmation reply sent
+            send_reqs = [r for r in recorded_requests if r["path"].endswith("/sendMessage")]
+            assert len(send_reqs) == 1
+            assert send_reqs[0]["payload"]["reply_to_message_id"] == 6001
+            assert "✏️ Draft updated successfully!" in send_reqs[0]["payload"]["text"]
+
+    @pytest.mark.asyncio
+    async def test_reply_edit_fallback_item_id_regex(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        action = sample_pending_action.model_copy(update={"telegram_message_id": None})
+        test_state_store.write_pending(action)
+
+        recorded_requests: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": str(request.url.path), "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 7002}})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "message_id": 6002,
+                "text": "Regex fallback revised draft text.",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                "reply_to_message": {
+                    "message_id": 99999,
+                    "text": f"🚀 Suggestion\nID: {action.item_id}\nSome text...",
+                },
+            }
+
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+            updated_pending = test_state_store.read_pending(action.item_id)
+            assert updated_pending is not None
+            assert updated_pending.draft_text == "Regex fallback revised draft text."
+
+    @pytest.mark.asyncio
+    async def test_reply_edit_unauthorized_sender(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        action = sample_pending_action.model_copy(update={"telegram_message_id": 5001})
+        test_state_store.write_pending(action)
+
+        recorded_requests: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": str(request.url.path), "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 7003}})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "message_id": 6003,
+                "text": "Unauthorized hack attempt",
+                "from": {"id": 111222333},
+                "chat": {"id": 111222333},
+                "reply_to_message": {
+                    "message_id": 5001,
+                    "text": f"ID: {action.item_id}",
+                },
+            }
+
+            res = await cmd_handler.handle_message(msg)
+            assert res is False
+            assert len(recorded_requests) == 0
+
+            item = test_state_store.read_pending(action.item_id)
+            assert item is not None
+            assert item.draft_text == sample_pending_action.draft_text
+
+    @pytest.mark.asyncio
+    async def test_reply_edit_empty_text(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        action = sample_pending_action.model_copy(update={"telegram_message_id": 5001})
+        test_state_store.write_pending(action)
+
+        sent_messages: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_messages.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 7004}})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "message_id": 6004,
+                "text": "   ",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                "reply_to_message": {
+                    "message_id": 5001,
+                    "text": f"ID: {action.item_id}",
+                },
+            }
+
+            res = await cmd_handler.handle_message(msg)
+            assert res is False
+            assert len(sent_messages) == 1
+            assert "Draft text cannot be empty" in sent_messages[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_reply_edit_exceeds_max_length(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        action = sample_pending_action.model_copy(update={"telegram_message_id": 5001})
+        test_state_store.write_pending(action)
+
+        sent_messages: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_messages.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 7005}})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "message_id": 6005,
+                "text": "A" * 650,
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                "reply_to_message": {
+                    "message_id": 5001,
+                    "text": f"ID: {action.item_id}",
+                },
+            }
+
+            res = await cmd_handler.handle_message(msg)
+            assert res is False
+            assert len(sent_messages) == 1
+            assert "exceeds maximum length of 600" in sent_messages[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_reply_edit_not_found(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_messages: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_messages.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 7006}})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "message_id": 6006,
+                "text": "Trying to edit something that doesn't exist",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "chat": {"id": mock_settings.telegram_authorized_chat_id},
+                "reply_to_message": {
+                    "message_id": 8888,
+                    "text": "Old message without valid ID",
+                },
+            }
+
+            res = await cmd_handler.handle_message(msg)
+            assert res is False
+            assert len(sent_messages) == 1
+            assert "no longer pending" in sent_messages[0]["text"]
+
+
+class TestCommandHandlerCallbackQueries:
+    """Test suite for edit and regenerate callback query processing in CommandHandler."""
+
+    @pytest.mark.asyncio
+    async def test_callback_edit_prompt(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        answered: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            answered.append(data)
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            cb = {
+                "id": "cb_edit_test",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "data": f"edit:{sample_pending_action.item_id}",
+                "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+            }
+
+            res = await cmd_handler.handle_callback_query(cb)
+            assert res is True
+            assert len(answered) == 1
+            assert answered[0]["callback_query_id"] == "cb_edit_test"
+            assert "Reply to this suggestion with your revised draft text" in answered[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_callback_reg_tone_guidance(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded.append({"path": str(request.url.path), "payload": data})
+            if "sendMessage" in str(request.url.path):
+                return httpx.Response(200, json={"ok": True, "result": {"message_id": 9001}})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+                llm_service=None,
+            )
+
+            cb = {
+                "id": "cb_reg_test",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "data": f"reg:{sample_pending_action.item_id}",
+                "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+            }
+
+            res = await cmd_handler.handle_callback_query(cb)
+            assert res is True
+
+            ans = [r for r in recorded if r["path"].endswith("/answerCallbackQuery")]
+            assert len(ans) == 1
+            assert ans[0]["payload"]["callback_query_id"] == "cb_reg_test"
+
+            sends = [r for r in recorded if r["path"].endswith("/sendMessage")]
+            assert len(sends) == 1
+            assert "Draft Regeneration & Tone Guidance" in sends[0]["payload"]["text"]
+            assert "Contrarian Perspective" in sends[0]["payload"]["text"]
+
+    @pytest.mark.asyncio
+    async def test_callback_reg_with_llm_service(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        action = sample_pending_action.model_copy(
+            update={
+                "telegram_message_id": 5001,
+                "engagement_style": EngagementStyle.TECHNICAL_DEEP_DIVE,
+            }
+        )
+        test_state_store.write_pending(action)
+        recorded: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded.append({"path": str(request.url.path), "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        mock_llm = AsyncMock()
+        mock_llm.draft_comment = AsyncMock(
+            return_value=CommentDraft(
+                draft_comment="Here is an alternative contrarian angle on concurrency.",
+                topic_tags=["concurrency"],
+            )
+        )
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+                llm_service=mock_llm,
+            )
+
+            cb = {
+                "id": "cb_reg_llm",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "data": f"reg:{action.item_id}",
+                "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+            }
+
+            res = await cmd_handler.handle_callback_query(cb)
+            assert res is True
+
+            updated_item = test_state_store.read_pending(action.item_id)
+            assert updated_item is not None
+            assert updated_item.draft_text == "Here is an alternative contrarian angle on concurrency."
+
+            edits = [r for r in recorded if r["path"].endswith("/editMessageText")]
+            assert len(edits) == 1
+            assert "Here is an alternative contrarian angle" in edits[0]["payload"]["text"]
+
+            ans = [r for r in recorded if r["path"].endswith("/answerCallbackQuery")]
+            assert len(ans) == 1
+            assert "Regenerated draft" in ans[0]["payload"]["text"]
+
+    @pytest.mark.asyncio
+    async def test_callback_unauthorized_sender(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded.append(data)
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            cb = {
+                "id": "cb_unauth",
+                "from": {"id": 111222333},
+                "data": f"reg:{sample_pending_action.item_id}",
+                "message": {"message_id": 5001},
+            }
+
+            res = await cmd_handler.handle_callback_query(cb)
+            assert res is False
+            assert len(recorded) == 0
+
+    @pytest.mark.asyncio
+    async def test_callback_item_not_found(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        answered: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            answered.append(data)
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            cb = {
+                "id": "cb_missing",
+                "from": {"id": mock_settings.telegram_authorized_chat_id},
+                "data": "edit:missing_item_999",
+                "message": {"message_id": 5001},
+            }
+
+            res = await cmd_handler.handle_callback_query(cb)
+            assert res is False
+            assert len(answered) == 1
+            assert "no longer pending" in answered[0]["text"]
+            assert answered[0]["show_alert"] is True
+
+
+class TestPollFlowRegenerateCallback:
+    """Test poll flow integration with reg:<item_id> callbacks."""
+
+    @pytest.mark.asyncio
+    async def test_poll_flow_dispatches_regenerate_callback(
+        self,
+        mock_settings: Settings,
+        tmp_path: Path,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        store = GitStateStore(tmp_path)
+        store.state_dir.mkdir(parents=True, exist_ok=True)
+        store.pending_dir.mkdir(parents=True, exist_ok=True)
+        store.write_pending(sample_pending_action)
+
+        sample_updates = {
+            "ok": True,
+            "result": [
+                {
+                    "update_id": 104,
+                    "callback_query": {
+                        "id": "cb_reg_1",
+                        "from": {"id": mock_settings.telegram_authorized_chat_id},
+                        "message": {"message_id": 5001, "chat": {"id": mock_settings.telegram_authorized_chat_id}},
+                        "data": f"reg:{sample_pending_action.item_id}",
+                    },
+                }
+            ],
+        }
+
+        answered_queries: list[dict[str, Any]] = []
+
+        def tg_handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            answered_queries.append(data)
+            if "sendMessage" in str(request.url.path):
+                return httpx.Response(200, json={"ok": True, "result": {"message_id": 9002}})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(tg_handler)
+        async with httpx.AsyncClient(transport=transport) as tg_http_client:
+            tg = TelegramClient(mock_settings, http_client=tg_http_client)
+
+            with patch("httpx.AsyncClient.get") as mock_get:
+                mock_resp = AsyncMock()
+                mock_resp.raise_for_status = lambda: None
+                mock_resp.json = lambda: sample_updates
+                mock_get.return_value = mock_resp
+
+                results = await run_poll_flow(
+                    settings=mock_settings,
+                    repo_root=tmp_path,
+                    telegram_client=tg,
+                )
+
+                assert len(results) == 1
+                assert results[0]["status"] == "regenerate_prompted"
+                assert results[0]["item_id"] == sample_pending_action.item_id
+                ans = [q for q in answered_queries if "callback_query_id" in q]
+                assert len(ans) == 1
+                assert ans[0]["callback_query_id"] == "cb_reg_1"

@@ -134,6 +134,11 @@ async def run_poll_flow(
                 results.append({"status": "edit_prompted", "item_id": parsed.item_id})
                 continue
 
+            if parsed.is_regenerate:
+                await cmd_handler.handle_callback_query(cb)
+                results.append({"status": "regenerate_prompted", "item_id": parsed.item_id})
+                continue
+
             action_name = "approve" if parsed.is_approval else "reject"
             msg_id = cb.get("message", {}).get("message_id")
 

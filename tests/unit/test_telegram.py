@@ -16,6 +16,7 @@ from agent.telegram.keyboards import (
     build_outcome_message,
     build_suggestion_keyboard,
     build_suggestion_message,
+    format_suggestion_card,
 )
 
 
@@ -97,10 +98,56 @@ class TestKeyboardsAndMessages:
         assert row1[0]["callback_data"] == "ac:item_edit_test"
         assert row1[1]["text"] == "❌ Reject"
         assert row1[1]["callback_data"] == "rc:item_edit_test"
-        assert len(row2) == 1
-        assert row2[0]["text"] == "✏️ Edit"
-        assert row2[0]["callback_data"] == "ed:item_edit_test"
-        assert len(b"ed:item_edit_test") < 64
+        assert len(row2) == 2
+        assert row2[0]["text"] == "🔄 Regenerate"
+        assert row2[0]["callback_data"] == "reg:item_edit_test"
+        assert row2[1]["text"] == "✏️ Edit"
+        assert row2[1]["callback_data"] == "edit:item_edit_test"
+        assert len(b"reg:item_edit_test") < 64
+        assert len(b"edit:item_edit_test") < 64
+
+    def test_format_suggestion_card_comprehensive(self) -> None:
+        item = PendingAction(
+            item_id="item_card_test_01",
+            action_type="approve_comment",
+            post_urn="urn:li:activity:999888",
+            post_url="https://linkedin.com/feed/update/urn:li:activity:999888",
+            author_name="Bob Builder <VP & CTO>",
+            author_headline="VP of Engineering @ AI Corp",
+            post_excerpt="Exploring scalable microservices with Rust & Go.",
+            draft_text="Fascinating architecture! How do you handle distributed transaction rollback in this setup?",
+            confidence=0.94,
+            reasoning="Strong systems engineering topic matching core focus area.",
+            created_at=datetime(2026, 9, 1, 10, 0, 0, tzinfo=UTC),
+        )
+        card = format_suggestion_card(item)
+
+        # Target Post Author & Headline (with HTML escaping)
+        assert "&lt;VP &amp; CTO&gt;" in card
+        assert "VP of Engineering @ AI Corp" in card
+        assert "<b>Author:</b> Bob Builder &lt;VP &amp; CTO&gt; (<i>VP of Engineering @ AI Corp</i>)" in card
+
+        # Clean excerpt blockquote
+        assert "<b>Post Excerpt:</b>\n<blockquote>Exploring scalable microservices with Rust &amp; Go.</blockquote>" in card
+        # Draft blockquote
+        assert "<b>Drafted Content:</b>\n<blockquote>Fascinating architecture! How do you handle distributed transaction rollback in this setup?</blockquote>" in card
+
+        # Metrics: char and word count
+        char_count = len(item.draft_text)
+        word_count = len(item.draft_text.split())
+        assert f"<b>Metrics:</b> {char_count} chars • {word_count} words" in card
+
+        # Confidence and reasoning
+        assert "<b>Confidence:</b> 94%" in card
+        assert "<b>Reasoning:</b> Strong systems engineering topic matching core focus area." in card
+
+        # ID footer
+        assert "<i>ID: item_card_test_01</i>" in card
+
+    def test_telegram_client_format_suggestion_card(self, sample_pending_action: PendingAction) -> None:
+        card1 = format_suggestion_card(sample_pending_action)
+        card2 = TelegramClient.format_suggestion_card(sample_pending_action)
+        assert card1 == card2
 
     def test_build_suggestion_keyboard_exceeds_64_bytes(self) -> None:
         long_id = "x" * 63

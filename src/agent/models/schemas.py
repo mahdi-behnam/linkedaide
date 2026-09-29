@@ -133,6 +133,7 @@ class PendingAction(BaseModel):
     post_urn: str = Field(default="", description="LinkedIn post URN (empty for original posts)")
     post_url: str = Field(default="", description="Direct URL to the target post")
     author_name: str = Field(default="", description="Author name of target post")
+    author_headline: str = Field(default="", description="Headline or title of target post author")
     post_excerpt: str = Field(default="", description="Excerpt of original post for context")
     draft_text: str = Field(description="Drafted comment or post text")
     confidence: float = Field(
@@ -259,6 +260,7 @@ ACTION_CODE_REJECT_COMMENT = "rc"
 ACTION_CODE_APPROVE_POST = "ap"
 ACTION_CODE_REJECT_POST = "rp"
 ACTION_CODE_EDIT = "ed"
+ACTION_CODE_REGENERATE = "reg"
 
 CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_APPROVE_COMMENT: "approve_comment",
@@ -266,8 +268,11 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_APPROVE_POST: "approve_post",
     ACTION_CODE_REJECT_POST: "reject_post",
     ACTION_CODE_EDIT: "edit",
+    ACTION_CODE_REGENERATE: "regenerate",
     "edit": "edit",
     "ed": "edit",
+    "reg": "regenerate",
+    "regenerate": "regenerate",
     "apv": "approve_comment",
     "rej": "reject_comment",
 }
@@ -279,6 +284,8 @@ REVERSE_ACTION_MAP: dict[str, str] = {
     "reject_post": ACTION_CODE_REJECT_POST,
     "edit": ACTION_CODE_EDIT,
     "ed": ACTION_CODE_EDIT,
+    "regenerate": ACTION_CODE_REGENERATE,
+    "reg": ACTION_CODE_REGENERATE,
 }
 
 
@@ -354,6 +361,15 @@ class CallbackDataPayload(BaseModel):
             ACTION_CODE_EDIT,
             "edit",
             "ed",
+        )
+
+    @property
+    def is_regenerate(self) -> bool:
+        """Check if action represents a regenerate request."""
+        return self.action_code in (
+            ACTION_CODE_REGENERATE,
+            "reg",
+            "regenerate",
         )
 
     @property
