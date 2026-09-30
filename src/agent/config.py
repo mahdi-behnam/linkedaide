@@ -291,6 +291,12 @@ class Settings(BaseSettings):
         description="Daily maximum allowed original LinkedIn posts",
         validation_alias=AliasChoices("MAX_POSTS_PER_DAY", "max_posts_per_day"),
     )
+    max_connections_per_day: int = Field(
+        default=10,
+        ge=0,
+        description="Daily maximum allowed LinkedIn connection requests",
+        validation_alias=AliasChoices("MAX_CONNECTIONS_PER_DAY", "max_connections_per_day"),
+    )
     max_suggestions_per_run: int = Field(
         default=3,
         ge=1,

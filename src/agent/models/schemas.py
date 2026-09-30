@@ -203,6 +203,9 @@ class DailyCounters(BaseModel):
     suggestions_sent: int = Field(
         default=0, ge=0, description="Number of Telegram suggestions sent today"
     )
+    connections_sent: int = Field(
+        default=0, ge=0, description="Number of connection requests sent today"
+    )
 
 
 class VisualContext(BaseModel):
@@ -480,5 +483,37 @@ class ScheduledPost(BaseModel):
     )
     approved_at: datetime | None = Field(
         default=None, description="UTC timestamp of human operator approval"
+    )
+
+
+class ConnectionRequestAction(BaseModel):
+    """Pending or executed LinkedIn connection request candidate."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(description="Unique deterministic or generated identifier for the connection action")
+    profile_url: str = Field(description="Target LinkedIn profile URL")
+    target_name: str = Field(description="Target contact full name")
+    target_headline: str = Field(default="", description="Target contact professional headline")
+    mutual_context: str = Field(
+        default="",
+        description="Contextual interaction or mutual topic grounding outreach reason",
+    )
+    note_text: str = Field(
+        default="",
+        max_length=300,
+        description="Personalized connection invitation note text (max 300 chars)",
+    )
+    status: Literal["pending", "approved", "rejected", "sent", "failed"] = Field(
+        default="pending",
+        description="Current lifecycle status of the outreach action",
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="UTC timestamp when the connection action candidate was created",
+    )
+    approved_at: datetime | None = Field(
+        default=None,
+        description="UTC timestamp when the connection request was approved",
     )
 

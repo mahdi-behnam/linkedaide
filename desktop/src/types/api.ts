@@ -2,7 +2,8 @@
  * API types and global window definition for Desktop Renderer process.
  */
 
-export type { ScheduledPost, MediaAttachment, ScheduledPostStatus, AutomatedCommentWindow } from "./index";
+import type { ConnectionRequestAction } from "./index";
+export type { ScheduledPost, MediaAttachment, ScheduledPostStatus, AutomatedCommentWindow, ConnectionRequestAction } from "./index";
 
 export interface PendingAction {
   item_id: string;
@@ -26,6 +27,7 @@ export interface DailyCounters {
   comments_executed: number;
   posts_executed: number;
   suggestions_sent: number;
+  connections_sent: number;
 }
 
 export interface HistoryEntry {
@@ -54,6 +56,8 @@ export interface Incident {
 export interface AgentState {
   pending_actions: PendingAction[];
   pendingActions?: PendingAction[];
+  connection_queue?: ConnectionRequestAction[];
+  connectionQueue?: ConnectionRequestAction[];
   daily_counters: DailyCounters;
   dailyCounters?: DailyCounters;
   history: HistoryEntry[];
@@ -91,6 +95,11 @@ export interface DesktopSettings {
 export interface ElectronAPI {
   fetchState: () => Promise<AgentState>;
   executeAction: (action: "approve" | "reject", itemId: string) => Promise<ActionResult>;
+  executeConnectionAction?: (
+    action: "approve" | "reject",
+    id: string,
+    note?: string
+  ) => Promise<ActionResult>;
   triggerScout: () => Promise<boolean>;
   togglePause: (paused: boolean) => Promise<boolean>;
   clearIncident: () => Promise<boolean>;
