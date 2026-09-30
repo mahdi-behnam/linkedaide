@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from collections.abc import Callable
 from pathlib import Path
 
@@ -211,6 +212,17 @@ def run_setup(
     else:
         print_func("Existing SESSION_ENCRYPTION_KEY preserved.")
         new_vars["SESSION_ENCRYPTION_KEY"] = curr_key
+
+    # 5. Desktop API Secret
+    print_func("\n--- 5. Desktop API Secret ---")
+    curr_secret = existing.get("DESKTOP_API_SECRET", "")
+    if not curr_secret:
+        generated_secret = secrets.token_urlsafe(32)
+        print_func(f"Generated new Desktop API secret: {generated_secret}")
+        new_vars["DESKTOP_API_SECRET"] = generated_secret
+    else:
+        print_func("Existing DESKTOP_API_SECRET preserved.")
+        new_vars["DESKTOP_API_SECRET"] = curr_secret
 
     # Write updates
     update_dotenv_file(env_path, new_vars)

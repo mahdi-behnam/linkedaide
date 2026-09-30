@@ -36,6 +36,7 @@ Before proceeding, here is a quick map of all secrets used in the system, where 
 | `GITHUB_DISPATCH_PAT` | GitHub Personal Access Token created by you (with `repo` / `Contents: Read and write` permissions). | Cloudflare Worker Secret |
 | `GITHUB_REPO_OWNER` | Your GitHub username or organization name. | Cloudflare Worker Secret |
 | `GITHUB_REPO_NAME` | Your GitHub repository name (e.g., `linkedin-hitl-agent`). | Cloudflare Worker Secret |
+| `DESKTOP_API_SECRET` | High-entropy URL-safe token generated via `scripts/generate_secrets.py` (or `uv run agent setup`) to authenticate Desktop app & Worker API calls. | Local `.env`, Cloudflare Worker Secret, Desktop App Settings |
 
 ---
 
@@ -99,6 +100,7 @@ uv run python scripts/generate_secrets.py
 This generates:
 1. `SESSION_ENCRYPTION_KEY`: A 32-byte Fernet AES key used to encrypt and decrypt browser session cookies.
 2. `TELEGRAM_WEBHOOK_SECRET`: A high-entropy URL-safe token used to secure webhook communication between Telegram and your Cloudflare Worker.
+3. `DESKTOP_API_SECRET`: A high-entropy URL-safe token used to authenticate the Desktop Control Panel and local CLI against your Cloudflare Worker API.
 
 > [!TIP]
 > Keep the terminal output handy — you will paste these values into your `.env`, Cloudflare Worker, and GitHub Repository Secrets in the following steps.
@@ -248,7 +250,7 @@ npx wrangler secret put GITHUB_REPO_OWNER
 # 6. Repository name (e.g. linkedin-hitl-agent)
 npx wrangler secret put GITHUB_REPO_NAME
 
-# 7. Desktop API Secret (for desktop app realtime sync & media access)
+# 7. Desktop API Secret (from Step 1 — for desktop app realtime sync & API access)
 npx wrangler secret put DESKTOP_API_SECRET
 ```
 

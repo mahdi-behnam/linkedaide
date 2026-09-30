@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 from cryptography.fernet import Fernet
 
 from scripts.generate_secrets import (
+    generate_desktop_api_secret,
     generate_session_encryption_key,
     generate_telegram_webhook_secret,
 )
@@ -52,4 +53,10 @@ def test_generate_secrets_functions() -> None:
     assert len(webhook_sec) >= 32
     # Telegram allows characters [A-Za-z0-9_-]
     for ch in webhook_sec:
+        assert ch.isalnum() or ch in ("_", "-")
+
+    desktop_sec = generate_desktop_api_secret()
+    assert isinstance(desktop_sec, str)
+    assert len(desktop_sec) >= 32
+    for ch in desktop_sec:
         assert ch.isalnum() or ch in ("_", "-")
