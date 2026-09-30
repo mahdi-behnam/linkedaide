@@ -1,44 +1,58 @@
 """Domain and persistence models package."""
 
-from agent.models.schemas import (
+from __future__ import annotations
+
+from agent.models.actions import (
+    ConnectionRequestAction,
+    MediaAttachment,
+    PendingAction,
+    ScheduledPost,
+)
+from agent.models.browser import (
+    ExecutionResult,
+    PostRecord,
+    ScrapedPost,
+    ScrapedPostCard,
+    VisualContext,
+)
+from agent.models.dispatch import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_POST,
     ACTION_CODE_APPROVE_REPLY,
+    ACTION_CODE_EDIT,
+    ACTION_CODE_REGENERATE,
     ACTION_CODE_REJECT_COMMENT,
     ACTION_CODE_REJECT_POST,
     ACTION_CODE_REJECT_REPLY,
     CALLBACK_ACTION_MAP,
     REVERSE_ACTION_MAP,
-    ActiveThreadRecord,
     CallbackDataPayload,
+    RepositoryDispatchPayload,
+)
+from agent.models.llm import (
     CommentDraft,
-    ConnectionRequestAction,
-    DailyCounters,
     EngagementStyle,
-    ExecutionResult,
-    HistoryEntry,
-    HistoryStatus,
-    MediaAttachment,
-    PendingAction,
     PostIdea,
     PostIdeationContext,
-    PostRecord,
     ReplyTriageResult,
-    RepositoryDispatchPayload,
     RiskFlag,
-    ScheduledPost,
-    ScrapedPost,
-    ScrapedPostCard,
-    ThreadReplyItem,
     TriageRecommendation,
     TriageResult,
-    VisualContext,
+)
+from agent.models.state import (
+    ActiveThreadRecord,
+    DailyCounters,
+    HistoryEntry,
+    HistoryStatus,
+    ThreadReplyItem,
 )
 
 __all__ = [
     "ACTION_CODE_APPROVE_COMMENT",
     "ACTION_CODE_APPROVE_POST",
     "ACTION_CODE_APPROVE_REPLY",
+    "ACTION_CODE_EDIT",
+    "ACTION_CODE_REGENERATE",
     "ACTION_CODE_REJECT_COMMENT",
     "ACTION_CODE_REJECT_POST",
     "ACTION_CODE_REJECT_REPLY",

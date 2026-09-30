@@ -322,9 +322,7 @@ class BiometricController:
 
         await self._dispatch_mouse_up()
 
-    def _calculate_keystroke_interval(
-        self, prev_char: str | None, curr_char: str
-    ) -> float:
+    def _calculate_keystroke_interval(self, prev_char: str | None, curr_char: str) -> float:
         """Calculate log-normal keystroke interval with QWERTY digram penalty in seconds."""
         # Log-normal keystroke intervals (t ~ LN(4.6, 0.38), bounded 45ms to 300ms)
         raw_ms = random.lognormvariate(4.6, 0.38)
@@ -384,18 +382,12 @@ class BiometricController:
             # Emulate human typos with probability P = 0.015
             char_lower = char.lower()
             will_typo = (
-                typo_prob > 0.0
-                and random.random() < typo_prob
-                and char_lower in ADJACENT_KEYS
+                typo_prob > 0.0 and random.random() < typo_prob and char_lower in ADJACENT_KEYS
             )
 
             if will_typo:
                 adjacent_candidate = random.choice(ADJACENT_KEYS[char_lower])
-                typo_char = (
-                    adjacent_candidate.upper()
-                    if char.isupper()
-                    else adjacent_candidate
-                )
+                typo_char = adjacent_candidate.upper() if char.isupper() else adjacent_candidate
 
                 # Type adjacent typo key
                 await self._dispatch_key(locator, typo_char)
@@ -427,9 +419,7 @@ class BiometricController:
                 if cognitive_pause > 0.001:
                     await asyncio.sleep(cognitive_pause)
 
-    async def smooth_wheel_scroll(
-        self, total_pixels: int, steps: int = 8
-    ) -> None:
+    async def smooth_wheel_scroll(self, total_pixels: int, steps: int = 8) -> None:
         """Emulate mouse wheel notches with inertial momentum decay and inter-notch pauses.
 
         Args:

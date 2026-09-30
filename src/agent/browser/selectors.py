@@ -211,7 +211,5 @@ class SelfHealingSelectorEngine:
             candidates: Priority-ordered list of selector strings.
             timeout_ms: Per-candidate visibility check timeout in milliseconds.
         """
-        locator, _ = await self.resolve_locator(
-            page, action_key, candidates, timeout_ms=timeout_ms
-        )
+        locator, _ = await self.resolve_locator(page, action_key, candidates, timeout_ms=timeout_ms)
         await locator.click()

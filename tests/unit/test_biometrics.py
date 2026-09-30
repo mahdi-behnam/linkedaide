@@ -131,9 +131,7 @@ async def test_click_element_fallback_when_bounding_box_zero_size(
 ) -> None:
     controller = BiometricController(mock_page, delay_scale=0.01)
     locator = MagicMock()
-    locator.bounding_box = AsyncMock(
-        return_value={"x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0}
-    )
+    locator.bounding_box = AsyncMock(return_value={"x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0})
     locator.click = AsyncMock()
 
     await controller.click_element(locator)

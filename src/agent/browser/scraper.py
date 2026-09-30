@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
-import re
-import urllib.parse
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agent.browser.feed_parser import CARD_SELECTORS, TEXT_SELECTORS, parse_feed_card
+from agent.browser.media_extractor import extract_media_from_card
 from agent.browser.stealth import (
     detect_challenge_page,
     humanized_scroll,
@@ -25,36 +24,12 @@ from agent.errors import (
     SelectorDriftError,
     SessionExpiredError,
 )
-from agent.models.schemas import PostRecord
+from agent.models import PostRecord
 
 if TYPE_CHECKING:
     from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
-
-
-def hashtag_to_feed_url(hashtag: str) -> str:
-    """Convert a hashtag or keyword into a LinkedIn hashtag feed URL.
-
-    Handles leading '#', leading/trailing whitespace, full URLs, and URL encoding.
-
-    Examples:
-        'python' -> 'https://www.linkedin.com/feed/hashtag/?keywords=python'
-        '#Python' -> 'https://www.linkedin.com/feed/hashtag/?keywords=python'
-        '#ai_agents' -> 'https://www.linkedin.com/feed/hashtag/?keywords=ai_agents'
-        'https://www.linkedin.com/feed/hashtag/?keywords=custom' -> 'https://www.linkedin.com/feed/hashtag/?keywords=custom'
-
-    Raises:
-        ValueError: If hashtag is empty or contains only whitespace/hashes.
-    """
-    clean = hashtag.strip()
-    if clean.lower().startswith(("http://", "https://")):
-        return clean
-    clean = clean.lstrip("#").strip()
-    if not clean or set(clean).issubset({"#", " "}):
-        raise ValueError(f"Invalid empty hashtag: {hashtag!r}")
-    encoded = urllib.parse.quote_plus(clean.lower())
-    return f"https://www.linkedin.com/feed/hashtag/?keywords={encoded}"
 
 
 class FeedScraper:
@@ -96,119 +71,8 @@ class FeedScraper:
             return None
 
     async def extract_media_from_card(self, card: Any) -> tuple[str | None, str | None]:
-        """Extract high-resolution media URL and detected media type from a post card locator.
-
-        Detects:
-        - Image elements (.update-components-image__image, .feed-shared-image img, div[data-view-name='feed-full-update'] img.feed-shared-image__image, etc.)
-        - Carousel and document slide elements (.feed-shared-carousel, .artdeco-carousel, .feed-shared-document-preview, etc.)
-        - Video elements (.feed-shared-linkedin-video, video)
-
-        Returns:
-            tuple[str | None, str | None]: (image_url, media_type)
-        """
-        carousel_selectors = [
-            ".feed-shared-carousel",
-            ".artdeco-carousel",
-            ".artdeco-carousel__item",
-            ".artdeco-carousel__slide",
-            "div[data-carousel-item]",
-            ".feed-shared-document-preview",
-            ".feed-shared-document",
-            "iframe.feed-shared-document__iframe",
-            ".update-components-document",
-            "div.document-container",
-        ]
-        image_selectors = [
-            ".update-components-image__image",
-            ".feed-shared-image img",
-            "div[data-view-name='feed-full-update'] img.feed-shared-image__image",
-            "img.feed-shared-image__image",
-            "div.feed-shared-image img",
-            "div.update-components-image img",
-            "div.feed-shared-article__image img",
-            ".feed-shared-document-preview img",
-            "div.feed-shared-document-preview img",
-            "img.ivm-view-attr__img--centered",
-        ]
-        video_selectors = [
-            ".feed-shared-linkedin-video",
-            "video",
-            ".update-components-linkedin-video",
-        ]
-
-        detected_media_type: str | None = None
-        extracted_image_url: str | None = None
-
-        # 1. Detect document/carousel slide elements
-        for c_sel in carousel_selectors:
-            try:
-                c_loc = card.locator(c_sel)
-                if await c_loc.count() > 0:
-                    if "document" in c_sel:
-                        detected_media_type = "document"
-                    else:
-                        detected_media_type = "carousel"
-                    break
-            except Exception:
-                continue
-
-        # 2. Check for video if not carousel
-        if not detected_media_type:
-            for v_sel in video_selectors:
-                try:
-                    v_loc = card.locator(v_sel)
-                    if await v_loc.count() > 0:
-                        detected_media_type = "video"
-                        try:
-                            poster = await v_loc.first.get_attribute("poster")
-                            if poster and poster.strip().startswith("http"):
-                                extracted_image_url = poster.strip()
-                        except Exception:
-                            pass
-                        break
-                except Exception:
-                    continue
-
-        # 3. Extract high-resolution image URL
-        for i_sel in image_selectors:
-            try:
-                i_loc = card.locator(i_sel).first
-                if await i_loc.count() > 0:
-                    src = await i_loc.get_attribute("src")
-                    delayed_url = await i_loc.get_attribute("data-delayed-url")
-                    data_src = await i_loc.get_attribute("data-src")
-
-                    candidate_url: str | None = None
-                    for u in (delayed_url, src, data_src):
-                        if u and u.strip().startswith("http"):
-                            candidate_url = u.strip()
-                            break
-
-                    if candidate_url:
-                        extracted_image_url = candidate_url
-                        if not detected_media_type:
-                            detected_media_type = "image"
-                        break
-            except Exception:
-                continue
-
-        # 4. If carousel or document was detected but no image yet, check slide img
-        if detected_media_type in ("carousel", "document") and not extracted_image_url:
-            try:
-                slide_img = card.locator(
-                    ".feed-shared-carousel img, .artdeco-carousel img, .feed-shared-document-preview img, div[data-carousel-item] img"
-                ).first
-                if await slide_img.count() > 0:
-                    src = await slide_img.get_attribute("src")
-                    delayed = await slide_img.get_attribute("data-delayed-url")
-                    for u in (delayed, src):
-                        if u and u.strip().startswith("http"):
-                            extracted_image_url = u.strip()
-                            break
-            except Exception:
-                pass
-
-        return extracted_image_url, detected_media_type
+        """Extract high-resolution media URL and detected media type from a post card locator."""
+        return await extract_media_from_card(card)
 
     async def scrape_feed(
         self,
@@ -316,27 +180,9 @@ class FeedScraper:
         logger.info("Captured feed snapshot at: %s", screenshot_path)
 
         # 5. Multi-tier card selector resolution
-        card_selectors = [
-            "div[id^='expanded'][id$='MAIN_FEED_RELEVANCE']",
-            "div[id^='expanded'][id*='FEED']",
-            "div.feed-shared-update-v2",
-            "div[data-urn*='urn:li:activity']",
-            "div[data-activity-urn]",
-            "div[data-id*='urn:li:activity']",
-            "div[data-view-name='feed-full-update']",
-            "div[data-view-name*='update']",
-            "div[class*='feed-shared-update']",
-            "div.scaffold-finite-scroll__content div:has(button[aria-label*='Comment'])",
-            "div.scaffold-finite-scroll__content > div:has(.update-components-actor)",
-            "div.scaffold-finite-scroll__content > div:has([class*='actor'])",
-            "div:has(div.update-components-actor)",
-            "div:has([class*='feed-shared-actor'])",
-            "div.scaffold-finite-scroll__content > div",
-        ]
-
         post_locators = None
         card_count = 0
-        for selector in card_selectors:
+        for selector in CARD_SELECTORS:
             loc = self.page.locator(selector)
             try:
                 count = await loc.count()
@@ -358,291 +204,33 @@ class FeedScraper:
         if card_count == 0:
             await self._capture_telemetry(
                 trigger="feed_cards_drift",
-                target_selector=", ".join(card_selectors),
+                target_selector=", ".join(CARD_SELECTORS),
             )
 
         candidates: list[PostRecord] = []
         now = datetime.now(UTC)
-
-        author_selectors = [
-            ".update-components-actor__name",
-            ".update-components-actor__title span[aria-hidden='true']",
-            ".update-components-actor__title",
-            "span.update-components-actor__name",
-            ".feed-shared-actor__name",
-            ".feed-shared-actor__title",
-            "a[data-field='actor_name']",
-            ".update-components-actor__meta span[aria-hidden='true']",
-            ".update-components-actor__container a",
-            "a[href*='/in/']",
-            "span[dir='ltr']",
-            "span[dir='rtl']",
-            "h3",
-            "h4",
-        ]
-
-        text_selectors = [
-            ".update-components-text",
-            ".feed-shared-update-v2__description",
-            ".feed-shared-text",
-            ".feed-shared-inline-show-more-text",
-            ".feed-shared-update-v2__commentary",
-            "div.feed-shared-update-v2__description-wrapper",
-            "span.break-words",
-            "div.break-words",
-            "div[dir='ltr']",
-            "div[dir='rtl']",
-            "span[dir='ltr']",
-            "span[dir='rtl']",
-            "p",
-        ]
-
         parsed_card_count = 0
+
         for i in range(card_count):
             if len(candidates) >= max_posts:
                 break
 
             card = post_locators.nth(i)
             try:
-                # 1. Skip non-post recommendation cards or ads without interaction
-                try:
-                    comment_btn = card.locator(
-                        "button:has-text('Comment'), button[aria-label*='Comment']"
-                    ).first
-                    if await comment_btn.count() == 0:
-                        card_raw = (await card.inner_text()).strip()
-                        if "Recommended for you" in card_raw or "Promoted" in card_raw:
-                            logger.debug("Skipping non-post card %d (recommendation/ad)", i)
-                            continue
-                except Exception:
-                    pass
-
-                # 2. Extract URN / URL
-                urn = (
-                    await card.get_attribute("data-urn")
-                    or await card.get_attribute("data-activity-urn")
-                    or await card.get_attribute("data-id")
-                )
-                if not urn:
-                    card_id = await card.get_attribute("id") or ""
-                    if "urn:li:activity:" in card_id:
-                        urn_match = re.search(r"urn:li:activity:\d+", card_id)
-                        if urn_match:
-                            urn = urn_match.group(0)
-                    elif "urn:li:ugcPost:" in card_id:
-                        urn_match = re.search(r"urn:li:ugcPost:\d+", card_id)
-                        if urn_match:
-                            urn = urn_match.group(0)
-                    elif card_id.startswith("expanded"):
-                        clean_key = (
-                            card_id.replace("expanded", "")
-                            .replace("FeedType_MAIN_FEED_RELEVANCE", "")
-                            .replace("MAIN_FEED_RELEVANCE", "")
-                            .strip()
-                        )
-                        if clean_key:
-                            urn = f"urn:li:activity:{clean_key}"
-
-                if not urn:
-                    try:
-                        inner_urn = card.locator(
-                            "[data-urn], [data-activity-urn], [data-id], a[href*='/feed/update/urn:li:activity:'], a[href*='urn:li:activity:']"
-                        ).first
-                        if await inner_urn.count() > 0:
-                            urn = (
-                                await inner_urn.get_attribute("data-urn")
-                                or await inner_urn.get_attribute("data-activity-urn")
-                                or await inner_urn.get_attribute("data-id")
-                            )
-                            if not urn:
-                                href = await inner_urn.get_attribute("href") or ""
-                                if "urn:li:activity:" in href:
-                                    urn = (
-                                        "urn:li:activity:"
-                                        + href.split("urn:li:activity:")[1]
-                                        .split("/")[0]
-                                        .split("?")[0]
-                                    )
-                                elif "urn:li:ugcPost:" in href:
-                                    urn = (
-                                        "urn:li:ugcPost:"
-                                        + href.split("urn:li:ugcPost:")[1]
-                                        .split("/")[0]
-                                        .split("?")[0]
-                                    )
-                    except Exception:
-                        pass
-
-                if not urn:
-                    urn = f"urn:li:activity:scraped_{i}_{int(now.timestamp())}"
-
-                post_url = f"https://www.linkedin.com/feed/update/{urn}/"
-
-                # 3. Extract Author Name
-                author_name = "LinkedIn Member"
-                try:
-                    in_links = card.locator("a[href*='/in/'], a[href*='/company/']")
-                    in_count = await in_links.count()
-                    # First priority: Link with network degree indicator (• 1st, • 2nd, • 3rd, • Following)
-                    for idx in range(in_count):
-                        raw_a = (await in_links.nth(idx).inner_text()).strip()
-                        if not raw_a or raw_a.startswith("http"):
-                            continue
-                        if any(
-                            deg in raw_a
-                            for deg in ("• 1st", "• 2nd", "• 3rd", "• Following", "• Follow")
-                        ):
-                            clean_a = raw_a.split("\n")[0].split("•")[0].split(",")[0].strip()
-                            if clean_a:
-                                author_name = clean_a
-                                break
-                    # Second priority: Any profile link not inside social proof ("likes this")
-                    if author_name == "LinkedIn Member" and in_count > 0:
-                        for idx in range(in_count):
-                            raw_a = (await in_links.nth(idx).inner_text()).strip()
-                            if (
-                                raw_a
-                                and not raw_a.startswith("http")
-                                and not any(
-                                    sp in raw_a.lower()
-                                    for sp in ("likes this", "reposted this", "celebrates this")
-                                )
-                            ):
-                                clean_a = raw_a.split("\n")[0].split("•")[0].split(",")[0].strip()
-                                if clean_a:
-                                    author_name = clean_a
-                                    break
-                except Exception:
-                    pass
-
-                if author_name == "LinkedIn Member":
-                    for a_sel in author_selectors:
-                        author_el = card.locator(a_sel).first
-                        if await author_el.count() > 0:
-                            raw_name = (await author_el.inner_text()).strip()
-                            if raw_name and len(raw_name) > 1 and not raw_name.startswith("http"):
-                                name_candidate = (
-                                    raw_name.split("\n")[0].split("•")[0].split(",")[0].strip()
-                                )
-                                if name_candidate:
-                                    author_name = name_candidate
-                                    break
-
-                # Clean any trailing profile badge noise
-                if author_name != "LinkedIn Member":
-                    author_name = re.sub(
-                        r"\b(Verified Profile|Premium Profile|Open to work|Following|Follow|1st|2nd|3rd|\+)\b",
-                        "",
-                        author_name,
-                        flags=re.IGNORECASE,
-                    ).strip()
-
-                # 4. Extract Post Text
-                post_text = ""
-                # Priority 1: Modern expandable-text-box or description components
-                try:
-                    expandable = card.locator(
-                        "[data-testid='expandable-text-box'], .update-components-text, .feed-shared-update-v2__description"
-                    ).first
-                    if await expandable.count() > 0:
-                        raw_exp = (await expandable.inner_text()).strip()
-                        if len(raw_exp) > 20:
-                            post_text = raw_exp
-                except Exception:
-                    pass
-
-                # Priority 2: Extract candidate <p> elements, sorted by length descending
-                if not post_text:
-                    try:
-                        paras_loc = card.locator("p")
-                        p_count = await paras_loc.count()
-                        valid_paras: list[str] = []
-                        for p_idx in range(p_count):
-                            p_txt = (await paras_loc.nth(p_idx).inner_text()).strip()
-                            if len(p_txt) > 25 and not any(
-                                sp in p_txt.lower()
-                                for sp in (
-                                    "likes this",
-                                    "reposted this",
-                                    "celebrates this",
-                                    "recommended for you",
-                                )
-                            ):
-                                valid_paras.append(p_txt)
-                        if valid_paras:
-                            valid_paras.sort(key=len, reverse=True)
-                            post_text = valid_paras[0]
-                    except Exception:
-                        pass
-
-                # Priority 3: Fallback text selectors
-                if not post_text:
-                    for t_sel in text_selectors:
-                        text_el = card.locator(t_sel).first
-                        try:
-                            if await text_el.count() > 0:
-                                raw_t = (await text_el.inner_text()).strip()
-                                if raw_t and isinstance(raw_t, str) and len(raw_t) > 0:
-                                    post_text = raw_t
-                                    break
-                        except Exception:
-                            continue
-
-                # Strip trailing "...see more" / "… more" artifacts if present
-                for suffix in (
-                    "… more",
-                    "...more",
-                    "…more",
-                    "…see more",
-                    "...see more",
-                    "See more",
-                ):
-                    if post_text.endswith(suffix):
-                        post_text = post_text[: -len(suffix)].strip()
-
-                if not post_text or len(post_text) < 20:
-                    continue
-
-                # Skip known UI navigation artifacts
-                if post_text.lower() in {
-                    "saved items",
-                    "groups",
-                    "newsletters",
-                    "events",
-                    "profile viewers",
-                    "view all analytics",
-                    "post impressions",
-                }:
-                    continue
-
-                parsed_card_count += 1
-
-                content_hash = hashlib.sha256(post_text.encode("utf-8")).hexdigest()
-                if content_hash in seen_hashes:
-                    logger.debug("Skipping already seen post: %s (author: %s)", urn, author_name)
-                    continue
-
-                logger.info(
-                    "Discovered post by '%s' (%d chars): %s...",
-                    author_name,
-                    len(post_text),
-                    post_text[:100].replace("\n", " "),
-                )
-
-                image_url, media_type = await self.extract_media_from_card(card)
-
-                record = PostRecord(
-                    post_urn=urn,
-                    post_url=post_url,
-                    author_name=author_name,
-                    post_text=post_text,
-                    content_hash=content_hash,
-                    scraped_at=now,
-                    image_url=image_url,
-                    media_type=media_type,
-                )
-                candidates.append(record)
-                seen_hashes.add(content_hash)
+                record, reason = await parse_feed_card(card, i, now, seen_hashes)
+                if record is not None:
+                    parsed_card_count += 1
+                    candidates.append(record)
+                    seen_hashes.add(record.content_hash)
+                    logger.info(
+                        "Discovered post by '%s' (%d chars): %s...",
+                        record.author_name,
+                        len(record.post_text),
+                        record.post_text[:100].replace("\n", " "),
+                    )
+                elif reason and reason.startswith("already_seen"):
+                    parsed_card_count += 1
+                    logger.debug("Skipping already seen post: %s", reason)
             except Exception as parse_err:
                 logger.debug("Failed to parse card %d: %s", i, parse_err)
                 continue
@@ -654,10 +242,13 @@ class FeedScraper:
             )
             await self._capture_telemetry(
                 trigger="feed_card_layout_drift",
-                target_selector=", ".join(text_selectors),
+                target_selector=", ".join(TEXT_SELECTORS),
             )
 
         logger.info(
             "Scraped %d new candidate post(s) from %d DOM cards", len(candidates), card_count
         )
         return candidates
+
+
+__all__ = ["FeedScraper"]

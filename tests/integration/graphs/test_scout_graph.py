@@ -15,7 +15,7 @@ from agent.config import Settings
 from agent.errors import BotDetectionError, ScrapeError
 from agent.graphs.scout_graph import build_scout_graph, get_scout_target_sources
 from agent.graphs.state import GraphContext, ScoutState
-from agent.models.schemas import CommentDraft, PendingAction, PostRecord, RiskFlag, TriageResult
+from agent.models import CommentDraft, PendingAction, PostRecord, RiskFlag, TriageResult
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state.store import GitStateStore
 

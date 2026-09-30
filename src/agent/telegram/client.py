@@ -17,7 +17,7 @@ from pydantic import SecretStr
 
 from agent.config import Settings
 from agent.errors import TelegramAPIError
-from agent.models.schemas import PendingAction
+from agent.models import PendingAction
 from agent.telegram.keyboards import (
     build_suggestion_keyboard,
     build_suggestion_message,

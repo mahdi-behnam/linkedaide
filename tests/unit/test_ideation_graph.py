@@ -27,7 +27,7 @@ from agent.graphs.ideation_graph import (
     send_suggestions,
 )
 from agent.graphs.state import GraphContext, IdeationState
-from agent.models.schemas import HistoryEntry, PendingAction, PostIdea
+from agent.models import HistoryEntry, PendingAction, PostIdea
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state.store import GitStateStore
 

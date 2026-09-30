@@ -33,9 +33,7 @@ def test_build_proxy_config_empty() -> None:
 
 def test_build_proxy_config_simple_http() -> None:
     """build_proxy_config parses basic HTTP proxy without authentication."""
-    settings = _create_minimal_settings(
-        residential_proxy_url="http://residential.gateway.io:8080"
-    )
+    settings = _create_minimal_settings(residential_proxy_url="http://residential.gateway.io:8080")
     config = build_proxy_config(settings)
     assert config is not None
     assert config == {"server": "http://residential.gateway.io:8080"}
@@ -152,8 +150,6 @@ async def test_create_browser_context_without_proxy() -> None:
 
 def test_settings_secret_wrapping() -> None:
     """Ensure residential_proxy_url is safely wrapped in SecretStr."""
-    settings = _create_minimal_settings(
-        residential_proxy_url="http://user:secret@proxy.com:8080"
-    )
+    settings = _create_minimal_settings(residential_proxy_url="http://user:secret@proxy.com:8080")
     assert isinstance(settings.residential_proxy_url, SecretStr)
     assert settings.residential_proxy_url.get_secret_value() == "http://user:secret@proxy.com:8080"

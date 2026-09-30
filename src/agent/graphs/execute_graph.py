@@ -10,7 +10,7 @@ from langgraph.graph import END, START, StateGraph
 
 from agent.errors import BotDetectionError, SessionExpiredError
 from agent.graphs.state import ExecuteState, get_graph_context
-from agent.models.schemas import HistoryEntry
+from agent.models import HistoryEntry
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 
 

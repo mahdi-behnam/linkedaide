@@ -24,8 +24,9 @@ from agent.llm.prompts import (
     build_repair_prompt,
     build_triage_prompt,
 )
+from agent.llm.resilience import get_chain, raise_typed_nim_error
 from agent.llm.service import LLMService
-from agent.models.schemas import (
+from agent.models import (
     CommentDraft,
     EngagementStyle,
     PostIdea,
@@ -552,8 +553,8 @@ class TestLLMService:
         )
 
         # Repair fails
-        service._repair_model = AsyncMock()
-        service._repair_model.ainvoke.side_effect = RuntimeError("Repair failed")
+        service.resilience.repair_model = AsyncMock()
+        service.resilience.repair_model.ainvoke.side_effect = RuntimeError("Repair failed")
 
         result = await service.evaluate_post(sample_post)
         assert result.reasoning == "Fallback after failed repair"
@@ -619,8 +620,8 @@ class TestLLMService:
         )
 
         # Repair always fails
-        service._repair_model = AsyncMock()
-        service._repair_model.ainvoke.return_value = AIMessage(content="Still invalid")
+        service.resilience.repair_model = AsyncMock()
+        service.resilience.repair_model.ainvoke.return_value = AIMessage(content="Still invalid")
 
         with pytest.raises(NIMSchemaValidationError):
             await service.evaluate_post(sample_post)
@@ -681,18 +682,16 @@ class TestLLMService:
     def test_service_unknown_chain_name(self, mock_settings: Settings) -> None:
         service = LLMService(mock_settings, chains=self._create_mock_chains(), backoff_base=0.01)
         with pytest.raises(ValueError, match="Unknown chain name 'invalid_chain'"):
-            service._get_chain(service._chains, "invalid_chain")
+            get_chain(service.resilience.chains, "invalid_chain")
 
     def test_service_raise_typed_nim_error_variants(self, mock_settings: Settings) -> None:
-        service = LLMService(mock_settings, chains=self._create_mock_chains(), backoff_base=0.01)
-
         # Pre-typed NIMRateLimitError
         with pytest.raises(NIMRateLimitError):
-            service._raise_typed_nim_error(NIMRateLimitError("Already typed 429"))
+            raise_typed_nim_error(NIMRateLimitError("Already typed 429"))
 
         # Generic NIMError fallback
         with pytest.raises(NIMError) as exc_info:
-            service._raise_typed_nim_error(RuntimeError("Unknown internal failure"))
+            raise_typed_nim_error(RuntimeError("Unknown internal failure"))
         assert "NVIDIA NIM operation failed" in str(exc_info.value)
 
     @pytest.mark.asyncio

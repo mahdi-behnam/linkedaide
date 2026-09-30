@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from agent.config import Settings
-from agent.models.schemas import DailyCounters, PendingAction
+from agent.models import DailyCounters, PendingAction
 
 
 class DailyCapEnforcer:

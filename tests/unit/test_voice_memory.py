@@ -23,7 +23,7 @@ from agent.llm.voice_memory import (
     cosine_similarity,
     tokenize,
 )
-from agent.models.schemas import (
+from agent.models import (
     CommentDraft,
     EngagementStyle,
     PostIdea,
@@ -160,7 +160,9 @@ class TestSimilarityRetrieval:
 
     def test_retrieval_vector_memory_and_rag(self) -> None:
         store = VoiceMemoryStore()
-        query = "Evaluating dense vector embeddings and BM25 hybrid search in enterprise RAG systems."
+        query = (
+            "Evaluating dense vector embeddings and BM25 hybrid search in enterprise RAG systems."
+        )
         samples = store.retrieve_samples(query, top_k=2)
 
         assert len(samples) == 2
@@ -190,9 +192,7 @@ class TestSimilarityRetrieval:
     def test_custom_embeddings_integration(self) -> None:
         mock_embeddings = MagicMock(spec=Embeddings)
         # Mock embed_documents returning unit vectors
-        mock_embeddings.embed_documents.return_value = [
-            [1.0, 0.0, 0.0] for _ in range(13)
-        ]
+        mock_embeddings.embed_documents.return_value = [[1.0, 0.0, 0.0] for _ in range(13)]
         # Mock embed_query returning a vector aligned with the first embedding
         mock_embeddings.embed_query.return_value = [1.0, 0.0, 0.0]
 
@@ -203,9 +203,7 @@ class TestSimilarityRetrieval:
 
     def test_embeddings_failure_falls_back_to_token_similarity(self) -> None:
         mock_embeddings = MagicMock(spec=Embeddings)
-        mock_embeddings.embed_documents.return_value = [
-            [1.0, 0.0, 0.0] for _ in range(13)
-        ]
+        mock_embeddings.embed_documents.return_value = [[1.0, 0.0, 0.0] for _ in range(13)]
         mock_embeddings.embed_query.side_effect = RuntimeError("Embeddings API unavailable")
 
         store = VoiceMemoryStore(embeddings=mock_embeddings)

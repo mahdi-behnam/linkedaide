@@ -202,4 +202,3 @@ async def test_action_executor_triggers_session_refresh(
     assert result is not None
     assert result["refreshed"] is True
     mock_state_store.put_key.assert_called_once()
-

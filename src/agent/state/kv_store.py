@@ -12,7 +12,7 @@ import httpx
 from pydantic import SecretStr
 
 from agent.errors import ConfigError, StateStoreError
-from agent.models.schemas import DailyCounters, HistoryEntry, PendingAction, PostRecord
+from agent.models import DailyCounters, HistoryEntry, PendingAction, PostRecord
 from agent.state.base import BaseStateStore
 
 logger = logging.getLogger("agent.state.kv_store")
@@ -388,4 +388,3 @@ class CloudflareKVStateStore(BaseStateStore):
     def get_key(self, key: str) -> str | None:
         """Retrieve string value for key from Cloudflare KV."""
         return self._get_value(key)
-

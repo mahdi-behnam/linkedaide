@@ -523,7 +523,7 @@ async def test_adversarial_executor_comment_box_drift_with_crashing_telemetry(
     executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
 
     with patch(
-        "agent.browser.executor.capture_dom_telemetry",
+        "agent.browser.telemetry.capture_dom_telemetry",
         side_effect=MemoryError("OOM during telemetry"),
     ):
         with pytest.raises(ExecutionError, match="Comment input box not found in DOM"):
@@ -577,9 +577,9 @@ async def test_adversarial_executor_submit_button_drift_with_permission_error_te
 
     with (
         patch(
-            "agent.browser.executor.capture_dom_telemetry", side_effect=PermissionError("Locked")
+            "agent.browser.telemetry.capture_dom_telemetry", side_effect=PermissionError("Locked")
         ),
-        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+        patch("agent.browser.stealth.humanized_type", new_callable=AsyncMock),
     ):
         with pytest.raises(ExecutionError, match="Comment submit button not found in DOM"):
             await executor.post_comment(
@@ -642,10 +642,10 @@ async def test_adversarial_executor_comment_verification_timeout_with_disk_full_
 
     with (
         patch(
-            "agent.browser.executor.capture_dom_telemetry",
+            "agent.browser.telemetry.capture_dom_telemetry",
             side_effect=OSError(28, "No space left on device"),
         ),
-        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+        patch("agent.browser.stealth.humanized_type", new_callable=AsyncMock),
     ):
         with pytest.raises(SubmissionVerificationError):
             await executor.post_comment(
@@ -677,7 +677,7 @@ async def test_adversarial_executor_create_post_ui_drift_with_corrupt_telemetry(
     executor = ActionExecutor(page, test_settings)
 
     with patch(
-        "agent.browser.executor.capture_dom_telemetry",
+        "agent.browser.telemetry.capture_dom_telemetry",
         side_effect=TypeError("Corrupt telemetry argument"),
     ):
         with pytest.raises(ExecutionError, match="Start a post button not found"):

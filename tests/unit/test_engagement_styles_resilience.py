@@ -98,7 +98,7 @@ async def test_post_comment_challenge_during_reaction_aborts_immediately(
     )
 
     with (
-        patch("agent.browser.executor.humanized_dwell", new_callable=AsyncMock) as mock_dwell,
+        patch("agent.browser.stealth.humanized_dwell", new_callable=AsyncMock) as mock_dwell,
         pytest.raises(BotDetectionError) as exc_info,
     ):
         await executor.post_comment(
@@ -170,7 +170,7 @@ async def test_post_comment_session_expired_during_reaction_aborts_immediately(
     )
 
     with (
-        patch("agent.browser.executor.humanized_dwell", new_callable=AsyncMock) as mock_dwell,
+        patch("agent.browser.stealth.humanized_dwell", new_callable=AsyncMock) as mock_dwell,
         pytest.raises(SessionExpiredError) as exc_info,
     ):
         await executor.post_comment(
@@ -305,7 +305,7 @@ async def test_post_comment_proceeds_and_succeeds_when_pre_reaction_fails(
     # Simulate react_to_post returning False due to non-fatal failure
     executor.react_to_post = AsyncMock(return_value=False)  # type: ignore[method-assign]
 
-    with patch("agent.browser.executor.humanized_dwell", new_callable=AsyncMock) as mock_dwell:
+    with patch("agent.browser.stealth.humanized_dwell", new_callable=AsyncMock) as mock_dwell:
         result = await executor.post_comment(
             post_url=page.url,
             comment_text="Valid comment text",

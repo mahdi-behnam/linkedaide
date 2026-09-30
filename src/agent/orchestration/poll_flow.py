@@ -11,7 +11,7 @@ from typing import Any
 import httpx
 
 from agent.config import Settings, load_settings
-from agent.models.schemas import CallbackDataPayload
+from agent.models import CallbackDataPayload
 from agent.orchestration.execute_flow import run_execute_flow
 from agent.state import get_state_store
 from agent.telegram.client import TelegramClient

@@ -42,4 +42,3 @@ __all__ = [
     "new_stealth_context",
     "refresh_and_persist_session",
 ]
-

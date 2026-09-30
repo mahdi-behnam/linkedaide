@@ -18,7 +18,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from agent.config import Settings
 from agent.llm.models import build_chat_model
-from agent.models.schemas import PostRecord, VisualContext
+from agent.models import PostRecord, VisualContext
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,9 @@ class MultimodalAnalyzer:
             except Exception as e:
                 logger.debug("Failed initializing provider chat model for vision: %s", e)
 
-        logger.info("No vision API key configured. MultimodalAnalyzer will use local heuristic fallback.")
+        logger.info(
+            "No vision API key configured. MultimodalAnalyzer will use local heuristic fallback."
+        )
         return None
 
     async def analyze(self, post: PostRecord) -> VisualContext:
@@ -209,7 +211,7 @@ class MultimodalAnalyzer:
                         "type": "text",
                         "text": (
                             f"Post Author: {post.author_name}\n"
-                            f"Post Text: \"\"\"{post.post_text}\"\"\"\n\n"
+                            f'Post Text: """{post.post_text}"""\n\n'
                             "Analyze the attached image and return structured visual context JSON."
                         ),
                     },
@@ -351,7 +353,9 @@ class MultimodalAnalyzer:
         if any(marker in text or marker in url for marker in code_specific):
             diagram_type = "code_snippet"
             has_diagram = True
-            visual_summary = "Code snippet demonstrating implementation logic and technical patterns"
+            visual_summary = (
+                "Code snippet demonstrating implementation logic and technical patterns"
+            )
         elif any(marker in text or marker in url for marker in arch_markers):
             diagram_type = "architecture"
             has_diagram = True
@@ -360,13 +364,21 @@ class MultimodalAnalyzer:
         elif any(marker in text or marker in url for marker in chart_markers):
             diagram_type = "benchmark_chart"
             has_diagram = True
-            metric_str = "latency and throughput metrics" if "latency" in text else "performance benchmark results"
+            metric_str = (
+                "latency and throughput metrics"
+                if "latency" in text
+                else "performance benchmark results"
+            )
             visual_summary = f"Benchmark comparison chart illustrating {metric_str}"
         elif any(marker in text or marker in url for marker in code_markers):
             diagram_type = "code_snippet"
             has_diagram = True
-            visual_summary = "Code snippet demonstrating implementation logic and technical patterns"
-        elif any(marker in text or marker in url for marker in infographic_markers) or media_type in (
+            visual_summary = (
+                "Code snippet demonstrating implementation logic and technical patterns"
+            )
+        elif any(
+            marker in text or marker in url for marker in infographic_markers
+        ) or media_type in (
             "carousel",
             "document",
         ):

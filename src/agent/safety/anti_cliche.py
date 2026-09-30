@@ -22,27 +22,29 @@ BANNED_OPENER_PATTERNS: tuple[str, ...] = (
 )
 
 # Banned AI buzzwords set (case-insensitive)
-BANNED_BUZZWORDS: frozenset[str] = frozenset({
-    "delve",
-    "game changer",
-    "game-changer",
-    "tapestry",
-    "beacon",
-    "testament",
-    "paradigm shift",
-    "supercharge",
-    "harness the power",
-    "holistic approach",
-    "synergies",
-    "in conclusion",
-    "furthermore",
-    "moreover",
-    "it's important to remember",
-    "vital role",
-    "pivotal",
-    "groundbreaking",
-    "pleasure to read",
-})
+BANNED_BUZZWORDS: frozenset[str] = frozenset(
+    {
+        "delve",
+        "game changer",
+        "game-changer",
+        "tapestry",
+        "beacon",
+        "testament",
+        "paradigm shift",
+        "supercharge",
+        "harness the power",
+        "holistic approach",
+        "synergies",
+        "in conclusion",
+        "furthermore",
+        "moreover",
+        "it's important to remember",
+        "vital role",
+        "pivotal",
+        "groundbreaking",
+        "pleasure to read",
+    }
+)
 
 # Individual compiled regexes for buzzwords with word boundaries
 BUZZWORD_REGEX_MAP: dict[str, re.Pattern[str]] = {
@@ -222,9 +224,7 @@ class AntiClicheScanner:
             )
 
         # 1. Banned AI openers check
-        stripped_target = re.sub(
-            r"^[\"'\u201c\u201d\u2018\u2019*#_>\s]+", "", raw_text
-        )
+        stripped_target = re.sub(r"^[\"'\u201c\u201d\u2018\u2019*#_>\s]+", "", raw_text)
         for pattern, compiled in zip(self._raw_openers, self._compiled_openers, strict=False):
             match = compiled.search(stripped_target)
             if match:
@@ -286,9 +286,7 @@ class AntiClicheScanner:
         cleaned = text.strip()
 
         # 1. Strip leading markdown quotes/headers
-        leading_decorations = re.match(
-            r"^[\"'\u201c\u201d\u2018\u2019*#_>\s]+", cleaned
-        )
+        leading_decorations = re.match(r"^[\"'\u201c\u201d\u2018\u2019*#_>\s]+", cleaned)
         prefix_len = len(leading_decorations.group(0)) if leading_decorations else 0
         search_target = cleaned[prefix_len:]
 
@@ -296,7 +294,7 @@ class AntiClicheScanner:
         for compiled in self._compiled_openers:
             m = compiled.search(search_target)
             if m:
-                rest = search_target[m.end():]
+                rest = search_target[m.end() :]
                 search_target = re.sub(r"^[!?,;:\-\s]+", "", rest)
                 break
 
@@ -307,7 +305,7 @@ class AntiClicheScanner:
             re.IGNORECASE,
         )
         if sycophantic_opener_match:
-            search_target = search_target[sycophantic_opener_match.end():]
+            search_target = search_target[sycophantic_opener_match.end() :]
 
         cleaned = search_target.strip()
 
@@ -324,7 +322,7 @@ class AntiClicheScanner:
             for idx, match in enumerate(emoji_matches):
                 if idx == 0:
                     continue  # Keep the first emoji
-                chars.append(cleaned[last_end:match.start()])
+                chars.append(cleaned[last_end : match.start()])
                 last_end = match.end()
             chars.append(cleaned[last_end:])
             cleaned = "".join(chars)

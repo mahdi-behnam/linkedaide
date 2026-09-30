@@ -10,7 +10,7 @@ import pytest
 from pydantic import SecretStr
 
 from agent.config import Settings
-from agent.models.schemas import DailyCounters, PendingAction
+from agent.models import DailyCounters, PendingAction
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 from agent.safety.rate_limiter import DailyCapEnforcer
 

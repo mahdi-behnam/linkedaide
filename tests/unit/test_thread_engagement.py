@@ -22,7 +22,7 @@ from agent.llm.prompts import (
     build_thread_triage_prompt,
 )
 from agent.llm.service import LLMService
-from agent.models.schemas import (
+from agent.models import (
     ACTION_CODE_APPROVE_REPLY,
     ACTION_CODE_REJECT_REPLY,
     CALLBACK_ACTION_MAP,
@@ -422,7 +422,9 @@ class TestBrowserExecutorThreadEngagement:
         # Mock replies
         reply_1 = MagicMock()
         reply_1.get_attribute = AsyncMock(return_value="urn:li:comment:reply-1")
-        name_1 = MagicMock(count=AsyncMock(return_value=1), inner_text=AsyncMock(return_value="Bob"))
+        name_1 = MagicMock(
+            count=AsyncMock(return_value=1), inner_text=AsyncMock(return_value="Bob")
+        )
         headline_1 = MagicMock(
             count=AsyncMock(return_value=1), inner_text=AsyncMock(return_value="SRE")
         )
@@ -445,7 +447,12 @@ class TestBrowserExecutorThreadEngagement:
                 loc.first = headline_1
                 loc.count = headline_1.count
                 return loc
-            if "main-content" in sel or "content-body" in sel or "message" in sel or "update-components-text" in sel:
+            if (
+                "main-content" in sel
+                or "content-body" in sel
+                or "message" in sel
+                or "update-components-text" in sel
+            ):
                 loc = MagicMock()
                 loc.first = body_1
                 loc.count = body_1.count
@@ -482,7 +489,12 @@ class TestBrowserExecutorThreadEngagement:
                 loc.first = headline_2
                 loc.count = headline_2.count
                 return loc
-            if "main-content" in sel or "content-body" in sel or "message" in sel or "update-components-text" in sel:
+            if (
+                "main-content" in sel
+                or "content-body" in sel
+                or "message" in sel
+                or "update-components-text" in sel
+            ):
                 loc = MagicMock()
                 loc.first = body_2
                 loc.count = body_2.count

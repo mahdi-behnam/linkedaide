@@ -15,7 +15,7 @@ import pytest
 from pydantic import SecretStr
 
 from agent.config import Settings
-from agent.models.schemas import PendingAction
+from agent.models import PendingAction
 from agent.orchestration.execute_flow import main as execute_main
 from agent.orchestration.execute_flow import run_execute_flow
 from agent.orchestration.health_check_flow import main as health_check_main

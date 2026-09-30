@@ -53,7 +53,9 @@ def _configure_locator_visibility(
 
 
 @pytest.mark.asyncio
-async def test_tier_1_immediate_resolution(mock_page: MagicMock, mock_state_store: MagicMock, caplog: pytest.LogCaptureFixture) -> None:
+async def test_tier_1_immediate_resolution(
+    mock_page: MagicMock, mock_state_store: MagicMock, caplog: pytest.LogCaptureFixture
+) -> None:
     """Tier 1: Canonical selector succeeds immediately without warnings or store writes."""
     candidates = [
         "button[data-control-name='comment_post']",  # Tier 1 (canonical)
@@ -110,7 +112,10 @@ async def test_tier_2_fallback_resolution_when_tier_1_fails(
     assert sel == candidates[1]
     assert loc is not None
     # Warning must be logged
-    assert "Canonical selector for comment_submit failed; self-healing healed to tier candidate" in caplog.text
+    assert (
+        "Canonical selector for comment_submit failed; self-healing healed to tier candidate"
+        in caplog.text
+    )
     assert candidates[1] in caplog.text
 
     # In-memory override updated

@@ -8,7 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from agent.browser.scraper import FeedScraper, hashtag_to_feed_url
+from agent.browser.scraper import FeedScraper
+from agent.browser.url_utils import hashtag_to_feed_url
 from agent.config import Settings
 from agent.errors import BotDetectionError, SelectorDriftError, SessionExpiredError
 

@@ -1261,7 +1261,7 @@ async def test_post_comment_missing_box_captures_telemetry(base_settings: Settin
     executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
 
     with patch(
-        "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+        "agent.browser.telemetry.capture_dom_telemetry", new_callable=AsyncMock
     ) as mock_telemetry:
         with pytest.raises(ExecutionError, match="Comment input box not found"):
             await executor.post_comment(
@@ -1316,9 +1316,9 @@ async def test_post_comment_missing_submit_button_captures_telemetry(
 
     with (
         patch(
-            "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+            "agent.browser.telemetry.capture_dom_telemetry", new_callable=AsyncMock
         ) as mock_telemetry,
-        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+        patch("agent.browser.stealth.humanized_type", new_callable=AsyncMock),
     ):
         with pytest.raises(ExecutionError, match="Comment submit button not found"):
             await executor.post_comment(
@@ -1382,9 +1382,9 @@ async def test_post_comment_verification_timeout_captures_telemetry(
 
     with (
         patch(
-            "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+            "agent.browser.telemetry.capture_dom_telemetry", new_callable=AsyncMock
         ) as mock_telemetry,
-        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+        patch("agent.browser.stealth.humanized_type", new_callable=AsyncMock),
     ):
         with pytest.raises(SubmissionVerificationError):
             await executor.post_comment(
@@ -1414,7 +1414,7 @@ async def test_create_post_ui_drift_captures_telemetry(base_settings: Settings) 
     executor = ActionExecutor(page, base_settings)
 
     with patch(
-        "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+        "agent.browser.telemetry.capture_dom_telemetry", new_callable=AsyncMock
     ) as mock_telemetry:
         with pytest.raises(ExecutionError, match="Start a post button not found"):
             await executor.create_post(
@@ -1474,9 +1474,9 @@ async def test_create_post_verification_timeout_captures_telemetry(base_settings
 
     with (
         patch(
-            "agent.browser.executor.capture_dom_telemetry", new_callable=AsyncMock
+            "agent.browser.telemetry.capture_dom_telemetry", new_callable=AsyncMock
         ) as mock_telemetry,
-        patch("agent.browser.executor.humanized_type", new_callable=AsyncMock),
+        patch("agent.browser.stealth.humanized_type", new_callable=AsyncMock),
     ):
         with pytest.raises(SubmissionVerificationError):
             await executor.create_post(
@@ -1508,7 +1508,7 @@ async def test_executor_telemetry_failure_does_not_break_error_workflow(
     executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
 
     with patch(
-        "agent.browser.executor.capture_dom_telemetry",
+        "agent.browser.telemetry.capture_dom_telemetry",
         new_callable=AsyncMock,
         side_effect=Exception("Disk full or timeout in telemetry"),
     ):
@@ -1548,9 +1548,7 @@ async def test_upload_screenshot_to_r2_missing_file_returns_path(
 
 
 @pytest.mark.asyncio
-async def test_upload_screenshot_to_r2_success(
-    base_settings: Settings, tmp_path: Path
-) -> None:
+async def test_upload_screenshot_to_r2_success(base_settings: Settings, tmp_path: Path) -> None:
     base_settings.worker_url = "https://relay.workers.dev"
     base_settings.desktop_api_secret = SecretStr("secret-123")
     page = MagicMock()
@@ -1645,4 +1643,3 @@ async def test_post_comment_dry_run_stores_r2_key_when_configured(
         assert result.success is True
         assert result.screenshot_path == "screenshots/dryrun_comment_dry001.png"
         assert mock_put.await_count == 1
-

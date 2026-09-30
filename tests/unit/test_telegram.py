@@ -8,7 +8,7 @@ import pytest
 
 from agent.config import Settings
 from agent.errors import TelegramAPIError
-from agent.models.schemas import PendingAction
+from agent.models import PendingAction
 from agent.state.store import GitStateStore
 from agent.telegram.client import TelegramClient
 from agent.telegram.draft_editor import handle_draft_edit, handle_edit_callback

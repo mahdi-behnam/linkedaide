@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from agent.errors import StateStoreError
-from agent.models.schemas import HistoryEntry, PendingAction, PostRecord
+from agent.models import HistoryEntry, PendingAction, PostRecord
 from agent.state.store import GitStateStore
 
 

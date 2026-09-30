@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from datetime import UTC, date, datetime
 from typing import Any
 
-from agent.models.schemas import DailyCounters, HistoryEntry, PendingAction, PostRecord
+from agent.models import DailyCounters, HistoryEntry, PendingAction, PostRecord
 
 
 class BaseStateStore(ABC):
@@ -237,4 +237,3 @@ class BaseStateStore(ABC):
     def get_key(self, key: str) -> str | None:
         """Retrieve an arbitrary string value for a key, or None if not found."""
         return None
-

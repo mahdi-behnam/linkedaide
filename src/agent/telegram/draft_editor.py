@@ -15,7 +15,7 @@ import re
 from typing import Any
 
 from agent.config import Settings
-from agent.models.schemas import CallbackDataPayload, PendingAction
+from agent.models import CallbackDataPayload, PendingAction
 from agent.state.base import BaseStateStore
 from agent.telegram.client import TelegramClient
 from agent.telegram.keyboards import (

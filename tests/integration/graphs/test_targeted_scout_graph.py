@@ -20,7 +20,7 @@ from agent.config import Settings
 from agent.errors import BotDetectionError, ScrapeError, SessionExpiredError
 from agent.graphs.scout_graph import build_scout_graph
 from agent.graphs.state import GraphContext
-from agent.models.schemas import CommentDraft, EngagementStyle, PostRecord, TriageResult
+from agent.models import CommentDraft, EngagementStyle, PostRecord, TriageResult
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state.store import GitStateStore

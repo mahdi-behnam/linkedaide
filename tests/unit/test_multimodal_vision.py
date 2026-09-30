@@ -15,7 +15,7 @@ from agent.llm.chains import LLMChains
 from agent.llm.multimodal import MultimodalAnalyzer, format_visual_evidence
 from agent.llm.prompts import build_comment_prompt
 from agent.llm.service import LLMService
-from agent.models.schemas import (
+from agent.models import (
     CommentDraft,
     EngagementStyle,
     PostRecord,
@@ -46,7 +46,9 @@ def test_settings() -> Settings:
 
 
 @pytest.mark.asyncio
-async def test_scraper_extracts_standalone_image_url(test_settings: Settings, tmp_path: Path) -> None:
+async def test_scraper_extracts_standalone_image_url(
+    test_settings: Settings, tmp_path: Path
+) -> None:
     """FeedScraper should extract high-resolution image URL from image elements."""
     page = MagicMock()
     scraper = FeedScraper(page, test_settings, debug_dir=tmp_path)
@@ -286,7 +288,9 @@ async def test_multimodal_analyzer_heuristic_benchmark_chart(test_settings: Sett
     assert result.diagram_type == "benchmark_chart"
     assert "FastAPI" in result.key_components
     assert "Go" in result.key_components
-    assert "latency" in result.visual_summary.lower() or "benchmark" in result.visual_summary.lower()
+    assert (
+        "latency" in result.visual_summary.lower() or "benchmark" in result.visual_summary.lower()
+    )
 
 
 @pytest.mark.asyncio
@@ -358,7 +362,10 @@ async def test_multimodal_analyzer_with_mock_vision_model(test_settings: Setting
     assert result.has_diagram is True
     assert result.diagram_type == "architecture"
     assert result.key_components == ["Kafka", "Postgres", "Redis cache", "Worker pool"]
-    assert result.visual_summary == "Distributed cache topology showing async replication across regions"
+    assert (
+        result.visual_summary
+        == "Distributed cache topology showing async replication across regions"
+    )
 
 
 @pytest.mark.asyncio

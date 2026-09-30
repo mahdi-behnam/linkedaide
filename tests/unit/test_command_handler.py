@@ -13,7 +13,7 @@ import pytest
 from pydantic import SecretStr
 
 from agent.config import Settings
-from agent.models.schemas import (
+from agent.models import (
     CommentDraft,
     DailyCounters,
     EngagementStyle,

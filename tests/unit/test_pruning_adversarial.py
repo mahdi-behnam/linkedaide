@@ -16,7 +16,7 @@ from pydantic import SecretStr
 from agent.config import Settings
 from agent.graphs.scout_graph import build_scout_graph
 from agent.graphs.state import GraphContext
-from agent.models.schemas import HistoryEntry, PendingAction
+from agent.models import HistoryEntry, PendingAction
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state.store import GitStateStore
 

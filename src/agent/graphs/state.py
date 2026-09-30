@@ -11,7 +11,7 @@ from agent.browser.executor import ActionExecutor
 from agent.browser.scraper import FeedScraper
 from agent.config import Settings
 from agent.llm.service import LLMService
-from agent.models.schemas import (
+from agent.models import (
     CommentDraft,
     HistoryEntry,
     PendingAction,

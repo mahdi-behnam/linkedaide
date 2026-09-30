@@ -29,4 +29,3 @@ __all__ = [
     "build_triage_prompt",
     "format_visual_evidence",
 ]
-

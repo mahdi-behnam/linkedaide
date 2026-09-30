@@ -6,7 +6,8 @@ Architecture Invariants:
 - Missing or invalid configuration raises ConfigError.
 """
 
-import json
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 
@@ -18,96 +19,26 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
-    DotEnvSettingsSource,
-    EnvSettingsSource,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
 )
 
+from agent.config.constants import (
+    PROVIDER_DEFAULT_MODELS,
+)
+from agent.config.sources import (
+    FlexibleDotEnvSettingsSource,
+    FlexibleEnvSettingsSource,
+    _parse_raw_string_list,
+)
+from agent.config.validators import (
+    normalize_provider_name,
+    normalize_scout_target_urls_list,
+    normalize_target_hashtags_list,
+)
 from agent.errors import ConfigError
-
-COMPLEX_LIST_FIELDS: frozenset[str] = frozenset(
-    {"user_focus_areas", "scout_target_urls", "target_hashtags"}
-)
-
-SUPPORTED_LLM_PROVIDERS: frozenset[str] = frozenset(
-    {"nvidia", "openai", "anthropic", "gemini", "groq", "ollama", "openai-compatible"}
-)
-
-PROVIDER_DEFAULT_MODELS: dict[str, dict[str, str]] = {
-    "nvidia": {
-        "primary": "nvidia/nemotron-3-super-120b-a12b",
-        "fallback": "openai/gpt-oss-20b",
-        "triage": "openai/gpt-oss-20b",
-    },
-    "openai": {
-        "primary": "gpt-4o",
-        "fallback": "gpt-4o-mini",
-        "triage": "gpt-4o-mini",
-    },
-    "anthropic": {
-        "primary": "claude-3-5-sonnet-latest",
-        "fallback": "claude-3-5-haiku-latest",
-        "triage": "claude-3-5-haiku-latest",
-    },
-    "gemini": {
-        "primary": "gemini-2.0-flash",
-        "fallback": "gemini-1.5-flash",
-        "triage": "gemini-1.5-flash",
-    },
-    "groq": {
-        "primary": "llama-3.3-70b-versatile",
-        "fallback": "llama-3.1-8b-instant",
-        "triage": "llama-3.1-8b-instant",
-    },
-    "ollama": {
-        "primary": "llama3.2",
-        "fallback": "llama3.2",
-        "triage": "llama3.2",
-    },
-    "openai-compatible": {
-        "primary": "default",
-        "fallback": "default",
-        "triage": "default",
-    },
-}
-
-
-def _parse_raw_string_list(value: str) -> list[str]:
-    """Parse a comma-separated or JSON list string into a list of non-empty stripped strings."""
-    v_str = value.strip()
-    if not v_str:
-        return []
-    if v_str.startswith("[") and v_str.endswith("]"):
-        try:
-            parsed = json.loads(v_str)
-            if isinstance(parsed, list):
-                return [
-                    str(item).strip() for item in parsed if item is not None and str(item).strip()
-                ]
-        except json.JSONDecodeError:
-            pass
-    return [part.strip() for part in v_str.split(",") if part.strip()]
-
-
-class ComplexValueDecoderMixin:
-    """Mixin supporting comma-separated and JSON list parsing for complex settings fields."""
-
-    def decode_complex_value(self, field_name: str, field_info: FieldInfo, value: Any) -> Any:
-        if field_name.lower() in COMPLEX_LIST_FIELDS and isinstance(value, str):
-            return _parse_raw_string_list(value)
-        return super().decode_complex_value(field_name, field_info, value)  # type: ignore[misc]
-
-
-class FlexibleEnvSettingsSource(ComplexValueDecoderMixin, EnvSettingsSource):
-    """Env source supporting flexible list formats."""
-
-
-class FlexibleDotEnvSettingsSource(ComplexValueDecoderMixin, DotEnvSettingsSource):
-    """DotEnv source supporting flexible list formats."""
 
 
 class Settings(BaseSettings):
@@ -420,17 +351,10 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_provider(cls, v: Any) -> str:
         """Normalize and validate LLM provider name."""
-        if isinstance(v, str):
-            clean = v.strip().lower()
-            if clean in SUPPORTED_LLM_PROVIDERS:
-                return clean
-            raise ValueError(
-                f"Unsupported LLM provider '{v}'. Supported: {', '.join(sorted(SUPPORTED_LLM_PROVIDERS))}"
-            )
-        return "nvidia"
+        return normalize_provider_name(v)
 
     @model_validator(mode="after")
-    def validate_provider_keys(self) -> "Settings":
+    def validate_provider_keys(self) -> Settings:
         """Validate that the required API key for the selected provider is supplied."""
         if self.llm_provider == "nvidia" and not self.nvidia_nim_api_key:
             raise ValueError("nvidia_nim_api_key is required when llm_provider is 'nvidia'")
@@ -480,25 +404,13 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_target_hashtags(cls, v: list[str]) -> list[str]:
         """Normalize hashtags: strip whitespace, strip leading '#', and filter empty entries."""
-        normalized: list[str] = []
-        for tag in v:
-            clean = tag.strip()
-            while clean.startswith("#") or clean.startswith(" "):
-                clean = clean.lstrip("#").strip()
-            if clean and not set(clean).issubset({"#", " "}) and clean not in normalized:
-                normalized.append(clean)
-        return normalized
+        return normalize_target_hashtags_list(v)
 
     @field_validator("scout_target_urls", mode="after")
     @classmethod
     def normalize_scout_target_urls(cls, v: list[str]) -> list[str]:
         """Normalize scout URLs: strip whitespace, filter empty entries, and deduplicate."""
-        normalized: list[str] = []
-        for url in v:
-            clean = url.strip()
-            if clean and clean not in normalized:
-                normalized.append(clean)
-        return normalized
+        return normalize_scout_target_urls_list(v)
 
     def get_default_models_for_provider(self, provider: str | None = None) -> dict[str, str]:
         """Return default primary, fallback, and triage models for the specified or current provider."""

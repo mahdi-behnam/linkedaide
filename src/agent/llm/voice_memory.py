@@ -24,18 +24,135 @@ logger = logging.getLogger(__name__)
 
 STOPWORDS: frozenset[str] = frozenset(
     {
-        "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are",
-        "aren", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both",
-        "but", "by", "can", "could", "did", "do", "does", "doing", "down", "during", "each", "few",
-        "for", "from", "further", "had", "has", "have", "having", "he", "her", "here", "hers",
-        "herself", "him", "himself", "his", "how", "i", "if", "in", "into", "is", "isn", "it",
-        "its", "itself", "just", "me", "more", "most", "my", "myself", "no", "nor", "not", "now",
-        "of", "off", "on", "once", "only", "or", "other", "our", "ours", "ourselves", "out", "over",
-        "own", "same", "she", "should", "so", "some", "such", "than", "that", "the", "their",
-        "theirs", "them", "themselves", "then", "there", "these", "they", "this", "those",
-        "through", "to", "too", "under", "until", "up", "very", "was", "wasn", "we", "were",
-        "weren", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "with",
-        "you", "your", "yours", "yourself", "yourselves",
+        "a",
+        "about",
+        "above",
+        "after",
+        "again",
+        "against",
+        "all",
+        "am",
+        "an",
+        "and",
+        "any",
+        "are",
+        "aren",
+        "as",
+        "at",
+        "be",
+        "because",
+        "been",
+        "before",
+        "being",
+        "below",
+        "between",
+        "both",
+        "but",
+        "by",
+        "can",
+        "could",
+        "did",
+        "do",
+        "does",
+        "doing",
+        "down",
+        "during",
+        "each",
+        "few",
+        "for",
+        "from",
+        "further",
+        "had",
+        "has",
+        "have",
+        "having",
+        "he",
+        "her",
+        "here",
+        "hers",
+        "herself",
+        "him",
+        "himself",
+        "his",
+        "how",
+        "i",
+        "if",
+        "in",
+        "into",
+        "is",
+        "isn",
+        "it",
+        "its",
+        "itself",
+        "just",
+        "me",
+        "more",
+        "most",
+        "my",
+        "myself",
+        "no",
+        "nor",
+        "not",
+        "now",
+        "of",
+        "off",
+        "on",
+        "once",
+        "only",
+        "or",
+        "other",
+        "our",
+        "ours",
+        "ourselves",
+        "out",
+        "over",
+        "own",
+        "same",
+        "she",
+        "should",
+        "so",
+        "some",
+        "such",
+        "than",
+        "that",
+        "the",
+        "their",
+        "theirs",
+        "them",
+        "themselves",
+        "then",
+        "there",
+        "these",
+        "they",
+        "this",
+        "those",
+        "through",
+        "to",
+        "too",
+        "under",
+        "until",
+        "up",
+        "very",
+        "was",
+        "wasn",
+        "we",
+        "were",
+        "weren",
+        "what",
+        "when",
+        "where",
+        "which",
+        "while",
+        "who",
+        "whom",
+        "why",
+        "will",
+        "with",
+        "you",
+        "your",
+        "yours",
+        "yourself",
+        "yourselves",
     }
 )
 
@@ -156,7 +273,9 @@ class VoiceMemoryStore:
 
         self._profile: dict[str, Any] = DEFAULT_PROFILE.copy()
         self._style_guide: str = DEFAULT_STYLE_GUIDE
-        self._base_writing_samples: list[dict[str, Any]] = [s.copy() for s in DEFAULT_WRITING_SAMPLES]
+        self._base_writing_samples: list[dict[str, Any]] = [
+            s.copy() for s in DEFAULT_WRITING_SAMPLES
+        ]
         self._dynamic_samples: list[dict[str, Any]] = []
 
         self._sample_embeddings: list[list[float]] | None = None
@@ -218,7 +337,9 @@ class VoiceMemoryStore:
                         self._profile = loaded
                         logger.debug("Loaded operator profile from %s", profile_path)
             except Exception as e:
-                logger.warning("Failed to load profile.yaml from %s: %s; using default.", profile_path, e)
+                logger.warning(
+                    "Failed to load profile.yaml from %s: %s; using default.", profile_path, e
+                )
 
         # 2. Load style_guide.md
         style_path = self._persona_dir / "style_guide.md"
@@ -230,7 +351,9 @@ class VoiceMemoryStore:
                         self._style_guide = content
                         logger.debug("Loaded operator style guide from %s", style_path)
             except Exception as e:
-                logger.warning("Failed to load style_guide.md from %s: %s; using default.", style_path, e)
+                logger.warning(
+                    "Failed to load style_guide.md from %s: %s; using default.", style_path, e
+                )
 
         # 3. Load writing_samples.json
         samples_path = self._persona_dir / "writing_samples.json"
@@ -240,10 +363,14 @@ class VoiceMemoryStore:
                     loaded_samples = json.load(f)
                     if isinstance(loaded_samples, list) and loaded_samples:
                         self._base_writing_samples = loaded_samples
-                        logger.debug("Loaded %d writing samples from %s", len(loaded_samples), samples_path)
+                        logger.debug(
+                            "Loaded %d writing samples from %s", len(loaded_samples), samples_path
+                        )
             except Exception as e:
                 logger.warning(
-                    "Failed to load writing_samples.json from %s: %s; using default.", samples_path, e
+                    "Failed to load writing_samples.json from %s: %s; using default.",
+                    samples_path,
+                    e,
                 )
 
         self._init_embeddings_cache()
@@ -261,7 +388,9 @@ class VoiceMemoryStore:
         try:
             self._sample_embeddings = self._embeddings.embed_documents(texts)
         except Exception as e:
-            logger.warning("Dense embeddings initialization failed: %s; falling back to token similarity.", e)
+            logger.warning(
+                "Dense embeddings initialization failed: %s; falling back to token similarity.", e
+            )
             self._sample_embeddings = None
 
     def retrieve_samples(self, query: str, top_k: int = 2) -> list[dict[str, Any]]:
@@ -362,7 +491,9 @@ class VoiceMemoryStore:
         if bio:
             lines.append(f"Bio: {bio}")
         if core_domains:
-            domains_str = ", ".join(core_domains) if isinstance(core_domains, list) else str(core_domains)
+            domains_str = (
+                ", ".join(core_domains) if isinstance(core_domains, list) else str(core_domains)
+            )
             lines.append(f"Core Domains: {domains_str}")
         if stances and isinstance(stances, list):
             lines.append("Contrarian Engineering Stances:")
@@ -391,7 +522,7 @@ class VoiceMemoryStore:
             ]
             if context:
                 block_lines.append(f"Context: {context}")
-            block_lines.append(f"Approved Comment:\n\"{comment}\"")
+            block_lines.append(f'Approved Comment:\n"{comment}"')
             formatted_blocks.append("\n".join(block_lines))
 
         return "\n\n".join(formatted_blocks)

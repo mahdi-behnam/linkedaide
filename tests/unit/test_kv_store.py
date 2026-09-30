@@ -12,7 +12,7 @@ from pydantic import SecretStr
 
 from agent.config import Settings
 from agent.errors import ConfigError, StateStoreError
-from agent.models.schemas import DailyCounters, HistoryEntry, PendingAction, PostRecord
+from agent.models import DailyCounters, HistoryEntry, PendingAction, PostRecord
 from agent.state import CloudflareKVStateStore, GitStateStore, get_state_store
 
 

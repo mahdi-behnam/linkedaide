@@ -13,7 +13,7 @@ from langchain_core.runnables import RunnableLambda
 from agent.config import Settings
 from agent.llm.chains import LLMChains
 from agent.llm.service import LLMService
-from agent.models.schemas import CommentDraft, PostRecord, TriageResult
+from agent.models import CommentDraft, PostRecord, TriageResult
 from agent.safety.anti_cliche import (
     BANNED_BUZZWORDS,
     AntiClicheScanner,
@@ -272,9 +272,7 @@ class TestCleanHumanWrittenComments:
     ]
 
     @pytest.mark.parametrize("comment", CLEAN_COMMENTS)
-    def test_clean_comments_pass_unmodified(
-        self, scanner: AntiClicheScanner, comment: str
-    ) -> None:
+    def test_clean_comments_pass_unmodified(self, scanner: AntiClicheScanner, comment: str) -> None:
         result = scanner.scan(comment)
         assert result.passed is True
         assert len(result.violations) == 0
@@ -342,7 +340,9 @@ class TestLLMServiceRepairLoop:
     async def test_clean_draft_returns_immediately_without_repair(
         self, mock_settings: Settings, sample_post: PostRecord
     ) -> None:
-        clean_comment = "Raft simplifies consensus by decomposing leader election and log replication."
+        clean_comment = (
+            "Raft simplifies consensus by decomposing leader election and log replication."
+        )
         chains = self._create_mock_chains(
             lambda x: CommentDraft(
                 draft_comment=clean_comment,
@@ -376,7 +376,9 @@ class TestLLMServiceRepairLoop:
             )
         )
 
-        repaired_clean_comment = "Raft simplifies consensus by separating leader election from log replication."
+        repaired_clean_comment = (
+            "Raft simplifies consensus by separating leader election from log replication."
+        )
         mock_repair_model = AsyncMock()
         mock_repair_model.ainvoke.return_value = AIMessage(
             content=f'{{"draft_comment": "{repaired_clean_comment}", "topic_tags": ["raft"]}}'
@@ -492,4 +494,7 @@ class TestLLMServiceRepairLoop:
         draft = await service.draft_comment(sample_post, triage)
         # Should cleanly fallback to grounded technical comment
         assert service.anti_cliche_scanner.scan(draft.draft_comment).passed is True
-        assert "Alice Engineer" in draft.draft_comment or "architecture trade-offs" in draft.draft_comment
+        assert (
+            "Alice Engineer" in draft.draft_comment
+            or "architecture trade-offs" in draft.draft_comment
+        )

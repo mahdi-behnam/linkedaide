@@ -11,12 +11,12 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
-from agent.browser.scraper import hashtag_to_feed_url
 from agent.browser.stealth import humanized_dwell
+from agent.browser.url_utils import hashtag_to_feed_url
 from agent.config import Settings
 from agent.errors import BotDetectionError, ScrapeError, SessionExpiredError
 from agent.graphs.state import ScoutState, get_graph_context
-from agent.models.schemas import CommentDraft, PendingAction, PostRecord, TriageResult
+from agent.models import CommentDraft, PendingAction, PostRecord, TriageResult
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 
 logger = logging.getLogger(__name__)

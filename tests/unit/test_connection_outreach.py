@@ -11,7 +11,7 @@ from pydantic import SecretStr, ValidationError
 from agent.browser.executor import ActionExecutor
 from agent.config import Settings
 from agent.errors import BotDetectionError, ExecutionError
-from agent.models.schemas import ConnectionRequestAction, DailyCounters, ExecutionResult
+from agent.models import ConnectionRequestAction, DailyCounters, ExecutionResult
 from agent.safety.rate_limiter import DailyCapEnforcer, can_send_connection
 
 
@@ -176,7 +176,7 @@ class TestActionExecutorConnectionInvitation:
         page.url = "https://www.linkedin.com/checkpoint/challenge"
 
         executor = ActionExecutor(page, test_settings)
-        with patch("agent.browser.executor.detect_challenge_page", return_value=True):
+        with patch("agent.browser.stealth.detect_challenge_page", return_value=True):
             with pytest.raises(BotDetectionError):
                 await executor.send_connection_request(
                     profile_url="https://www.linkedin.com/in/bob/",
@@ -184,9 +184,7 @@ class TestActionExecutorConnectionInvitation:
                 )
 
     @pytest.mark.asyncio
-    async def test_send_connection_request_live_with_note(
-        self, test_settings: Settings
-    ) -> None:
+    async def test_send_connection_request_live_with_note(self, test_settings: Settings) -> None:
         page = MagicMock()
         page.url = "https://www.linkedin.com/in/marcus-ai/"
         page.screenshot = AsyncMock()

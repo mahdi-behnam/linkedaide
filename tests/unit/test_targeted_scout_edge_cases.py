@@ -13,7 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent.browser.scraper import FeedScraper, hashtag_to_feed_url
+from agent.browser.scraper import FeedScraper
+from agent.browser.url_utils import hashtag_to_feed_url
 from agent.config import Settings, load_settings
 from agent.errors import ScrapeError, SelectorDriftError, SessionExpiredError
 from agent.graphs.scout_graph import get_scout_target_sources

@@ -9,7 +9,7 @@ Architecture Invariants:
 import html
 from typing import Any
 
-from agent.models.schemas import (
+from agent.models import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_POST,
     ACTION_CODE_REJECT_COMMENT,

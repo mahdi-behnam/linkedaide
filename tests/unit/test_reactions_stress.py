@@ -418,7 +418,7 @@ async def test_post_comment_dwell_called_before_and_after_reaction(
     executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
     executor.react_to_post = AsyncMock(return_value=True)  # type: ignore[method-assign]
 
-    with patch("agent.browser.executor.humanized_dwell", new_callable=AsyncMock) as mock_dwell:
+    with patch("agent.browser.stealth.humanized_dwell", new_callable=AsyncMock) as mock_dwell:
         result = await executor.post_comment(
             post_url=page.url,
             comment_text="Dwell test comment",

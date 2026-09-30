@@ -13,8 +13,22 @@ from cryptography.fernet import Fernet
 from pydantic import SecretStr
 
 from agent.cli import (
-    CheckResult,
     build_parser,
+    main,
+    run_doctor,
+    run_execute,
+    run_health,
+    run_scout,
+    run_setup,
+)
+from agent.cli.setup import (
+    parse_dotenv_lines,
+    read_dotenv_vars,
+    update_dotenv_file,
+)
+from agent.config import Settings
+from agent.doctor import (
+    CheckResult,
     check_configuration,
     check_linkedin_session,
     check_llm_provider,
@@ -23,17 +37,7 @@ from agent.cli import (
     check_state_backend,
     check_telegram_bot,
     format_check_result,
-    main,
-    parse_dotenv_lines,
-    read_dotenv_vars,
-    run_doctor,
-    run_execute,
-    run_health,
-    run_scout,
-    run_setup,
-    update_dotenv_file,
 )
-from agent.config import Settings
 from agent.errors import ConfigError
 
 # =============================================================================
@@ -138,7 +142,7 @@ def test_check_playwright_chromium_pass(tmp_path: Path, monkeypatch: pytest.Monk
         def __exit__(self, *args: Any) -> None:
             pass
 
-    monkeypatch.setattr("agent.cli.sync_playwright", lambda: MockPlaywrightCM())
+    monkeypatch.setattr("agent.doctor.checks.sync_playwright", lambda: MockPlaywrightCM())
     res = check_playwright_chromium()
     assert res.status == "PASS"
     assert "Chromium executable found" in res.message
@@ -162,7 +166,7 @@ def test_check_playwright_chromium_missing_executable(
         def __exit__(self, *args: Any) -> None:
             pass
 
-    monkeypatch.setattr("agent.cli.sync_playwright", lambda: MockPlaywrightCM())
+    monkeypatch.setattr("agent.doctor.checks.sync_playwright", lambda: MockPlaywrightCM())
     res = check_playwright_chromium()
     assert res.status == "FAIL"
     assert "not found" in res.message
@@ -172,7 +176,7 @@ def test_check_playwright_chromium_exception(monkeypatch: pytest.MonkeyPatch) ->
     def raise_err() -> None:
         raise RuntimeError("Playwright internal driver error")
 
-    monkeypatch.setattr("agent.cli.sync_playwright", raise_err)
+    monkeypatch.setattr("agent.doctor.checks.sync_playwright", raise_err)
     res = check_playwright_chromium()
     assert res.status == "FAIL"
     assert "Playwright check failed" in res.message
@@ -193,7 +197,7 @@ def test_check_configuration_load_failure(monkeypatch: pytest.MonkeyPatch) -> No
     def fail_load() -> Settings:
         raise ConfigError("Missing required fields")
 
-    monkeypatch.setattr("agent.cli.load_settings", fail_load)
+    monkeypatch.setattr("agent.doctor.checks.load_settings", fail_load)
     res, settings = check_configuration(None)
     assert res.status == "FAIL"
     assert settings is None
@@ -449,7 +453,7 @@ def test_doctor_all_passing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
         def __exit__(self, *args: Any) -> None:
             pass
 
-    monkeypatch.setattr("agent.cli.sync_playwright", lambda: MockPlaywrightCM())
+    monkeypatch.setattr("agent.doctor.checks.sync_playwright", lambda: MockPlaywrightCM())
     with patch("agent.llm.models.build_chat_model", return_value=MagicMock()):
         mock_tg_client = MagicMock(spec=httpx.Client)
         mock_resp = MagicMock()
@@ -487,7 +491,7 @@ def test_doctor_failing_telegram(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
         def __exit__(self, *args: Any) -> None:
             pass
 
-    monkeypatch.setattr("agent.cli.sync_playwright", lambda: MockPlaywrightCM())
+    monkeypatch.setattr("agent.doctor.checks.sync_playwright", lambda: MockPlaywrightCM())
     with patch("agent.llm.models.build_chat_model", return_value=MagicMock()):
         mock_tg_client = MagicMock(spec=httpx.Client)
         mock_resp = MagicMock()
@@ -524,7 +528,7 @@ def test_doctor_failing_llm(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
         def __exit__(self, *args: Any) -> None:
             pass
 
-    monkeypatch.setattr("agent.cli.sync_playwright", lambda: MockPlaywrightCM())
+    monkeypatch.setattr("agent.doctor.checks.sync_playwright", lambda: MockPlaywrightCM())
     with patch("agent.llm.models.build_chat_model", side_effect=RuntimeError("Model failure")):
         mock_tg_client = MagicMock(spec=httpx.Client)
         mock_resp = MagicMock()
@@ -562,7 +566,7 @@ def test_doctor_failing_playwright(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
         def __exit__(self, *args: Any) -> None:
             pass
 
-    monkeypatch.setattr("agent.cli.sync_playwright", lambda: MockPlaywrightCM())
+    monkeypatch.setattr("agent.doctor.checks.sync_playwright", lambda: MockPlaywrightCM())
     with patch("agent.llm.models.build_chat_model", return_value=MagicMock()):
         mock_tg_client = MagicMock(spec=httpx.Client)
         mock_resp = MagicMock()

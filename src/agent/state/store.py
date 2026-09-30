@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from agent.errors import StateStoreError
-from agent.models.schemas import DailyCounters, HistoryEntry, PendingAction, PostRecord
+from agent.models import DailyCounters, HistoryEntry, PendingAction, PostRecord
 from agent.state.base import BaseStateStore
 
 
@@ -540,4 +540,3 @@ class GitStateStore(BaseStateStore):
         if json_path.exists():
             return json_path.read_text(encoding="utf-8")
         return None
-

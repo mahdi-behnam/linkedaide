@@ -11,7 +11,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 from agent.graphs.state import IdeationState, get_graph_context
-from agent.models.schemas import PendingAction, PostIdea, PostIdeationContext
+from agent.models import PendingAction, PostIdea, PostIdeationContext
 from agent.safety.circuit_breaker import is_halted
 
 logger = logging.getLogger(__name__)

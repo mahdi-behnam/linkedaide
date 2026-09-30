@@ -1,11 +1,11 @@
-"""Unit tests for domain and persistence schemas in agent.models.schemas."""
+"""Unit tests for domain and persistence schemas in agent.models."""
 
 from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
 
-from agent.models.schemas import (
+from agent.models import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_POST,
     ACTION_CODE_EDIT,
@@ -532,4 +532,3 @@ class TestScheduledPost:
         assert post.media[0].file_name == "agent-playbook.pdf"
         assert post.topic_pillar == "Agent Architecture"
         assert post.scheduled_time == sched_time
-

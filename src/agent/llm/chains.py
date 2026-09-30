@@ -20,7 +20,7 @@ from agent.llm.prompts import (
     build_thread_triage_prompt,
     build_triage_prompt,
 )
-from agent.models.schemas import CommentDraft, PostIdea, ReplyTriageResult, TriageResult
+from agent.models import CommentDraft, PostIdea, ReplyTriageResult, TriageResult
 
 
 @dataclass(frozen=True)
