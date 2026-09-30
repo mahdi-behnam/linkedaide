@@ -356,6 +356,28 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("CLOUDFLARE_API_TOKEN", "cloudflare_api_token"),
     )
 
+    # Residential Proxy Gateway Configuration
+    residential_proxy_url: SecretStr | None = Field(
+        default=None,
+        description="Residential proxy gateway URL (e.g. http://user:pass@host:port or socks5://...)",
+        validation_alias=AliasChoices("RESIDENTIAL_PROXY_URL", "residential_proxy_url"),
+    )
+    proxy_sticky_session_id: str | None = Field(
+        default=None,
+        description="Optional session ID for sticky IP residential proxy routing",
+        validation_alias=AliasChoices("PROXY_STICKY_SESSION_ID", "proxy_sticky_session_id"),
+    )
+    proxy_egress_timezone: str | None = Field(
+        default=None,
+        description="Timezone matching residential proxy egress location (e.g. America/New_York)",
+        validation_alias=AliasChoices("PROXY_EGRESS_TIMEZONE", "proxy_egress_timezone"),
+    )
+    proxy_egress_locale: str | None = Field(
+        default=None,
+        description="Browser locale matching residential proxy egress location (e.g. en-US)",
+        validation_alias=AliasChoices("PROXY_EGRESS_LOCALE", "proxy_egress_locale"),
+    )
+
     @classmethod
     def settings_customise_sources(
         cls,
@@ -415,6 +437,7 @@ class Settings(BaseSettings):
         "gemini_api_key",
         "groq_api_key",
         "cloudflare_api_token",
+        "residential_proxy_url",
         mode="after",
     )
     @classmethod

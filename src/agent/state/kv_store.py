@@ -380,9 +380,10 @@ class CloudflareKVStateStore(BaseStateStore):
     # Arbitrary Key/Value Storage
     # -------------------------------------------------------------------------
 
-    def put_key(self, key: str, value: str) -> None:
-        """Store string value for key in Cloudflare KV."""
-        self._put_value(key, value)
+    def put_key(self, key: str, value: str | Any) -> None:
+        """Store string value or JSON-serializable object for key in Cloudflare KV."""
+        content = json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
+        self._put_value(key, content)
 
     def get_key(self, key: str) -> str | None:
         """Retrieve string value for key from Cloudflare KV."""

@@ -230,8 +230,8 @@ class BaseStateStore(ABC):
     # -------------------------------------------------------------------------
 
     @abstractmethod
-    def put_key(self, key: str, value: str) -> None:
-        """Store an arbitrary string value for a key."""
+    def put_key(self, key: str, value: str | Any) -> None:
+        """Store an arbitrary string value or serializable data for a key."""
         ...
 
     def get_key(self, key: str) -> str | None:

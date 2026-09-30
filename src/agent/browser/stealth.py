@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import time
 from pathlib import Path
@@ -60,22 +61,26 @@ async def new_stealth_context(
     context = await browser.new_context(**options)
 
     # Apply anti-detection script before any page navigation
-    await context.add_init_script("""
-        Object.defineProperty(navigator, 'webdriver', {
+    locale = options.get("locale", "en-US")
+    base_lang = locale.split("-")[0] if "-" in locale else locale
+    languages_json = json.dumps([locale, base_lang] if locale != base_lang else [locale])
+
+    await context.add_init_script(f"""
+        Object.defineProperty(navigator, 'webdriver', {{
             get: () => undefined,
-        });
-        window.chrome = {
-            runtime: {},
-            loadTimes: function() {},
-            csi: function() {},
-            app: {},
-        };
-        Object.defineProperty(navigator, 'plugins', {
+        }});
+        window.chrome = {{
+            runtime: {{}},
+            loadTimes: function() {{}},
+            csi: function() {{}},
+            app: {{}},
+        }};
+        Object.defineProperty(navigator, 'plugins', {{
             get: () => [1, 2, 3, 4, 5],
-        });
-        Object.defineProperty(navigator, 'languages', {
-            get: () => ['en-US', 'en'],
-        });
+        }});
+        Object.defineProperty(navigator, 'languages', {{
+            get: () => {languages_json},
+        }});
     """)
 
     return context

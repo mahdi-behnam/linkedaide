@@ -7,13 +7,17 @@ import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import unquote, urlsplit
 
 from cryptography.fernet import Fernet, InvalidToken
 from pydantic import SecretStr
 
+from agent.browser.stealth import new_stealth_context
 from agent.errors import SessionError
 
 if TYPE_CHECKING:
+    from playwright.async_api import Browser, BrowserContext
+
     from agent.config import Settings
 
 
@@ -121,6 +125,91 @@ def ensure_session_file(settings: Settings | Any) -> Path:
         f"LinkedIn session state not found at '{settings.linkedin_storage_state_path}' and "
         "LINKEDIN_SESSION_STATE_ENC / SESSION_ENCRYPTION_KEY are not configured. "
         "Please run 'uv run python scripts/extract_linkedin_session.py' to extract and save your session."
+    )
+
+
+def build_proxy_config(settings: Settings | Any) -> dict[str, str] | None:
+    """Parse residential proxy configuration into a Playwright proxy dictionary.
+
+    Args:
+        settings: Settings instance containing residential proxy attributes.
+
+    Returns:
+        dict[str, str] | None: Playwright-compatible proxy configuration dictionary, or None.
+    """
+    raw_proxy = getattr(settings, "residential_proxy_url", None)
+    if not raw_proxy:
+        return None
+
+    url_str = (
+        raw_proxy.get_secret_value() if isinstance(raw_proxy, SecretStr) else str(raw_proxy)
+    ).strip()
+    if not url_str:
+        return None
+
+    parsed = urlsplit(url_str)
+    if not parsed.scheme or not parsed.hostname:
+        return None
+
+    server = f"{parsed.scheme}://{parsed.hostname}"
+    if parsed.port:
+        server = f"{server}:{parsed.port}"
+
+    proxy_dict: dict[str, str] = {"server": server}
+
+    username = unquote(parsed.username) if parsed.username else None
+    password = unquote(parsed.password) if parsed.password else None
+
+    sticky_id = getattr(settings, "proxy_sticky_session_id", None)
+    if username is not None:
+        if sticky_id:
+            username = f"{username}-session-{sticky_id}"
+        proxy_dict["username"] = username
+
+    if password is not None:
+        proxy_dict["password"] = password
+
+    return proxy_dict
+
+
+async def create_browser_context(
+    browser: Browser,
+    settings: Settings | Any,
+    storage_state_path: Path | None = None,
+    **kwargs: Any,
+) -> BrowserContext:
+    """Create a Playwright browser context with proxy routing, stealth defaults, and geo-alignment.
+
+    Args:
+        browser: Playwright Browser instance.
+        settings: Agent Settings configuration.
+        storage_state_path: Optional path to decrypted storage_state.json.
+        **kwargs: Additional context options.
+
+    Returns:
+        BrowserContext: Configured browser context.
+    """
+    context_options: dict[str, Any] = dict(kwargs)
+
+    # 1. Residential proxy gateway routing
+    proxy_config = build_proxy_config(settings)
+    if proxy_config and "proxy" not in context_options:
+        context_options["proxy"] = proxy_config
+
+    # 2. Timezone alignment (avoids timezone geo-mismatch detection)
+    egress_tz = getattr(settings, "proxy_egress_timezone", None)
+    if egress_tz and "timezone_id" not in context_options:
+        context_options["timezone_id"] = egress_tz
+
+    # 3. Locale alignment (avoids browser accept-language geo-mismatch detection)
+    egress_locale = getattr(settings, "proxy_egress_locale", None)
+    if egress_locale and "locale" not in context_options:
+        context_options["locale"] = egress_locale
+
+    return await new_stealth_context(
+        browser=browser,
+        storage_state_path=storage_state_path,
+        **context_options,
     )
 
 

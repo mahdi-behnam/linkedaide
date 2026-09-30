@@ -518,12 +518,17 @@ class GitStateStore(BaseStateStore):
     # Arbitrary Key/Value Storage
     # -------------------------------------------------------------------------
 
-    def put_key(self, key: str, value: str) -> None:
-        """Store an arbitrary string value for key in state directory."""
-        target_path = self.state_dir / f"{key}.txt"
+    def put_key(self, key: str, value: str | Any) -> None:
+        """Store an arbitrary string value or JSON-serializable object for key in state directory."""
+        if isinstance(value, (dict, list)):
+            target_path = self.state_dir / f"{key}.json"
+            content = json.dumps(value, indent=2, default=str)
+        else:
+            target_path = self.state_dir / f"{key}.txt"
+            content = str(value)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         temp_path = target_path.with_suffix(".tmp")
-        temp_path.write_text(value, encoding="utf-8")
+        temp_path.write_text(content, encoding="utf-8")
         temp_path.replace(target_path)
 
     def get_key(self, key: str) -> str | None:
