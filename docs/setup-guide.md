@@ -331,23 +331,23 @@ If you want to run tests or dry-run flows locally on your workstation:
 
 ## Step 9: Launch & Configure the Desktop Control Panel
 
-The repository includes a modern Electron desktop control panel in `desktop/`. It provides real-time approval queues, power-user keyboard shortcuts (`[A]` approve, `[R]` reject, `[E]` edit, `[T]` cycle tone), a visual post composer, calendar planner, connection outreach studio, voice audio dictation, system tray background notifications, and live audit telemetry.
+The repository includes a modern Electron desktop control panel. It provides real-time approval queues, power-user keyboard shortcuts (`[A]` approve, `[R]` reject, `[E]` edit, `[T]` cycle tone), a visual post composer, calendar planner, connection outreach studio, voice audio dictation, system tray background notifications, and live audit telemetry.
 
-### 1. Build & Launch the Desktop App
-Open a terminal on your computer:
+### 1. Download or Run the Desktop App
 
-```bash
-cd desktop
-npm install
+#### Option A: Download Standalone Installer (Recommended)
+You do not need to install Node.js, run terminal commands, or compile anything. Simply download the ready-to-run installer for your operating system:
 
-# Build the frontend and Electron main process:
-npm run package
+* 🪟 **Windows**: [Download `LinkedIn-HITL-Agent-Setup.exe`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases) (or portable `.exe`)
+* 🍏 **macOS**: [Download `LinkedIn-HITL-Agent.dmg`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases)
+* 🐧 **Linux**: [Download `LinkedIn-HITL-Agent.AppImage`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases) (or `.deb`)
 
-# Launch the desktop app:
-npm start
-```
+Install and launch the application, then proceed directly to **Connect the Desktop App** below.
 
-*(Tip: In development mode, you can also run `npm run dev` to preview the React frontend in your browser).*
+#### Option B: Build and Run from Source (Developers)
+*Looking to develop, modify, or run the desktop app directly from code? See [Building the Desktop App from Source](#building-the-desktop-app-from-source-developers).*
+
+---
 
 ### 2. Connect the Desktop App to Your Cloudflare Worker
 1. In the Desktop App, click **Settings** (gear icon in the sidebar).
@@ -408,3 +408,57 @@ The `scripts/` directory provides utilities for setup and maintenance:
 | `uv run python scripts/register_telegram_webhook.py --worker-url ... --secret-token ...` | Registers Cloudflare Worker webhook URL and secret with Telegram Bot API. |
 | `uv run python scripts/register_telegram_webhook.py --delete` | Removes Telegram webhook (useful if switching to local polling mode). |
 | `uv run python scripts/run_scout_dry.py` | Executes a local dry-run of the Scout workflow on your machine. |
+
+---
+
+## Building the Desktop App from Source (Developers)
+
+If you are a developer looking to inspect, customize, or contribute to the desktop application, you can build and run it locally from source code.
+
+### Prerequisites
+* **Node.js**: v18.0.0 or higher (Node v20 LTS or v22+ recommended)
+* **npm**: v9.0.0 or higher
+
+### 1. Install Dependencies
+Navigate to the `desktop/` directory and install the packages:
+
+```bash
+cd desktop
+npm install
+```
+
+> **Automated Self-Healing Setup**:  
+> The repository includes an automated verification script (`scripts/ensure-electron.cjs`) hooked into `postinstall` and `prestart`. If modern npm blocks postinstall download scripts, the script automatically searches your local cache (`%LOCALAPPDATA%\electron\Cache` or `~/.cache/electron`), unpacks the binary, cleans Windows carriage returns (`\r\n`) in `path.txt`, and links `dist/electron.exe` properly so you never run into missing binary errors.
+
+### 2. Run in Development Mode
+To preview and develop the React frontend with Vite fast refresh:
+
+```bash
+npm run dev
+```
+
+### 3. Build & Launch the Desktop App
+To compile the TypeScript Electron main process, bundle the React frontend, and launch the application:
+
+```bash
+# Compile and package bundles:
+npm run package
+
+# Launch the desktop control panel:
+npm start
+```
+
+### 4. Package Standalone Installers
+To generate standalone platform installers (`.exe`, `.dmg`, `.AppImage`) locally:
+
+```bash
+# Package for your current operating system:
+npm run dist
+
+# Or build platform-specific targets:
+npm run dist:win    # Windows installer (.exe) & portable executable
+npm run dist:mac    # macOS disk image (.dmg) & zip
+npm run dist:linux  # Linux AppImage & .deb package
+```
+
+The compiled binaries are generated in `desktop/dist-electron/`.

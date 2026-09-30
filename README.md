@@ -216,13 +216,15 @@ The repository includes a modern Electron desktop application in [`desktop/`](de
 * 🤝 **Connection Outreach Studio**: Review 2nd-degree connection candidates and personalize 300-character notes with daily safety caps.
 * 🔔 **System Tray & WebSocket Sync**: Live <50ms push updates via Cloudflare Worker WebSockets with native OS desktop notifications.
 
-```bash
-# Launch the desktop app:
-cd desktop
-npm install
-npm run package
-npm start
-```
+### 📥 1-Click Standalone Download (Recommended)
+
+No Node.js, terminal commands, or build steps required. Download the ready-to-run installer directly from [GitHub Releases](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases):
+
+* 🪟 **Windows**: [Download `LinkedIn-HITL-Agent-Setup.exe`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases) (or portable `.exe`)
+* 🍏 **macOS**: [Download `LinkedIn-HITL-Agent.dmg`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases)
+* 🐧 **Linux**: [Download `LinkedIn-HITL-Agent.AppImage`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases) (or `.deb`)
+
+*(Prefer to build, customize, or run from source? Check out [Building the Desktop App from Source](docs/setup-guide.md#building-the-desktop-app-from-source-developers)).*
 
 ---
 
