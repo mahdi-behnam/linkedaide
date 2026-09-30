@@ -42,6 +42,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     pendingCount,
     telemetry,
     connectionQueue,
+    lastTriggerMessage,
   } = useApp();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -225,6 +226,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <main className="flex-1 overflow-y-auto bg-zinc-950 p-6">
           {children}
         </main>
+
+        {/* Realtime Floating Toast Notification */}
+        {lastTriggerMessage && (
+          <div
+            data-testid="realtime-toast"
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-lg border border-emerald-500/40 bg-zinc-900/95 px-4 py-2.5 text-xs font-medium text-emerald-300 shadow-2xl backdrop-blur-md"
+          >
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400" />
+            <span>{lastTriggerMessage}</span>
+          </div>
+        )}
       </div>
     </div>
   );

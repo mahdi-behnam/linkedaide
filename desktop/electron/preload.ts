@@ -56,6 +56,16 @@ const api: ElectronAPI = {
 
   checkSessionHealth: (): Promise<{ valid: boolean; daysRemaining?: number; details?: string }> =>
     ipcRenderer.invoke("auth:checkSessionHealth"),
+
+  onRealtimeEvent: (callback: (event: any) => void): (() => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, payload: any) => {
+      callback(payload);
+    };
+    ipcRenderer.on("realtime:event", subscription);
+    return () => {
+      ipcRenderer.removeListener("realtime:event", subscription);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("api", api);

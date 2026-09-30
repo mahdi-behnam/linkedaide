@@ -122,6 +122,78 @@ export function jsonResponse(data: unknown, status = 200): Response {
   });
 }
 
+/** Active WebSocket client connections connected to /api/ws */
+export const activeClientSockets = new Set<WebSocket>();
+
+/** Broadcasts a realtime JSON event to all connected WebSocket clients */
+export function broadcastEvent(event: { type: string; payload?: any; [key: string]: any }): void {
+  const message = JSON.stringify(event);
+  for (const socket of activeClientSockets) {
+    try {
+      socket.send(message);
+    } catch {
+      activeClientSockets.delete(socket);
+    }
+  }
+}
+
+/**
+ * Handles GET /api/ws WebSocket upgrade requests.
+ * Authenticates via ?token=<secret> matching env.DESKTOP_API_SECRET.
+ */
+export function handleWebSocketUpgrade(
+  request: Request,
+  env: Env,
+  url: URL
+): Response {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method Not Allowed" }, 405);
+  }
+
+  const upgradeHeader = request.headers.get("Upgrade");
+  if (upgradeHeader !== "websocket" && upgradeHeader?.toLowerCase() !== "websocket") {
+    return new Response("Expected Upgrade: websocket", { status: 426 });
+  }
+
+  const token = url.searchParams.get("token");
+  if (!env.DESKTOP_API_SECRET || !token || token !== env.DESKTOP_API_SECRET) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  const { 0: client, 1: server } = new WebSocketPair();
+
+  server.accept();
+  activeClientSockets.add(server);
+
+  server.addEventListener("close", () => {
+    activeClientSockets.delete(server);
+  });
+
+  server.addEventListener("error", () => {
+    activeClientSockets.delete(server);
+  });
+
+  server.addEventListener("message", (event: MessageEvent) => {
+    const data = typeof event.data === "string" ? event.data : event.data?.toString();
+    if (data === "ping") {
+      server.send("pong");
+    }
+  });
+
+  try {
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    } as ResponseInit);
+  } catch {
+    // Fallback for Node/test environments where Response constructor disallows status 101
+    const res = new Response(null, { status: 200, statusText: "Switching Protocols" });
+    Object.defineProperty(res, "status", { value: 101, writable: true, configurable: true });
+    Object.defineProperty(res, "webSocket", { value: client, writable: true, configurable: true });
+    return res;
+  }
+}
+
 export async function handleGetState(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") {
     return jsonResponse({ error: "Method Not Allowed" }, 405);
@@ -312,6 +384,12 @@ export async function handlePostAction(
       );
     }
 
+    broadcastEvent({
+      type: "action_executed",
+      item_id: itemId,
+      action: "reject",
+    });
+
     return jsonResponse({
       success: true,
       status: "rejected",
@@ -395,6 +473,12 @@ export async function handlePostAction(
     );
   }
 
+  broadcastEvent({
+    type: "action_executed",
+    item_id: itemId,
+    action: "approve",
+  });
+
   return jsonResponse({
     success: true,
     status: "dispatched",
@@ -467,6 +551,10 @@ export async function handlePostScout(request: Request, env: Env): Promise<Respo
       502
     );
   }
+
+  broadcastEvent({
+    type: "queue_updated",
+  });
 
   return jsonResponse({
     success: true,
@@ -665,12 +753,17 @@ export async function handleApiRequest(
   ctx: ExecutionContext,
   url: URL
 ): Promise<Response> {
+  const pathname = url.pathname.replace(/\/+$/, "");
+
+  // WebSocket push hub upgrade endpoint
+  if (pathname === "/api/ws") {
+    return handleWebSocketUpgrade(request, env, url);
+  }
+
   const authHeader = request.headers.get("Authorization");
   if (!env.DESKTOP_API_SECRET || authHeader !== `Bearer ${env.DESKTOP_API_SECRET}`) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
-
-  const pathname = url.pathname.replace(/\/+$/, "");
 
   if (pathname === "/api/state") {
     return handleGetState(request, env);
@@ -833,6 +926,12 @@ export default {
         );
       }
 
+      broadcastEvent({
+        type: "action_executed",
+        item_id: itemId,
+        action: "reject",
+      });
+
       return new Response(
         JSON.stringify({ status: "rejected_via_kv", action: "reject", item_id: itemId }),
         {
@@ -930,6 +1029,12 @@ export default {
         }
       );
     }
+
+    broadcastEvent({
+      type: "action_executed",
+      item_id: itemId,
+      action,
+    });
 
     return new Response(JSON.stringify({ status: "dispatched", action, item_id: itemId }), {
       status: 200,

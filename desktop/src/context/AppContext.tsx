@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from "react";
 import {
   NavigationTab,
   SystemStatusType,
@@ -42,6 +42,7 @@ export interface AppContextType {
     id: string,
     note?: string
   ) => Promise<ActionResult>;
+  refreshState?: () => Promise<void>;
 }
 
 const initialTelemetry: SystemTelemetry = {
@@ -323,6 +324,73 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activePostForEditing, setActivePostForEditing] = useState<ScheduledPost | null>(null);
   const [connectionQueue, setConnectionQueue] = useState<ConnectionRequestAction[]>(initialConnectionQueue);
 
+  const refreshState = useCallback(async () => {
+    if (typeof window === "undefined" || !window.api?.fetchState) {
+      return;
+    }
+    try {
+      const state = await window.api.fetchState();
+      if (!state) return;
+
+      const rawPending = state.pending_actions || state.pendingActions || [];
+      const newPendingCount = rawPending.length;
+
+      setPendingCount((prev) => {
+        if (newPendingCount > prev) {
+          const diff = newPendingCount - prev;
+          setLastTriggerMessage(`⚡ Realtime: ${diff} new approval${diff > 1 ? "s" : ""} available in queue`);
+        }
+        return newPendingCount;
+      });
+
+      if (typeof state.paused === "boolean") {
+        setIsPaused(state.paused);
+      }
+
+      setTelemetry((prev) => ({
+        ...prev,
+        isPaused: typeof state.paused === "boolean" ? state.paused : prev.isPaused,
+        circuitBreakerTripped: Boolean(state.incident),
+        pendingCount: newPendingCount,
+        lastScanAt: state.last_updated || state.lastUpdated || "Just now",
+      }));
+
+      if (state.connection_queue || state.connectionQueue) {
+        setConnectionQueue(state.connection_queue || state.connectionQueue || []);
+      }
+    } catch (err) {
+      console.warn("Silent background refreshState failed:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.api?.onRealtimeEvent) {
+      return;
+    }
+
+    const unsubscribe = window.api.onRealtimeEvent((event: any) => {
+      if (!event) return;
+      const eventType = event.type;
+
+      if (eventType === "queue_updated" || eventType === "action_executed") {
+        refreshState();
+        if (eventType === "action_executed") {
+          setLastTriggerMessage(
+            `⚡ Realtime: Action "${event.action || "executed"}" recorded for ${event.item_id || "item"}`
+          );
+        } else if (eventType === "queue_updated") {
+          setLastTriggerMessage("⚡ Realtime: Approval queue updated from cloud");
+        }
+      }
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [refreshState]);
+
   const executeConnectionAction = useCallback(
     async (
       action: "approve" | "reject",
@@ -454,6 +522,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       connectionQueue,
       setConnectionQueue,
       executeConnectionAction,
+      refreshState,
     }),
     [
       currentTab,
@@ -477,6 +546,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activePostForEditing,
       connectionQueue,
       executeConnectionAction,
+      refreshState,
     ]
   );
 

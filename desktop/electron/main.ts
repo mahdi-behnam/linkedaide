@@ -10,6 +10,7 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { WorkerClient } from "./api/workerClient";
+import { RealtimePushClient } from "./api/realtimeHub";
 import { captureLinkedInSession } from "./auth/linkedinAuth";
 import {
   decryptSession,
@@ -28,6 +29,7 @@ mainApp.isQuitting = false;
 
 let mainWindow: BrowserWindow | null = null;
 let workerClient: WorkerClient;
+let realtimeClient: RealtimePushClient | null = null;
 let trayManager: TrayManager | null = null;
 let pollingEngine: PollingEngine | null = null;
 
@@ -80,6 +82,10 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
       baseUrl: updated.workerUrl,
       apiSecret: updated.apiSecret,
     });
+
+    if (realtimeClient) {
+      realtimeClient.updateCredentials(updated.workerUrl, updated.apiSecret);
+    }
 
     if (updated.autoRefreshInterval && pollingEngine) {
       pollingEngine.setIntervalMs(updated.autoRefreshInterval * 1000);
@@ -315,6 +321,13 @@ app.whenReady().then(() => {
   });
   pollingEngine.start();
 
+  realtimeClient = new RealtimePushClient(
+    mainWindow,
+    settings.workerUrl,
+    settings.apiSecret
+  );
+  realtimeClient.connect();
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createWindow();
@@ -323,6 +336,9 @@ app.whenReady().then(() => {
       }
       if (pollingEngine) {
         pollingEngine.setMainWindow(mainWindow);
+      }
+      if (realtimeClient) {
+        realtimeClient.setMainWindow(mainWindow);
       }
     } else if (mainWindow) {
       if (mainWindow.isMinimized()) {
@@ -343,6 +359,10 @@ app.on("before-quit", () => {
   if (trayManager) {
     trayManager.destroy();
     trayManager = null;
+  }
+  if (realtimeClient) {
+    realtimeClient.disconnect();
+    realtimeClient = null;
   }
 });
 
