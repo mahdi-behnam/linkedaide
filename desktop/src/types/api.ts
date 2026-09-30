@@ -112,6 +112,7 @@ export interface ElectronAPI {
   generateFernetKey: () => Promise<string>;
   captureSession?: () => Promise<{ success: boolean; error?: string }>;
   checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
+  onRealtimeEvent?: (callback: (event: any) => void) => () => void;
 }
 
 declare global {
