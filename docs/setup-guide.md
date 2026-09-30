@@ -173,29 +173,41 @@ To allow the Cloudflare Worker to trigger GitHub Actions:
 - Copy the token (`GITHUB_DISPATCH_PAT`).
 
 ### 2. Provision Cloudflare Storage (KV & R2)
-Before deploying, create the Workers KV namespace and R2 bucket in your Cloudflare account:
+Before deploying, provision your Workers KV namespace and R2 storage bucket:
 
 ```bash
 cd infra/telegram-relay-worker
 npm install
+```
 
-# Create the KV namespace for persistent state:
+#### A. Create the KV Namespace (Required for State Persistence)
+Run:
+```bash
 npx wrangler kv namespace create LINKEDIN_AGENT_KV
 ```
 
-Wrangler will output a configuration snippet with your real 32-character `id`, for example:
+Wrangler will output a configuration snippet with your unique 32-character hexadecimal `id`, for example:
 ```toml
 [[kv_namespaces]]
 binding = "LINKEDIN_AGENT_KV"
-id = "06779da6940b431db6e566b4846d64db"
+id = "a1b2c3d4e5f6071829304a5b6c7d8e9f"
 ```
 
-Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id = "linkedin_agent_kv_namespace"` with your generated `id`.
+Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id = "linkedin_agent_kv_namespace"` with your generated 32-character `id`.
 
-Next, create the R2 bucket for screenshot and media audit storage:
-```bash
-npx wrangler r2 bucket create linkedin-agent-media
-```
+#### B. Provision R2 Bucket (For Audit Screenshots & Media)
+Cloudflare R2 is an S3-compatible storage service that requires a one-time activation in the Cloudflare dashboard before buckets can be created via CLI:
+
+1. Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/).
+2. In the left navigation menu, go to **Storage & Databases** -> **R2** (or simply click **R2**).
+3. Click the **"Enable R2"** or **"Get Started"** button to activate R2 on your account (R2 includes 10 GB free storage/month with zero egress fees).
+4. Return to your terminal and create the media bucket:
+   ```bash
+   npx wrangler r2 bucket create linkedin-agent-media
+   ```
+
+> [!TIP]
+> **Optional (Skip R2)**: If you do not want to activate Cloudflare R2 on your account right now, simply comment out or delete the `[[r2_buckets]]` section in `infra/telegram-relay-worker/wrangler.toml`. The system will automatically fall back to storing execution audit screenshots locally on disk without any errors.
 
 ### 3. Deploy the Worker
 ```bash
