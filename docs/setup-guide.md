@@ -172,16 +172,16 @@ To allow the Cloudflare Worker to trigger GitHub Actions:
   - **Classic PAT**: Select the **`repo`** scope.
 - Copy the token (`GITHUB_DISPATCH_PAT`).
 
-### 2. Provision Cloudflare Storage (KV & R2)
-Before deploying, provision your Workers KV namespace and R2 storage bucket:
+### 2. Provision Cloudflare Storage (KV & Optional R2)
 
 ```bash
 cd infra/telegram-relay-worker
 npm install
 ```
 
-#### A. Create the KV Namespace (Required for State Persistence)
-Run:
+#### A. Create Workers KV Namespace (Mandatory — 100% Free, No Credit Card Needed)
+Workers KV stores your agent's state (pending actions, history, counters) safely in Cloudflare without requiring a credit card:
+
 ```bash
 npx wrangler kv namespace create LINKEDIN_AGENT_KV
 ```
@@ -195,19 +195,31 @@ id = "a1b2c3d4e5f6071829304a5b6c7d8e9f"
 
 Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id = "linkedin_agent_kv_namespace"` with your generated 32-character `id`.
 
-#### B. Provision R2 Bucket (For Audit Screenshots & Media)
-Cloudflare R2 is an S3-compatible storage service that requires a one-time activation in the Cloudflare dashboard before buckets can be created via CLI:
+---
 
+#### B. Cloudflare R2 Media Vault (Completely Optional)
+
+> [!NOTE]
+> **Do you need Cloudflare R2?**
+> - **No, R2 is completely optional.** 
+> - Cloudflare requires entering a payment method / credit card to activate R2 (even though R2 includes a free 10 GB/month tier).
+> - If you **do not want to provide a credit card**, simply **skip R2**. In `infra/telegram-relay-worker/wrangler.toml`, the `[[r2_buckets]]` section is already commented out by default. Execution audit screenshots will automatically be saved locally on your workstation instead.
+> - You can proceed directly to **Step 3 (Deploy the Worker)**!
+
+**If you DO want Cloudflare R2 (for cloud-hosted proof screenshots):**
 1. Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/).
-2. In the left navigation menu, go to **Storage & Databases** -> **R2** (or simply click **R2**).
-3. Click the **"Enable R2"** or **"Get Started"** button to activate R2 on your account (R2 includes 10 GB free storage/month with zero egress fees).
-4. Return to your terminal and create the media bucket:
+2. In the left navigation menu, go to **Storage & Databases** &rarr; **R2** (or click **R2**).
+3. Click **"Enable R2"** / **"Get Started"** (this requires a payment method on file).
+4. Run:
    ```bash
    npx wrangler r2 bucket create linkedin-agent-media
    ```
-
-> [!TIP]
-> **Optional (Skip R2)**: If you do not want to activate Cloudflare R2 on your account right now, simply comment out or delete the `[[r2_buckets]]` section in `infra/telegram-relay-worker/wrangler.toml`. The system will automatically fall back to storing execution audit screenshots locally on disk without any errors.
+5. In `infra/telegram-relay-worker/wrangler.toml`, uncomment the `[[r2_buckets]]` block:
+   ```toml
+   [[r2_buckets]]
+   binding = "SCREENSHOTS_BUCKET"
+   bucket_name = "linkedin-agent-media"
+   ```
 
 ### 3. Deploy the Worker
 ```bash

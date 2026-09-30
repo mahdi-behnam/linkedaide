@@ -20,10 +20,15 @@ compatibility_date = "2024-04-01"
 binding = "LINKEDIN_AGENT_KV"
 id = "linkedin_agent_kv_namespace"
 
-# R2 Bucket binding for media vault and execution audit screenshots:
-# (Activate R2 once in Cloudflare Dashboard: dash.cloudflare.com -> R2 -> Enable R2, then run: npx wrangler r2 bucket create linkedin-agent-media)
-# (Optional: If not using R2, you can comment out the [[r2_buckets]] block below)
-[[r2_buckets]]
-binding = "SCREENSHOTS_BUCKET"
-bucket_name = "linkedin-agent-media"
+# R2 Bucket binding for media vault and execution audit screenshots (OPTIONAL):
+# NOTE: Cloudflare requires adding a credit card to activate R2 (even though it has a free tier).
+# - If you DON'T want R2 / don't want to add a card: Leave the lines below commented out.
+#   Execution audit screenshots will automatically be saved locally on disk.
+# - If you DO want Cloudflare R2:
+#   1. Enable R2 in Cloudflare Dashboard: dash.cloudflare.com -> R2 -> Enable R2
+#   2. Run: npx wrangler r2 bucket create linkedin-agent-media
+#   3. Uncomment the block below:
+# [[r2_buckets]]
+# binding = "SCREENSHOTS_BUCKET"
+# bucket_name = "linkedin-agent-media"
 
