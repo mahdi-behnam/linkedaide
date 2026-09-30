@@ -172,16 +172,39 @@ To allow the Cloudflare Worker to trigger GitHub Actions:
   - **Classic PAT**: Select the **`repo`** scope.
 - Copy the token (`GITHUB_DISPATCH_PAT`).
 
-### 2. Deploy the Worker
+### 2. Provision Cloudflare Storage (KV & R2)
+Before deploying, create the Workers KV namespace and R2 bucket in your Cloudflare account:
+
 ```bash
 cd infra/telegram-relay-worker
 npm install
+
+# Create the KV namespace for persistent state:
+npx wrangler kv namespace create LINKEDIN_AGENT_KV
+```
+
+Wrangler will output a configuration snippet with your real 32-character `id`, for example:
+```toml
+[[kv_namespaces]]
+binding = "LINKEDIN_AGENT_KV"
+id = "06779da6940b431db6e566b4846d64db"
+```
+
+Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id = "linkedin_agent_kv_namespace"` with your generated `id`.
+
+Next, create the R2 bucket for screenshot and media audit storage:
+```bash
+npx wrangler r2 bucket create linkedin-agent-media
+```
+
+### 3. Deploy the Worker
+```bash
 npx wrangler deploy
 ```
 Copy the deployed worker URL (e.g., `https://telegram-relay-worker.<your-subdomain>.workers.dev`).
 
-### 3. Set Worker Secrets in Cloudflare
-Set the 6 required secrets in Cloudflare via Wrangler:
+### 4. Set Worker Secrets in Cloudflare
+Set the required secrets in Cloudflare via Wrangler:
 ```bash
 # 1. Custom webhook secret (generated in Step 1)
 npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
@@ -200,9 +223,12 @@ npx wrangler secret put GITHUB_REPO_OWNER
 
 # 6. Repository name (e.g. linkedin-hitl-agent)
 npx wrangler secret put GITHUB_REPO_NAME
+
+# 7. Desktop API Secret (for desktop app realtime sync & media access)
+npx wrangler secret put DESKTOP_API_SECRET
 ```
 
-### 4. Register the Webhook with Telegram
+### 5. Register the Webhook with Telegram
 Return to the project root directory and run the registration utility:
 ```bash
 uv run python scripts/register_telegram_webhook.py \
