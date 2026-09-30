@@ -45,6 +45,8 @@ import {
   Article,
   CalendarBlank,
   ClockAfternoon,
+  UserPlus,
+  ChatText,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -97,4 +99,6 @@ export {
   Article,
   CalendarBlank,
   ClockAfternoon,
+  UserPlus,
+  ChatText,
 };

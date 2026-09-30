@@ -8,7 +8,9 @@ import {
   SystemTelemetry,
   ScheduledPost,
   AutomatedCommentWindow,
+  ConnectionRequestAction,
 } from "../types";
+import { ActionResult } from "../types/api";
 
 export interface AppContextType {
   currentTab: NavigationTab;
@@ -33,6 +35,13 @@ export interface AppContextType {
   commentWindows: AutomatedCommentWindow[];
   activePostForEditing: ScheduledPost | null;
   setActivePostForEditing: (post: ScheduledPost | null) => void;
+  connectionQueue: ConnectionRequestAction[];
+  setConnectionQueue: React.Dispatch<React.SetStateAction<ConnectionRequestAction[]>>;
+  executeConnectionAction: (
+    action: "approve" | "reject",
+    id: string,
+    note?: string
+  ) => Promise<ActionResult>;
 }
 
 const initialTelemetry: SystemTelemetry = {
@@ -54,6 +63,8 @@ const initialQuota: DailyQuota = {
   postsMax: 3,
   suggestionsSent: 7,
   suggestionsMax: 20,
+  connectionsSent: 2,
+  connectionsMax: 10,
 };
 
 const initialAuditEntries: AuditEntry[] = [
@@ -261,6 +272,39 @@ const initialCommentWindows: AutomatedCommentWindow[] = [
   },
 ];
 
+const initialConnectionQueue: ConnectionRequestAction[] = [
+  {
+    id: "conn-001",
+    profile_url: "https://linkedin.com/in/alice-vance-dist",
+    target_name: "Alice Vance",
+    target_headline: "Staff Distributed Systems Engineer at Cloudflare",
+    mutual_context: "Commented on Alice's post regarding distributed cache invalidation and edge KV consistency",
+    note_text: "Hi Alice, really enjoyed your breakdown on edge cache invalidation tradeoffs. Would love to connect and follow your work on distributed systems.",
+    status: "pending",
+    created_at: "2026-09-30T08:15:00Z",
+  },
+  {
+    id: "conn-002",
+    profile_url: "https://linkedin.com/in/marcus-chen-ai",
+    target_name: "Marcus Chen",
+    target_headline: "Principal Research Scientist at NVIDIA NIM Team",
+    mutual_context: "Participated in thread discussing speculative decoding speedups in Nemotron architectures",
+    note_text: "Hey Marcus, your insights on speculative decoding latency boundaries were spot on. Excited to connect and keep track of your team's breakthroughs.",
+    status: "pending",
+    created_at: "2026-09-30T07:45:00Z",
+  },
+  {
+    id: "conn-003",
+    profile_url: "https://linkedin.com/in/sarah-jenkins-dev",
+    target_name: "Sarah Jenkins",
+    target_headline: "Head of AI Infrastructure at LangChain",
+    mutual_context: "Engaged on discussion about persistent state checkpoints vs ephemeral graph memory in multi-agent workflows",
+    note_text: "Hi Sarah, loved your analysis on checkpoint durability across multi-agent pipelines. Looking forward to staying connected.",
+    status: "pending",
+    created_at: "2026-09-29T22:10:00Z",
+  },
+];
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -277,6 +321,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>(initialScheduledPosts);
   const [commentWindows] = useState<AutomatedCommentWindow[]>(initialCommentWindows);
   const [activePostForEditing, setActivePostForEditing] = useState<ScheduledPost | null>(null);
+  const [connectionQueue, setConnectionQueue] = useState<ConnectionRequestAction[]>(initialConnectionQueue);
+
+  const executeConnectionAction = useCallback(
+    async (
+      action: "approve" | "reject",
+      id: string,
+      note?: string
+    ): Promise<ActionResult> => {
+      let result: ActionResult = { success: true, itemId: id, action };
+      if (typeof window !== "undefined" && window.api?.executeConnectionAction) {
+        try {
+          result = await window.api.executeConnectionAction(action, id, note);
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : "Failed to execute connection action";
+          result = { success: false, error: errMsg };
+        }
+      }
+
+      setConnectionQueue((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                status: action === "approve" ? "approved" : "rejected",
+                note_text: note !== undefined ? note : c.note_text,
+                approved_at: action === "approve" ? new Date().toISOString() : undefined,
+              }
+            : c
+        )
+      );
+
+      const target = connectionQueue.find((c) => c.id === id);
+      const name = target ? target.target_name : id;
+      setLastTriggerMessage(
+        action === "approve"
+          ? `Connection request approved for ${name}. Invitation queued.`
+          : `Connection candidate for ${name} rejected.`
+      );
+
+      return result;
+    },
+    [connectionQueue]
+  );
 
   const systemStatus: SystemStatusType = useMemo(() => {
     if (telemetry.circuitBreakerTripped) return "tripped";
@@ -364,6 +451,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       commentWindows,
       activePostForEditing,
       setActivePostForEditing,
+      connectionQueue,
+      setConnectionQueue,
+      executeConnectionAction,
     }),
     [
       currentTab,
@@ -385,6 +475,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteScheduledPost,
       commentWindows,
       activePostForEditing,
+      connectionQueue,
+      executeConnectionAction,
     ]
   );
 

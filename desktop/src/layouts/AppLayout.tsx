@@ -17,6 +17,7 @@ import {
   Lightning,
   PencilSimple,
   Calendar,
+  UserPlus,
   IconProps,
 } from "../components/icons";
 
@@ -40,13 +41,19 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     togglePause,
     pendingCount,
     telemetry,
+    connectionQueue,
   } = useApp();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const pendingOutreachCount = connectionQueue
+    ? connectionQueue.filter((c) => c.status === "pending").length
+    : 0;
+
   const navItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: House },
     { id: "queue", label: "Approval Queue", icon: Inbox, badge: pendingCount },
+    { id: "outreach", label: "Outreach Queue", icon: UserPlus, badge: pendingOutreachCount },
     { id: "composer", label: "Post Composer", icon: PencilSimple },
     { id: "calendar", label: "Content Calendar", icon: Calendar },
     { id: "vault", label: "LinkedIn Vault", icon: ShieldCheck },

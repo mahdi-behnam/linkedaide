@@ -3,6 +3,7 @@ import { AppProvider, useApp } from "./context/AppContext";
 import { AppLayout } from "./layouts/AppLayout";
 import { DashboardView } from "./views/DashboardView";
 import { ApprovalQueueView } from "./views/ApprovalQueueView";
+import { OutreachQueueView } from "./views/OutreachQueueView";
 import { ComposerView } from "./views/ComposerView";
 import { CalendarView } from "./views/CalendarView";
 import { VaultView } from "./views/VaultView";
@@ -18,6 +19,8 @@ const MainContent: React.FC = () => {
       return <DashboardView />;
     case "queue":
       return <ApprovalQueueView />;
+    case "outreach":
+      return <OutreachQueueView />;
     case "composer":
       return <ComposerView />;
     case "calendar":

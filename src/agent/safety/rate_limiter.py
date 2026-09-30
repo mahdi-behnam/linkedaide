@@ -46,6 +46,22 @@ class DailyCapEnforcer:
             )
         return True, None
 
+    def can_execute_connection(self, counters: DailyCounters) -> tuple[bool, str | None]:
+        """Check if daily connection request limit allows another connection invitation.
+
+        Args:
+            counters: Current daily counters.
+
+        Returns:
+            tuple[bool, str | None]: (True, None) if allowed, (False, reason) if capped.
+        """
+        if not can_send_connection(counters, self.settings.max_connections_per_day):
+            return (
+                False,
+                f"Daily connection cap reached ({counters.connections_sent}/{self.settings.max_connections_per_day})",
+            )
+        return True, None
+
     def can_send_suggestion(self, run_suggestions_count: int) -> bool:
         """Check if the maximum suggestions per scout run has been reached.
 
@@ -79,3 +95,16 @@ class DailyCapEnforcer:
 
         elapsed_seconds = (current_time - created_at).total_seconds()
         return elapsed_seconds <= (ttl * 3600)
+
+
+def can_send_connection(counters: DailyCounters, max_daily: int = 10) -> bool:
+    """Check if daily connection counter allows sending another connection request.
+
+    Args:
+        counters: Current daily counters.
+        max_daily: Maximum connection requests allowed per day.
+
+    Returns:
+        bool: True if another connection request can be sent today.
+    """
+    return counters.connections_sent < max_daily

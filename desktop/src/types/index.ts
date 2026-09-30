@@ -10,6 +10,7 @@ export type HistoryStatus =
 export type NavigationTab =
   | "dashboard"
   | "queue"
+  | "outreach"
   | "composer"
   | "calendar"
   | "vault"
@@ -18,6 +19,18 @@ export type NavigationTab =
   | "settings";
 
 export type ScheduledPostStatus = "draft" | "scheduled" | "published" | "failed";
+
+export interface ConnectionRequestAction {
+  id: string;
+  profile_url: string;
+  target_name: string;
+  target_headline?: string;
+  mutual_context?: string;
+  note_text?: string;
+  status: "pending" | "approved" | "rejected" | "sent" | "failed";
+  created_at: string;
+  approved_at?: string | null;
+}
 
 export interface MediaAttachment {
   media_type: "image" | "carousel_pdf";
@@ -55,6 +68,8 @@ export interface DailyQuota {
   postsMax: number;
   suggestionsSent: number;
   suggestionsMax: number;
+  connectionsSent?: number;
+  connectionsMax?: number;
 }
 
 export interface AuditEntry {
