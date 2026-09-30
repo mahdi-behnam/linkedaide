@@ -361,6 +361,16 @@ class Settings(BaseSettings):
         description="Cloudflare API Token with Workers KV permissions",
         validation_alias=AliasChoices("CLOUDFLARE_API_TOKEN", "cloudflare_api_token"),
     )
+    worker_url: str | None = Field(
+        default=None,
+        description="Cloudflare Worker base URL for remote state and R2 media vault",
+        validation_alias=AliasChoices("WORKER_URL", "worker_url"),
+    )
+    desktop_api_secret: SecretStr | None = Field(
+        default=None,
+        description="Shared secret for authenticating with Cloudflare Worker API",
+        validation_alias=AliasChoices("DESKTOP_API_SECRET", "desktop_api_secret"),
+    )
 
     # Residential Proxy Gateway Configuration
     residential_proxy_url: SecretStr | None = Field(

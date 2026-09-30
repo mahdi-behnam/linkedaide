@@ -85,6 +85,7 @@ export interface AuditEntry {
   draftExcerpt?: string;
   error?: string;
   screenshotPath?: string;
+  screenshot_path?: string;
 }
 
 export interface DoctorCheck {

@@ -1519,3 +1519,130 @@ async def test_executor_telemetry_failure_does_not_break_error_workflow(
                 item_id="resilience_item",
                 dry_run=False,
             )
+
+
+@pytest.mark.asyncio
+async def test_upload_screenshot_to_r2_missing_config_returns_local_path(
+    base_settings: Settings, tmp_path: Path
+) -> None:
+    page = MagicMock()
+    executor = ActionExecutor(page, base_settings)
+    test_file = tmp_path / "shot.png"
+    test_file.write_bytes(b"image-bytes")
+
+    result = await executor._upload_screenshot_to_r2(str(test_file), "test_suffix")
+    assert result == str(test_file)
+
+
+@pytest.mark.asyncio
+async def test_upload_screenshot_to_r2_missing_file_returns_path(
+    base_settings: Settings,
+) -> None:
+    base_settings.worker_url = "https://relay.workers.dev"
+    base_settings.desktop_api_secret = SecretStr("secret-123")
+    page = MagicMock()
+    executor = ActionExecutor(page, base_settings)
+
+    result = await executor._upload_screenshot_to_r2("/nonexistent/path/shot.png", "test_suffix")
+    assert result == "/nonexistent/path/shot.png"
+
+
+@pytest.mark.asyncio
+async def test_upload_screenshot_to_r2_success(
+    base_settings: Settings, tmp_path: Path
+) -> None:
+    base_settings.worker_url = "https://relay.workers.dev"
+    base_settings.desktop_api_secret = SecretStr("secret-123")
+    page = MagicMock()
+    executor = ActionExecutor(page, base_settings)
+
+    test_file = tmp_path / "success.png"
+    test_file.write_bytes(b"png-data-bytes")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+
+    with patch("httpx.AsyncClient.put", new_callable=AsyncMock, return_value=mock_resp) as mock_put:
+        r2_key = await executor._upload_screenshot_to_r2(str(test_file), "success_comment_abc")
+        assert r2_key == "screenshots/success_comment_abc.png"
+        mock_put.assert_awaited_once_with(
+            "https://relay.workers.dev/api/media/screenshots/success_comment_abc.png",
+            content=b"png-data-bytes",
+            headers={
+                "Authorization": "Bearer secret-123",
+                "Content-Type": "image/png",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_upload_screenshot_to_r2_http_failure_falls_back_to_local_path(
+    base_settings: Settings, tmp_path: Path
+) -> None:
+    base_settings.worker_url = "https://relay.workers.dev"
+    base_settings.desktop_api_secret = SecretStr("secret-123")
+    page = MagicMock()
+    executor = ActionExecutor(page, base_settings)
+
+    test_file = tmp_path / "fail.png"
+    test_file.write_bytes(b"png-data-bytes")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_resp.text = "Internal Server Error"
+
+    with patch("httpx.AsyncClient.put", new_callable=AsyncMock, return_value=mock_resp):
+        r2_key = await executor._upload_screenshot_to_r2(str(test_file), "fail_key")
+        assert r2_key == str(test_file)
+
+
+@pytest.mark.asyncio
+async def test_upload_screenshot_to_r2_network_exception_falls_back_to_local_path(
+    base_settings: Settings, tmp_path: Path
+) -> None:
+    base_settings.worker_url = "https://relay.workers.dev"
+    base_settings.desktop_api_secret = SecretStr("secret-123")
+    page = MagicMock()
+    executor = ActionExecutor(page, base_settings)
+
+    test_file = tmp_path / "err.png"
+    test_file.write_bytes(b"png-data-bytes")
+
+    with patch(
+        "httpx.AsyncClient.put",
+        new_callable=AsyncMock,
+        side_effect=Exception("Connection refused"),
+    ):
+        r2_key = await executor._upload_screenshot_to_r2(str(test_file), "err_key")
+        assert r2_key == str(test_file)
+
+
+@pytest.mark.asyncio
+async def test_post_comment_dry_run_stores_r2_key_when_configured(
+    base_settings: Settings, tmp_path: Path
+) -> None:
+    base_settings.worker_url = "https://relay.workers.dev"
+    base_settings.desktop_api_secret = SecretStr("secret-123")
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:123"
+
+    executor = ActionExecutor(page, base_settings, debug_dir=tmp_path)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
+
+    async def fake_screenshot(path: str, full_page: bool = False) -> None:
+        Path(path).write_bytes(b"screenshot-bytes")
+
+    page.screenshot = AsyncMock(side_effect=fake_screenshot)
+
+    mock_resp = MagicMock(status_code=200)
+    with patch("httpx.AsyncClient.put", new_callable=AsyncMock, return_value=mock_resp) as mock_put:
+        result = await executor.post_comment(
+            post_url=page.url,
+            comment_text="Insightful comment",
+            item_id="dry001",
+            dry_run=True,
+        )
+        assert result.success is True
+        assert result.screenshot_path == "screenshots/dryrun_comment_dry001.png"
+        assert mock_put.await_count == 1
+

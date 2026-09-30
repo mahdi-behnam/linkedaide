@@ -14,6 +14,7 @@ export interface Env {
   GITHUB_REPO_OWNER: string;
   GITHUB_REPO_NAME: string;
   LINKEDIN_AGENT_KV?: KVNamespace;
+  SCREENSHOTS_BUCKET?: R2Bucket;
   DESKTOP_API_SECRET?: string;
   NVIDIA_NIM_API_KEY?: string;
   LLM_BASE_URL?: string;
@@ -659,12 +660,106 @@ export async function handlePostSession(request: Request, env: Env): Promise<Res
   });
 }
 
+export function inferContentType(key: string): string {
+  const lower = key.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".svg")) return "image/svg+xml";
+  return "application/octet-stream";
+}
+
+export async function handlePutMedia(
+  request: Request,
+  env: Env,
+  url: URL
+): Promise<Response> {
+  const authHeader = request.headers.get("Authorization");
+  if (!env.DESKTOP_API_SECRET || authHeader !== `Bearer ${env.DESKTOP_API_SECRET}`) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  if (!env.SCREENSHOTS_BUCKET) {
+    return jsonResponse({ error: "R2 bucket not configured" }, 500);
+  }
+
+  const key = url.pathname.replace(/^\/api\/media\//, "");
+  if (!key || key === "/api/media") {
+    return jsonResponse({ error: "Media key is required" }, 400);
+  }
+
+  const body = await request.arrayBuffer();
+  const contentType = inferContentType(key);
+
+  await env.SCREENSHOTS_BUCKET.put(key, body, {
+    httpMetadata: { contentType },
+  });
+
+  return jsonResponse({
+    success: true,
+    key,
+    size: body.byteLength,
+  });
+}
+
+export async function handleGetMedia(
+  request: Request,
+  env: Env,
+  url: URL
+): Promise<Response> {
+  const authHeader = request.headers.get("Authorization");
+  const queryToken = url.searchParams.get("token");
+  const isAuthorized =
+    Boolean(env.DESKTOP_API_SECRET) &&
+    (authHeader === `Bearer ${env.DESKTOP_API_SECRET}` || queryToken === env.DESKTOP_API_SECRET);
+
+  if (!isAuthorized) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  if (!env.SCREENSHOTS_BUCKET) {
+    return jsonResponse({ error: "R2 bucket not configured" }, 500);
+  }
+
+  const key = url.pathname.replace(/^\/api\/media\//, "");
+  if (!key || key === "/api/media") {
+    return jsonResponse({ error: "Media key is required" }, 400);
+  }
+
+  const object = await env.SCREENSHOTS_BUCKET.get(key);
+  if (!object) {
+    return jsonResponse({ error: "Media object not found" }, 404);
+  }
+
+  const contentType = object.httpMetadata?.contentType || inferContentType(key);
+
+  return new Response(object.body, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=86400",
+    },
+  });
+}
+
 export async function handleApiRequest(
   request: Request,
   env: Env,
   ctx: ExecutionContext,
   url: URL
 ): Promise<Response> {
+  if (url.pathname === "/api/media" || url.pathname.startsWith("/api/media/")) {
+    if (request.method === "PUT") {
+      return handlePutMedia(request, env, url);
+    }
+    if (request.method === "GET") {
+      return handleGetMedia(request, env, url);
+    }
+    return jsonResponse({ error: "Method Not Allowed" }, 405);
+  }
+
   const authHeader = request.headers.get("Authorization");
   if (!env.DESKTOP_API_SECRET || authHeader !== `Bearer ${env.DESKTOP_API_SECRET}`) {
     return jsonResponse({ error: "Unauthorized" }, 401);
