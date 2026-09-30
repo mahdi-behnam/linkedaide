@@ -26,7 +26,11 @@ from agent.errors import (
 from agent.llm.chains import LLMChains, build_structured_chains
 from agent.llm.models import build_chat_model
 from agent.llm.multimodal import MultimodalAnalyzer, format_visual_evidence
-from agent.llm.prompts import build_repair_prompt
+from agent.llm.prompts import (
+    build_repair_prompt,
+    build_thread_reply_prompt,
+    build_thread_triage_prompt,
+)
 from agent.llm.voice_memory import VoiceMemoryStore
 from agent.models.schemas import (
     CommentDraft,
@@ -34,7 +38,9 @@ from agent.models.schemas import (
     PostIdea,
     PostIdeationContext,
     PostRecord,
+    ReplyTriageResult,
     RiskFlag,
+    ThreadReplyItem,
     TriageResult,
     VisualContext,
 )
@@ -382,6 +388,91 @@ class LLMService:
 
         return await self._execute_with_resilience("post_idea", input_data, PostIdea)
 
+    async def triage_thread_reply(
+        self,
+        reply: ThreadReplyItem,
+        our_comment: str,
+        original_post: str,
+    ) -> ReplyTriageResult:
+        """Triage an incoming reply to our comment to determine if follow-up is warranted.
+
+        Filters out empty pleasantries, lone emojis, and spam while prioritizing substantive
+        technical questions, counter-arguments, and direct interactions with our operator.
+        """
+        raw_text = reply.reply_text.strip() if reply.reply_text else ""
+        if not raw_text:
+            return ReplyTriageResult(
+                recommendation="ignore",
+                confidence=1.0,
+                reasoning="Reply text is empty or contains only whitespace.",
+                engagement_style=None,
+            )
+
+        input_data: dict[str, Any] = {
+            "original_post": original_post.strip() or "N/A",
+            "our_comment": our_comment.strip() or "N/A",
+            "author_name": reply.author_name.strip() or "LinkedIn Member",
+            "author_headline": reply.author_headline.strip() or "",
+            "is_post_author": "Yes" if reply.is_post_author else "No",
+            "reply_text": raw_text,
+        }
+
+        return await self._execute_with_resilience("thread_triage", input_data, ReplyTriageResult)
+
+    async def draft_thread_reply(
+        self,
+        reply: ThreadReplyItem,
+        our_comment: str,
+        original_post: str,
+        triage: ReplyTriageResult,
+    ) -> CommentDraft:
+        """Draft a sharp, respectful, direct follow-up reply in a comment thread."""
+        raw_text = reply.reply_text.strip() if reply.reply_text else ""
+        selected_style = triage.engagement_style or EngagementStyle.TECHNICAL_DEEP_DIVE
+        style_str = (
+            selected_style.value
+            if isinstance(selected_style, EngagementStyle)
+            else str(selected_style)
+        )
+
+        voice_context = self._voice_memory.get_voice_context(post_text=raw_text)
+
+        input_data: dict[str, Any] = {
+            "original_post": original_post.strip() or "N/A",
+            "our_comment": our_comment.strip() or "N/A",
+            "author_name": reply.author_name.strip() or "LinkedIn Member",
+            "author_headline": reply.author_headline.strip() or "",
+            "is_post_author": "Yes" if reply.is_post_author else "No",
+            "reply_text": raw_text,
+            "triage_reasoning": triage.reasoning,
+            "engagement_style": style_str,
+            "operator_bio": voice_context.get("operator_bio", ""),
+            "style_guidelines": voice_context.get("style_guidelines", ""),
+        }
+
+        draft = await self._execute_with_resilience("thread_reply", input_data, CommentDraft)
+        if draft.engagement_style is None:
+            resolved_enum: EngagementStyle | None = None
+            if isinstance(selected_style, EngagementStyle):
+                resolved_enum = selected_style
+            else:
+                try:
+                    resolved_enum = EngagementStyle(style_str)
+                except ValueError:
+                    resolved_enum = EngagementStyle.TECHNICAL_DEEP_DIVE
+            draft = draft.model_copy(update={"engagement_style": resolved_enum})
+
+        # Anti-cliché scan
+        scan_result = self._anti_cliche_scanner.scan(draft.comment_text)
+        if not scan_result.passed:
+            sanitized = self._anti_cliche_scanner.sanitize(draft.comment_text)
+            if sanitized:
+                final_scan = self._anti_cliche_scanner.scan(sanitized)
+                if final_scan.passed:
+                    return draft.model_copy(update={"draft_comment": sanitized})
+
+        return draft
+
     async def _execute_with_resilience(
         self,
         chain_name: str,
@@ -508,6 +599,22 @@ class LLMService:
             return chains.comment
         if chain_name == "post_idea":
             return chains.post_idea
+        if chain_name == "thread_triage":
+            if getattr(chains, "thread_triage", None) is not None:
+                return chains.thread_triage
+            prompt = build_thread_triage_prompt()
+            model = getattr(self, "_repair_model", None) or build_chat_model(
+                self._settings, role="triage"
+            )
+            return prompt | model.with_structured_output(ReplyTriageResult)
+        if chain_name == "thread_reply":
+            if getattr(chains, "thread_reply", None) is not None:
+                return chains.thread_reply
+            prompt = build_thread_reply_prompt()
+            model = getattr(self, "_repair_model", None) or build_chat_model(
+                self._settings, role="generation"
+            )
+            return prompt | model.with_structured_output(CommentDraft)
         raise ValueError(f"Unknown chain name '{chain_name}'")
 
     def _is_transient_error(self, err: Exception) -> bool:

@@ -68,6 +68,29 @@ class TriageResult(BaseModel):
     )
 
 
+class ReplyTriageResult(BaseModel):
+    """Structured triage output for evaluating a comment reply in a thread."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    recommendation: Literal["reply", "ignore"] = Field(
+        description="Whether to draft a follow-up reply or ignore this response"
+    )
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Model confidence score between 0.0 and 1.0",
+    )
+    reasoning: str = Field(
+        max_length=240,
+        description="Concise rationale for the triage decision (max 240 chars)",
+    )
+    engagement_style: EngagementStyle | None = Field(
+        default=None,
+        description="Recommended engagement style if replying",
+    )
+
+
 class CommentDraft(BaseModel):
     """Structured LLM draft for engaging on a target LinkedIn post."""
 
@@ -128,7 +151,7 @@ class PendingAction(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     item_id: str = Field(description="Unique deterministic identifier for the pending item")
-    action_type: Literal["approve_comment", "approve_post"] = Field(
+    action_type: Literal["approve_comment", "approve_post", "approve_reply"] = Field(
         description="Type of action requiring approval"
     )
     created_at: datetime = Field(
@@ -157,6 +180,50 @@ class PendingAction(BaseModel):
     )
     telegram_message_id: int | None = Field(
         default=None, description="Telegram message ID containing inline keyboard"
+    )
+
+
+class ActiveThreadRecord(BaseModel):
+    """Tracking record for active multi-turn comment threads on LinkedIn."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(description="Unique thread tracking ID")
+    post_url: str = Field(description="Direct URL to the target post")
+    post_urn: str = Field(description="LinkedIn post URN")
+    our_comment_urn: str = Field(description="URN of our comment being replied to")
+    our_comment_text: str = Field(description="Text content of our original comment")
+    post_author: str = Field(description="Author of the original post")
+    last_checked_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="UTC timestamp when this thread was last inspected for replies",
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="UTC timestamp when thread tracking started",
+    )
+    status: Literal["active", "resolved", "expired"] = Field(
+        default="active",
+        description="Lifecycle status of the thread",
+    )
+
+
+class ThreadReplyItem(BaseModel):
+    """Individual reply item discovered within a comment thread."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    reply_urn: str = Field(description="LinkedIn URN or ID of the reply")
+    parent_comment_urn: str = Field(description="URN of the parent comment being replied to")
+    author_name: str = Field(description="Name of the person who replied")
+    author_headline: str = Field(default="", description="Headline or title of the replier")
+    reply_text: str = Field(description="Text content of the reply")
+    is_post_author: bool = Field(
+        default=False, description="Whether the replier is the original post author"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="UTC timestamp when reply was discovered",
     )
 
 
@@ -310,6 +377,8 @@ ACTION_CODE_APPROVE_COMMENT = "ac"
 ACTION_CODE_REJECT_COMMENT = "rc"
 ACTION_CODE_APPROVE_POST = "ap"
 ACTION_CODE_REJECT_POST = "rp"
+ACTION_CODE_APPROVE_REPLY = "ar"
+ACTION_CODE_REJECT_REPLY = "rr"
 ACTION_CODE_EDIT = "ed"
 ACTION_CODE_REGENERATE = "reg"
 
@@ -318,6 +387,8 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_REJECT_COMMENT: "reject_comment",
     ACTION_CODE_APPROVE_POST: "approve_post",
     ACTION_CODE_REJECT_POST: "reject_post",
+    ACTION_CODE_APPROVE_REPLY: "approve_reply",
+    ACTION_CODE_REJECT_REPLY: "reject_reply",
     ACTION_CODE_EDIT: "edit",
     ACTION_CODE_REGENERATE: "regenerate",
     "edit": "edit",
@@ -326,6 +397,10 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     "regenerate": "regenerate",
     "apv": "approve_comment",
     "rej": "reject_comment",
+    "approve_reply": "approve_reply",
+    "reject_reply": "reject_reply",
+    "ar": "approve_reply",
+    "rr": "reject_reply",
 }
 
 REVERSE_ACTION_MAP: dict[str, str] = {
@@ -333,6 +408,8 @@ REVERSE_ACTION_MAP: dict[str, str] = {
     "reject_comment": ACTION_CODE_REJECT_COMMENT,
     "approve_post": ACTION_CODE_APPROVE_POST,
     "reject_post": ACTION_CODE_REJECT_POST,
+    "approve_reply": ACTION_CODE_APPROVE_REPLY,
+    "reject_reply": ACTION_CODE_REJECT_REPLY,
     "edit": ACTION_CODE_EDIT,
     "ed": ACTION_CODE_EDIT,
     "regenerate": ACTION_CODE_REGENERATE,
@@ -389,9 +466,12 @@ class CallbackDataPayload(BaseModel):
         return self.action_code in (
             ACTION_CODE_APPROVE_COMMENT,
             ACTION_CODE_APPROVE_POST,
+            ACTION_CODE_APPROVE_REPLY,
             "approve_comment",
             "approve_post",
+            "approve_reply",
             "apv",
+            "ar",
         )
 
     @property
@@ -400,9 +480,12 @@ class CallbackDataPayload(BaseModel):
         return self.action_code in (
             ACTION_CODE_REJECT_COMMENT,
             ACTION_CODE_REJECT_POST,
+            ACTION_CODE_REJECT_REPLY,
             "reject_comment",
             "reject_post",
+            "reject_reply",
             "rej",
+            "rr",
         )
 
     @property
