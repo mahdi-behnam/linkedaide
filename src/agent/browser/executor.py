@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx
+
 from agent.browser.biometrics import BiometricController
 from agent.browser.session_keeper import refresh_and_persist_session
 from agent.browser.stealth import (
@@ -113,6 +115,62 @@ class ActionExecutor:
             return str(path)
         except Exception:
             return ""
+
+    async def _upload_screenshot_to_r2(self, local_path: str, key_suffix: str) -> str:
+        """Upload local audit screenshot to Cloudflare R2 media vault via Worker API.
+
+        Args:
+            local_path: Path to locally captured screenshot file.
+            key_suffix: Base name or identifier to build the R2 storage key.
+
+        Returns:
+            Permanent R2 media key (screenshots/{key_suffix}.png) on success,
+            or local_path on missing credentials/file or upload failure.
+        """
+        if not local_path:
+            return local_path
+
+        worker_url = getattr(self.settings, "worker_url", None)
+        api_secret = getattr(self.settings, "desktop_api_secret", None)
+        if not worker_url or not api_secret:
+            return local_path
+
+        file_path = Path(local_path)
+        if not file_path.exists() or not file_path.is_file():
+            return local_path
+
+        secret_val = (
+            api_secret.get_secret_value()
+            if hasattr(api_secret, "get_secret_value")
+            else str(api_secret)
+        )
+        if not secret_val:
+            return local_path
+
+        r2_key = f"screenshots/{key_suffix}.png"
+        upload_url = f"{worker_url.rstrip('/')}/api/media/{r2_key}"
+
+        try:
+            content = file_path.read_bytes()
+            headers = {
+                "Authorization": f"Bearer {secret_val}",
+                "Content-Type": "image/png",
+            }
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.put(upload_url, content=content, headers=headers)
+                if resp.status_code == 200:
+                    logger.info("Successfully uploaded screenshot to Cloudflare R2: %s", r2_key)
+                    return r2_key
+                logger.warning(
+                    "Cloudflare R2 screenshot upload returned HTTP %d: %s",
+                    resp.status_code,
+                    resp.text,
+                )
+                return local_path
+        except Exception as err:
+            logger.warning("Failed uploading screenshot to Cloudflare R2: %s", err)
+            return local_path
+
 
     async def _capture_telemetry(
         self,
@@ -583,6 +641,7 @@ class ActionExecutor:
                 logger.info("DRY_RUN: Simulated reaction '%s' on %s", effective_reaction, post_url)
             logger.info("DRY_RUN: Simulated comment on %s: %s", post_url, comment_text)
             screenshot = await self._capture_screenshot(f"dryrun_comment_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"dryrun_comment_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="approve_comment",
@@ -668,6 +727,7 @@ class ActionExecutor:
 
             await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_comment_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"success_comment_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="approve_comment",
@@ -722,6 +782,7 @@ class ActionExecutor:
         if is_dry_run:
             logger.info("DRY_RUN: Simulated original post: %s", post_text)
             screenshot = await self._capture_screenshot(f"dryrun_post_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"dryrun_post_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="approve_post",
@@ -790,6 +851,7 @@ class ActionExecutor:
 
             await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_post_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"success_post_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="approve_post",
@@ -942,6 +1004,7 @@ class ActionExecutor:
                 len(note_text) if note_text else 0,
             )
             screenshot = await self._capture_screenshot(f"dryrun_connect_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"dryrun_connect_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="send_connection",
@@ -1022,6 +1085,7 @@ class ActionExecutor:
                 if await pending_btn.count() > 0:
                     logger.info("Connection invitation already pending for %s", profile_url)
                     screenshot = await self._capture_screenshot(f"already_pending_{item_id}")
+                    screenshot = await self._upload_screenshot_to_r2(screenshot, f"already_pending_{item_id}")
                     return ExecutionResult(
                         success=True,
                         action_type="send_connection",
@@ -1097,6 +1161,7 @@ class ActionExecutor:
 
             await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_connect_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"success_connect_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="send_connection",
@@ -1412,6 +1477,7 @@ class ActionExecutor:
                 logger.debug("DRY_RUN: Input verification notice: %s", e)
 
             screenshot = await self._capture_screenshot(f"dryrun_reply_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"dryrun_reply_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="approve_reply",
@@ -1480,6 +1546,7 @@ class ActionExecutor:
 
             await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_reply_{item_id}")
+            screenshot = await self._upload_screenshot_to_r2(screenshot, f"success_reply_{item_id}")
             return ExecutionResult(
                 success=True,
                 action_type="approve_reply",

@@ -17,3 +17,9 @@ compatibility_date = "2024-04-01"
 [[kv_namespaces]]
 binding = "LINKEDIN_AGENT_KV"
 id = "linkedin_agent_kv_namespace"
+
+# R2 Bucket binding for media vault and execution audit screenshots:
+[[r2_buckets]]
+binding = "SCREENSHOTS_BUCKET"
+bucket_name = "linkedin-agent-media"
+

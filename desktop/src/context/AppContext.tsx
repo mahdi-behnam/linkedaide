@@ -81,6 +81,7 @@ const initialAuditEntries: AuditEntry[] = [
     targetUrl: "https://linkedin.com/feed/update/urn:li:activity:7245890012",
     draftExcerpt:
       "The compounding returns on autonomous verification pipelines highlight why deterministic guardrails matter more than raw model scale.",
+    screenshotPath: "screenshots/success_comment_act-8f4b1e.png",
   },
   {
     id: "hist-002",
@@ -103,6 +104,7 @@ const initialAuditEntries: AuditEntry[] = [
     executedAt: "2026-09-29T14:01:05Z",
     draftExcerpt:
       "Why human-in-the-loop is the prerequisite for enterprise agent deployment: an architectural deep-dive into determinism, state isolation, and zero-leak session vaults.",
+    screenshotPath: "screenshots/success_post_act-7c1e5a.png",
   },
   {
     id: "hist-004",
