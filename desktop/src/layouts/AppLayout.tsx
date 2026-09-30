@@ -18,6 +18,7 @@ import {
   PencilSimple,
   Calendar,
   UserPlus,
+  ChartLineUp,
   IconProps,
 } from "../components/icons";
 
@@ -56,6 +57,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     { id: "outreach", label: "Outreach Queue", icon: UserPlus, badge: pendingOutreachCount },
     { id: "composer", label: "Post Composer", icon: PencilSimple },
     { id: "calendar", label: "Content Calendar", icon: Calendar },
+    { id: "analytics", label: "Growth Analytics", icon: ChartLineUp },
     { id: "vault", label: "LinkedIn Vault", icon: ShieldCheck },
     { id: "history", label: "Audit History", icon: ClockCounterClockwise },
     { id: "doctor", label: "Diagnostics", icon: Stethoscope },

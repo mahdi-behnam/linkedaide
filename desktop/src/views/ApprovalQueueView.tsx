@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import { useQueueShortcuts } from "../hooks/useQueueShortcuts";
 import { KeyboardShortcutsModal } from "../components/KeyboardShortcutsModal";
+import { VoiceDictationButton } from "../components/VoiceDictationButton";
 
 export interface PendingItem {
   id: string;
@@ -679,6 +680,18 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
                         </button>
                       );
                     })}
+                    <div className="mx-0.5 h-4 w-px bg-zinc-800" />
+                    <VoiceDictationButton
+                      onTranscript={(text) => {
+                        if (selectedItem) {
+                          handleDraftChange(
+                            selectedItem.draftText
+                              ? `${selectedItem.draftText} ${text}`
+                              : text
+                          );
+                        }
+                      }}
+                    />
                   </div>
                 </div>
 

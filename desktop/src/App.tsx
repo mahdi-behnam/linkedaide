@@ -6,6 +6,7 @@ import { ApprovalQueueView } from "./views/ApprovalQueueView";
 import { OutreachQueueView } from "./views/OutreachQueueView";
 import { ComposerView } from "./views/ComposerView";
 import { CalendarView } from "./views/CalendarView";
+import { AnalyticsView } from "./views/AnalyticsView";
 import { VaultView } from "./views/VaultView";
 import { AuditHistoryView } from "./views/AuditHistoryView";
 import { DoctorView } from "./views/DoctorView";
@@ -25,6 +26,8 @@ const MainContent: React.FC = () => {
       return <ComposerView />;
     case "calendar":
       return <CalendarView />;
+    case "analytics":
+      return <AnalyticsView />;
     case "vault":
       return <VaultView />;
     case "history":

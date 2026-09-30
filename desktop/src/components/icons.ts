@@ -47,6 +47,12 @@ import {
   ClockAfternoon,
   UserPlus,
   ChatText,
+  ChartLineUp,
+  Microphone,
+  MicrophoneSlash,
+  TrendUp,
+  Waveform,
+  ChatTeardropDots,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -101,4 +107,10 @@ export {
   ClockAfternoon,
   UserPlus,
   ChatText,
+  ChartLineUp,
+  Microphone,
+  MicrophoneSlash,
+  TrendUp,
+  Waveform,
+  ChatTeardropDots,
 };

@@ -17,6 +17,7 @@ import {
   UploadSimple,
   IconProps,
 } from "../components/icons";
+import { VoiceDictationButton } from "../components/VoiceDictationButton";
 
 interface HookArchetype {
   id: string;
@@ -487,6 +488,12 @@ export const ComposerView: React.FC = () => {
               <span className="text-xs font-medium text-zinc-300">
                 Post Text Editor
               </span>
+              <div className="mx-1 h-3.5 w-px bg-zinc-700/60" />
+              <VoiceDictationButton
+                onTranscript={(text) => {
+                  setPostText((prev) => (prev ? `${prev} ${text}` : text));
+                }}
+              />
             </div>
             {/* Real-time Character, Word & Reading Time Estimates */}
             <div className="flex items-center gap-3 font-mono text-[11px] text-zinc-400">

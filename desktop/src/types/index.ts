@@ -13,6 +13,7 @@ export type NavigationTab =
   | "outreach"
   | "composer"
   | "calendar"
+  | "analytics"
   | "vault"
   | "history"
   | "doctor"
