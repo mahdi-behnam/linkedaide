@@ -205,6 +205,27 @@ When suggestions arrive in Telegram, you have full control right from your chat:
 
 ---
 
+## Desktop Control Panel App
+
+The repository includes a modern Electron desktop application in [`desktop/`](desktop/) that acts as your local command center:
+
+* ⚡ **Real-Time Approval Queue**: Review drafted comments with live character countdowns, tone quick-pills (*Technical*, *Inquisitive*, *Contrarian*, *Concise*), and instant approval.
+* ⌨️ **Power-User Keyboard Shortcuts**: Blazing fast triage with `[A]` (Approve), `[R]` (Reject), `[E]` (Edit), `[T]` (Cycle Tone), and `Cmd+Enter` (Submit).
+* 🎙️ **Voice Audio Dictation**: Dictate custom revisions directly into comment and post drafts with native speech-to-text.
+* ✍️ **Post Composer & Visual Calendar**: Draft original LinkedIn thought leadership posts with above-the-fold cutoff indicators and scheduled publishing calendar.
+* 🤝 **Connection Outreach Studio**: Review 2nd-degree connection candidates and personalize 300-character notes with daily safety caps.
+* 🔔 **System Tray & WebSocket Sync**: Live <50ms push updates via Cloudflare Worker WebSockets with native OS desktop notifications.
+
+```bash
+# Launch the desktop app:
+cd desktop
+npm install
+npm run package
+npm start
+```
+
+---
+
 ## Unified CLI Reference
 
 The `agent` CLI provides access to all agent workflows:

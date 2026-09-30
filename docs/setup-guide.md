@@ -329,13 +329,81 @@ If you want to run tests or dry-run flows locally on your workstation:
 
 ---
 
+## Step 9: Launch & Configure the Desktop Control Panel
+
+The repository includes a modern Electron desktop control panel in `desktop/`. It provides real-time approval queues, power-user keyboard shortcuts (`[A]` approve, `[R]` reject, `[E]` edit, `[T]` cycle tone), a visual post composer, calendar planner, connection outreach studio, voice audio dictation, system tray background notifications, and live audit telemetry.
+
+### 1. Build & Launch the Desktop App
+Open a terminal on your computer:
+
+```bash
+cd desktop
+npm install
+
+# Build the frontend and Electron main process:
+npm run package
+
+# Launch the desktop app:
+npm start
+```
+
+*(Tip: In development mode, you can also run `npm run dev` to preview the React frontend in your browser).*
+
+### 2. Connect the Desktop App to Your Cloudflare Worker
+1. In the Desktop App, click **Settings** (gear icon in the sidebar).
+2. Configure your connection:
+   - **Cloudflare Worker URL**: Enter your deployed worker URL from Step 5 (e.g., `https://linkedin-agent-telegram-relay.<your-subdomain>.workers.dev`).
+   - **Desktop API Secret**: Paste the `DESKTOP_API_SECRET` you generated in Step 1.
+3. Click **"Save Settings"** and then **"Test Connection"**.
+   - You should see a green checkmark indicating successful authentication and latency (<100ms).
+
+---
+
+## Step 10: Day-to-Day Workflow — What Happens Next?
+
+Once setup is complete, your agent runs automatically 24/7. Here is what to expect and how to interact with it:
+
+### 1. Automated Schedule (GitHub Actions)
+The agent operates on automated cron schedules in GitHub Actions without requiring your computer to stay on:
+* **Feed Scouting (`scout.yml`)**: Runs automatically on weekdays (08:00, 13:00, 18:00 UTC).
+  - Inspects your LinkedIn feed for high-relevance posts matching your `USER_FOCUS_AREAS`.
+  - Triages posts and generates high-value, authentic draft comments.
+  - Pushes draft cards to Telegram and your Desktop Queue simultaneously via WebSocket.
+* **Thought Leadership Ideation (`ideation.yml`)**: Runs daily at 09:00 UTC.
+  - Brainstorms and drafts original standalone posts matching your domain perspective.
+* **Session Canary (`session-health-check.yml`)**: Runs daily at 06:00 UTC.
+  - Silently confirms that your encrypted session cookies are valid and alerts you on Telegram before expiration.
+
+### 2. How to Review & Approve Drafts
+You have two synchronized ways to supervise the agent:
+
+* **From Your Phone (Telegram)**:
+  - You will receive a message with the post excerpt and proposed draft.
+  - Click **Approve** &rarr; Cloudflare Worker immediately triggers GitHub Actions (`execute.yml`) to post the comment.
+  - Click **Edit** &rarr; Reply with your customized text, then approve your revised draft.
+  - Click **Reject** &rarr; Discards the suggestion and logs it.
+* **From Your Computer (Desktop Control Panel)**:
+  - System tray notification alerts you when new suggestions are scouted.
+  - Switch to the **Approval Queue**:
+    - Press `[A]` to Approve, `[R]` to Reject, `[E]` to Edit, or `[T]` to cycle tone pills (*Technical*, *Inquisitive*, *Contrarian*, *Concise*).
+    - Use voice dictation (microphone icon) to dictate custom comment modifications.
+    - Press `Cmd+Enter` (or `Ctrl+Enter`) to submit.
+
+### 3. Triggering Manual Runs On-Demand
+You don't have to wait for the scheduled crons:
+* **From Desktop App**: Click **"Trigger Scout Now"** in the Dashboard or right-click the system tray icon.
+* **From GitHub Actions**: Go to **Actions** &rarr; **LinkedIn Feed Scout** &rarr; **Run workflow** (set `dry_run: false` for live execution).
+* **From Local CLI**: Run `uv run agent scout` (or `uv run agent scout --dry-run`).
+
+---
+
 ## Operator Scripts Reference
 
 The `scripts/` directory provides utilities for setup and maintenance:
 
 | Command | Purpose |
 |---|---|
-| `uv run python scripts/generate_secrets.py` | Generates `SESSION_ENCRYPTION_KEY` and `TELEGRAM_WEBHOOK_SECRET`. |
+| `uv run python scripts/generate_secrets.py` | Generates `SESSION_ENCRYPTION_KEY`, `TELEGRAM_WEBHOOK_SECRET`, and `DESKTOP_API_SECRET`. |
 | `uv run python scripts/extract_linkedin_session.py` | Opens interactive browser to log into LinkedIn and extracts encrypted session state. |
 | `uv run python scripts/register_telegram_webhook.py --worker-url ... --secret-token ...` | Registers Cloudflare Worker webhook URL and secret with Telegram Bot API. |
 | `uv run python scripts/register_telegram_webhook.py --delete` | Removes Telegram webhook (useful if switching to local polling mode). |
