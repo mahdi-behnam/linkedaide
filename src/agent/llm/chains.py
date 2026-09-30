@@ -16,9 +16,11 @@ from agent.llm.models import build_chat_model
 from agent.llm.prompts import (
     build_comment_prompt,
     build_post_idea_prompt,
+    build_thread_reply_prompt,
+    build_thread_triage_prompt,
     build_triage_prompt,
 )
-from agent.models.schemas import CommentDraft, PostIdea, TriageResult
+from agent.models.schemas import CommentDraft, PostIdea, ReplyTriageResult, TriageResult
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,8 @@ class LLMChains:
     triage: Runnable[dict[str, Any], Any]
     comment: Runnable[dict[str, Any], Any]
     post_idea: Runnable[dict[str, Any], Any]
+    thread_triage: Runnable[dict[str, Any], Any] | None = None
+    thread_reply: Runnable[dict[str, Any], Any] | None = None
 
 
 def build_structured_chains(
@@ -36,7 +40,7 @@ def build_structured_chains(
     triage_model: BaseChatModel | None = None,
     generation_model: BaseChatModel | None = None,
 ) -> LLMChains:
-    """Construct structured Runnable chains for triage, comment drafting, and ideation.
+    """Construct structured Runnable chains for triage, comment drafting, ideation, and thread engagement.
 
     Args:
         settings: Application configuration settings.
@@ -52,13 +56,21 @@ def build_structured_chains(
     triage_prompt = build_triage_prompt()
     comment_prompt = build_comment_prompt()
     post_idea_prompt = build_post_idea_prompt()
+    thread_triage_prompt = build_thread_triage_prompt()
+    thread_reply_prompt = build_thread_reply_prompt()
 
     triage_chain = triage_prompt | model_triage.with_structured_output(TriageResult)
     comment_chain = comment_prompt | model_gen.with_structured_output(CommentDraft)
     post_idea_chain = post_idea_prompt | model_gen.with_structured_output(PostIdea)
+    thread_triage_chain = thread_triage_prompt | model_triage.with_structured_output(
+        ReplyTriageResult
+    )
+    thread_reply_chain = thread_reply_prompt | model_gen.with_structured_output(CommentDraft)
 
     return LLMChains(
         triage=triage_chain,
         comment=comment_chain,
         post_idea=post_idea_chain,
+        thread_triage=thread_triage_chain,
+        thread_reply=thread_reply_chain,
     )

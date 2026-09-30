@@ -7,6 +7,8 @@ from agent.llm.prompts import (
     build_comment_prompt,
     build_post_idea_prompt,
     build_repair_prompt,
+    build_thread_reply_prompt,
+    build_thread_triage_prompt,
     build_triage_prompt,
 )
 from agent.llm.service import LLMService
@@ -22,6 +24,8 @@ __all__ = [
     "build_post_idea_prompt",
     "build_repair_prompt",
     "build_structured_chains",
+    "build_thread_reply_prompt",
+    "build_thread_triage_prompt",
     "build_triage_prompt",
     "format_visual_evidence",
 ]
