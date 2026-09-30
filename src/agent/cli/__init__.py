@@ -75,6 +75,52 @@ def run_health(args: argparse.Namespace) -> int:
         return 1
 
 
+def run_poll(args: argparse.Namespace) -> int:
+    """Execute local polling loop for Telegram approvals."""
+    from agent.orchestration.poll_flow import run_poll_flow
+
+    timeout = getattr(args, "timeout", 20)
+    once = getattr(args, "once", False)
+    repo_root = Path(args.repo_root) if getattr(args, "repo_root", None) else None
+
+    try:
+        if once:
+            results = asyncio.run(run_poll_flow(repo_root=repo_root, timeout_seconds=timeout))
+            print(f"Processed {len(results)} poll updates")
+            return 0
+
+        print("Starting Telegram polling listener (Ctrl+C to stop)...")
+        while True:
+            results = asyncio.run(run_poll_flow(repo_root=repo_root, timeout_seconds=timeout))
+            if results:
+                print(f"Processed {len(results)} poll updates")
+    except KeyboardInterrupt:
+        print("\nPolling stopped by operator.")
+        return 0
+    except Exception as err:
+        print(f"Fatal Poll error: {err}", file=sys.stderr)
+        return 1
+
+
+def run_ideate(args: argparse.Namespace) -> int:
+    """Execute LinkedIn standalone post ideation workflow."""
+    from agent.orchestration.ideation_flow import run_ideation_flow
+
+    cfg = load_settings()
+    if getattr(args, "dry_run", False):
+        cfg = cfg.model_copy(update={"dry_run": True})
+
+    repo_root = Path(args.repo_root) if getattr(args, "repo_root", None) else None
+    try:
+        result = asyncio.run(run_ideation_flow(settings=cfg, repo_root=repo_root))
+        if result.get("status") in ("failed", "llm_unavailable"):
+            return 1
+        return 0
+    except Exception as err:
+        print(f"Fatal Ideation error: {err}", file=sys.stderr)
+        return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the top-level CLI parser."""
     parser = argparse.ArgumentParser(
@@ -128,6 +174,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     health_parser.add_argument("--repo-root", default=None, help="Repository root path")
 
+    # poll
+    poll_parser = subparsers.add_parser(
+        "poll", help="Run local Telegram polling loop for approvals and operator commands"
+    )
+    poll_parser.add_argument(
+        "--timeout", type=int, default=20, help="Polling timeout in seconds (default: 20)"
+    )
+    poll_parser.add_argument(
+        "--once", action="store_true", help="Run a single polling cycle and exit"
+    )
+    poll_parser.add_argument("--repo-root", default=None, help="Root repository path")
+
+    # ideate
+    ideate_parser = subparsers.add_parser(
+        "ideate", help="Run the LinkedIn standalone post ideation workflow"
+    )
+    ideate_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Execute in dry-run mode (prevents Telegram suggestion delivery)",
+    )
+    ideate_parser.add_argument("--repo-root", default=None, help="Root repository path")
+
     return parser
 
 
@@ -152,6 +221,10 @@ def main(argv: list[str] | None = None) -> None:
         exit_code = run_execute(args)
     elif args.command == "health":
         exit_code = run_health(args)
+    elif args.command == "poll":
+        exit_code = run_poll(args)
+    elif args.command == "ideate":
+        exit_code = run_ideate(args)
     else:
         parser.print_help()
         exit_code = 1
@@ -165,6 +238,8 @@ __all__ = [
     "run_doctor",
     "run_execute",
     "run_health",
+    "run_ideate",
+    "run_poll",
     "run_scout",
     "run_setup",
 ]

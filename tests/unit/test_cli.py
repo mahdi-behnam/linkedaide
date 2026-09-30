@@ -18,6 +18,8 @@ from agent.cli import (
     run_doctor,
     run_execute,
     run_health,
+    run_ideate,
+    run_poll,
     run_scout,
     run_setup,
 )
@@ -96,6 +98,23 @@ def test_build_parser_health() -> None:
     parser = build_parser()
     args = parser.parse_args(["health", "--repo-root", "/some/root"])
     assert args.command == "health"
+    assert args.repo_root == "/some/root"
+
+
+def test_build_parser_poll() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["poll", "--timeout", "30", "--once", "--repo-root", "/some/root"])
+    assert args.command == "poll"
+    assert args.timeout == 30
+    assert args.once is True
+    assert args.repo_root == "/some/root"
+
+
+def test_build_parser_ideate() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["ideate", "--dry-run", "--repo-root", "/some/root"])
+    assert args.command == "ideate"
+    assert args.dry_run is True
     assert args.repo_root == "/some/root"
 
 
@@ -761,6 +780,31 @@ def test_run_health_dispatch() -> None:
         mock_flow.assert_called_once_with(repo_root=None)
 
 
+def test_run_poll_dispatch() -> None:
+    with patch("agent.orchestration.poll_flow.run_poll_flow") as mock_flow:
+        mock_flow.return_value = [{"action": "approve"}]
+        args = argparse.Namespace(timeout=15, once=True, repo_root=None)
+        code = run_poll(args)
+        assert code == 0
+        mock_flow.assert_called_once_with(repo_root=None, timeout_seconds=15)
+
+
+def test_run_ideate_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = Settings(
+        telegram_bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+        telegram_authorized_chat_id=123456789,
+        nvidia_nim_api_key="nvapi-valid",
+    )
+    monkeypatch.setattr("agent.cli.load_settings", lambda: settings)
+
+    with patch("agent.orchestration.ideation_flow.run_ideation_flow") as mock_flow:
+        mock_flow.return_value = {"status": "completed", "pending_items": []}
+        args = argparse.Namespace(dry_run=True, repo_root=None)
+        code = run_ideate(args)
+        assert code == 0
+        mock_flow.assert_called_once()
+
+
 # =============================================================================
 # 6. Main Entrypoint Dispatch Tests
 # =============================================================================
@@ -781,3 +825,20 @@ def test_main_setup_dispatch() -> None:
         main(["setup", "--env-file", ".env.custom"])
     assert exc.value.code == 0
     mock_set.assert_called_once_with(env_path=Path(".env.custom"))
+
+
+def test_main_poll_dispatch() -> None:
+    with patch("agent.cli.run_poll", return_value=0) as mock_poll, pytest.raises(SystemExit) as exc:
+        main(["poll", "--once"])
+    assert exc.value.code == 0
+    mock_poll.assert_called_once()
+
+
+def test_main_ideate_dispatch() -> None:
+    with (
+        patch("agent.cli.run_ideate", return_value=0) as mock_ideate,
+        pytest.raises(SystemExit) as exc,
+    ):
+        main(["ideate", "--dry-run"])
+    assert exc.value.code == 0
+    mock_ideate.assert_called_once()
