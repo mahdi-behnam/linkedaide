@@ -264,26 +264,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return "operational";
   }, [telemetry.circuitBreakerTripped, isPaused]);
 
-  const togglePause = useCallback(() => {
-    setIsPaused((prev) => {
-      const next = !prev;
-      setTelemetry((t) => ({ ...t, isPaused: next }));
-      setLastTriggerMessage(next ? "System paused by operator" : "System resumed to operational");
-      return next;
-    });
-  }, []);
+  const togglePause = useCallback(async () => {
+    const next = !isPaused;
+    setIsPaused(next);
+    setTelemetry((t) => ({ ...t, isPaused: next }));
+    setLastTriggerMessage(next ? "System paused by operator" : "System resumed to operational");
+    if (typeof window !== "undefined" && window.api?.togglePause) {
+      try {
+        await window.api.togglePause(next);
+      } catch (err) {
+        console.warn("Failed to sync pause state with backend:", err);
+      }
+    }
+  }, [isPaused]);
 
   const triggerScout = useCallback(async () => {
     setIsScouting(true);
-    setLastTriggerMessage("Scout workflow triggered. Scanning feed...");
+    setLastTriggerMessage("Scout workflow triggered. Initiating feed scan...");
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setTelemetry((t) => ({ ...t, lastScanAt: "Just now" }));
-      setLastTriggerMessage("Scout cycle completed: 1 candidate drafted.");
+      if (typeof window !== "undefined" && window.api?.triggerScout) {
+        const ok = await window.api.triggerScout();
+        if (ok) {
+          setTelemetry((t) => ({ ...t, lastScanAt: "Just now" }));
+          setLastTriggerMessage("Scout workflow dispatched successfully. Scanning feed for candidates...");
+          await refreshState();
+        } else {
+          setLastTriggerMessage("Scout execution finished with errors or dispatch failed.");
+        }
+      } else {
+        // Fallback simulated scout in development / mock browser mode
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        setTelemetry((t) => ({ ...t, lastScanAt: "Just now" }));
+        setLastTriggerMessage("Scout simulation completed (preview mode).");
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setLastTriggerMessage(`Scout dispatch failed: ${errMsg}`);
     } finally {
       setIsScouting(false);
     }
-  }, []);
+  }, [refreshState]);
 
   const runDoctorCheck = useCallback(async () => {
     setIsCheckingDoctor(true);
