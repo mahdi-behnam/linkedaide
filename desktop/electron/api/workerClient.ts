@@ -207,10 +207,15 @@ export class WorkerClient {
       let errorDetails = "";
       try {
         const errorJson = (await response.json()) as Record<string, unknown>;
-        errorDetails =
-          (errorJson.error as string) ||
-          (errorJson.message as string) ||
-          JSON.stringify(errorJson);
+        const mainMsg = (errorJson.error as string) || (errorJson.message as string);
+        const extraDetails = errorJson.details
+          ? typeof errorJson.details === "string"
+            ? errorJson.details
+            : JSON.stringify(errorJson.details)
+          : "";
+        errorDetails = mainMsg && extraDetails
+          ? `${mainMsg} - ${extraDetails}`
+          : mainMsg || extraDetails || JSON.stringify(errorJson);
       } catch {
         errorDetails = await response.text().catch(() => response.statusText);
       }

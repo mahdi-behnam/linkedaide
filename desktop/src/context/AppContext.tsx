@@ -309,7 +309,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLastTriggerMessage("Scout simulation completed (preview mode).");
       }
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      let errMsg = err instanceof Error ? err.message : String(err);
+      errMsg = errMsg.replace(/^Error invoking remote method '[^']+':\s*(Error:\s*)?/, "");
       setLastTriggerMessage(`Scout dispatch failed: ${errMsg}`);
     } finally {
       setIsScouting(false);
