@@ -75,6 +75,8 @@ export interface DesktopSettings {
   workerUrl: string;
   apiSecret: string;
   encryptionKey?: string;
+  nimModel?: string;
+  nimApiKey?: string;
   autoRefreshInterval?: number;
   executionMode?: "cloud" | "local";
   headless?: boolean;
@@ -102,6 +104,7 @@ export interface ElectronAPI {
   generateFernetKey: () => Promise<string>;
   captureSession?: () => Promise<{ success: boolean; error?: string }>;
   checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
+  fetchNimModels?: (apiKey?: string) => Promise<{ success: boolean; models: string[]; error?: string }>;
   onRealtimeEvent?: (callback: (event: any) => void) => () => void;
 }
 

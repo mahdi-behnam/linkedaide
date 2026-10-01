@@ -19,6 +19,8 @@ const defaultSettings: DesktopSettings = {
   workerUrl: "https://relay.hitl-agent.workers.dev",
   apiSecret: "",
   encryptionKey: "",
+  nimModel: "meta/llama-3.1-70b-instruct",
+  nimApiKey: "",
   autoRefreshInterval: 300,
   executionMode: "cloud",
   headless: true,
@@ -30,10 +32,20 @@ const defaultSettings: DesktopSettings = {
   actionTtlHours: 24,
 };
 
+const DEFAULT_NIM_MODELS = [
+  "meta/llama-3.1-70b-instruct",
+  "meta/llama-3.3-70b-instruct",
+  "nvidia/llama-3.1-nemotron-70b-instruct",
+  "mistralai/mistral-large-2-instruct",
+  "deepseek-ai/deepseek-r1",
+  "qwen/qwen2.5-72b-instruct",
+];
+
 export const SettingsView: React.FC = () => {
   const { quota } = useApp();
   const [settings, setSettings] = useState<DesktopSettings>(defaultSettings);
   const [showSecret, setShowSecret] = useState(false);
+  const [showNimKey, setShowNimKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -44,6 +56,13 @@ export const SettingsView: React.FC = () => {
     error?: string;
   } | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [modelsList, setModelsList] = useState<string[]>(DEFAULT_NIM_MODELS);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [modelFetchFeedback, setModelFetchFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [isCustomModel, setIsCustomModel] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,6 +72,11 @@ export const SettingsView: React.FC = () => {
           const loaded = await window.api.getSettings();
           if (isMounted && loaded) {
             setSettings((prev) => ({ ...prev, ...loaded }));
+            if (loaded.nimModel) {
+              setModelsList((prev) =>
+                prev.includes(loaded.nimModel!) ? prev : [loaded.nimModel!, ...prev]
+              );
+            }
           }
         } catch (err) {
           console.error("Failed to load settings:", err);
@@ -160,6 +184,46 @@ export const SettingsView: React.FC = () => {
       });
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleFetchModels = async () => {
+    setIsFetchingModels(true);
+    setModelFetchFeedback(null);
+    try {
+      if (typeof window !== "undefined" && window.api?.fetchNimModels) {
+        const res = await window.api.fetchNimModels(settings.nimApiKey);
+        if (res.success && res.models && res.models.length > 0) {
+          const fetched = res.models;
+          if (settings.nimModel && !fetched.includes(settings.nimModel)) {
+            setModelsList([settings.nimModel, ...fetched]);
+          } else {
+            setModelsList(fetched);
+          }
+          setIsCustomModel(false);
+          setModelFetchFeedback({
+            type: "success",
+            message: `Loaded ${fetched.length} models from NVIDIA`,
+          });
+        } else {
+          setModelFetchFeedback({
+            type: "error",
+            message: res.error || "Failed to fetch models from NVIDIA",
+          });
+        }
+      } else {
+        setModelFetchFeedback({
+          type: "error",
+          message: "Model fetching API not available in this environment",
+        });
+      }
+    } catch (err) {
+      setModelFetchFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to fetch models",
+      });
+    } finally {
+      setIsFetchingModels(false);
     }
   };
 
@@ -382,6 +446,126 @@ export const SettingsView: React.FC = () => {
             <p className="mt-1.5 text-[11px] text-zinc-500">
               Must match the SESSION_ENCRYPTION_KEY repository secret used by Python agents to decrypt LinkedIn session state.
             </p>
+          </div>
+        </div>
+
+        {/* NVIDIA NIM LLM Intelligence & Models */}
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <Cpu size={16} className="text-violet-400" />
+              <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+                NVIDIA NIM Intelligence & LLM Engine
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={handleFetchModels}
+              disabled={isFetchingModels}
+              className="flex items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs text-violet-300 hover:bg-violet-500/20 active:translate-y-[1px] disabled:opacity-50"
+            >
+              <ArrowClockwise
+                size={13}
+                className={isFetchingModels ? "animate-spin" : ""}
+              />
+              <span>{isFetchingModels ? "Fetching Models..." : "Fetch Models from NVIDIA"}</span>
+            </button>
+          </div>
+
+          {modelFetchFeedback && (
+            <div
+              className={`mt-3 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-mono ${
+                modelFetchFeedback.type === "success"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                  : "border-rose-500/30 bg-rose-500/10 text-rose-400"
+              }`}
+            >
+              {modelFetchFeedback.type === "success" ? (
+                <CheckCircle size={14} weight="bold" />
+              ) : (
+                <WarningCircle size={14} weight="bold" />
+              )}
+              <span>{modelFetchFeedback.message}</span>
+            </div>
+          )}
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-medium text-zinc-300">
+                  Primary NIM Model
+                </label>
+                <span className="text-[11px] text-zinc-500">
+                  {modelsList.length} models available
+                </span>
+              </div>
+
+              <select
+                aria-label="Primary NIM Model"
+                value={isCustomModel ? "__custom__" : (settings.nimModel || "meta/llama-3.1-70b-instruct")}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "__custom__") {
+                    setIsCustomModel(true);
+                  } else {
+                    setIsCustomModel(false);
+                    handleChange("nimModel", val);
+                  }
+                }}
+                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 focus:border-violet-500 focus:outline-hidden"
+              >
+                <optgroup label="Available Models">
+                  {modelsList.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="__custom__">✏️ Enter custom model name...</option>
+                </optgroup>
+              </select>
+
+              {isCustomModel && (
+                <input
+                  type="text"
+                  aria-label="Custom NIM Model Identifier"
+                  value={settings.nimModel || ""}
+                  onChange={(e) => handleChange("nimModel", e.target.value)}
+                  placeholder="e.g. meta/llama-3.1-8b-instruct or custom NIM URN"
+                  className="mt-2 w-full rounded-md border border-violet-500/50 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-violet-500 focus:outline-hidden"
+                />
+              )}
+
+              <p className="mt-1.5 text-[11px] text-zinc-500">
+                Default: <code className="text-zinc-400">meta/llama-3.1-70b-instruct</code>. Used for post triage, reasoning, and drafting.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-medium text-zinc-300">
+                  NVIDIA NIM API Key
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowNimKey((prev) => !prev)}
+                  className="text-[11px] text-zinc-500 hover:text-zinc-300"
+                >
+                  {showNimKey ? "Hide" : "Show"}
+                </button>
+              </div>
+              <input
+                type={showNimKey ? "text" : "password"}
+                value={settings.nimApiKey || ""}
+                onChange={(e) => handleChange("nimApiKey", e.target.value)}
+                placeholder="Enter NVIDIA_NIM_API_KEY (nvapi-...)"
+                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-violet-500 focus:outline-hidden"
+              />
+              <p className="mt-1.5 text-[11px] text-zinc-500">
+                Personal API key from NVIDIA build catalog for local and agent execution.
+              </p>
+            </div>
           </div>
         </div>
 

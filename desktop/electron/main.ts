@@ -42,6 +42,8 @@ function loadSettings(): DesktopSettings {
     workerUrl: process.env.WORKER_URL || "",
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
+    nimModel: process.env.NIM_MODEL_PRIMARY || "meta/llama-3.1-70b-instruct",
+    nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
     autoRefreshInterval: 30,
     executionMode: "cloud",
     headless: true,
@@ -76,6 +78,12 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
     }
     if (updated.apiSecret) {
       updated.apiSecret = updated.apiSecret.trim();
+    }
+    if (updated.nimModel !== undefined) {
+      updated.nimModel = updated.nimModel.trim();
+    }
+    if (updated.nimApiKey !== undefined) {
+      updated.nimApiKey = updated.nimApiKey.trim();
     }
     const settingsPath = getSettingsPath();
     const dir = path.dirname(settingsPath);
@@ -147,7 +155,12 @@ function registerIpcHandlers(): void {
           const repoRoot = path.resolve(__dirname, "../..");
           const child = spawn("uv", ["run", "agent", "execute", "--action-id", itemId], {
             cwd: repoRoot,
-            env: { ...process.env, HEADLESS: String(settings.headless ?? true) },
+            env: {
+              ...process.env,
+              HEADLESS: String(settings.headless ?? true),
+              ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
+              ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+            },
           });
           child.on("close", (code) => {
             resolve({
@@ -178,7 +191,12 @@ function registerIpcHandlers(): void {
         const repoRoot = path.resolve(__dirname, "../..");
         const child = spawn("uv", ["run", "agent", "scout"], {
           cwd: repoRoot,
-          env: { ...process.env, HEADLESS: String(settings.headless ?? true) },
+          env: {
+            ...process.env,
+            HEADLESS: String(settings.headless ?? true),
+            ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
+            ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+          },
         });
         child.on("close", (code) => {
           resolve(code === 0);
@@ -280,6 +298,57 @@ function registerIpcHandlers(): void {
     }
 
     return { valid: false, daysRemaining: 0, details: "No active LinkedIn session found in storage" };
+  });
+
+  // NVIDIA NIM Models Fetcher
+  ipcMain.handle("llm:fetchNimModels", async (_event, apiKey?: string) => {
+    try {
+      const activeKey = (apiKey || loadSettings().nimApiKey || "").trim();
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+      };
+      if (activeKey) {
+        headers["Authorization"] = `Bearer ${activeKey}`;
+      }
+
+      const response = await fetch("https://integrate.api.nvidia.com/v1/models", {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          models: [],
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      const json = (await response.json()) as { data?: Array<{ id: string }> };
+      if (!json.data || !Array.isArray(json.data)) {
+        return {
+          success: false,
+          models: [],
+          error: "Invalid response format from NVIDIA API",
+        };
+      }
+
+      const models = json.data
+        .map((m) => m.id)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+        .sort((a, b) => a.localeCompare(b));
+
+      return {
+        success: true,
+        models,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        models: [],
+        error: err.message || "Failed to reach NVIDIA API",
+      };
+    }
   });
 }
 

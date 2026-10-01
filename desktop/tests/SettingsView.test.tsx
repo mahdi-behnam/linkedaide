@@ -44,6 +44,15 @@ describe("SettingsView", () => {
       encryptSession: vi.fn().mockResolvedValue("encrypted"),
       decryptSession: vi.fn().mockResolvedValue("decrypted"),
       generateFernetKey: vi.fn().mockResolvedValue("generated-fernet-key=="),
+      fetchNimModels: vi.fn().mockResolvedValue({
+        success: true,
+        models: [
+          "meta/llama-3.1-70b-instruct",
+          "meta/llama-3.3-70b-instruct",
+          "mistralai/mistral-large-2-instruct",
+          "deepseek-ai/deepseek-r1",
+        ],
+      }),
     };
   });
 
@@ -184,6 +193,101 @@ describe("SettingsView", () => {
         })
       );
       expect(screen.getByText("Settings Saved & Applied")).toBeTruthy();
+    });
+  });
+
+  it("allows selecting an NVIDIA NIM model from dropdown and saving", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const modelSelect = screen.getByLabelText("Primary NIM Model") as HTMLSelectElement;
+    fireEvent.change(modelSelect, { target: { value: "meta/llama-3.3-70b-instruct" } });
+
+    const keyInput = screen.getByPlaceholderText(
+      "Enter NVIDIA_NIM_API_KEY (nvapi-...)"
+    ) as HTMLInputElement;
+    fireEvent.change(keyInput, { target: { value: "nvapi-test-token" } });
+
+    const saveBtn = screen.getByRole("button", {
+      name: /Save & Apply Settings/i,
+    });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nimModel: "meta/llama-3.3-70b-instruct",
+          nimApiKey: "nvapi-test-token",
+        })
+      );
+    });
+  });
+
+  it("fetches available models from NVIDIA and populates the selector", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const fetchBtn = screen.getByRole("button", {
+      name: /Fetch Models from NVIDIA/i,
+    });
+    fireEvent.click(fetchBtn);
+
+    await waitFor(() => {
+      expect(window.api.fetchNimModels).toHaveBeenCalled();
+      expect(screen.getByText(/Loaded 4 models from NVIDIA/i)).toBeTruthy();
+      expect(screen.getByText("deepseek-ai/deepseek-r1")).toBeTruthy();
+    });
+  });
+
+  it("allows selecting custom model and typing manual identifier", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const modelSelect = screen.getByLabelText("Primary NIM Model") as HTMLSelectElement;
+    fireEvent.change(modelSelect, { target: { value: "__custom__" } });
+
+    const customInput = screen.getByLabelText("Custom NIM Model Identifier") as HTMLInputElement;
+    fireEvent.change(customInput, { target: { value: "custom-org/special-model-v1" } });
+
+    const saveBtn = screen.getByRole("button", {
+      name: /Save & Apply Settings/i,
+    });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nimModel: "custom-org/special-model-v1",
+        })
+      );
+    });
+  });
+
+  it("displays error banner when fetching models fails", async () => {
+    window.api.fetchNimModels = vi.fn().mockResolvedValue({
+      success: false,
+      models: [],
+      error: "NVIDIA API rate limit exceeded",
+    });
+
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const fetchBtn = screen.getByRole("button", {
+      name: /Fetch Models from NVIDIA/i,
+    });
+    fireEvent.click(fetchBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/NVIDIA API rate limit exceeded/i)).toBeTruthy();
     });
   });
 });

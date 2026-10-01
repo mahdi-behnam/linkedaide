@@ -36,20 +36,26 @@ export const DoctorView: React.FC = () => {
     const hasKey = Boolean(settings?.encryptionKey);
     const hasSecret = Boolean(settings?.apiSecret);
     const hasWorker = Boolean(settings?.workerUrl);
+    const hasNimModel = Boolean(settings?.nimModel || telemetry?.nimModel);
+    const hasNimApiKey = Boolean(settings?.nimApiKey || settings?.nimModel || telemetry?.nimModel);
+    const isSessionHealthy = Boolean(
+      telemetry?.sessionValid ||
+      doctorChecks.some((c) => c.category === "session" && c.status === "pass")
+    );
     return [
-      { key: "NVIDIA_NIM_API_KEY", loaded: Boolean(telemetry?.nimModel) },
-      { key: "NIM_MODEL_PRIMARY", loaded: Boolean(telemetry?.nimModel) },
+      { key: "NVIDIA_NIM_API_KEY", loaded: hasNimApiKey },
+      { key: "NIM_MODEL_PRIMARY", loaded: hasNimModel },
       { key: "TELEGRAM_BOT_TOKEN", loaded: Boolean(settings?.notificationsEnabled) },
       { key: "TELEGRAM_CHAT_ID", loaded: Boolean(settings?.notificationsEnabled) },
       { key: "SESSION_ENCRYPTION_KEY", loaded: hasKey },
-      { key: "LINKEDIN_SESSION_STATE_ENC", loaded: Boolean(telemetry?.sessionValid) },
+      { key: "LINKEDIN_SESSION_STATE_ENC", loaded: isSessionHealthy },
       { key: "CF_ACCOUNT_ID", loaded: hasWorker },
       { key: "CF_KV_NAMESPACE_ID", loaded: Boolean(telemetry?.kvBackend) },
       { key: "CF_API_TOKEN", loaded: hasSecret },
       { key: "MAX_COMMENTS_PER_DAY", loaded: Boolean(settings?.maxCommentsPerDay) },
       { key: "DRY_RUN", loaded: true },
     ];
-  }, [settings, telemetry]);
+  }, [settings, telemetry, doctorChecks]);
 
   const loadedVarsCount = envAuditList.filter((v) => v.loaded).length;
 

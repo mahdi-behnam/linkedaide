@@ -64,6 +64,11 @@ const api: ElectronAPI = {
   checkSessionHealth: (): Promise<{ valid: boolean; daysRemaining?: number; details?: string }> =>
     ipcRenderer.invoke("auth:checkSessionHealth"),
 
+  fetchNimModels: (
+    apiKey?: string
+  ): Promise<{ success: boolean; models: string[]; error?: string }> =>
+    ipcRenderer.invoke("llm:fetchNimModels", apiKey),
+
   onRealtimeEvent: (callback: (event: any) => void): (() => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, payload: any) => {
       callback(payload);

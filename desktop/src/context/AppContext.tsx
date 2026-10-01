@@ -311,9 +311,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (health?.valid) {
               sessionStatus = "pass";
               sessionDetail = `li_at cookie active (valid for ~${health.daysRemaining ?? 14} days).`;
+              setTelemetry((prev) => ({ ...prev, sessionValid: true }));
             } else {
               sessionStatus = "warn";
               sessionDetail = health?.details || "No valid active LinkedIn session found in storage.";
+              setTelemetry((prev) => ({ ...prev, sessionValid: false }));
             }
           } catch (err: any) {
             sessionStatus = "fail";
@@ -326,11 +328,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         let envStatus: "pass" | "warn" | "fail" = "pass";
         let envDetail = "All required secrets and runtime variables detected.";
+        let effectiveNim = telemetry.nimModel;
+
         if (window.api.getSettings) {
           try {
             const settings = await window.api.getSettings();
             const hasKv = Boolean(telemetry.kvBackend && settings?.workerUrl);
-            const hasNim = Boolean(telemetry.nimModel);
+            if (settings?.nimModel) {
+              effectiveNim = settings.nimModel;
+              setTelemetry((prev) => ({ ...prev, nimModel: settings.nimModel! }));
+            }
+            const hasNim = Boolean(effectiveNim);
             const hasKey = Boolean(settings?.encryptionKey);
             if (hasKv && hasNim && hasKey) {
               envStatus = "pass";
@@ -376,9 +384,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             id: "chk-llm",
             category: "llm",
             title: "NVIDIA NIM Connectivity",
-            status: telemetry.nimModel ? "pass" : "warn",
-            detail: telemetry.nimModel
-              ? `Primary model ${telemetry.nimModel} configured. Structured schema validation passing.`
+            status: effectiveNim ? "pass" : "warn",
+            detail: effectiveNim
+              ? `Primary model ${effectiveNim} configured. Structured schema validation passing.`
               : "NVIDIA NIM model not configured.",
           },
           {

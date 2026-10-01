@@ -91,6 +91,7 @@ export interface DesktopSettings {
   maxSuggestionsPerRun?: number;
   actionTtlHours?: number;
   nimModel?: string;
+  nimApiKey?: string;
 }
 
 export interface ElectronAPI {
@@ -114,6 +115,7 @@ export interface ElectronAPI {
   generateFernetKey: () => Promise<string>;
   captureSession?: () => Promise<{ success: boolean; error?: string }>;
   checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
+  fetchNimModels?: (apiKey?: string) => Promise<{ success: boolean; models: string[]; error?: string }>;
   onRealtimeEvent?: (callback: (event: any) => void) => () => void;
 }
 
