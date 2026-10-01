@@ -77,6 +77,9 @@ export interface DesktopSettings {
   encryptionKey?: string;
   nimModel?: string;
   nimApiKey?: string;
+  githubRepoOwner?: string;
+  githubRepoName?: string;
+  githubDispatchPat?: string;
   autoRefreshInterval?: number;
   executionMode?: "cloud" | "local";
   headless?: boolean;

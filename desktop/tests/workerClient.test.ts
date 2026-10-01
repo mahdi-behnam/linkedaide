@@ -219,6 +219,37 @@ describe("WorkerClient", () => {
       expect(result.itemId).toBe("act-123");
     });
 
+    it("includes cloud dispatch config in request body when provided", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ success: true, status: "dispatched" }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await client.executeAction("approve", "act-123", {
+        repo_owner: "custom-user",
+        repo_name: "custom-repo",
+        github_pat: "ghp_token123",
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/action",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            action: "approve",
+            itemId: "act-123",
+            item_id: "act-123",
+            repo_owner: "custom-user",
+            repo_name: "custom-repo",
+            github_pat: "ghp_token123",
+          }),
+        })
+      );
+      expect(result.success).toBe(true);
+    });
+
     it("returns failure result when API responds with error", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: false,
@@ -250,6 +281,34 @@ describe("WorkerClient", () => {
       expect(fetchMock).toHaveBeenCalledWith(
         "https://worker.example.workers.dev/api/scout",
         expect.objectContaining({ method: "POST" })
+      );
+      expect(success).toBe(true);
+    });
+
+    it("includes cloud dispatch config in request body when provided", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ success: true }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const success = await client.triggerScout({
+        repo_owner: "custom-user",
+        repo_name: "custom-repo",
+        github_pat: "ghp_token123",
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/scout",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            repo_owner: "custom-user",
+            repo_name: "custom-repo",
+            github_pat: "ghp_token123",
+          }),
+        })
       );
       expect(success).toBe(true);
     });

@@ -412,6 +412,68 @@ describe("Authenticated Worker REST API Suite", () => {
         const data = (await res.json()) as any;
         expect(data.error).toBe("GitHub dispatch failed");
       });
+
+      it("uses body repo_owner, repo_name, and github_pat when env variables are not present", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("api.github.com")) {
+            return Promise.resolve(new Response(null, { status: 204 }));
+          }
+          return Promise.resolve(new Response("{}", { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const envWithoutGithub: Env = {
+          ...mockEnv,
+          GITHUB_REPO_OWNER: "",
+          GITHUB_REPO_NAME: "",
+          GITHUB_DISPATCH_PAT: "",
+        };
+
+        const req = makeApiRequest("/api/action", {
+          method: "POST",
+          body: {
+            action: "approve",
+            item_id: "item_custom_cred",
+            repo_owner: "custom-user",
+            repo_name: "custom-repo",
+            github_pat: "ghp_custom12345",
+          },
+        });
+        const ctx = createMockContext();
+
+        const res = await worker.fetch(req, envWithoutGithub, ctx as any);
+        expect(res.status).toBe(200);
+
+        const githubCall = fetchMock.mock.calls.find(([url]: [string]) =>
+          url.includes("api.github.com")
+        );
+        expect(githubCall).toBeDefined();
+        expect(githubCall[0]).toBe("https://api.github.com/repos/custom-user/custom-repo/dispatches");
+        expect(githubCall[1].headers.Authorization).toBe("Bearer ghp_custom12345");
+      });
+
+      it("returns 400 with details when GitHub dispatch config is missing in both env and body", async () => {
+        const envWithoutGithub: Env = {
+          ...mockEnv,
+          GITHUB_REPO_OWNER: "",
+          GITHUB_REPO_NAME: "",
+          GITHUB_DISPATCH_PAT: "",
+        };
+
+        const req = makeApiRequest("/api/action", {
+          method: "POST",
+          body: { action: "approve", item_id: "item_missing_creds" },
+        });
+        const ctx = createMockContext();
+
+        const res = await worker.fetch(req, envWithoutGithub, ctx as any);
+        expect(res.status).toBe(400);
+        const data = (await res.json()) as any;
+        expect(data.error).toContain("Missing configuration");
+        expect(data.details).toContain("GITHUB_REPO_OWNER");
+        expect(data.details).toContain("GITHUB_REPO_NAME");
+        expect(data.details).toContain("GITHUB_DISPATCH_PAT");
+      });
     });
   });
 
@@ -490,6 +552,66 @@ describe("Authenticated Worker REST API Suite", () => {
       expect(res.status).toBe(502);
       const data = (await res.json()) as any;
       expect(data.error).toBe("GitHub scout dispatch failed");
+    });
+
+    it("uses body credentials when env variables are missing", async () => {
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("actions/workflows/scout.yml/dispatches")) {
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      });
+      globalThis.fetch = fetchMock;
+
+      const envWithoutGithub: Env = {
+        ...mockEnv,
+        GITHUB_REPO_OWNER: "",
+        GITHUB_REPO_NAME: "",
+        GITHUB_DISPATCH_PAT: "",
+      };
+
+      const req = makeApiRequest("/api/scout", {
+        method: "POST",
+        body: {
+          repo_owner: "custom-scout-owner",
+          repo_name: "custom-scout-repo",
+          github_pat: "ghp_scout123",
+        },
+      });
+      const ctx = createMockContext();
+
+      const res = await worker.fetch(req, envWithoutGithub, ctx as any);
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as any;
+      expect(data.status).toBe("scout_triggered");
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://api.github.com/repos/custom-scout-owner/custom-scout-repo/actions/workflows/scout.yml/dispatches",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer ghp_scout123",
+          }),
+        })
+      );
+    });
+
+    it("returns 400 when scout dispatch config is missing in both env and body", async () => {
+      const envWithoutGithub: Env = {
+        ...mockEnv,
+        GITHUB_REPO_OWNER: "",
+        GITHUB_REPO_NAME: "",
+        GITHUB_DISPATCH_PAT: "",
+      };
+
+      const req = makeApiRequest("/api/scout", { method: "POST" });
+      const ctx = createMockContext();
+
+      const res = await worker.fetch(req, envWithoutGithub, ctx as any);
+      expect(res.status).toBe(400);
+      const data = (await res.json()) as any;
+      expect(data.error).toContain("Missing configuration");
+      expect(data.details).toContain("GITHUB_DISPATCH_PAT");
     });
   });
 

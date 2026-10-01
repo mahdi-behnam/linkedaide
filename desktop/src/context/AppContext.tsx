@@ -361,10 +361,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         let envStatus: "pass" | "warn" | "fail" = "pass";
         let envDetail = "All required secrets and runtime variables detected.";
         let effectiveNim = telemetry.nimModel;
+        let isCloud = true;
+        let githubDispatchStatus: "pass" | "warn" | "fail" = "pass";
+        let githubDispatchDetail = "GitHub Actions cloud runner dispatch configured.";
 
         if (window.api.getSettings) {
           try {
             const settings = await window.api.getSettings();
+            isCloud = (settings?.executionMode ?? "cloud") === "cloud";
             const hasKv = Boolean(telemetry.kvBackend && settings?.workerUrl);
             if (settings?.nimModel) {
               effectiveNim = settings.nimModel;
@@ -372,12 +376,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             const hasNim = Boolean(effectiveNim);
             const hasKey = Boolean(settings?.encryptionKey);
-            if (hasKv && hasNim && hasKey) {
+            const hasGithubPat = Boolean(settings?.githubDispatchPat);
+            const hasRepoOwner = Boolean(settings?.githubRepoOwner);
+            const hasRepoName = Boolean(settings?.githubRepoName);
+
+            if (isCloud) {
+              if (hasGithubPat && hasRepoOwner && hasRepoName) {
+                githubDispatchStatus = "pass";
+                githubDispatchDetail = `Targeting ${settings?.githubRepoOwner}/${settings?.githubRepoName} with configured dispatch token.`;
+              } else {
+                const missing = [
+                  !hasGithubPat && "GITHUB_DISPATCH_PAT",
+                  !hasRepoOwner && "GITHUB_REPO_OWNER",
+                  !hasRepoName && "GITHUB_REPO_NAME",
+                ].filter(Boolean);
+                githubDispatchStatus = "fail";
+                githubDispatchDetail = `Cloud runner dispatch credentials missing: ${missing.join(", ")}. Please configure them in Settings.`;
+              }
+            }
+
+            const cloudReady = !isCloud || (hasGithubPat && hasRepoOwner && hasRepoName);
+
+            if (hasKv && hasNim && hasKey && cloudReady) {
               envStatus = "pass";
               envDetail = "All required secrets and runtime variables detected and validated.";
             } else if (!hasKv && !hasNim && !hasKey) {
               envStatus = "warn";
               envDetail = "Missing Cloudflare KV, Fernet key, and NVIDIA NIM configuration.";
+            } else if (!cloudReady) {
+              envStatus = "warn";
+              envDetail = "Missing GitHub Actions dispatch credentials for cloud runner.";
             } else {
               envStatus = "warn";
               envDetail = "Partial environment configuration detected.";
@@ -405,6 +433,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             latencyMs: kvLatency ? Math.round(kvLatency * 1.2) : undefined,
             detail: "Webhook operational on Cloudflare Workers edge. HMAC signature validation active.",
           },
+          ...(isCloud
+            ? [
+                {
+                  id: "chk-gh-actions",
+                  category: "relay" as const,
+                  title: "GitHub Actions Dispatch (Cloud Runner)",
+                  status: githubDispatchStatus,
+                  detail: githubDispatchDetail,
+                  recommendation:
+                    githubDispatchStatus !== "pass"
+                      ? "Configure GITHUB_DISPATCH_PAT, repo owner, and repo name in Settings to enable cloud scouting and actions."
+                      : undefined,
+                },
+              ]
+            : []),
           {
             id: "chk-session",
             category: "session",

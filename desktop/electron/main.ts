@@ -44,6 +44,9 @@ function loadSettings(): DesktopSettings {
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
     nimModel: process.env.NIM_MODEL_PRIMARY || "meta/llama-3.1-70b-instruct",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
+    githubRepoOwner: process.env.GITHUB_REPO_OWNER || "mahdi-behnam",
+    githubRepoName: process.env.GITHUB_REPO_NAME || "linkedin-hitl-agent",
+    githubDispatchPat: process.env.GITHUB_DISPATCH_PAT || "",
     autoRefreshInterval: 30,
     executionMode: "cloud",
     headless: true,
@@ -84,6 +87,15 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
     }
     if (updated.nimApiKey !== undefined) {
       updated.nimApiKey = updated.nimApiKey.trim();
+    }
+    if (updated.githubRepoOwner !== undefined) {
+      updated.githubRepoOwner = updated.githubRepoOwner.trim();
+    }
+    if (updated.githubRepoName !== undefined) {
+      updated.githubRepoName = updated.githubRepoName.trim();
+    }
+    if (updated.githubDispatchPat !== undefined) {
+      updated.githubDispatchPat = updated.githubDispatchPat.trim();
     }
     const settingsPath = getSettingsPath();
     const dir = path.dirname(settingsPath);
@@ -180,14 +192,23 @@ function registerIpcHandlers(): void {
           });
         });
       }
-      return await workerClient.executeAction(action, itemId);
+      return await workerClient.executeAction(action, itemId, {
+        repo_owner: settings.githubRepoOwner,
+        repo_name: settings.githubRepoName,
+        github_pat: settings.githubDispatchPat,
+      });
     }
   );
 
   ipcMain.handle(
     "api:executeConnectionAction",
     async (_event, action: "approve" | "reject", id: string, _note?: string) => {
-      return await workerClient.executeAction(action, id);
+      const settings = loadSettings();
+      return await workerClient.executeAction(action, id, {
+        repo_owner: settings.githubRepoOwner,
+        repo_name: settings.githubRepoName,
+        github_pat: settings.githubDispatchPat,
+      });
     }
   );
 
@@ -213,7 +234,11 @@ function registerIpcHandlers(): void {
         });
       });
     }
-    return await workerClient.triggerScout();
+    return await workerClient.triggerScout({
+      repo_owner: settings.githubRepoOwner,
+      repo_name: settings.githubRepoName,
+      github_pat: settings.githubDispatchPat,
+    });
   });
 
   ipcMain.handle("api:togglePause", async (_event, paused: boolean) => {

@@ -421,7 +421,28 @@ export async function handlePostAction(
     }
   }
 
-  const dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
+  const repoOwner = (body as any).repo_owner || env.GITHUB_REPO_OWNER;
+  const repoName = (body as any).repo_name || env.GITHUB_REPO_NAME;
+  const pat = (body as any).github_pat || env.GITHUB_DISPATCH_PAT;
+
+  if (!repoOwner || !repoName || !pat) {
+    const missing = [
+      !repoOwner && "GITHUB_REPO_OWNER",
+      !repoName && "GITHUB_REPO_NAME",
+      !pat && "GITHUB_DISPATCH_PAT",
+    ].filter(Boolean);
+    return jsonResponse(
+      {
+        error: "GitHub action dispatch failed: Missing configuration",
+        details: `Missing required cloud dispatch settings: ${missing.join(", ")}. Please configure them in Desktop Settings or Cloudflare Worker environment.`,
+        action: "approve",
+        item_id: itemId,
+      },
+      400
+    );
+  }
+
+  const dispatchUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/dispatches`;
   const clientPayload = {
     action: "approve",
     item_id: itemId,
@@ -436,7 +457,7 @@ export async function handlePostAction(
       method: "POST",
       headers: {
         Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
+        Authorization: `Bearer ${pat}`,
         "User-Agent": "Telegram-Relay-Worker",
         "X-GitHub-Api-Version": "2022-11-28",
       },
@@ -493,7 +514,13 @@ export async function handlePostScout(request: Request, env: Env): Promise<Respo
     return jsonResponse({ error: "Method Not Allowed" }, 405);
   }
 
-  let body: { ref?: string; use_repository_dispatch?: boolean } = {};
+  let body: {
+    ref?: string;
+    use_repository_dispatch?: boolean;
+    repo_owner?: string;
+    repo_name?: string;
+    github_pat?: string;
+  } = {};
   try {
     const text = await request.text();
     if (text) {
@@ -503,17 +530,36 @@ export async function handlePostScout(request: Request, env: Env): Promise<Respo
     // Optional body
   }
 
+  const repoOwner = body.repo_owner || env.GITHUB_REPO_OWNER;
+  const repoName = body.repo_name || env.GITHUB_REPO_NAME;
+  const pat = body.github_pat || env.GITHUB_DISPATCH_PAT;
+
+  if (!repoOwner || !repoName || !pat) {
+    const missing = [
+      !repoOwner && "GITHUB_REPO_OWNER",
+      !repoName && "GITHUB_REPO_NAME",
+      !pat && "GITHUB_DISPATCH_PAT",
+    ].filter(Boolean);
+    return jsonResponse(
+      {
+        error: "GitHub scout dispatch failed: Missing configuration",
+        details: `Missing required cloud dispatch settings: ${missing.join(", ")}. Please configure them in Desktop Settings or Cloudflare Worker environment.`,
+      },
+      400
+    );
+  }
+
   let dispatchUrl: string;
   let dispatchBody: Record<string, unknown>;
 
   if (body.use_repository_dispatch) {
-    dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
+    dispatchUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/dispatches`;
     dispatchBody = {
       event_type: "linkedin_agent_action",
       client_payload: { action: "scout" },
     };
   } else {
-    dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/workflows/scout.yml/dispatches`;
+    dispatchUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/scout.yml/dispatches`;
     dispatchBody = {
       ref: body.ref || "main",
     };
@@ -525,7 +571,7 @@ export async function handlePostScout(request: Request, env: Env): Promise<Respo
       method: "POST",
       headers: {
         Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
+        Authorization: `Bearer ${pat}`,
         "User-Agent": "Telegram-Relay-Worker",
         "X-GitHub-Api-Version": "2022-11-28",
       },

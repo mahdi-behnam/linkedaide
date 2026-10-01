@@ -92,6 +92,9 @@ export interface DesktopSettings {
   actionTtlHours?: number;
   nimModel?: string;
   nimApiKey?: string;
+  githubRepoOwner?: string;
+  githubRepoName?: string;
+  githubDispatchPat?: string;
 }
 
 export interface ElectronAPI {

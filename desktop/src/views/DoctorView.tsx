@@ -42,7 +42,12 @@ export const DoctorView: React.FC = () => {
       telemetry?.sessionValid ||
       doctorChecks.some((c) => c.category === "session" && c.status === "pass")
     );
-    return [
+    const isCloud = (settings?.executionMode ?? "cloud") === "cloud";
+    const hasGithubPat = Boolean(settings?.githubDispatchPat);
+    const hasRepoOwner = Boolean(settings?.githubRepoOwner);
+    const hasRepoName = Boolean(settings?.githubRepoName);
+
+    const baseList = [
       { key: "NVIDIA_NIM_API_KEY", loaded: hasNimApiKey },
       { key: "NIM_MODEL_PRIMARY", loaded: hasNimModel },
       { key: "TELEGRAM_BOT_TOKEN", loaded: Boolean(settings?.notificationsEnabled) },
@@ -55,6 +60,16 @@ export const DoctorView: React.FC = () => {
       { key: "MAX_COMMENTS_PER_DAY", loaded: Boolean(settings?.maxCommentsPerDay) },
       { key: "DRY_RUN", loaded: true },
     ];
+
+    if (isCloud) {
+      return [
+        ...baseList,
+        { key: "GITHUB_DISPATCH_PAT", loaded: hasGithubPat },
+        { key: "GITHUB_REPO_OWNER", loaded: hasRepoOwner },
+        { key: "GITHUB_REPO_NAME", loaded: hasRepoName },
+      ];
+    }
+    return baseList;
   }, [settings, telemetry, doctorChecks]);
 
   const loadedVarsCount = envAuditList.filter((v) => v.loaded).length;

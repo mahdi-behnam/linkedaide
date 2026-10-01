@@ -12,6 +12,7 @@ import {
   Check,
   Cpu,
   ShieldCheck,
+  Lightning,
 } from "../components/icons";
 import type { DesktopSettings } from "../types/api";
 
@@ -21,6 +22,9 @@ const defaultSettings: DesktopSettings = {
   encryptionKey: "",
   nimModel: "meta/llama-3.1-70b-instruct",
   nimApiKey: "",
+  githubRepoOwner: "mahdi-behnam",
+  githubRepoName: "linkedin-hitl-agent",
+  githubDispatchPat: "",
   autoRefreshInterval: 300,
   executionMode: "cloud",
   headless: true,
@@ -46,6 +50,7 @@ export const SettingsView: React.FC = () => {
   const [settings, setSettings] = useState<DesktopSettings>(defaultSettings);
   const [showSecret, setShowSecret] = useState(false);
   const [showNimKey, setShowNimKey] = useState(false);
+  const [showGithubPat, setShowGithubPat] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -399,6 +404,87 @@ export const SettingsView: React.FC = () => {
                 className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-emerald-500 focus:outline-hidden"
               />
             </div>
+          </div>
+        </div>
+
+        {/* GitHub Actions Cloud Runner Dispatch */}
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <Lightning size={16} className="text-amber-400" />
+              <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+                GitHub Actions Cloud Runner Dispatch
+              </h2>
+            </div>
+            {settings.executionMode === "cloud" && (
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-300">
+                Required for Cloud Mode
+              </span>
+            )}
+          </div>
+
+          <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+            Dispatches automated workflows (<code className="text-zinc-300">scout.yml</code> and <code className="text-zinc-300">execute.yml</code>) via GitHub Actions when using the Cloud Remote Runner. Configure your repository coordinates and a Personal Access Token (PAT) with <code className="text-zinc-300">repo</code> or <code className="text-zinc-300">workflow</code> permissions.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-zinc-300">
+                GitHub Repository Owner
+              </label>
+              <input
+                type="text"
+                value={settings.githubRepoOwner || ""}
+                onChange={(e) => handleChange("githubRepoOwner", e.target.value)}
+                placeholder="e.g. mahdi-behnam"
+                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-amber-500 focus:outline-hidden"
+              />
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Username or organization owning the repository.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-zinc-300">
+                GitHub Repository Name
+              </label>
+              <input
+                type="text"
+                value={settings.githubRepoName || ""}
+                onChange={(e) => handleChange("githubRepoName", e.target.value)}
+                placeholder="e.g. linkedin-hitl-agent"
+                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-amber-500 focus:outline-hidden"
+              />
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Repository name hosting the agent workflows.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-zinc-300">
+                GitHub Personal Access Token (GITHUB_DISPATCH_PAT)
+              </label>
+              <button
+                type="button"
+                aria-label="Toggle GitHub PAT visibility"
+                onClick={() => setShowGithubPat((prev) => !prev)}
+                className="text-[11px] text-zinc-500 hover:text-zinc-300"
+              >
+                {showGithubPat ? "Hide" : "Show"}
+              </button>
+            </div>
+            <input
+              type={showGithubPat ? "text" : "password"}
+              value={settings.githubDispatchPat || ""}
+              onChange={(e) => handleChange("githubDispatchPat", e.target.value)}
+              placeholder="Enter GITHUB_DISPATCH_PAT (ghp_... or github_pat_...)"
+              className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-amber-500 focus:outline-hidden"
+            />
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Classic PAT with <code className="text-zinc-400">repo</code> scope or Fine-grained PAT with Actions and Workflows read/write permissions.
+            </p>
           </div>
         </div>
 

@@ -100,6 +100,59 @@ describe("DoctorView", () => {
       expect(screen.getByText("NVIDIA_NIM_API_KEY")).toBeTruthy();
       expect(screen.getByText("SESSION_ENCRYPTION_KEY")).toBeTruthy();
       expect(screen.getByText("CF_KV_NAMESPACE_ID")).toBeTruthy();
+      expect(screen.getByText("GITHUB_DISPATCH_PAT")).toBeTruthy();
+      expect(screen.getByText("GITHUB_REPO_OWNER")).toBeTruthy();
+      expect(screen.getByText("GITHUB_REPO_NAME")).toBeTruthy();
+    });
+  });
+
+  it("flags missing GitHub Actions dispatch credentials when executionMode is cloud", async () => {
+    window.api.getSettings = vi.fn().mockResolvedValue({
+      executionMode: "cloud",
+      workerUrl: "https://relay.test.workers.dev",
+      apiSecret: "secret-key",
+      encryptionKey: "test-fernet-key-32b=",
+      nimApiKey: "nvapi-test",
+      githubRepoOwner: "mahdi-behnam",
+      githubRepoName: "linkedin-hitl-agent",
+      githubDispatchPat: "", // Missing
+    });
+
+    renderDoctor();
+
+    const runBtn = screen.getByTestId("run-doctor-btn");
+    fireEvent.click(runBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("GitHub Actions Dispatch (Cloud Runner)")).toBeTruthy();
+      expect(
+        screen.getByText(/Cloud runner dispatch credentials missing: GITHUB_DISPATCH_PAT/i)
+      ).toBeTruthy();
+    });
+  });
+
+  it("omits GitHub Actions dispatch audit when executionMode is local", async () => {
+    window.api.getSettings = vi.fn().mockResolvedValue({
+      executionMode: "local",
+      workerUrl: "https://relay.test.workers.dev",
+      apiSecret: "secret-key",
+      encryptionKey: "test-fernet-key-32b=",
+      nimApiKey: "nvapi-test",
+    });
+
+    renderDoctor();
+
+    await waitFor(() => {
+      expect(screen.getByText("NVIDIA_NIM_API_KEY")).toBeTruthy();
+      expect(screen.queryByText("GITHUB_DISPATCH_PAT")).toBeNull();
+    });
+
+    const runBtn = screen.getByTestId("run-doctor-btn");
+    fireEvent.click(runBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Environment Configuration")).toBeTruthy();
+      expect(screen.queryByText("GitHub Actions Dispatch (Cloud Runner)")).toBeNull();
     });
   });
 });

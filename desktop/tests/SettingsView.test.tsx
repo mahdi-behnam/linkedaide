@@ -290,4 +290,45 @@ describe("SettingsView", () => {
       expect(screen.getByText(/NVIDIA API rate limit exceeded/i)).toBeTruthy();
     });
   });
+
+  it("allows configuring and saving GitHub Actions cloud runner dispatch settings", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("GitHub Actions Cloud Runner Dispatch")).toBeTruthy();
+
+    const ownerInput = screen.getByPlaceholderText("e.g. mahdi-behnam") as HTMLInputElement;
+    fireEvent.change(ownerInput, { target: { value: "my-github-user" } });
+
+    const repoInput = screen.getByPlaceholderText("e.g. linkedin-hitl-agent") as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: "my-linkedin-repo" } });
+
+    const patInput = screen.getByPlaceholderText(
+      "Enter GITHUB_DISPATCH_PAT (ghp_... or github_pat_...)"
+    ) as HTMLInputElement;
+    expect(patInput.type).toBe("password");
+    fireEvent.change(patInput, { target: { value: "ghp_securetoken9876543210" } });
+
+    // Toggle show/hide
+    const patToggle = screen.getByRole("button", { name: /Toggle GitHub PAT visibility/i });
+    fireEvent.click(patToggle);
+    expect(patInput.type).toBe("text");
+
+    const saveBtn = screen.getByRole("button", {
+      name: /Save & Apply Settings/i,
+    });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          githubRepoOwner: "my-github-user",
+          githubRepoName: "my-linkedin-repo",
+          githubDispatchPat: "ghp_securetoken9876543210",
+        })
+      );
+    });
+  });
 });

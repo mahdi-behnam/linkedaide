@@ -16,6 +16,12 @@ export interface WorkerClientConfig {
   apiSecret: string;
 }
 
+export interface CloudDispatchConfig {
+  repo_owner?: string;
+  repo_name?: string;
+  github_pat?: string;
+}
+
 export class WorkerClient {
   private baseUrl: string;
   private apiSecret: string;
@@ -293,7 +299,8 @@ export class WorkerClient {
    */
   public async executeAction(
     action: "approve" | "reject",
-    itemId: string
+    itemId: string,
+    cloudDispatchConfig?: CloudDispatchConfig
   ): Promise<ActionResult> {
     if (!itemId || !itemId.trim()) {
       return {
@@ -305,15 +312,26 @@ export class WorkerClient {
     }
 
     try {
+      const body: Record<string, unknown> = {
+        action,
+        itemId: itemId.trim(),
+        item_id: itemId.trim(),
+      };
+      if (cloudDispatchConfig?.repo_owner) {
+        body.repo_owner = cloudDispatchConfig.repo_owner;
+      }
+      if (cloudDispatchConfig?.repo_name) {
+        body.repo_name = cloudDispatchConfig.repo_name;
+      }
+      if (cloudDispatchConfig?.github_pat) {
+        body.github_pat = cloudDispatchConfig.github_pat;
+      }
+
       const response = await this.request<Record<string, unknown>>(
         "/api/action",
         {
           method: "POST",
-          body: {
-            action,
-            itemId: itemId.trim(),
-            item_id: itemId.trim(),
-          },
+          body,
         }
       );
 
@@ -342,11 +360,27 @@ export class WorkerClient {
   /**
    * Triggers an immediate scout run in GitHub Actions / Worker.
    */
-  public async triggerScout(): Promise<boolean> {
+  public async triggerScout(
+    cloudDispatchConfig?: CloudDispatchConfig & { ref?: string }
+  ): Promise<boolean> {
+    const body: Record<string, unknown> = {};
+    if (cloudDispatchConfig?.repo_owner) {
+      body.repo_owner = cloudDispatchConfig.repo_owner;
+    }
+    if (cloudDispatchConfig?.repo_name) {
+      body.repo_name = cloudDispatchConfig.repo_name;
+    }
+    if (cloudDispatchConfig?.github_pat) {
+      body.github_pat = cloudDispatchConfig.github_pat;
+    }
+    if (cloudDispatchConfig?.ref) {
+      body.ref = cloudDispatchConfig.ref;
+    }
+
     try {
       const res = await this.request<{ success?: boolean }>("/api/scout", {
         method: "POST",
-        body: {},
+        body,
       });
       return res.success !== false;
     } catch (err) {
@@ -356,7 +390,7 @@ export class WorkerClient {
           "/api/trigger-scout",
           {
             method: "POST",
-            body: {},
+            body,
           }
         );
         return res.success !== false;
