@@ -14,7 +14,14 @@ import type {
 } from "./types";
 
 const api: ElectronAPI = {
-  fetchState: (): Promise<AgentState> => ipcRenderer.invoke("api:fetchState"),
+  fetchState: (
+    credentials?: { workerUrl?: string; apiSecret?: string }
+  ): Promise<AgentState> => ipcRenderer.invoke("api:fetchState", credentials),
+
+  testConnection: (
+    credentials?: { workerUrl?: string; apiSecret?: string }
+  ): Promise<{ success: boolean; latencyMs?: number; error?: string }> =>
+    ipcRenderer.invoke("api:testConnection", credentials),
 
   executeAction: (
     action: "approve" | "reject",

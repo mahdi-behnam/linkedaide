@@ -126,13 +126,25 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleTestConnection = async () => {
+    const rawUrl = settings.workerUrl?.trim() || "";
+    const rawSecret = settings.apiSecret?.trim() || "";
+
     setIsTesting(true);
     setTestResult(null);
     const start = performance.now();
 
     try {
-      if (typeof window !== "undefined" && window.api?.fetchState) {
-        await window.api.fetchState();
+      if (typeof window !== "undefined" && window.api?.testConnection) {
+        const result = await window.api.testConnection({
+          workerUrl: rawUrl,
+          apiSecret: rawSecret,
+        });
+        setTestResult(result);
+      } else if (typeof window !== "undefined" && window.api?.fetchState) {
+        await window.api.fetchState({
+          workerUrl: rawUrl,
+          apiSecret: rawSecret,
+        });
         const latencyMs = Math.round(performance.now() - start);
         setTestResult({ success: true, latencyMs });
       } else {
@@ -279,7 +291,7 @@ export const SettingsView: React.FC = () => {
             >
               <span>
                 {testResult.success
-                  ? "Connected successfully to Cloudflare Worker API."
+                  ? "Connected successfully to Cloudflare Worker API. Remember to click 'Save & Apply Settings' below to persist."
                   : `Connection error: ${testResult.error}`}
               </span>
               {testResult.latencyMs !== undefined && (

@@ -21,8 +21,20 @@ export class WorkerClient {
   private apiSecret: string;
 
   constructor(config?: Partial<WorkerClientConfig>) {
-    this.baseUrl = (config?.baseUrl || "").trim().replace(/\/+$/, "");
+    this.baseUrl = this.normalizeUrl(config?.baseUrl || "");
     this.apiSecret = (config?.apiSecret || "").trim();
+  }
+
+  /**
+   * Normalizes Worker URL by trimming whitespace, trailing slashes,
+   * and any accidentally appended API subpaths like /api or /api/state.
+   */
+  public normalizeUrl(url: string): string {
+    return (url || "")
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\/api\/state\/?$/, "")
+      .replace(/\/api\/?$/, "");
   }
 
   /**
@@ -30,7 +42,7 @@ export class WorkerClient {
    */
   public updateConfig(config: Partial<WorkerClientConfig>): void {
     if (config.baseUrl !== undefined) {
-      this.baseUrl = config.baseUrl.trim().replace(/\/+$/, "");
+      this.baseUrl = this.normalizeUrl(config.baseUrl);
     }
     if (config.apiSecret !== undefined) {
       this.apiSecret = config.apiSecret.trim();
@@ -44,6 +56,97 @@ export class WorkerClient {
     return {
       baseUrl: this.baseUrl,
       apiSecret: this.apiSecret,
+    };
+  }
+
+  /**
+   * Tests connection to Cloudflare Worker API with current or provided credentials.
+   * Can accept ad-hoc credentials to verify inputs prior to saving.
+   */
+  public async testConnection(
+    credentials?: Partial<WorkerClientConfig>
+  ): Promise<{ success: boolean; latencyMs: number }> {
+    const targetUrl = this.normalizeUrl(
+      credentials?.baseUrl !== undefined ? credentials.baseUrl : this.baseUrl
+    );
+    const targetSecret = (
+      credentials?.apiSecret !== undefined
+        ? credentials.apiSecret
+        : this.apiSecret
+    ).trim();
+
+    if (!targetUrl) {
+      throw new Error(
+        "Worker URL is not configured. Please enter the Worker URL in Settings."
+      );
+    }
+    if (!targetSecret) {
+      throw new Error(
+        "Desktop API Secret is not configured. Please enter the API Secret in Settings."
+      );
+    }
+
+    const cleanEndpoint = `${targetUrl}/api/state`;
+    const start = performance.now();
+
+    let response: Response;
+    try {
+      response = await fetch(cleanEndpoint, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${targetSecret}`,
+          Accept: "application/json",
+          "User-Agent": "LinkedInHITL-Desktop/1.0.0",
+        },
+      });
+    } catch (networkError) {
+      const msg =
+        networkError instanceof Error
+          ? networkError.message
+          : String(networkError);
+      throw new Error(`Worker connection failed: ${msg}`);
+    }
+
+    const latencyMs = Math.round(performance.now() - start);
+
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorJson = (await response.json()) as Record<string, unknown>;
+        errorDetails =
+          (errorJson.error as string) ||
+          (errorJson.message as string) ||
+          JSON.stringify(errorJson);
+      } catch {
+        errorDetails = await response.text().catch(() => response.statusText);
+      }
+
+      if (response.status === 401) {
+        throw new Error(
+          "Authentication failed (401 Unauthorized): Invalid Desktop API Secret."
+        );
+      }
+      if (response.status === 404) {
+        throw new Error(
+          "Endpoint not found (404): The Worker URL appears to be incorrect or /api/state is not routed."
+        );
+      }
+      throw new Error(
+        `Worker API Error (${response.status} ${response.statusText}): ${errorDetails || "Request failed"}`
+      );
+    }
+
+    // Update active credentials on successful test
+    if (credentials?.baseUrl !== undefined) {
+      this.baseUrl = targetUrl;
+    }
+    if (credentials?.apiSecret !== undefined) {
+      this.apiSecret = targetSecret;
+    }
+
+    return {
+      success: true,
+      latencyMs,
     };
   }
 

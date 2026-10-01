@@ -107,6 +107,64 @@ describe("SettingsView", () => {
     });
   });
 
+  it("invokes window.api.testConnection with user inputs when available", async () => {
+    window.api.testConnection = vi.fn().mockResolvedValue({
+      success: true,
+      latencyMs: 42,
+    });
+
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const urlInput = screen.getByPlaceholderText(
+      "https://relay.your-subdomain.workers.dev"
+    ) as HTMLInputElement;
+    fireEvent.change(urlInput, { target: { value: "https://new-worker.workers.dev" } });
+
+    const secretInput = screen.getByPlaceholderText(
+      "Enter DESKTOP_API_SECRET"
+    ) as HTMLInputElement;
+    fireEvent.change(secretInput, { target: { value: "new-secret-123" } });
+
+    const testBtn = screen.getByRole("button", { name: /Test Connection/i });
+    fireEvent.click(testBtn);
+
+    await waitFor(() => {
+      expect(window.api.testConnection).toHaveBeenCalledWith({
+        workerUrl: "https://new-worker.workers.dev",
+        apiSecret: "new-secret-123",
+      });
+      expect(
+        screen.getByText(/Connected successfully to Cloudflare Worker API/i)
+      ).toBeTruthy();
+      expect(screen.getByText("42 ms")).toBeTruthy();
+    });
+  });
+
+  it("displays connection error when testConnection fails", async () => {
+    window.api.testConnection = vi.fn().mockRejectedValue(
+      new Error("Authentication failed (401 Unauthorized): Invalid Desktop API Secret.")
+    );
+
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const testBtn = screen.getByRole("button", { name: /Test Connection/i });
+    fireEvent.click(testBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Connection error: Authentication failed \(401 Unauthorized\)/i
+        )
+      ).toBeTruthy();
+    });
+  });
+
   it("saves updated settings when form is submitted", async () => {
     renderWithContext();
     await waitFor(() => {

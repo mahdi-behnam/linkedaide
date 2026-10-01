@@ -71,6 +71,12 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
   try {
     const current = loadSettings();
     const updated: DesktopSettings = { ...current, ...settings };
+    if (updated.workerUrl) {
+      updated.workerUrl = workerClient.normalizeUrl(updated.workerUrl);
+    }
+    if (updated.apiSecret) {
+      updated.apiSecret = updated.apiSecret.trim();
+    }
     const settingsPath = getSettingsPath();
     const dir = path.dirname(settingsPath);
     if (!fs.existsSync(dir)) {
@@ -100,9 +106,37 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
 
 function registerIpcHandlers(): void {
   // Cloudflare Worker & Local Runner API Handlers
-  ipcMain.handle("api:fetchState", async () => {
-    return await workerClient.fetchState();
-  });
+  ipcMain.handle(
+    "api:testConnection",
+    async (_event, credentials?: { workerUrl?: string; apiSecret?: string }) => {
+      const result = await workerClient.testConnection({
+        baseUrl: credentials?.workerUrl,
+        apiSecret: credentials?.apiSecret,
+      });
+      if (result.success && credentials?.workerUrl && credentials?.apiSecret) {
+        if (realtimeClient) {
+          realtimeClient.updateCredentials(
+            credentials.workerUrl,
+            credentials.apiSecret
+          );
+        }
+      }
+      return result;
+    }
+  );
+
+  ipcMain.handle(
+    "api:fetchState",
+    async (_event, credentials?: { workerUrl?: string; apiSecret?: string }) => {
+      if (credentials?.workerUrl || credentials?.apiSecret) {
+        workerClient.updateConfig({
+          baseUrl: credentials.workerUrl,
+          apiSecret: credentials.apiSecret,
+        });
+      }
+      return await workerClient.fetchState();
+    }
+  );
 
   ipcMain.handle(
     "api:executeAction",

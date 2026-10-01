@@ -87,7 +87,8 @@ export interface DesktopSettings {
 }
 
 export interface ElectronAPI {
-  fetchState: () => Promise<AgentState>;
+  fetchState: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<AgentState>;
+  testConnection?: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<{ success: boolean; latencyMs?: number; error?: string }>;
   executeAction: (action: "approve" | "reject", itemId: string) => Promise<ActionResult>;
   triggerScout: () => Promise<boolean>;
   togglePause: (paused: boolean) => Promise<boolean>;

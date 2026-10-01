@@ -38,6 +38,104 @@ describe("WorkerClient", () => {
       expect(cfg.baseUrl).toBe("https://updated.com");
       expect(cfg.apiSecret).toBe("new-secret");
     });
+
+    it("normalizes baseUrl by stripping trailing slashes and redundant /api paths", () => {
+      expect(client.normalizeUrl("https://worker.workers.dev/")).toBe("https://worker.workers.dev");
+      expect(client.normalizeUrl("https://worker.workers.dev/api")).toBe("https://worker.workers.dev");
+      expect(client.normalizeUrl("https://worker.workers.dev/api/state")).toBe("https://worker.workers.dev");
+      expect(client.normalizeUrl("  https://worker.workers.dev/api/  ")).toBe("https://worker.workers.dev");
+    });
+  });
+
+  describe("testConnection", () => {
+    it("successfully tests connection and returns latency", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, state: {} }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const res = await client.testConnection();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/state",
+        expect.objectContaining({
+          method: "GET",
+          headers: expect.objectContaining({
+            Authorization: `Bearer ${apiSecret}`,
+          }),
+        })
+      );
+      expect(res.success).toBe(true);
+      expect(typeof res.latencyMs).toBe("number");
+    });
+
+    it("accepts ad-hoc credentials to verify inputs prior to saving", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const res = await client.testConnection({
+        baseUrl: "https://adhoc.workers.dev/api",
+        apiSecret: "adhoc-secret",
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://adhoc.workers.dev/api/state",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer adhoc-secret",
+          }),
+        })
+      );
+      expect(res.success).toBe(true);
+      expect(client.getConfig().baseUrl).toBe("https://adhoc.workers.dev");
+      expect(client.getConfig().apiSecret).toBe("adhoc-secret");
+    });
+
+    it("throws clear error on 401 Unauthorized", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        json: async () => ({ error: "Unauthorized" }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(client.testConnection()).rejects.toThrow(
+        "Authentication failed (401 Unauthorized): Invalid Desktop API Secret."
+      );
+    });
+
+    it("throws clear error on 404 Not Found", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        json: async () => ({ error: "Not Found" }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(client.testConnection()).rejects.toThrow(
+        "Endpoint not found (404): The Worker URL appears to be incorrect or /api/state is not routed."
+      );
+    });
+
+    it("throws error when worker URL or secret is missing", async () => {
+      const emptyClient = new WorkerClient({ baseUrl: "", apiSecret: "" });
+      await expect(emptyClient.testConnection()).rejects.toThrow(
+        "Worker URL is not configured"
+      );
+
+      const noSecretClient = new WorkerClient({ baseUrl: "https://worker.dev", apiSecret: "" });
+      await expect(noSecretClient.testConnection()).rejects.toThrow(
+        "Desktop API Secret is not configured"
+      );
+    });
   });
 
   describe("fetchState", () => {
