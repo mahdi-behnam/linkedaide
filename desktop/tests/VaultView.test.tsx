@@ -186,4 +186,27 @@ describe("VaultView UI", () => {
       expect(feedback.textContent).toContain("Generated fresh 32-byte Fernet key");
     });
   });
+
+  it("renders inactive cookie status and un-synced status when session is invalid or missing", async () => {
+    mockCheckSessionHealth.mockResolvedValueOnce({
+      valid: false,
+      daysRemaining: 0,
+      details: "No active LinkedIn session found in storage",
+    });
+
+    renderVault();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("li-at-status").textContent).toContain(
+        "No active session"
+      );
+      expect(screen.getByTestId("jsessionid-status").textContent).toContain(
+        "Inactive / Missing"
+      );
+      expect(screen.getByText("Not Synced")).toBeTruthy();
+      expect(screen.getByTestId("kv-payload-status").textContent).toContain(
+        "Awaiting session capture"
+      );
+    });
+  });
 });

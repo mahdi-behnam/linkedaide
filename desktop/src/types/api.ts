@@ -90,6 +90,7 @@ export interface DesktopSettings {
   maxPostsPerDay?: number;
   maxSuggestionsPerRun?: number;
   actionTtlHours?: number;
+  nimModel?: string;
 }
 
 export interface ElectronAPI {

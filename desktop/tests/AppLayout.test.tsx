@@ -37,7 +37,7 @@ describe("AppLayout", () => {
     renderLayout();
     expect(screen.getByText(/relay\.hitl-agent\.workers\.dev/i)).toBeTruthy();
     expect(screen.getByTestId("pending-badge-button")).toBeTruthy();
-    expect(screen.getByText("3 Pending")).toBeTruthy();
+    expect(screen.getByText("0 Pending")).toBeTruthy();
     expect(screen.getByTestId("status-pill")).toBeTruthy();
   });
 

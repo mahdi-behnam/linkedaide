@@ -28,10 +28,61 @@ describe("ApprovalQueue Keyboard Shortcuts and HUD Cheat Sheet", () => {
     };
   });
 
+const fixturePendingItems = [
+  {
+    id: "act-8f4b1e",
+    actionType: "comment" as const,
+    author: "Satya Nadella",
+    headline: "Chairman and CEO at Microsoft",
+    postUrl: "https://linkedin.com/feed/update/urn:li:activity:7245890012",
+    postExcerpt:
+      "Autonomous AI systems in the enterprise require reliable verification architectures before scaling critical decision workflows.",
+    draftText:
+      "The compounding returns on autonomous verification pipelines highlight why deterministic guardrails matter more than raw model scale.",
+    confidence: 0.94,
+    reasoning: "High signal post.",
+    engagementStyle: "technical_deep_dive",
+    createdAt: "15m ago",
+    topic: "Enterprise AI",
+  },
+  {
+    id: "act-4c9a2d",
+    actionType: "comment" as const,
+    author: "Harrison Chase",
+    headline: "Co-Founder and CEO at LangChain",
+    postUrl: "https://linkedin.com/feed/update/urn:li:activity:7245834921",
+    postExcerpt:
+      "Stateful agent workflows in production: why checkpoint persistence and deterministic graph transitions prevent cascading failure loops.",
+    draftText:
+      "Separating workflow orchestration state from transient LLM checkpoints is the key architectural leap.",
+    confidence: 0.91,
+    reasoning: "LangGraph orchestration.",
+    engagementStyle: "supportive_synthesis",
+    createdAt: "35m ago",
+    topic: "Agent Orchestration",
+  },
+  {
+    id: "act-2e5f8b",
+    actionType: "post" as const,
+    author: "Operator (Self)",
+    headline: "Original HITL Agent Post",
+    postUrl: "",
+    postExcerpt:
+      "Original thought leadership draft analyzing human-in-the-loop safety boundaries and session isolation.",
+    draftText:
+      "Why human-in-the-loop is the prerequisite for enterprise agent deployment.",
+    confidence: 0.88,
+    reasoning: "Feed trends.",
+    engagementStyle: "technical_deep_dive",
+    createdAt: "1h ago",
+    topic: "Thought Leadership",
+  },
+];
+
   const renderView = () => {
     return render(
       <AppProvider>
-        <ApprovalQueueView />
+        <ApprovalQueueView initialItems={fixturePendingItems} />
       </AppProvider>
     );
   };

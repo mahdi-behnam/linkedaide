@@ -2,12 +2,64 @@ import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AppProvider } from "../src/context/AppContext";
 import { CalendarView } from "../src/views/CalendarView";
+import { ScheduledPost, AutomatedCommentWindow } from "../src/types";
+
+const todayIso = new Date().toISOString();
+
+const mockPosts: ScheduledPost[] = [
+  {
+    id: "post-001",
+    headline: "The 3 Invariants of Production LLM Agents",
+    post_text:
+      "Most agent failures in production aren't model hallucinations. Deterministic State Storage. Mandatory Human Authorization.",
+    scheduled_time: todayIso,
+    status: "scheduled",
+    topic_pillar: "Agent Architecture",
+    media: [
+      {
+        media_type: "carousel_pdf",
+        file_name: "hitl-agent-architecture.pdf",
+        file_url: "mock://hitl-agent-architecture.pdf",
+        slide_count: 5,
+      },
+    ],
+    created_at: todayIso,
+  },
+  {
+    id: "post-002",
+    headline: "Why Cloudflare KV Beats Git-as-Database for Live State",
+    post_text: "Running autonomous pipelines using edge key-value storage.",
+    scheduled_time: todayIso,
+    status: "published",
+    topic_pillar: "System Design",
+    media: [],
+    created_at: todayIso,
+  },
+];
+
+const mockCommentWindows: AutomatedCommentWindow[] = [
+  {
+    id: "win-001",
+    title: "Morning Feed Scout",
+    start_time: "09:00",
+    end_time: "10:30",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    status: "active",
+    topic_filter: "AI Systems & LLM Architecture",
+  },
+];
 
 describe("CalendarView", () => {
-  const renderCalendar = () => {
+  const renderCalendar = (props?: {
+    initialPosts?: ScheduledPost[];
+    initialCommentWindows?: AutomatedCommentWindow[];
+  }) => {
     return render(
       <AppProvider>
-        <CalendarView />
+        <CalendarView
+          initialPosts={props?.initialPosts ?? mockPosts}
+          initialCommentWindows={props?.initialCommentWindows ?? mockCommentWindows}
+        />
       </AppProvider>
     );
   };
@@ -20,6 +72,20 @@ describe("CalendarView", () => {
     expect(screen.getByTestId("cal-today-btn")).toBeTruthy();
     expect(screen.getByTestId("cal-range-label")).toBeTruthy();
     expect(screen.getByTestId("new-post-btn")).toBeTruthy();
+  });
+
+  it("renders standard empty calendar state when no posts are scheduled", () => {
+    render(
+      <AppProvider>
+        <CalendarView initialPosts={[]} initialCommentWindows={[]} />
+      </AppProvider>
+    );
+
+    expect(screen.getByTestId("calendar-empty-prompt")).toBeTruthy();
+    expect(
+      screen.getByText(/No scheduled posts found for this view/i)
+    ).toBeTruthy();
+    expect(screen.getAllByText("No events").length).toBeGreaterThan(0);
   });
 
   it("renders week view grid with scheduled original posts and automated comment windows", () => {
@@ -42,7 +108,7 @@ describe("CalendarView", () => {
   it("displays post status badges for Draft, Scheduled, and Published", () => {
     renderCalendar();
 
-    // We have initial scheduled posts with status "scheduled" and "published"
+    // We have fixture scheduled posts with status "scheduled" and "published"
     const scheduledBadges = screen.getAllByTestId("status-badge-scheduled");
     expect(scheduledBadges.length).toBeGreaterThan(0);
 

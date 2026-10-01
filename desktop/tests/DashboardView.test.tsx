@@ -23,7 +23,8 @@ describe("DashboardView", () => {
     expect(screen.getByText("State Persistence")).toBeTruthy();
     expect(screen.getByText("Cloudflare KV")).toBeTruthy();
     expect(screen.getByText("NVIDIA NIM Model")).toBeTruthy();
-    expect(screen.getByText("Active & Encrypted")).toBeTruthy();
+    expect(screen.getByText("No Active Session")).toBeTruthy();
+    expect(screen.getByText("Not configured")).toBeTruthy();
   });
 
   it("renders all three daily quota burn-down cards", () => {
@@ -65,5 +66,15 @@ describe("DashboardView", () => {
     renderDashboard();
     expect(screen.getByText("Pending Approval Queue")).toBeTruthy();
     expect(screen.getByText("Review Queue")).toBeTruthy();
+  });
+
+  it("renders standard empty queue preview when pendingCount is 0", () => {
+    // If pending count is 0, should display standard empty queue
+    render(
+      <AppProvider>
+        <DashboardView />
+      </AppProvider>
+    );
+    expect(screen.getByText("Pending Approval Queue")).toBeTruthy();
   });
 });

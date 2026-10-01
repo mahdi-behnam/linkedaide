@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AppProvider } from "../src/context/AppContext";
 import { ComposerView } from "../src/views/ComposerView";
@@ -88,14 +88,23 @@ describe("ComposerView", () => {
   });
 
   it("handles Carousel PDF previewer with multi-slide navigation and media removal", () => {
+    if (!window.URL.createObjectURL) {
+      window.URL.createObjectURL = vi.fn(() => "blob:test-pdf-url");
+    } else {
+      vi.spyOn(window.URL, "createObjectURL").mockReturnValue("blob:test-pdf-url");
+    }
+
     renderComposer();
 
     // Dropzone initially visible
     expect(screen.getByTestId("media-dropzone")).toBeTruthy();
 
-    // Attach sample 5-slide carousel PDF
-    const attachPdfBtn = screen.getByTestId("attach-sample-carousel");
-    fireEvent.click(attachPdfBtn);
+    // Attach PDF via file input
+    const fileInput = screen.getByTestId("media-file-input");
+    const testFile = new File(["sample pdf binary"], "architecture-guide.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
 
     // Dropzone replaced by slide viewer
     expect(screen.queryByTestId("media-dropzone")).toBeNull();

@@ -242,10 +242,10 @@ function registerIpcHandlers(): void {
         return { valid: true, daysRemaining, details: "Active li_at cookie" };
       }
     } catch {
-      // Fallback to default verified status
+      // Fallback if session check encounters an error
     }
 
-    return { valid: true, daysRemaining: 18, details: "Active li_at cookie" };
+    return { valid: false, daysRemaining: 0, details: "No active LinkedIn session found in storage" };
   });
 }
 

@@ -30,6 +30,8 @@ export const DashboardView: React.FC = () => {
     lastTriggerMessage,
   } = useApp();
 
+  const pendingCount = telemetry?.pendingCount ?? 0;
+
   return (
     <div className="space-y-6">
       {/* Header & Command Center Title */}
@@ -146,20 +148,20 @@ export const DashboardView: React.FC = () => {
           <div className="overflow-hidden">
             <p className="text-[11px] font-medium text-zinc-400">NVIDIA NIM Model</p>
             <p className="truncate font-mono text-xs font-semibold text-zinc-200">
-              llama-3.1-70b
+              {telemetry.nimModel ? telemetry.nimModel.replace(/^meta\//, "") : "Not configured"}
             </p>
           </div>
         </div>
 
         {/* LinkedIn Session */}
         <div className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-emerald-400">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 ${telemetry.sessionValid ? "text-emerald-400" : "text-amber-400"}`}>
             <ShieldCheck size={18} />
           </div>
           <div className="overflow-hidden">
             <p className="text-[11px] font-medium text-zinc-400">LinkedIn Session</p>
-            <p className="truncate text-xs font-semibold text-emerald-400">
-              Active & Encrypted
+            <p className={`truncate text-xs font-semibold ${telemetry.sessionValid ? "text-emerald-400" : "text-amber-400"}`}>
+              {telemetry.sessionValid ? "Active & Encrypted" : "No Active Session"}
             </p>
           </div>
         </div>
@@ -172,7 +174,7 @@ export const DashboardView: React.FC = () => {
           <div className="overflow-hidden">
             <p className="text-[11px] font-medium text-zinc-400">Last Scout Run</p>
             <p className="truncate text-xs font-semibold text-zinc-200">
-              {telemetry.lastScanAt}
+              {telemetry.lastScanAt || "Never"}
             </p>
           </div>
         </div>
@@ -236,26 +238,37 @@ export const DashboardView: React.FC = () => {
           >
             <span>Review Queue</span>
             <span className="rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[10px] text-amber-300">
-              3
+              {pendingCount}
             </span>
           </button>
         </div>
 
-        <div className="mt-4 rounded-md border border-zinc-800/80 bg-zinc-950/70 p-3">
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10px] text-emerald-400 uppercase">
-                comment
-              </span>
-              <span className="font-medium text-zinc-300">Satya Nadella</span>
-              <span className="text-zinc-500">(Chairman & CEO at Microsoft)</span>
+        {pendingCount > 0 ? (
+          <div className="mt-4 rounded-md border border-zinc-800/80 bg-zinc-950/70 p-3">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-400 uppercase">
+                  pending
+                </span>
+                <span className="font-medium text-zinc-300">
+                  {pendingCount} {pendingCount === 1 ? "action" : "actions"} awaiting review
+                </span>
+              </div>
+              <span className="font-mono text-[11px] text-zinc-400">Queue active</span>
             </div>
-            <span className="font-mono text-[11px] text-zinc-400">92% Confidence</span>
+            <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+              Autonomous scout has queued candidate drafts awaiting human verification before edge execution.
+            </p>
           </div>
-          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">
-            "The compounding returns on autonomous verification pipelines highlight why deterministic guardrails matter more than raw model scale."
-          </p>
-        </div>
+        ) : (
+          <div className="mt-4 flex flex-col items-center justify-center rounded-md border border-dashed border-zinc-800/80 py-6 text-center">
+            <Inbox size={22} className="text-zinc-600 mb-1.5" />
+            <p className="text-xs font-medium text-zinc-400">No pending approvals in queue</p>
+            <p className="mt-0.5 text-[11px] text-zinc-500">
+              All scout suggestions reviewed. New candidates will appear here as feeds are scanned.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

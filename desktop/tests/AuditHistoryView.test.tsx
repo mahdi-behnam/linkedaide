@@ -2,6 +2,32 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AppProvider } from "../src/context/AppContext";
 import { AuditHistoryView, buildMediaUrl } from "../src/views/AuditHistoryView";
+import { AuditEntry } from "../src/types";
+
+const fixtureAuditEntries: AuditEntry[] = [
+  {
+    id: "hist-001",
+    itemId: "act-8f4b1e",
+    actionType: "comment",
+    status: "executed_success",
+    decidedAt: "2026-09-30T10:00:00Z",
+    executedAt: "2026-09-30T10:02:00Z",
+    targetAuthor: "Dr. Evelyn Reed",
+    targetHeadline: "VP of Distributed Systems",
+    targetUrl: "https://linkedin.com/feed/update/urn:li:activity:998877",
+    draftExcerpt: "Deterministic checkpoints ensure replayability across runs.",
+    screenshotPath: "screenshots/success_comment_act-8f4b1e.png",
+  },
+  {
+    id: "hist-002",
+    itemId: "act-7c2a9f",
+    actionType: "post",
+    status: "rejected",
+    decidedAt: "2026-09-29T14:20:00Z",
+    targetAuthor: "Self Post",
+    draftExcerpt: "Exploring speculative decoding in production pipelines.",
+  },
+];
 
 describe("AuditHistoryView & R2 Media Vault", () => {
   beforeEach(() => {
@@ -59,13 +85,22 @@ describe("AuditHistoryView & R2 Media Vault", () => {
   });
 
   describe("AuditHistoryView rendering and interactive modal", () => {
-    const renderAuditHistory = () => {
+    const renderAuditHistory = (initialEntries?: AuditEntry[]) => {
       return render(
         <AppProvider>
-          <AuditHistoryView />
+          <AuditHistoryView initialEntries={initialEntries ?? fixtureAuditEntries} />
         </AppProvider>
       );
     };
+
+    it("renders empty state cleanly when no audit entries exist", () => {
+      renderAuditHistory([]);
+      expect(screen.getByText("Audit History")).toBeTruthy();
+      expect(screen.getByText("Showing 0 of 0")).toBeTruthy();
+      expect(
+        screen.getByText("No audit log entries match the selected filters.")
+      ).toBeTruthy();
+    });
 
     it("renders the Audit History title and table rows", () => {
       renderAuditHistory();

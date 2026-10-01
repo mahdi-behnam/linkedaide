@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { ScheduledPost, MediaAttachment } from "../types";
 import {
@@ -128,33 +128,7 @@ const TOPIC_PILLARS = [
   "General",
 ];
 
-const SAMPLE_CAROUSEL_SLIDES = [
-  {
-    title: "The Problem",
-    subtitle: "Why Autonomous Agents Fail in Production",
-    highlight: "State mutation without deterministic gates leads to cascading side effects.",
-  },
-  {
-    title: "Invariant 1",
-    subtitle: "Durable State Isolation",
-    highlight: "Edge KV namespaces keep operational state private and avoid git merge collisions.",
-  },
-  {
-    title: "Invariant 2",
-    subtitle: "Mandatory Human Authorization",
-    highlight: "Every platform write requires Telegram relay sign-off with opaque tokens.",
-  },
-  {
-    title: "Invariant 3",
-    subtitle: "DOM Verification Safeguards",
-    highlight: "Never trust a button click until the confirmation element appears in the DOM tree.",
-  },
-  {
-    title: "Key Takeaway",
-    subtitle: "Deterministic Orchestration Wins",
-    highlight: "Let LLMs propose drafts, but let deterministic graphs enforce policies.",
-  },
-];
+
 
 export const ComposerView: React.FC = () => {
   const {
@@ -173,6 +147,7 @@ export const ComposerView: React.FC = () => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [appliedHookName, setAppliedHookName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Initialize or populate when activePostForEditing changes
   useEffect(() => {
@@ -238,38 +213,31 @@ export const ComposerView: React.FC = () => {
     setTimeout(() => setFeedbackMessage(null), 4000);
   };
 
-  // Attach sample carousel PDF
-  const handleAttachSampleCarousel = () => {
-    const attachment: MediaAttachment = {
-      media_type: "carousel_pdf",
-      file_name: "hitl-agent-architecture.pdf",
-      file_url: "mock://hitl-agent-architecture.pdf",
-      slide_count: 5,
-    };
-    setMediaList([attachment]);
-    setCurrentSlideIndex(0);
-    setFeedbackMessage("Attached 5-slide Carousel PDF: hitl-agent-architecture.pdf");
-    setTimeout(() => setFeedbackMessage(null), 3000);
-  };
-
-  // Attach sample image
-  const handleAttachSampleImage = () => {
-    const attachment: MediaAttachment = {
-      media_type: "image",
-      file_name: "architecture-diagram.png",
-      file_url: "mock://architecture-diagram.png",
-      slide_count: 1,
-    };
-    setMediaList([attachment]);
-    setCurrentSlideIndex(0);
-    setFeedbackMessage("Attached image: architecture-diagram.png");
-    setTimeout(() => setFeedbackMessage(null), 3000);
-  };
-
   // Remove media
   const handleRemoveMedia = () => {
     setMediaList([]);
     setCurrentSlideIndex(0);
+  };
+
+  // Upload user file from device
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const fileUrl =
+      typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function"
+        ? window.URL.createObjectURL(file)
+        : "";
+    const attachment: MediaAttachment = {
+      media_type: isPdf ? "carousel_pdf" : "image",
+      file_name: file.name,
+      file_url: fileUrl,
+      slide_count: isPdf ? 5 : 1,
+    };
+    setMediaList([attachment]);
+    setCurrentSlideIndex(0);
+    setFeedbackMessage(`Attached ${isPdf ? "PDF document" : "image"}: ${file.name}`);
+    setTimeout(() => setFeedbackMessage(null), 3000);
   };
 
   // Save as Draft
@@ -635,12 +603,20 @@ export const ComposerView: React.FC = () => {
               )}
             </div>
 
-            {/* If no media attached: Dropzone Mockup */}
+            {/* Media Dropzone and Upload */}
             {!activeMedia ? (
               <div
                 data-testid="media-dropzone"
                 className="my-4 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-800 bg-zinc-950/60 p-6 text-center transition-colors hover:border-zinc-700"
               >
+                <input
+                  ref={fileInputRef}
+                  data-testid="media-file-input"
+                  type="file"
+                  accept="application/pdf,image/png,image/jpeg,image/webp"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
                 <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400">
                   <UploadSimple size={20} />
                 </div>
@@ -651,27 +627,14 @@ export const ComposerView: React.FC = () => {
                   Supports multi-slide PDF documents and high-res PNG/JPG
                 </p>
 
-                {/* Sample Preset Buttons */}
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  <button
-                    type="button"
-                    data-testid="attach-sample-carousel"
-                    onClick={handleAttachSampleCarousel}
-                    className="flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-200 hover:border-zinc-600 hover:bg-zinc-700 active:translate-y-[1px]"
-                  >
-                    <FilePdf size={13} className="text-red-400" />
-                    <span>Attach Carousel PDF (5 slides)</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="attach-sample-image"
-                    onClick={handleAttachSampleImage}
-                    className="flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-200 hover:border-zinc-600 hover:bg-zinc-700 active:translate-y-[1px]"
-                  >
-                    <ImageIcon size={13} className="text-blue-400" />
-                    <span>Attach Single Image</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-3 flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 active:translate-y-[1px]"
+                >
+                  <UploadSimple size={14} className="text-emerald-400" />
+                  <span>Browse Device Files</span>
+                </button>
               </div>
             ) : (
               /* Media Preview Canvas */
@@ -688,7 +651,7 @@ export const ComposerView: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Interactive Slide Mockup Canvas */}
+                {/* Interactive Slide Canvas */}
                 <div className="relative aspect-4/3 w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 p-4 shadow-inner">
                   {activeMedia.media_type === "carousel_pdf" ? (
                     <div className="flex h-full flex-col justify-between">
@@ -703,18 +666,18 @@ export const ComposerView: React.FC = () => {
                       </div>
 
                       {/* Slide Core Content */}
-                      <div className="py-2">
-                        <h3 className="text-sm font-semibold text-zinc-100">
-                          {SAMPLE_CAROUSEL_SLIDES[currentSlideIndex]?.title ||
-                            `Slide ${currentSlideIndex + 1}`}
+                      <div className="flex flex-1 flex-col items-center justify-center p-4 text-center">
+                        <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400">
+                          <FilePdf size={24} />
+                        </div>
+                        <h3 className="text-xs font-semibold text-zinc-200 truncate max-w-xs">
+                          {activeMedia.file_name}
                         </h3>
-                        <p className="mt-1 text-xs font-medium text-emerald-300">
-                          {SAMPLE_CAROUSEL_SLIDES[currentSlideIndex]?.subtitle ||
-                            "Architecture Invariant"}
+                        <p className="mt-1 font-mono text-[11px] text-zinc-400">
+                          Page {currentSlideIndex + 1} of {totalSlides}
                         </p>
-                        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
-                          {SAMPLE_CAROUSEL_SLIDES[currentSlideIndex]?.highlight ||
-                            "Detailed technical teardown and diagram representation."}
+                        <p className="mt-1.5 text-[10px] text-zinc-500">
+                          Multi-page Carousel Document
                         </p>
                       </div>
 
@@ -726,13 +689,21 @@ export const ComposerView: React.FC = () => {
                     </div>
                   ) : (
                     /* Image preview */
-                    <div className="flex h-full flex-col items-center justify-center text-center">
-                      <ImageIcon size={36} className="text-blue-400/80" />
-                      <p className="mt-2 text-xs font-medium text-zinc-200">
+                    <div className="flex h-full flex-col items-center justify-center text-center p-2">
+                      {activeMedia.file_url && (activeMedia.file_url.startsWith("blob:") || activeMedia.file_url.startsWith("data:") || activeMedia.file_url.startsWith("http")) ? (
+                        <img
+                          src={activeMedia.file_url}
+                          alt={activeMedia.file_name}
+                          className="max-h-40 max-w-full rounded object-contain"
+                        />
+                      ) : (
+                        <ImageIcon size={36} className="text-blue-400/80" />
+                      )}
+                      <p className="mt-2 text-xs font-medium text-zinc-200 truncate max-w-xs">
                         {activeMedia.file_name}
                       </p>
                       <p className="mt-1 text-[11px] text-zinc-500">
-                        1200 x 675 Architecture Diagram Mockup
+                        Image attachment ({activeMedia.file_name.endsWith(".png") ? "PNG" : activeMedia.file_name.endsWith(".jpg") || activeMedia.file_name.endsWith(".jpeg") ? "JPEG" : "Media"})
                       </p>
                     </div>
                   )}

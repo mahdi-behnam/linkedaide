@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import {
   Check,
@@ -33,60 +33,6 @@ export interface PendingItem {
   topic: string;
 }
 
-export const initialPendingItems: PendingItem[] = [
-  {
-    id: "act-8f4b1e",
-    actionType: "comment",
-    author: "Satya Nadella",
-    headline: "Chairman and CEO at Microsoft",
-    postUrl: "https://linkedin.com/feed/update/urn:li:activity:7245890012",
-    postExcerpt:
-      "Autonomous AI systems in the enterprise require reliable verification architectures before scaling critical decision workflows.",
-    draftText:
-      "The compounding returns on autonomous verification pipelines highlight why deterministic guardrails matter more than raw model scale. Human-in-the-loop validation bridges the gap between probabilistic generation and mission-critical reliability.",
-    confidence: 0.94,
-    reasoning:
-      "High-signal post directly aligned with enterprise AI reliability focus areas. Technical deep dive response recommended.",
-    engagementStyle: "technical_deep_dive",
-    createdAt: "15m ago",
-    topic: "Enterprise AI",
-  },
-  {
-    id: "act-4c9a2d",
-    actionType: "comment",
-    author: "Harrison Chase",
-    headline: "Co-Founder and CEO at LangChain",
-    postUrl: "https://linkedin.com/feed/update/urn:li:activity:7245834921",
-    postExcerpt:
-      "Stateful agent workflows in production: why checkpoint persistence and deterministic graph transitions prevent cascading failure loops.",
-    draftText:
-      "Separating workflow orchestration state from transient LLM checkpoints is the key architectural leap. Combining Cloudflare KV edge stores with LangGraph guarantees zero-conflict deterministic recovery.",
-    confidence: 0.91,
-    reasoning:
-      "Direct alignment with LangGraph orchestration principles and persistent state stores.",
-    engagementStyle: "supportive_synthesis",
-    createdAt: "35m ago",
-    topic: "Agent Orchestration",
-  },
-  {
-    id: "act-2e5f8b",
-    actionType: "post",
-    author: "Operator (Self)",
-    headline: "Original HITL Agent Post",
-    postUrl: "",
-    postExcerpt:
-      "Original thought leadership draft analyzing human-in-the-loop safety boundaries and session isolation.",
-    draftText:
-      "Why human-in-the-loop is the prerequisite for enterprise agent deployment: an architectural deep-dive into determinism, state isolation, and zero-leak session vaults.",
-    confidence: 0.88,
-    reasoning:
-      "Feed trends reflect high engagement on agent safety and human authorization architectures.",
-    engagementStyle: "technical_deep_dive",
-    createdAt: "1h ago",
-    topic: "Thought Leadership",
-  },
-];
-
 interface ToneOption {
   label: string;
   tone: string;
@@ -109,11 +55,9 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
   initialItems,
 }) => {
   const { setPendingCount } = useApp();
-  const [items, setItems] = useState<PendingItem[]>(
-    initialItems ?? initialPendingItems
-  );
+  const [items, setItems] = useState<PendingItem[]>(() => initialItems ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(
-    () => (initialItems ?? initialPendingItems)[0]?.id ?? null
+    () => (initialItems ?? [])[0]?.id ?? null
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeRewriteTone, setActiveRewriteTone] = useState<string | null>(null);
@@ -125,6 +69,49 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const queueListRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (initialItems !== undefined) return;
+    if (typeof window === "undefined" || !window.api?.fetchState) return;
+
+    let isMounted = true;
+    try {
+      const promise = window.api.fetchState();
+      if (promise && typeof promise.then === "function") {
+        promise
+          .then((state) => {
+            if (!isMounted || !state) return;
+            const rawPending = state.pending_actions || state.pendingActions || [];
+            if (rawPending.length > 0) {
+              const mapped: PendingItem[] = rawPending.map((p) => ({
+                id: p.item_id,
+                actionType: (p.action_type?.includes("post") ? "post" : "comment") as "comment" | "post",
+                author: p.author_name || "Unknown Author",
+                headline: p.author_headline || "LinkedIn Member",
+                postUrl: p.post_url || "",
+                postExcerpt: p.post_excerpt || "",
+                draftText: p.draft_text || "",
+                confidence: p.confidence ?? 0.85,
+                reasoning: p.reasoning || "",
+                engagementStyle: p.engagement_style || "Thought Leadership",
+                createdAt: p.created_at || new Date().toISOString(),
+                topic: "Engineering",
+              }));
+              setItems(mapped);
+              setSelectedId((prev) => prev ?? mapped[0]?.id ?? null);
+              setPendingCount(mapped.length);
+            }
+          })
+          .catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialItems, setPendingCount]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return items;

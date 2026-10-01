@@ -21,14 +21,14 @@ export const VaultView: React.FC = () => {
 
   const [isVerifyingHealth, setIsVerifyingHealth] = useState<boolean>(false);
   const [healthStatus, setHealthStatus] = useState<CookieHealthState>({
-    valid: true,
-    daysRemaining: 18,
-    details: "Active li_at cookie",
+    valid: false,
+    daysRemaining: 0,
+    details: "Checking session...",
   });
   const [lastVerifiedAt, setLastVerifiedAt] = useState<string | null>(null);
 
   const [encryptionKeyStatus, setEncryptionKeyStatus] = useState<string>(
-    "Loaded / Valid 32-byte Fernet"
+    "Checking encryption key..."
   );
   const [keyFeedback, setKeyFeedback] = useState<string | null>(null);
   const [isGeneratingKey, setIsGeneratingKey] = useState<boolean>(false);
@@ -40,19 +40,38 @@ export const VaultView: React.FC = () => {
     async function initVault() {
       if (typeof window !== "undefined" && window.api) {
         try {
+          if (window.api.getSettings) {
+            const settings = await window.api.getSettings();
+            if (mounted) {
+              setEncryptionKeyStatus(
+                settings?.encryptionKey
+                  ? "Loaded / Valid 32-byte Fernet"
+                  : "Not configured / Key missing"
+              );
+            }
+          }
           if (window.api.checkSessionHealth) {
             const health = await window.api.checkSessionHealth();
             if (mounted && health) {
               setHealthStatus({
                 valid: health.valid,
-                daysRemaining: health.daysRemaining ?? 18,
-                details: health.details || "Active li_at cookie",
+                daysRemaining: health.daysRemaining ?? (health.valid ? 18 : 0),
+                details: health.details || (health.valid ? "Active li_at cookie" : "No active session"),
               });
               setLastVerifiedAt("Just now");
             }
           }
         } catch {
           // ignore error on initial passive check
+        }
+      } else {
+        if (mounted) {
+          setEncryptionKeyStatus("Not configured / Key missing");
+          setHealthStatus({
+            valid: false,
+            daysRemaining: 0,
+            details: "Desktop API unavailable outside Electron runtime",
+          });
         }
       }
     }
@@ -88,10 +107,8 @@ export const VaultView: React.FC = () => {
           );
         }
       } else {
-        // Fallback for simulation / mock environment
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        setCaptureSuccess(
-          "LinkedIn session captured successfully! Storage state encrypted and synced to Cloudflare KV."
+        setCaptureError(
+          "Session capture requires running within the Electron desktop application"
         );
       }
     } catch (err) {
@@ -113,23 +130,23 @@ export const VaultView: React.FC = () => {
         const res = await window.api.checkSessionHealth();
         setHealthStatus({
           valid: res.valid,
-          daysRemaining: res.daysRemaining ?? 18,
-          details: res.details || "Active li_at cookie",
+          daysRemaining: res.daysRemaining ?? (res.valid ? 18 : 0),
+          details: res.details || (res.valid ? "Active li_at cookie" : "No active session"),
         });
         setLastVerifiedAt("Just now");
       } else {
-        // Fallback simulation
-        await new Promise((resolve) => setTimeout(resolve, 500));
         setHealthStatus({
-          valid: true,
-          daysRemaining: 18,
-          details: "Active li_at cookie",
+          valid: false,
+          daysRemaining: 0,
+          details: "Session health check unavailable outside desktop runtime",
         });
         setLastVerifiedAt("Just now");
       }
     } catch (err) {
       setHealthStatus((prev) => ({
         ...prev,
+        valid: false,
+        daysRemaining: 0,
         details: err instanceof Error ? err.message : "Health check failed",
       }));
     } finally {
@@ -149,8 +166,9 @@ export const VaultView: React.FC = () => {
           await window.api.saveSettings({ encryptionKey: newKey });
         }
       } else {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        newKey = "generated-mock-fernet-key-32b=";
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+        newKey = btoa(String.fromCharCode(...randomBytes));
       }
       setEncryptionKeyStatus("Loaded / Valid 32-byte Fernet");
       setKeyFeedback(
@@ -287,18 +305,26 @@ export const VaultView: React.FC = () => {
               <span className="text-zinc-500">li_at status:</span>
               <span
                 data-testid="li-at-status"
-                className="font-medium text-emerald-400"
+                className={`font-medium ${healthStatus.valid ? "text-emerald-400" : "text-amber-400"}`}
               >
-                Active ({healthStatus.daysRemaining} days remaining)
+                {healthStatus.valid
+                  ? `Active (${healthStatus.daysRemaining} days remaining)`
+                  : healthStatus.details === "Checking session..."
+                    ? "Checking session..."
+                    : "No active session"}
               </span>
             </div>
             <div className="flex justify-between border-b border-zinc-800/40 pb-1.5">
               <span className="text-zinc-500">JSESSIONID status:</span>
               <span
                 data-testid="jsessionid-status"
-                className="font-medium text-emerald-400"
+                className={`font-medium ${healthStatus.valid ? "text-emerald-400" : "text-zinc-500"}`}
               >
-                Active (CSRF token valid)
+                {healthStatus.valid
+                  ? "Active (CSRF token valid)"
+                  : healthStatus.details === "Checking session..."
+                    ? "Checking..."
+                    : "Inactive / Missing"}
               </span>
             </div>
             <div className="flex justify-between border-b border-zinc-800/40 pb-1.5">
@@ -374,14 +400,26 @@ export const VaultView: React.FC = () => {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
         <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
           <div className="flex items-center gap-2.5">
-            <LockKey size={18} className="text-emerald-400" />
+            <LockKey size={18} className={healthStatus.valid ? "text-emerald-400" : "text-zinc-500"} />
             <h3 className="text-xs font-semibold text-zinc-200">
               Cloudflare KV Sync Status
             </h3>
           </div>
-          <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
-            <CheckCircle size={12} weight="fill" />
-            <span>Synced</span>
+          <span
+            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
+              healthStatus.valid
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                : "border-zinc-800 bg-zinc-900/80 text-zinc-400"
+            }`}
+          >
+            {healthStatus.valid ? (
+              <>
+                <CheckCircle size={12} weight="fill" />
+                <span>Synced</span>
+              </>
+            ) : (
+              <span>Not Synced</span>
+            )}
           </span>
         </div>
 
@@ -390,9 +428,9 @@ export const VaultView: React.FC = () => {
             <div className="text-zinc-500">Encrypted Payload Status:</div>
             <div
               data-testid="kv-payload-status"
-              className="mt-1 font-semibold text-zinc-200"
+              className={`mt-1 font-semibold ${healthStatus.valid ? "text-zinc-200" : "text-zinc-500"}`}
             >
-              LINKEDIN_SESSION_STATE_ENC in KV
+              {healthStatus.valid ? "LINKEDIN_SESSION_STATE_ENC in KV" : "Awaiting session capture"}
             </div>
           </div>
           <div className="rounded border border-zinc-800/80 bg-zinc-950 p-2.5">

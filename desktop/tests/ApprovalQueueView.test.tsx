@@ -6,6 +6,60 @@ import {
   PendingItem,
 } from "../src/views/ApprovalQueueView";
 
+const fixturePendingItems: PendingItem[] = [
+  {
+    id: "act-8f4b1e",
+    actionType: "comment",
+    author: "Satya Nadella",
+    headline: "Chairman and CEO at Microsoft",
+    postUrl: "https://linkedin.com/feed/update/urn:li:activity:7245890012",
+    postExcerpt:
+      "Autonomous AI systems in the enterprise require reliable verification architectures before scaling critical decision workflows.",
+    draftText:
+      "The compounding returns on autonomous verification pipelines highlight why deterministic guardrails matter more than raw model scale. Human-in-the-loop validation bridges the gap between probabilistic generation and mission-critical reliability.",
+    confidence: 0.94,
+    reasoning:
+      "High-signal post directly aligned with enterprise AI reliability focus areas. Technical deep dive response recommended.",
+    engagementStyle: "technical_deep_dive",
+    createdAt: "15m ago",
+    topic: "Enterprise AI",
+  },
+  {
+    id: "act-4c9a2d",
+    actionType: "comment",
+    author: "Harrison Chase",
+    headline: "Co-Founder and CEO at LangChain",
+    postUrl: "https://linkedin.com/feed/update/urn:li:activity:7245834921",
+    postExcerpt:
+      "Stateful agent workflows in production: why checkpoint persistence and deterministic graph transitions prevent cascading failure loops.",
+    draftText:
+      "Separating workflow orchestration state from transient LLM checkpoints is the key architectural leap. Combining Cloudflare KV edge stores with LangGraph guarantees zero-conflict deterministic recovery.",
+    confidence: 0.91,
+    reasoning:
+      "Direct alignment with LangGraph orchestration principles and persistent state stores.",
+    engagementStyle: "supportive_synthesis",
+    createdAt: "35m ago",
+    topic: "Agent Orchestration",
+  },
+  {
+    id: "act-2e5f8b",
+    actionType: "post",
+    author: "Operator (Self)",
+    headline: "Original HITL Agent Post",
+    postUrl: "",
+    postExcerpt:
+      "Original thought leadership draft analyzing human-in-the-loop safety boundaries and session isolation.",
+    draftText:
+      "Why human-in-the-loop is the prerequisite for enterprise agent deployment: an architectural deep-dive into determinism, state isolation, and zero-leak session vaults.",
+    confidence: 0.88,
+    reasoning:
+      "Feed trends reflect high engagement on agent safety and human authorization architectures.",
+    engagementStyle: "technical_deep_dive",
+    createdAt: "1h ago",
+    topic: "Thought Leadership",
+  },
+];
+
 describe("ApprovalQueueView", () => {
   beforeEach(() => {
     window.api = {
@@ -33,7 +87,7 @@ describe("ApprovalQueueView", () => {
   const renderApprovalQueue = (props?: { initialItems?: PendingItem[] }) => {
     return render(
       <AppProvider>
-        <ApprovalQueueView {...props} />
+        <ApprovalQueueView initialItems={props ? props.initialItems : fixturePendingItems} />
       </AppProvider>
     );
   };
@@ -184,6 +238,19 @@ describe("ApprovalQueueView", () => {
 
   it("renders empty state when no items remain", () => {
     renderApprovalQueue({ initialItems: [] });
+
+    expect(screen.getByTestId("empty-queue-state")).toBeTruthy();
+    expect(
+      screen.getByText("All caught up. Zero pending approvals.")
+    ).toBeTruthy();
+  });
+
+  it("renders standard empty state when rendered without initialItems", () => {
+    render(
+      <AppProvider>
+        <ApprovalQueueView />
+      </AppProvider>
+    );
 
     expect(screen.getByTestId("empty-queue-state")).toBeTruthy();
     expect(

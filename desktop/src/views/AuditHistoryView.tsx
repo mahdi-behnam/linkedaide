@@ -34,8 +34,13 @@ export function getEntryScreenshotPath(entry: AuditEntry): string | undefined {
   return entry.screenshotPath || entry.screenshot_path;
 }
 
-export const AuditHistoryView: React.FC = () => {
-  const { auditEntries, telemetry } = useApp();
+export interface AuditHistoryViewProps {
+  initialEntries?: AuditEntry[];
+}
+
+export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntries }) => {
+  const { auditEntries: contextEntries, telemetry } = useApp();
+  const auditEntries = initialEntries ?? contextEntries;
   const [settings, setSettings] = useState<DesktopSettings | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");

@@ -1,22 +1,61 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { StatusPill } from "../components/StatusPill";
 import {
   ArrowClockwise,
   CheckCircle,
+  WarningCircle,
   Database,
   Globe,
   ShieldCheck,
   Cpu,
   LockKey,
 } from "../components/icons";
+import type { DesktopSettings } from "../types/api";
 
 export const DoctorView: React.FC = () => {
-  const { doctorChecks, isCheckingDoctor, runDoctorCheck } = useApp();
+  const { doctorChecks, isCheckingDoctor, runDoctorCheck, telemetry } = useApp();
+  const [settings, setSettings] = useState<DesktopSettings | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    if (typeof window !== "undefined" && window.api?.getSettings) {
+      window.api
+        .getSettings()
+        .then((s) => {
+          if (mounted && s) setSettings(s);
+        })
+        .catch(() => {});
+    }
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const envAuditList = useMemo(() => {
+    const hasKey = Boolean(settings?.encryptionKey);
+    const hasSecret = Boolean(settings?.apiSecret);
+    const hasWorker = Boolean(settings?.workerUrl);
+    return [
+      { key: "NVIDIA_NIM_API_KEY", loaded: Boolean(telemetry?.nimModel) },
+      { key: "NIM_MODEL_PRIMARY", loaded: Boolean(telemetry?.nimModel) },
+      { key: "TELEGRAM_BOT_TOKEN", loaded: Boolean(settings?.notificationsEnabled) },
+      { key: "TELEGRAM_CHAT_ID", loaded: Boolean(settings?.notificationsEnabled) },
+      { key: "SESSION_ENCRYPTION_KEY", loaded: hasKey },
+      { key: "LINKEDIN_SESSION_STATE_ENC", loaded: Boolean(telemetry?.sessionValid) },
+      { key: "CF_ACCOUNT_ID", loaded: hasWorker },
+      { key: "CF_KV_NAMESPACE_ID", loaded: Boolean(telemetry?.kvBackend) },
+      { key: "CF_API_TOKEN", loaded: hasSecret },
+      { key: "MAX_COMMENTS_PER_DAY", loaded: Boolean(settings?.maxCommentsPerDay) },
+      { key: "DRY_RUN", loaded: true },
+    ];
+  }, [settings, telemetry]);
+
+  const loadedVarsCount = envAuditList.filter((v) => v.loaded).length;
 
   const passedCount = doctorChecks.filter((c) => c.status === "pass").length;
   const totalCount = doctorChecks.length;
-  const isAllPassing = passedCount === totalCount;
+  const isAllPassing = totalCount > 0 && passedCount === totalCount;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -46,8 +85,8 @@ export const DoctorView: React.FC = () => {
               System Diagnostics
             </h1>
             <StatusPill
-              status={isAllPassing ? "operational" : "paused"}
-              label={`${passedCount} / ${totalCount} Checks Passing`}
+              status={totalCount === 0 ? "paused" : isAllPassing ? "operational" : "tripped"}
+              label={totalCount === 0 ? "Awaiting Execution" : `${passedCount} / ${totalCount} Checks Passing`}
               size="sm"
             />
           </div>
@@ -79,51 +118,60 @@ export const DoctorView: React.FC = () => {
 
       {/* Diagnostics Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {doctorChecks.map((check) => (
-          <div
-            key={check.id}
-            data-testid={`doctor-check-${check.id}`}
-            className="flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-colors hover:border-zinc-700/80"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950">
-                    {getCategoryIcon(check.category)}
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-semibold text-zinc-200">
-                      {check.title}
-                    </h3>
-                    <span className="font-mono text-[10px] text-zinc-500 uppercase">
-                      Category: {check.category}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {check.latencyMs !== undefined && (
-                    <span className="font-mono text-[11px] text-zinc-400">
-                      {check.latencyMs}ms
-                    </span>
-                  )}
-                  <StatusPill status={check.status} size="sm" />
-                </div>
-              </div>
-
-              <p className="mt-3 text-xs leading-relaxed text-zinc-400">
-                {check.detail}
-              </p>
-            </div>
-
-            {check.recommendation && (
-              <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                <span className="font-semibold">Recommendation: </span>
-                {check.recommendation}
-              </div>
-            )}
+        {doctorChecks.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-800 p-8 text-center">
+            <p className="text-xs text-zinc-400">No diagnostic checks performed yet</p>
+            <p className="mt-1 text-[11px] text-zinc-600">
+              Click &apos;Run Doctor Checks&apos; above to verify runtime dependencies, session health, and cloud connectivity.
+            </p>
           </div>
-        ))}
+        ) : (
+          doctorChecks.map((check) => (
+            <div
+              key={check.id}
+              data-testid={`doctor-check-${check.id}`}
+              className="flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-colors hover:border-zinc-700/80"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950">
+                      {getCategoryIcon(check.category)}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-semibold text-zinc-200">
+                        {check.title}
+                      </h3>
+                      <span className="font-mono text-[10px] text-zinc-500 uppercase">
+                        Category: {check.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {check.latencyMs !== undefined && (
+                      <span className="font-mono text-[11px] text-zinc-400">
+                        {check.latencyMs}ms
+                      </span>
+                    )}
+                    <StatusPill status={check.status} size="sm" />
+                  </div>
+                </div>
+
+                <p className="mt-3 text-xs leading-relaxed text-zinc-400">
+                  {check.detail}
+                </p>
+              </div>
+
+              {check.recommendation && (
+                <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/10 p-2 text-[11px] text-amber-300">
+                  <span className="font-semibold">Recommendation: </span>
+                  {check.recommendation}
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       {/* Environment Security & Keys Card */}
@@ -136,30 +184,22 @@ export const DoctorView: React.FC = () => {
             </h3>
           </div>
           <span className="font-mono text-[11px] text-emerald-400">
-            All 11 Variables Loaded
+            {loadedVarsCount} / {envAuditList.length} Variables Configured
           </span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 md:grid-cols-4">
-          {[
-            "NVIDIA_NIM_API_KEY",
-            "NIM_MODEL_PRIMARY",
-            "TELEGRAM_BOT_TOKEN",
-            "TELEGRAM_CHAT_ID",
-            "SESSION_ENCRYPTION_KEY",
-            "LINKEDIN_SESSION_STATE_ENC",
-            "CF_ACCOUNT_ID",
-            "CF_KV_NAMESPACE_ID",
-            "CF_API_TOKEN",
-            "MAX_COMMENTS_PER_DAY",
-            "DRY_RUN",
-          ].map((key) => (
+          {envAuditList.map((item) => (
             <div
-              key={key}
+              key={item.key}
               className="flex items-center justify-between rounded border border-zinc-800/60 bg-zinc-950/60 px-2.5 py-1.5 font-mono text-[11px]"
             >
-              <span className="truncate text-zinc-400">{key}</span>
-              <CheckCircle size={12} weight="bold" className="shrink-0 text-emerald-400" />
+              <span className="truncate text-zinc-400">{item.key}</span>
+              {item.loaded ? (
+                <CheckCircle size={12} weight="bold" className="shrink-0 text-emerald-400" />
+              ) : (
+                <WarningCircle size={12} className="shrink-0 text-amber-500" />
+              )}
             </div>
           ))}
         </div>

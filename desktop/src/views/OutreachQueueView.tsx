@@ -128,7 +128,7 @@ export const OutreachQueueView: React.FC<OutreachQueueViewProps> = ({ initialIte
   };
 
   const pendingCount = items.filter((c) => c.status === "pending").length;
-  const connectionsSent = quota?.connectionsSent ?? 2;
+  const connectionsSent = quota?.connectionsSent ?? 0;
   const connectionsMax = quota?.connectionsMax ?? 10;
   const quotaPercent = Math.min(100, Math.round((connectionsSent / connectionsMax) * 100));
 

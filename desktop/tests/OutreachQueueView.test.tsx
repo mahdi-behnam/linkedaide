@@ -182,4 +182,25 @@ describe("OutreachQueueView", () => {
       expect(screen.getByTestId("pending-count-pill").textContent).toContain("2 Pending");
     });
   });
+
+  it("renders empty state cleanly when queue has no candidates", () => {
+    renderOutreachQueue([]);
+
+    expect(screen.getByTestId("pending-count-pill").textContent).toContain("0 Pending");
+    expect(screen.getByText("No connection candidates queued")).toBeTruthy();
+    expect(screen.getByText("Select a candidate on the left to inspect details")).toBeTruthy();
+    expect(screen.getByTestId("connection-quota-badge").textContent).toContain("0 / 10");
+  });
+
+  it("renders standard empty state when rendered without initialItems", () => {
+    render(
+      <AppProvider>
+        <OutreachQueueView />
+      </AppProvider>
+    );
+
+    expect(screen.getByTestId("pending-count-pill").textContent).toContain("0 Pending");
+    expect(screen.getByText("No connection candidates queued")).toBeTruthy();
+    expect(screen.getByText("Select a candidate on the left to inspect details")).toBeTruthy();
+  });
 });

@@ -107,7 +107,10 @@ export const SettingsView: React.FC = () => {
         const newKey = await window.api.generateFernetKey();
         handleChange("encryptionKey", newKey);
       } else {
-        handleChange("encryptionKey", "mockFernetKeyBase64Encoded32BytesPadding==");
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+        const newKey = btoa(String.fromCharCode(...randomBytes));
+        handleChange("encryptionKey", newKey);
       }
     } catch (err) {
       console.error("Failed to generate Fernet key:", err);
@@ -133,8 +136,10 @@ export const SettingsView: React.FC = () => {
         const latencyMs = Math.round(performance.now() - start);
         setTestResult({ success: true, latencyMs });
       } else {
-        await new Promise((r) => setTimeout(r, 200));
-        setTestResult({ success: true, latencyMs: 42 });
+        setTestResult({
+          success: false,
+          error: "Desktop API runner is not connected",
+        });
       }
     } catch (err) {
       setTestResult({

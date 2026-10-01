@@ -18,20 +18,31 @@ import {
 type CalendarViewMode = "week" | "month";
 type StatusFilter = "all" | ScheduledPostStatus;
 
-export const CalendarView: React.FC = () => {
+export interface CalendarViewProps {
+  initialPosts?: ScheduledPost[];
+  initialCommentWindows?: AutomatedCommentWindow[];
+}
+
+export const CalendarView: React.FC<CalendarViewProps> = ({
+  initialPosts,
+  initialCommentWindows,
+}) => {
   const {
-    scheduledPosts,
-    commentWindows,
+    scheduledPosts: contextPosts,
+    commentWindows: contextCommentWindows,
     setCurrentTab,
     setActivePostForEditing,
   } = useApp();
+
+  const scheduledPosts = initialPosts ?? contextPosts;
+  const commentWindows = initialCommentWindows ?? contextCommentWindows;
 
   const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
 
-  // Reference base date anchor (2026-09-29)
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 8, 29));
+  // Reference base date initialized to current date
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
   // Navigate calendar
   const handlePrev = () => {
@@ -59,7 +70,7 @@ export const CalendarView: React.FC = () => {
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date(2026, 8, 29));
+    setCurrentDate(new Date());
   };
 
   // Generate 7-day week array starting on Monday of current week
@@ -116,6 +127,55 @@ export const CalendarView: React.FC = () => {
       d1.getDate() === d2.getDate()
     );
   };
+
+  // Generate real calendar month grid cells for currentDate
+  const monthDays = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1);
+    const startDayIndex = (firstDayOfMonth.getDay() + 6) % 7; // Monday-first
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    const cells: { date: Date; dayNum: number; isCurrentMonth: boolean; isToday: boolean }[] = [];
+
+    // Leading days from previous month
+    for (let i = startDayIndex - 1; i >= 0; i--) {
+      const d = new Date(year, month - 1, daysInPrevMonth - i);
+      cells.push({
+        date: d,
+        dayNum: daysInPrevMonth - i,
+        isCurrentMonth: false,
+        isToday: isSameDay(d, new Date().toISOString()),
+      });
+    }
+
+    // Days in current month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(year, month, day);
+      cells.push({
+        date: d,
+        dayNum: day,
+        isCurrentMonth: true,
+        isToday: isSameDay(d, new Date().toISOString()),
+      });
+    }
+
+    // Trailing days from next month to fill grid (35 or 42 cells)
+    const totalCells = cells.length > 35 ? 42 : 35;
+    const remaining = totalCells - cells.length;
+    for (let day = 1; day <= remaining; day++) {
+      const d = new Date(year, month + 1, day);
+      cells.push({
+        date: d,
+        dayNum: day,
+        isCurrentMonth: false,
+        isToday: isSameDay(d, new Date().toISOString()),
+      });
+    }
+
+    return cells;
+  }, [currentDate]);
 
   // Status badge styling helper
   const getStatusBadge = (status: ScheduledPostStatus) => {
@@ -323,6 +383,30 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
 
+      {/* Empty State Prompt */}
+      {filteredPosts.length === 0 && (
+        <div
+          data-testid="calendar-empty-prompt"
+          className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-dashed border-zinc-800 bg-zinc-900/30 px-4 py-3 text-xs text-zinc-400"
+        >
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-zinc-500 shrink-0" />
+            <span>No scheduled posts found for this view. Create a new post in Composer to schedule content.</span>
+          </div>
+          <button
+            type="button"
+            data-testid="empty-new-post-btn"
+            onClick={() => {
+              setActivePostForEditing(null);
+              setCurrentTab("composer");
+            }}
+            className="shrink-0 rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-semibold text-emerald-300 hover:bg-emerald-500/20"
+          >
+            New Post
+          </button>
+        </div>
+      )}
+
       {/* Week Grid View */}
       {viewMode === "week" && (
         <div
@@ -330,10 +414,7 @@ export const CalendarView: React.FC = () => {
           className="grid grid-cols-1 gap-3 md:grid-cols-7"
         >
           {weekDays.map((dayDate, idx) => {
-            const isToday =
-              dayDate.getFullYear() === 2026 &&
-              dayDate.getMonth() === 8 &&
-              dayDate.getDate() === 29;
+            const isToday = isSameDay(dayDate, new Date().toISOString());
 
             const dayPosts = filteredPosts.filter((p) =>
               isSameDay(dayDate, p.scheduled_time)
@@ -467,31 +548,34 @@ export const CalendarView: React.FC = () => {
           </div>
 
           <div className="mt-2 grid grid-cols-7 gap-2">
-            {/* 35 Month Day Cells Mockup */}
-            {Array.from({ length: 35 }).map((_, i) => {
-              const dayNum = ((i + 28) % 30) + 1;
-              const isToday = i === 1; // Sep 29
-              const dayDateStr = `2026-09-${dayNum.toString().padStart(2, "0")}`;
-              const countPosts = filteredPosts.filter((p) =>
-                p.scheduled_time?.startsWith(dayDateStr)
-              ).length;
+            {monthDays.map((cell, i) => {
+              const dayPosts = filteredPosts.filter((p) =>
+                isSameDay(cell.date, p.scheduled_time)
+              );
+              const countPosts = dayPosts.length;
 
               return (
                 <div
                   key={i}
                   className={`min-h-[72px] rounded-md border p-2 transition-colors ${
-                    isToday
+                    cell.isToday
                       ? "border-emerald-500/40 bg-zinc-900/90"
-                      : "border-zinc-800/80 bg-zinc-950/50 hover:bg-zinc-900/60"
+                      : cell.isCurrentMonth
+                        ? "border-zinc-800/80 bg-zinc-950/50 hover:bg-zinc-900/60"
+                        : "border-zinc-800/40 bg-zinc-950/20 opacity-40 hover:opacity-75"
                   }`}
                 >
                   <div className="flex items-center justify-between text-[11px]">
                     <span
                       className={`font-mono ${
-                        isToday ? "font-bold text-emerald-400" : "text-zinc-400"
+                        cell.isToday
+                          ? "font-bold text-emerald-400"
+                          : cell.isCurrentMonth
+                            ? "text-zinc-400"
+                            : "text-zinc-600"
                       }`}
                     >
-                      {dayNum}
+                      {cell.dayNum}
                     </span>
                     {countPosts > 0 && (
                       <span className="rounded-full bg-cyan-500/20 px-1.5 py-0.2 font-mono text-[9px] text-cyan-300">
@@ -500,9 +584,17 @@ export const CalendarView: React.FC = () => {
                     )}
                   </div>
                   {countPosts > 0 && (
-                    <div className="mt-1 flex flex-col gap-0.5">
-                      <div className="h-1 rounded-full bg-cyan-400/80 w-3/4" />
-                      <div className="h-1 rounded-full bg-violet-400/60 w-1/2" />
+                    <div className="mt-1 flex flex-col gap-1">
+                      {dayPosts.slice(0, 2).map((p) => (
+                        <div
+                          key={p.id}
+                          onClick={() => setSelectedPost(p)}
+                          className="cursor-pointer truncate rounded bg-zinc-800/80 px-1 py-0.5 font-mono text-[9px] text-zinc-300 hover:text-white"
+                          title={p.headline}
+                        >
+                          {p.headline || p.id}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -527,32 +619,38 @@ export const CalendarView: React.FC = () => {
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-            {commentWindows.map((win) => (
-              <div
-                key={win.id}
-                className="flex flex-col justify-between rounded-md border border-zinc-800/90 bg-zinc-950/70 p-3"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] text-violet-400 font-semibold">
-                      {win.start_time} - {win.end_time} UTC
-                    </span>
-                    <span className="rounded bg-violet-500/10 px-1.5 py-0.2 text-[9px] text-violet-300 font-medium">
-                      {win.status}
-                    </span>
-                  </div>
-                  <h4 className="mt-1.5 text-xs font-medium text-zinc-200">
-                    {win.title}
-                  </h4>
-                  <p className="mt-1 line-clamp-1 text-[10px] text-zinc-500">
-                    {win.topic_filter}
-                  </p>
-                </div>
-                <div className="mt-2 pt-2 border-t border-zinc-800/60 font-mono text-[9px] text-zinc-600">
-                  Runs: {win.days.join(", ")}
-                </div>
+            {commentWindows.length === 0 ? (
+              <div className="col-span-full py-6 text-center text-xs text-zinc-500">
+                No automated comment windows configured.
               </div>
-            ))}
+            ) : (
+              commentWindows.map((win) => (
+                <div
+                  key={win.id}
+                  className="flex flex-col justify-between rounded-md border border-zinc-800/90 bg-zinc-950/70 p-3"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[10px] text-violet-400 font-semibold">
+                        {win.start_time} - {win.end_time} UTC
+                      </span>
+                      <span className="rounded bg-violet-500/10 px-1.5 py-0.2 text-[9px] text-violet-300 font-medium">
+                        {win.status}
+                      </span>
+                    </div>
+                    <h4 className="mt-1.5 text-xs font-medium text-zinc-200">
+                      {win.title}
+                    </h4>
+                    <p className="mt-1 line-clamp-1 text-[10px] text-zinc-500">
+                      {win.topic_filter}
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-zinc-800/60 font-mono text-[9px] text-zinc-600">
+                    Runs: {win.days.join(", ")}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
