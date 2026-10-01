@@ -92,6 +92,11 @@ export interface ElectronAPI {
   fetchState: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<AgentState>;
   testConnection?: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<{ success: boolean; latencyMs?: number; error?: string }>;
   executeAction: (action: "approve" | "reject", itemId: string) => Promise<ActionResult>;
+  executeConnectionAction?: (
+    action: "approve" | "reject",
+    id: string,
+    note?: string
+  ) => Promise<ActionResult>;
   triggerScout: () => Promise<boolean>;
   togglePause: (paused: boolean) => Promise<boolean>;
   clearIncident: () => Promise<boolean>;

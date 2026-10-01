@@ -95,14 +95,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   initialHeatmapRates,
   initialAuditEntries,
 }) => {
-  const { auditEntries: contextAuditEntries } = useApp();
+  const { auditEntries: contextAuditEntries, refreshState } = useApp();
   const auditEntries = initialAuditEntries ?? contextAuditEntries;
   const [selectedTimeframe, setSelectedTimeframe] = useState<"7d" | "30d" | "all">("7d");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 600);
+    try {
+      if (refreshState) {
+        await refreshState();
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const executedSuccessEntries = useMemo(() => {

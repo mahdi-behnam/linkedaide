@@ -42,6 +42,7 @@ export interface AppContextType {
     id: string,
     note?: string
   ) => Promise<ActionResult>;
+  clearIncident?: () => Promise<void>;
   refreshState?: () => Promise<void>;
 }
 
@@ -81,7 +82,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [doctorChecks, setDoctorChecks] = useState<DoctorCheck[]>([]);
   const [lastTriggerMessage, setLastTriggerMessage] = useState<string | null>(null);
-  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>(() => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        const saved = localStorage.getItem("hitl_scheduled_posts");
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
   const [commentWindows] = useState<AutomatedCommentWindow[]>([]);
   const [activePostForEditing, setActivePostForEditing] = useState<ScheduledPost | null>(null);
   const [connectionQueue, setConnectionQueue] = useState<ConnectionRequestAction[]>([]);
@@ -484,21 +495,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [telemetry.circuitBreakerTripped, telemetry.nimModel]);
 
+  const clearIncident = useCallback(async () => {
+    if (typeof window !== "undefined" && window.api?.clearIncident) {
+      try {
+        const ok = await window.api.clearIncident();
+        if (ok) {
+          setTelemetry((t) => ({ ...t, circuitBreakerTripped: false }));
+          setLastTriggerMessage("Circuit breaker cleared and reset to operational.");
+          await refreshState();
+        } else {
+          setLastTriggerMessage("Failed to clear circuit breaker incident.");
+        }
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        setLastTriggerMessage(`Clear incident failed: ${errMsg}`);
+      }
+    }
+  }, [refreshState]);
+
   const saveScheduledPost = useCallback((post: ScheduledPost) => {
     setScheduledPosts((prev) => {
       const idx = prev.findIndex((p) => p.id === post.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = post;
-        return next;
+      const next = idx >= 0 ? [...prev] : [post, ...prev];
+      if (idx >= 0) next[idx] = post;
+      if (typeof window !== "undefined" && window.localStorage) {
+        try {
+          localStorage.setItem("hitl_scheduled_posts", JSON.stringify(next));
+        } catch {
+          // ignore
+        }
       }
-      return [post, ...prev];
+      return next;
     });
     setLastTriggerMessage(`Post saved successfully: "${post.headline || post.id}"`);
   }, []);
 
   const deleteScheduledPost = useCallback((id: string) => {
-    setScheduledPosts((prev) => prev.filter((p) => p.id !== id));
+    setScheduledPosts((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      if (typeof window !== "undefined" && window.localStorage) {
+        try {
+          localStorage.setItem("hitl_scheduled_posts", JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+      }
+      return next;
+    });
     setLastTriggerMessage("Scheduled post removed");
   }, []);
 
@@ -517,6 +560,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       triggerScout,
       isCheckingDoctor,
       runDoctorCheck,
+      clearIncident,
       auditEntries,
       doctorChecks,
       lastTriggerMessage,
@@ -543,6 +587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       triggerScout,
       isCheckingDoctor,
       runDoctorCheck,
+      clearIncident,
       auditEntries,
       doctorChecks,
       lastTriggerMessage,

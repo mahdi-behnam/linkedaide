@@ -29,6 +29,13 @@ const api: ElectronAPI = {
   ): Promise<ActionResult> =>
     ipcRenderer.invoke("api:executeAction", action, itemId),
 
+  executeConnectionAction: (
+    action: "approve" | "reject",
+    id: string,
+    note?: string
+  ): Promise<ActionResult> =>
+    ipcRenderer.invoke("api:executeConnectionAction", action, id, note),
+
   triggerScout: (): Promise<boolean> => ipcRenderer.invoke("api:triggerScout"),
 
   togglePause: (paused: boolean): Promise<boolean> =>

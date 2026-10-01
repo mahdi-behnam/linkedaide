@@ -13,6 +13,7 @@ import {
   Inbox,
   ClockCounterClockwise,
   CheckCircle,
+  WarningCircle,
 } from "../components/icons";
 
 export const DashboardView: React.FC = () => {
@@ -26,6 +27,7 @@ export const DashboardView: React.FC = () => {
     triggerScout,
     isCheckingDoctor,
     runDoctorCheck,
+    clearIncident,
     setCurrentTab,
     lastTriggerMessage,
   } = useApp();
@@ -108,6 +110,19 @@ export const DashboardView: React.FC = () => {
               </>
             )}
           </button>
+
+          {/* Reset Circuit Breaker if Tripped */}
+          {telemetry.circuitBreakerTripped && clearIncident && (
+            <button
+              type="button"
+              data-testid="clear-incident-btn"
+              onClick={clearIncident}
+              className="flex items-center gap-1.5 rounded-md border border-rose-500/40 bg-rose-500/15 px-3.5 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/25 active:translate-y-[1px]"
+            >
+              <WarningCircle size={14} className="text-rose-400" />
+              <span>Reset Circuit Breaker</span>
+            </button>
+          )}
         </div>
       </div>
 

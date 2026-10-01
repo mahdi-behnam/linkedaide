@@ -184,6 +184,13 @@ function registerIpcHandlers(): void {
     }
   );
 
+  ipcMain.handle(
+    "api:executeConnectionAction",
+    async (_event, action: "approve" | "reject", id: string, _note?: string) => {
+      return await workerClient.executeAction(action, id);
+    }
+  );
+
   ipcMain.handle("api:triggerScout", async () => {
     const settings = loadSettings();
     if (settings.executionMode === "local") {
