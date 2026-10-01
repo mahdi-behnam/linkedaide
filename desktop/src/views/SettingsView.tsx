@@ -482,9 +482,19 @@ export const SettingsView: React.FC = () => {
               placeholder="Enter GITHUB_DISPATCH_PAT (ghp_... or github_pat_...)"
               className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-amber-500 focus:outline-hidden"
             />
-            <p className="mt-1 text-[11px] text-zinc-500">
-              Classic PAT with <code className="text-zinc-400">repo</code> scope or Fine-grained PAT with Actions and Workflows read/write permissions.
-            </p>
+            <div className="mt-2.5 rounded-md border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] space-y-1.5">
+              <span className="font-semibold text-amber-300">
+                Required GitHub Personal Access Token (PAT) Scopes:
+              </span>
+              <ul className="list-disc list-inside space-y-1 text-zinc-400">
+                <li>
+                  <strong className="text-zinc-200">Classic PAT (<code className="text-zinc-300">ghp_...</code>):</strong> Must check both <code className="text-amber-300 font-mono font-semibold">workflow</code> (&quot;Update GitHub Action workflows&quot;) AND <code className="text-amber-300 font-mono font-semibold">repo</code>. Without <code className="text-amber-300 font-mono">workflow</code>, GitHub returns <em>403 Resource not accessible</em>.
+                </li>
+                <li>
+                  <strong className="text-zinc-200">Fine-grained PAT (<code className="text-zinc-300">github_pat_...</code>):</strong> Under <em>Repository Permissions</em>, set <code className="text-amber-300 font-mono font-semibold">Actions</code> to <strong>Read and write</strong> and select this repository under Repository Access.
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 

@@ -225,6 +225,9 @@ export class WorkerClient {
       } catch {
         errorDetails = await response.text().catch(() => response.statusText);
       }
+      if (errorDetails.includes("Resource not accessible by personal access token")) {
+        errorDetails += " -> GitHub PAT lacks workflow dispatch permission. For Classic PATs (ghp_...), check the 'workflow' scope. For Fine-grained PATs (github_pat_...), set Repository Permissions -> 'Actions' to 'Read and write'.";
+      }
       throw new Error(
         `Worker API Error (${response.status} ${response.statusText}): ${errorDetails || "Request failed"}`
       );

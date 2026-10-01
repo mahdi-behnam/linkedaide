@@ -311,6 +311,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: unknown) {
       let errMsg = err instanceof Error ? err.message : String(err);
       errMsg = errMsg.replace(/^Error invoking remote method '[^']+':\s*(Error:\s*)?/, "");
+      if (errMsg.includes("Resource not accessible by personal access token")) {
+        errMsg = "GitHub PAT permission denied (403): Token lacks workflow dispatch rights. For Classic PATs (ghp_...), check both 'workflow' and 'repo' scopes. For Fine-grained PATs (github_pat_...), set Repository Permissions -> 'Actions' to 'Read and write'.";
+      }
       setLastTriggerMessage(`Scout dispatch failed: ${errMsg}`);
     } finally {
       setIsScouting(false);

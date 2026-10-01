@@ -482,12 +482,19 @@ export async function handlePostAction(
 
   if (!dispatchResponse.ok) {
     const errText = await dispatchResponse.text();
+    let details = errText;
+    if (
+      dispatchResponse.status === 403 &&
+      errText.includes("Resource not accessible by personal access token")
+    ) {
+      details = `${errText} -> Personal Access Token lacks workflow dispatch permission. For Classic PATs (ghp_...), check 'workflow' and 'repo' scopes. For Fine-grained PATs (github_pat_...), set Repository Permissions -> 'Actions' to 'Read and write'.`;
+    }
     return jsonResponse(
       {
         error: "GitHub dispatch failed",
         status_code: dispatchResponse.status,
         status_text: dispatchResponse.statusText,
-        details: errText,
+        details,
         action: "approve",
         item_id: itemId,
       },
@@ -588,12 +595,19 @@ export async function handlePostScout(request: Request, env: Env): Promise<Respo
 
   if (!dispatchResponse.ok) {
     const errText = await dispatchResponse.text();
+    let details = errText;
+    if (
+      dispatchResponse.status === 403 &&
+      errText.includes("Resource not accessible by personal access token")
+    ) {
+      details = `${errText} -> Personal Access Token lacks workflow dispatch permission. For Classic PATs (ghp_...), check 'workflow' and 'repo' scopes. For Fine-grained PATs (github_pat_...), set Repository Permissions -> 'Actions' to 'Read and write'.`;
+    }
     return jsonResponse(
       {
         error: "GitHub scout dispatch failed",
         status_code: dispatchResponse.status,
         status_text: dispatchResponse.statusText,
-        details: errText,
+        details,
       },
       502
     );
