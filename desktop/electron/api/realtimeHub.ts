@@ -40,7 +40,9 @@ export class RealtimePushClient {
     this.apiSecret = apiSecret ?? "";
     this.WebSocketClass =
       options?.WebSocketClass ??
-      (typeof globalThis !== "undefined" ? (globalThis as any).WebSocket : undefined);
+      (typeof globalThis !== "undefined" && (globalThis as any).WebSocket
+        ? (globalThis as any).WebSocket
+        : this.loadWsClass());
 
     if (options?.initialBackoffMs) {
       this.initialBackoffMs = options.initialBackoffMs;
@@ -262,5 +264,14 @@ export class RealtimePushClient {
       this.reconnectTimer = null;
       this.connect();
     }, delay);
+  }
+
+  private loadWsClass(): any {
+    try {
+      const wsModule = require("ws");
+      return wsModule.WebSocket || wsModule.default || wsModule;
+    } catch {
+      return undefined;
+    }
   }
 }

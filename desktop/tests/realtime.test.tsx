@@ -162,6 +162,24 @@ describe("RealtimePushClient & Instant Desktop Sync", () => {
       ws.simulateClose();
       expect(client.isConnected()).toBe(false);
     });
+
+    it("falls back to ws library when WebSocketClass option is not passed and global WebSocket is unavailable", () => {
+      const origWs = (globalThis as any).WebSocket;
+      delete (globalThis as any).WebSocket;
+      try {
+        const client = new RealtimePushClient(
+          mockBrowserWindow,
+          "https://worker.dev",
+          "secret"
+        );
+        expect((client as any).WebSocketClass).toBeDefined();
+        expect((client as any).WebSocketClass.OPEN).toBe(1);
+      } finally {
+        if (origWs) {
+          (globalThis as any).WebSocket = origWs;
+        }
+      }
+    });
   });
 
   describe("Exponential Backoff Reconnection (1s, 2s, 4s, ..., max 30s)", () => {
