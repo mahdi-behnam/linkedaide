@@ -37,6 +37,9 @@ Before proceeding, here is a quick map of all secrets used in the system, where 
 | `GITHUB_REPO_OWNER` | Your GitHub username or organization name. | Cloudflare Worker Secret |
 | `GITHUB_REPO_NAME` | Your GitHub repository name (e.g., `linkedin-hitl-agent`). | Cloudflare Worker Secret |
 | `DESKTOP_API_SECRET` | High-entropy URL-safe token generated via `scripts/generate_secrets.py` (or `uv run agent setup`) to authenticate Desktop app & Worker API calls. | Local `.env`, Cloudflare Worker Secret, Desktop App Settings |
+| `CLOUDFLARE_ACCOUNT_ID` | Your 32-character Cloudflare Account ID (found on Cloudflare dashboard URL or Workers overview). | Local `.env`, GitHub Secrets |
+| `CLOUDFLARE_KV_NAMESPACE_ID` | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (generated via Wrangler). | Local `.env`, GitHub Secrets, `wrangler.toml` |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API Token with `Account.Workers KV Storage: Edit` permission to allow GitHub Actions to read/write state in KV. | Local `.env`, GitHub Secrets |
 
 ---
 
@@ -197,6 +200,23 @@ id = "a1b2c3d4e5f6071829304a5b6c7d8e9f"
 
 Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id = "linkedin_agent_kv_namespace"` with your generated 32-character `id`.
 
+> [!IMPORTANT]
+> **Cloudflare KV Credentials for GitHub Actions (`STATE_BACKEND=kv`)**
+> 
+> Because GitHub Actions executes the Scout and Execute flows in the cloud, it connects to your Cloudflare KV namespace via Cloudflare's REST API. Make sure to note down and generate the following 3 values:
+> 
+> 1. **`CLOUDFLARE_ACCOUNT_ID`**: Found in your [Cloudflare Dashboard](https://dash.cloudflare.com/) URL (`https://dash.cloudflare.com/<ACCOUNT_ID>`) or on any Worker's overview page in the right-hand sidebar.
+> 2. **`CLOUDFLARE_KV_NAMESPACE_ID`**: The 32-character ID generated from `npx wrangler kv namespace create LINKEDIN_AGENT_KV` above (also visible under **Workers & Pages** &rarr; **KV** in the Cloudflare dashboard).
+> 3. **`CLOUDFLARE_API_TOKEN`**: Create an API token so GitHub Actions can read/write KV state:
+>    - In Cloudflare Dashboard, click your profile icon (top right) &rarr; **My Profile** &rarr; **API Tokens**.
+>    - Click **Create Token** &rarr; scroll to bottom &rarr; **Create Custom Token** &rarr; click **Get started**.
+>    - **Token Name**: `LinkedIn Agent KV Access`
+>    - **Permissions**: **Account** &rarr; **Workers KV Storage** &rarr; **Edit**
+>    - **Account Resources**: **Include** &rarr; **All accounts** (or your specific account)
+>    - Click **Continue to summary** &rarr; **Create Token**, then copy the token value.
+> 
+> You will add these 3 values as repository secrets in **Step 6**.
+
 ---
 
 #### B. Cloudflare R2 Media Vault (Completely Optional)
@@ -271,15 +291,23 @@ You should see: `Webhook registered successfully`.
 In your GitHub repository, navigate to **Settings** -> **Secrets and variables** -> **Actions**.
 
 ### 1. Repository Secrets (`Secrets` tab)
-Add the following 5 secrets:
+Add the following repository secrets (8 secrets total when using Cloudflare KV):
 
-| Secret Name | Value |
-|---|---|
-| `NVIDIA_NIM_API_KEY` | NVIDIA NIM API key (`nvapi-...`) from Step 2 |
-| `TELEGRAM_BOT_TOKEN` | Telegram Bot Token from Step 3 |
-| `TELEGRAM_AUTHORIZED_CHAT_ID` | Numeric Telegram user ID from Step 3 |
-| `SESSION_ENCRYPTION_KEY` | Fernet AES encryption key from Step 1 |
-| `LINKEDIN_SESSION_STATE_ENC` | Encrypted session state token from Step 4 |
+| Secret Name | Value | Required For |
+|---|---|---|
+| `NVIDIA_NIM_API_KEY` | NVIDIA NIM API key (`nvapi-...`) from Step 2 | All workflows |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot Token from Step 3 | All workflows |
+| `TELEGRAM_AUTHORIZED_CHAT_ID` | Numeric Telegram user ID from Step 3 | All workflows |
+| `SESSION_ENCRYPTION_KEY` | Fernet AES encryption key from Step 1 | All workflows |
+| `LINKEDIN_SESSION_STATE_ENC` | Encrypted session state token from Step 4 | All workflows |
+| `CLOUDFLARE_ACCOUNT_ID` | 32-character Cloudflare Account ID from Step 5.2.A | Cloud mode (`STATE_BACKEND=kv`) |
+| `CLOUDFLARE_KV_NAMESPACE_ID` | 32-character KV namespace ID (`LINKEDIN_AGENT_KV`) from Step 5.2.A | Cloud mode (`STATE_BACKEND=kv`) |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API Token with Workers KV Edit permission from Step 5.2.A | Cloud mode (`STATE_BACKEND=kv`) |
+
+> [!NOTE]
+> **Why does GitHub Actions need Cloudflare KV secrets?**
+> In production (`STATE_BACKEND=kv`), GitHub Actions runs the Scout and Execute workflows on remote runners and synchronizes pending posts, seen items, and daily counters directly with your Cloudflare KV namespace using Cloudflare's REST API. This keeps the Telegram Relay Worker, Desktop App, and GitHub Actions completely in sync with zero Git merge conflicts.
+> *(If you want to run completely without Cloudflare KV in GitHub Actions, set `STATE_BACKEND=git` under Repository Variables below to fall back to Git-as-Database).*
 
 ### 2. Repository Variables (`Variables` tab)
 Configure operational preferences:

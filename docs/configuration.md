@@ -48,12 +48,18 @@ Settings can be provided via environment variables, a local `.env` file, or GitH
 | `DRY_RUN` | `bool` | `false` | No | When `true`, mocks live LinkedIn writes and logs intended actions. |
 | **Logging & Storage** | | | | |
 | `LOG_LEVEL` | `string` | `INFO` | No | Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
-| `STATE_DIR` | `Path` | `state` | No | Path to directory containing version-controlled JSON state. |
+| `STATE_DIR` | `Path` | `state` | No | Path to directory containing version-controlled JSON state (used by `STATE_BACKEND=git`). |
+| **State Persistence & Cloudflare KV** | | | | |
+| `STATE_BACKEND` | `string` | `git` *(Local)* / `kv` *(CI)* | No | Durable state backend: `kv` (Cloudflare Workers KV) or `git` (Git-as-database). |
+| `CLOUDFLARE_ACCOUNT_ID` | `string` | `None` | **Yes** | 32-character Cloudflare Account ID (Required when `STATE_BACKEND=kv`). |
+| `CLOUDFLARE_KV_NAMESPACE_ID` | `string` | `None` | **Yes** | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (Required when `STATE_BACKEND=kv`). |
+| `CLOUDFLARE_API_TOKEN` | `string` | `None` | **Yes** | Cloudflare API Token with `Account.Workers KV Storage: Edit` permission (Required when `STATE_BACKEND=kv`). |
 | **Cloudflare Relay Worker (infra/telegram-relay-worker)** | | | | |
 | `TELEGRAM_WEBHOOK_SECRET` | `string` | *(Required)* | **Yes** | Shared secret token verified via `X-Telegram-Bot-Api-Secret-Token`. Generate with `uv run python scripts/generate_secrets.py --type webhook`. |
 | `GITHUB_DISPATCH_PAT` | `string` | *(Required)* | **Yes** | GitHub PAT with `repo` / `Contents: Read and write` permissions to trigger `repository_dispatch`. |
 | `GITHUB_REPO_OWNER` | `string` | *(Required)* | No | GitHub username or organization name. |
 | `GITHUB_REPO_NAME` | `string` | *(Required)* | No | GitHub repository name (e.g. `linkedin-hitl-agent`). |
+| `DESKTOP_API_SECRET` | `string` | *(Required)* | **Yes** | High-entropy secret authenticating Desktop app calls to Worker REST/WebSocket API. |
 
 ---
 
