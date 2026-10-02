@@ -35,7 +35,7 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
     ? "Exhausted"
     : isWarning
       ? "High Usage"
-      : "Nominal";
+      : null;
 
 
   return (
@@ -60,13 +60,15 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`font-sans text-[11px] font-medium ${
-              isExhausted ? "text-error" : isWarning ? "text-amber-500" : "text-tertiary"
-            }`}
-          >
-            {statusLabel}
-          </span>
+          {statusLabel && (
+            <span
+              className={`font-sans text-[11px] font-medium ${
+                isExhausted ? "text-error" : "text-amber-500"
+              }`}
+            >
+              {statusLabel}
+            </span>
+          )}
           <span className="label-sm font-medium text-on-surface-variant tabular-nums">
             {remaining} left
           </span>

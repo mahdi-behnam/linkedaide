@@ -58,11 +58,11 @@ export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
               onChange={(e) => onIntervalChange(Number(e.target.value))}
               className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface text-[13px] p-0 focus:ring-0 cursor-pointer"
             >
-              <option value={60}>1 Minute (High Aggression)</option>
-              <option value={120}>2 Minutes (Active)</option>
-              <option value={300}>5 Minutes (Default Recommended)</option>
-              <option value={600}>10 Minutes (Low Footprint)</option>
-              <option value={900}>15 Minutes (Passive)</option>
+              <option value={60}>1 Minute</option>
+              <option value={120}>2 Minutes</option>
+              <option value={300}>5 Minutes (Default)</option>
+              <option value={600}>10 Minutes</option>
+              <option value={900}>15 Minutes</option>
             </select>
           </div>
           <span className="font-label-sm text-[11px] text-on-surface-variant">

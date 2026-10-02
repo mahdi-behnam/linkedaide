@@ -20,7 +20,7 @@ export const QueueSafetyFooter: React.FC<QueueSafetyFooterProps> = ({
         </div>
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-on-surface">
-            Cloudflare Edge Relay Ready
+            Cloudflare Edge Relay
           </span>
           <span className="text-[11px] text-on-surface-variant tabular-nums">
             Safe rate limit: {commentsRemaining} of {commentsMax} daily comments remaining.

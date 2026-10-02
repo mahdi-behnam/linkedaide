@@ -25,7 +25,7 @@ export const EnvSecretsAudit: React.FC<EnvSecretsAuditProps> = ({
       case "NIM_MODEL_PRIMARY":
         return {
           masked: loaded ? "meta/llama-3.1-70b" : "Not Set",
-          tag: loaded ? "Active" : "Unset",
+          tag: loaded ? "Configured" : "Unset",
         };
       case "TELEGRAM_BOT_TOKEN":
         return {
@@ -70,7 +70,7 @@ export const EnvSecretsAudit: React.FC<EnvSecretsAuditProps> = ({
       case "DRY_RUN":
         return {
           masked: "false (Production)",
-          tag: loaded ? "Live Ready" : "Unset",
+          tag: loaded ? "Production" : "Unset",
         };
       case "GITHUB_DISPATCH_PAT":
         return {

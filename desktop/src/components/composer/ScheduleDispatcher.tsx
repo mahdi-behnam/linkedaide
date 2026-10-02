@@ -75,7 +75,7 @@ export const ScheduleDispatcher: React.FC<ScheduleDispatcherProps> = ({
         <div className="flex items-center gap-1.5">
           <ShieldCheck size={14} className="text-tertiary" />
           <span className="text-on-surface font-medium">
-            Cloudflare Edge Relay Ready
+            Cloudflare Edge Relay
           </span>
         </div>
         <span className="font-mono text-[11px] text-on-surface font-medium tabular-nums">

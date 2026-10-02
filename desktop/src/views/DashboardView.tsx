@@ -156,7 +156,7 @@ export const DashboardView: React.FC = () => {
           title="State Persistence"
           value={telemetry.kvBackend || "Cloudflare KV"}
           subLeft="Global Edge · 14ms"
-          subRight="100% Healthy"
+          subRight="Edge Connected"
           icon={<Database size={16} />}
           iconColorClass="text-primary"
           subRightColorClass="text-tertiary"

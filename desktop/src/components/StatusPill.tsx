@@ -21,7 +21,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({
   const defaultLabel = (() => {
     switch (status) {
       case "operational":
-        return "Operational";
+        return "Ready";
       case "paused":
         return "Paused";
       case "tripped":

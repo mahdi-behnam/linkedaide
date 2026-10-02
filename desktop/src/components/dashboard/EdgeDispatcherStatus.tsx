@@ -45,7 +45,6 @@ export const EdgeDispatcherStatus: React.FC<EdgeDispatcherStatusProps> = ({
           <span className="text-[11px] font-semibold text-on-surface-variant">
             24h Invocations &amp; Latency
           </span>
-          <span className="text-[11px] text-tertiary font-medium">All Systems Operational</span>
         </div>
 
         {/* Clean Native Bar Chart */}
@@ -84,8 +83,8 @@ export const EdgeDispatcherStatus: React.FC<EdgeDispatcherStatusProps> = ({
         </div>
         <div className="py-2 flex items-center justify-between">
           <span className="text-on-surface-variant">Telegram Webhook Gateway</span>
-          <span className="text-tertiary font-medium">
-            Active (0 dropped)
+          <span className="text-on-surface-variant font-medium">
+            0 dropped
           </span>
         </div>
       </div>

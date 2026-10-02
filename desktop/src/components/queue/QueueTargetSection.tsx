@@ -1,5 +1,4 @@
 import React from "react";
-import { ThumbsUp, ChatCircleText } from "@phosphor-icons/react";
 import { PendingItem } from "./QueueTriageCard";
 
 interface QueueTargetSectionProps {
@@ -27,20 +26,10 @@ export const QueueTargetSection: React.FC<QueueTargetSectionProps> = ({ item }) 
           "{item.postExcerpt}"
         </blockquote>
 
-        <div className="mt-3 pt-2.5 border-t border-outline/40 flex items-center justify-between text-on-surface-variant">
-          <div className="flex items-center gap-3 text-xs">
-            <span className="inline-flex items-center gap-1">
-              <ThumbsUp size={13} className="text-primary" />
-              <span className="text-[11px]">Engaged Discussion</span>
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <ChatCircleText size={13} className="text-on-surface-variant" />
-              <span className="text-[11px]">Active Thread</span>
-            </span>
-          </div>
-
-          <div className="text-right text-[11px] text-on-surface-variant">
-            : {item.author}, {item.headline}
+        <div className="mt-3 pt-2.5 border-t border-outline/40 flex items-center justify-between text-on-surface-variant text-[11px]">
+          <span>Context snippet from public feed</span>
+          <div className="text-right">
+            {item.author}, {item.headline}
           </div>
         </div>
       </div>

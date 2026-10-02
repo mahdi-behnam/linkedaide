@@ -76,7 +76,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
           label: "Safety Invariants",
           footer: [
             { label: "Bot Flagging", val: "0" },
-            { label: "Anti-Entropy", val: "Active" },
+            { label: "Anti-Entropy", val: "Enforced" },
             { label: "Idempotency", val: "Strict" },
           ],
         };

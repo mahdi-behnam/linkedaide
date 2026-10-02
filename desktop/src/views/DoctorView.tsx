@@ -122,7 +122,7 @@ export const DoctorView: React.FC = () => {
               {totalCount === 0
                 ? "Diagnostics Ready to Execute"
                 : isAllPassing
-                ? "All Core Subsystems Operational"
+                ? "All Subsystems Passing"
                 : `${passedCount} of ${totalCount} Subsystems Passing`}
             </span>
             <span className="font-body-md text-body-md text-on-surface-variant text-[12px]">

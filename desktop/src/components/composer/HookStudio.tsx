@@ -26,7 +26,7 @@ export const HookStudio: React.FC<HookStudioProps> = ({
         <div className="flex items-center gap-2">
           {appliedHookName && (
             <span className="font-mono text-[11px] text-primary font-medium">
-              Active: {appliedHookName}
+              {appliedHookName}
             </span>
           )}
           <span className="text-[10px] text-on-surface-variant hidden sm:inline font-sans">

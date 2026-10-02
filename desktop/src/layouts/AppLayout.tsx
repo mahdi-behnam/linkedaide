@@ -170,9 +170,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <span className="text-[11px] font-medium text-on-surface">KV Edge Synced</span>
                 <span className="text-[10px] text-on-surface-variant">Edge Relay Connected</span>
               </div>
-              <span className="font-sans text-[10px] font-medium text-tertiary">
-                Active
-              </span>
             </div>
           ) : (
             <div className="flex justify-center py-1" title="KV Edge Synced · Edge Relay Connected">

@@ -188,7 +188,7 @@ export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
       <div className="p-2.5 mx-2 mb-2 rounded-md bg-surface-container-lowest border border-outline/40 flex items-center justify-between text-on-surface-variant shadow-2xs">
         <div className="flex items-center gap-1.5">
           <Lightning size={14} weight="fill" className="text-tertiary" />
-          <span className="text-[11px] font-medium text-on-surface">Auto-polling active</span>
+          <span className="text-[11px] font-medium text-on-surface">Auto-polling</span>
         </div>
         <span className="text-[10px] text-on-surface-variant">Every 5m</span>
       </div>

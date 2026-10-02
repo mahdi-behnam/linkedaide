@@ -358,7 +358,7 @@ export const VaultView: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <span className="font-body-strong text-body-strong text-on-surface text-[13px]">
-              Vault Memory Guard Active
+              Vault Memory Guard
             </span>
             <span className="font-label-sm text-[11px]">
               Isolated sandbox process · Zero plain cookies stored on disk
