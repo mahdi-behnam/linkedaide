@@ -1,4 +1,8 @@
-# LinkedIn Human-in-the-Loop AI Agent
+# LinkedAide — Human-in-the-Loop AI Agent for LinkedIn
+
+<p align="center">
+  <img src="assets/logo.png" alt="LinkedAide" width="480" />
+</p>
 
 An enterprise-grade, human-supervised LinkedIn automation agent orchestrating candidate discovery, LLM triage, personalized comment drafting, thought leadership post ideation, Telegram human approval, and verified Playwright browser execution.
 

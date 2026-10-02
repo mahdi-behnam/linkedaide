@@ -384,8 +384,26 @@ function registerIpcHandlers(): void {
   });
 }
 
+function getAppIconPath(): string | undefined {
+  const possiblePaths = [
+    path.join(__dirname, "../build/icon.png"),
+    path.join(__dirname, "../public/icon.png"),
+    path.join(process.cwd(), "desktop/build/icon.png"),
+    path.join(process.cwd(), "assets/app-icon.png"),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return undefined;
+}
+
 function createWindow(): BrowserWindow {
+  const iconPath = getAppIconPath();
   const win = new BrowserWindow({
+    title: "LinkedAide",
+    icon: iconPath,
     width: 1280,
     height: 820,
     minWidth: 1000,

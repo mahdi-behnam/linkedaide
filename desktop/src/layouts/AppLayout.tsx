@@ -15,7 +15,6 @@ import {
   CaretLeft,
   CaretRight,
   Globe,
-  Lightning,
   PencilSimple,
   Calendar,
   UserPlus,
@@ -25,6 +24,9 @@ import {
   Moon,
   IconProps,
 } from "../components/icons";
+import roundActiveIcon from "../assets/icons/round-active.png";
+import roundStandbyIcon from "../assets/icons/round-standby.png";
+import roundAttentionIcon from "../assets/icons/round-attention.png";
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -103,16 +105,35 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
         {/* Workspace Brand Header */}
         <div className="flex items-center gap-2.5 border-b border-outline px-3.5 pb-2.5 pt-0.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary shadow-2xs">
-            <Lightning size={15} weight="bold" />
+          <div
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden shadow-2xs transition-transform hover:scale-105"
+            title={
+              isPaused
+                ? "LinkedAide: Standby Mode"
+                : pendingCount > 0
+                ? `LinkedAide: ${pendingCount} Action${pendingCount > 1 ? "s" : ""} Pending Review`
+                : "LinkedAide: Active & Monitoring"
+            }
+          >
+            <img
+              src={
+                isPaused
+                  ? roundStandbyIcon
+                  : pendingCount > 0
+                  ? roundAttentionIcon
+                  : roundActiveIcon
+              }
+              alt="LinkedAide"
+              className="h-full w-full object-cover"
+            />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden">
               <span className="truncate text-xs font-semibold text-on-surface">
-                HITL Cockpit
+                LinkedAide
               </span>
               <span className="truncate text-[10px] text-on-surface-variant">
-                LinkedIn Agent
+                HITL Cockpit
               </span>
             </div>
           )}
