@@ -134,6 +134,9 @@ export async function captureLinkedInSession(
           sandbox: true,
         },
       });
+      if (typeof authWin.removeMenu === "function") {
+        authWin.removeMenu();
+      }
     } catch (err) {
       resolve({
         success: false,

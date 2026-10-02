@@ -5,7 +5,7 @@
  * settings persistence, and forwards Worker API requests.
  */
 
-import { app, BrowserWindow, ipcMain, session } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, session } from "electron";
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -392,6 +392,7 @@ function createWindow(): BrowserWindow {
     minHeight: 650,
     backgroundColor: "#09090b",
     show: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -400,6 +401,8 @@ function createWindow(): BrowserWindow {
       webSecurity: true,
     },
   });
+
+  win.removeMenu();
 
   win.once("ready-to-show", () => {
     win.show();
@@ -439,6 +442,7 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   const settings = loadSettings();
   workerClient = new WorkerClient({
     baseUrl: settings.workerUrl,
