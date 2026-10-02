@@ -71,10 +71,10 @@ export const CutoffInspector: React.FC<CutoffInspectorProps> = ({ postText }) =>
           {/* Fold Status Badge */}
           <span
             data-testid="fold-status-badge"
-            className={`font-mono text-[10px] px-2 py-0.5 rounded-[4px] font-medium transition-colors tabular-nums ${
+            className={`font-mono text-[11px] font-medium tabular-nums ${
               isOverFold
-                ? "bg-error-container/30 text-error border border-error/30"
-                : "bg-surface-container text-on-surface-variant border border-outline/50"
+                ? "text-error"
+                : "text-on-surface-variant"
             }`}
           >
             {isOverFold
@@ -125,7 +125,7 @@ export const CutoffInspector: React.FC<CutoffInspectorProps> = ({ postText }) =>
               className="my-2 flex items-center gap-2 font-mono text-[10px] text-error font-medium"
             >
               <div className="h-px flex-1 border-t border-dashed border-error/40" />
-              <span className="rounded-[4px] bg-error-container/30 px-1.5 py-0.2 border border-error/20">
+              <span className="text-[11px] text-error font-medium">
                 140 Chars Fold Cutoff (...see more)
               </span>
               <div className="h-px flex-1 border-t border-dashed border-error/40" />

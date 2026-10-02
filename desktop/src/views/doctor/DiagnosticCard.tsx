@@ -103,7 +103,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
     >
       <div className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-surface-container border border-outline-variant/20 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wide font-medium">
+          <span className="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wide font-medium">
             {meta.label}
           </span>
           <div className="flex items-center gap-2">

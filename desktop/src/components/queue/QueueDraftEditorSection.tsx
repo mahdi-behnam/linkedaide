@@ -84,15 +84,15 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
           {isSweetSpot ? (
             <span
               data-testid="sweet-spot-badge"
-              className="inline-flex items-center gap-1 rounded-[4px] border border-tertiary/30 bg-tertiary/10 px-1.5 py-0.2 text-[10px] font-medium text-tertiary"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-tertiary"
             >
-              <Check size={10} weight="bold" />
+              <Check size={11} weight="bold" />
               Sweet Spot
             </span>
           ) : (
             <span
               data-testid="length-indicator"
-              className="rounded-[4px] border border-outline bg-surface-container px-1.5 py-0.2 text-[10px] text-on-surface-variant font-sans"
+              className="text-[11px] text-on-surface-variant font-sans"
             >
               {charCount < 150 ? "Target: 150-350 chars" : "Long (> 350)"}
             </span>

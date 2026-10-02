@@ -30,7 +30,7 @@ export const ScheduleDispatcher: React.FC<ScheduleDispatcherProps> = ({
             Schedule Dispatcher
           </span>
         </div>
-        <span className="text-[10px] px-2 py-0.5 rounded-[4px] bg-primary/10 text-primary border border-primary/20 font-medium">
+        <span className="text-[11px] text-primary font-medium">
           Target Slot: 14:00 UTC
         </span>
       </div>

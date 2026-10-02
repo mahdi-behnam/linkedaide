@@ -24,7 +24,7 @@ export const ArchitectureDiagram: React.FC = () => {
             Zero-knowledge credential flow: plaintext authentication never escapes local runtime memory.
           </p>
         </div>
-        <span className="font-code-sm text-code-sm text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-[4px] border border-outline-variant/20 text-[11px] font-medium">
+        <span className="font-code-sm text-[11px] text-on-surface-variant font-medium">
           Protocol v2.4
         </span>
       </div>
@@ -131,12 +131,10 @@ export const ArchitectureDiagram: React.FC = () => {
 
         {/* Invariants Summary Strip */}
         <div className="flex flex-col md:flex-row md:items-center justify-between pt-2.5 border-t border-surface-container gap-2 text-on-surface-variant font-code-sm text-code-sm text-[12px]">
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-tertiary shrink-0" />
+          <div>
             <span>Invariant 1: No plaintext credentials written to git, sqlite or local logs.</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-tertiary shrink-0" />
+          <div>
             <span>Invariant 2: Fernet rotation propagates to Edge KV within 60s.</span>
           </div>
         </div>

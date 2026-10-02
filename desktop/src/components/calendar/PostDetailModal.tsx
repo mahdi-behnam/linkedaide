@@ -24,23 +24,23 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
     switch (status) {
       case "published":
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-tertiary-container/20 text-on-surface font-semibold border border-outline/30">
-            <CheckCircle size={11} weight="bold" />
+          <span className="inline-flex items-center gap-1.5 text-xs text-tertiary font-medium">
+            <CheckCircle size={13} weight="bold" />
             <span>Published</span>
           </span>
         );
       case "scheduled":
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-primary/10 text-primary font-semibold border border-primary/20">
-            <Clock size={11} weight="bold" />
+          <span className="inline-flex items-center gap-1.5 text-xs text-primary font-medium">
+            <Clock size={13} weight="bold" />
             <span>Scheduled</span>
           </span>
         );
       case "draft":
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-surface-container text-on-surface-variant font-medium border border-outline/40">
-            <PencilSimple size={11} />
+          <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
+            <PencilSimple size={13} />
             <span>Draft</span>
           </span>
         );
@@ -58,8 +58,8 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               {getStatusBadge(post.status)}
-              <span className="rounded-[4px] bg-surface-container px-2 py-0.5 font-mono text-[10px] text-on-surface-variant font-medium border border-outline/40">
-                {post.topic_pillar}
+              <span className="font-mono text-[11px] text-on-surface-variant font-medium">
+                · {post.topic_pillar}
               </span>
             </div>
             <h3 className="mt-2 text-sm font-semibold text-on-surface">

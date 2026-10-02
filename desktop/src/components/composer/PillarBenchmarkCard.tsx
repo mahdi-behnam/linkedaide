@@ -17,7 +17,7 @@ export const PillarBenchmarkCard: React.FC<PillarBenchmarkCardProps> = ({
             Pillar Benchmark
           </span>
         </div>
-        <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary-container/20 text-on-tertiary-container font-medium border border-outline/30">
+        <span className="text-[11px] text-tertiary font-medium">
           +42% Reach
         </span>
       </div>

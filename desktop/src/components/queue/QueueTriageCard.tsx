@@ -73,14 +73,8 @@ export const QueueTriageCard: React.FC<QueueTriageCardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span
-            className={`px-1.5 py-0.2 rounded-[4px] text-[10px] font-medium ${
-              item.actionType === "comment"
-                ? "bg-secondary-container/20 text-on-surface border border-outline"
-                : "bg-surface-container-highest text-on-surface border border-outline"
-            }`}
-          >
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[11px] font-medium text-on-surface-variant">
             {item.actionType === "comment" ? "Comment" : "Original Post"}
           </span>
           <span className="text-[10px] text-on-surface-variant font-sans">
@@ -108,8 +102,8 @@ export const QueueTriageCard: React.FC<QueueTriageCardProps> = ({
 
       {/* Card Footer: Match % & Topic Badge */}
       <div className="flex items-center justify-between text-on-surface-variant pt-0.5">
-        <div className="inline-flex items-center gap-1 text-[11px] text-tertiary font-medium">
-          <span className="rounded-[4px] px-1.5 py-0.2 bg-tertiary/10 border border-tertiary/20 tabular-nums text-[10px]">
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-tertiary font-medium">
+          <span className="tabular-nums text-[11px]">
             {matchPercent}% Match
           </span>
           <span className="opacity-40">·</span>

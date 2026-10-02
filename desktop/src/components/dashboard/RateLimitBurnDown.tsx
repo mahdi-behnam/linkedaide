@@ -35,12 +35,12 @@ export const RateLimitBurnDown: React.FC<RateLimitBurnDownProps> = ({
           </div>
           <h2 className="text-sm font-semibold text-on-surface">Daily Rate Limit Burn-Down</h2>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] px-1.5 py-0.2 rounded bg-surface-container text-on-surface-variant border border-outline font-sans">
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-[11px] text-on-surface-variant font-sans">
             Resets 00:00 UTC
           </span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary/10 text-tertiary font-medium border border-tertiary/20">
-            Within Limits
+          <span className="text-[11px] text-tertiary font-medium">
+            · Within Limits
           </span>
         </div>
       </div>

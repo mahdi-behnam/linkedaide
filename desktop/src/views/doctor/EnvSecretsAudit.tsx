@@ -106,7 +106,7 @@ export const EnvSecretsAudit: React.FC<EnvSecretsAuditProps> = ({
             Environment Secrets Audit
           </h3>
         </div>
-        <span className="font-label-sm text-[11px] px-2 py-0.5 rounded-[4px] bg-surface-container-low border border-outline-variant/20 text-on-surface-variant font-medium">
+        <span className="font-label-sm text-[11px] text-on-surface-variant font-medium">
           {loadedVarsCount} / {envAuditList.length} Variables Configured &amp; Cryptographically Verified
         </span>
       </div>
@@ -129,10 +129,8 @@ export const EnvSecretsAudit: React.FC<EnvSecretsAuditProps> = ({
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <span
-                  className={`px-1.5 py-0.5 rounded-[4px] font-label-sm text-[11px] font-medium border ${
-                    item.loaded
-                      ? "bg-tertiary-container/15 text-tertiary border-tertiary/20"
-                      : "bg-error-container/30 text-error border-error/20"
+                  className={`font-label-sm text-[11px] font-medium ${
+                    item.loaded ? "text-tertiary" : "text-error"
                   }`}
                 >
                   {detail.tag}

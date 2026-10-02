@@ -45,16 +45,16 @@ export const ExecutionModeCard: React.FC<ExecutionModeCardProps> = ({
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="flex items-center gap-2.5">
               <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
                   executionMode === "cloud"
                     ? "bg-primary text-on-primary"
                     : "bg-surface-container-highest text-on-surface-variant"
                 }`}
               >
                 {executionMode === "cloud" ? (
-                  <Check size={12} weight="bold" />
+                  <Check size={13} weight="bold" />
                 ) : (
-                  <Globe size={12} />
+                  <Globe size={13} />
                 )}
               </div>
               <div className="flex flex-col">
@@ -66,11 +66,6 @@ export const ExecutionModeCard: React.FC<ExecutionModeCardProps> = ({
                 </span>
               </div>
             </div>
-            {executionMode === "cloud" && (
-              <span className="px-1.5 py-0.5 rounded-[4px] bg-primary/10 text-primary border border-primary/20 font-label-sm text-[11px] font-medium tracking-wide">
-                Active Mode
-              </span>
-            )}
           </div>
           <p className="font-body-md text-body-md text-on-surface-variant pl-7.5 pr-1 leading-relaxed text-[12px]">
             Orchestrates state via Cloudflare Workers KV and triggers GitHub Actions dispatch runners. Zero local machine uptime required.
@@ -98,16 +93,16 @@ export const ExecutionModeCard: React.FC<ExecutionModeCardProps> = ({
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="flex items-center gap-2.5">
               <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
                   executionMode === "local"
                     ? "bg-primary text-on-primary"
                     : "bg-surface-container-highest text-on-surface-variant"
                 }`}
               >
                 {executionMode === "local" ? (
-                  <Check size={12} weight="bold" />
+                  <Check size={13} weight="bold" />
                 ) : (
-                  <ShieldCheck size={12} />
+                  <ShieldCheck size={13} />
                 )}
               </div>
               <div className="flex flex-col">
@@ -119,11 +114,6 @@ export const ExecutionModeCard: React.FC<ExecutionModeCardProps> = ({
                 </span>
               </div>
             </div>
-            {executionMode === "local" && (
-              <span className="px-1.5 py-0.5 rounded-[4px] bg-primary/10 text-primary border border-primary/20 font-label-sm text-[11px] font-medium tracking-wide">
-                Active Mode
-              </span>
-            )}
           </div>
           <p className="font-body-md text-body-md text-on-surface-variant pl-7.5 pr-1 leading-relaxed text-[12px]">
             Executes browser actions directly on this machine using local Playwright and Python agent CLI. Ideal for desktop-first control and debugging.

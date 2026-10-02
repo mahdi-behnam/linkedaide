@@ -110,36 +110,36 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
     switch (status) {
       case "executed_success":
         return (
-          <span className="inline-flex items-center gap-1 rounded-[4px] border border-tertiary/30 bg-tertiary-container/15 px-1.5 py-0.5 font-mono text-[11px] font-medium text-tertiary">
-            <CheckCircle size={12} weight="bold" />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-tertiary">
+            <CheckCircle size={13} weight="bold" />
             <span>Success</span>
           </span>
         );
       case "executed_failed":
         return (
-          <span className="inline-flex items-center gap-1 rounded-[4px] border border-error/30 bg-error-container/20 px-1.5 py-0.5 font-mono text-[11px] font-medium text-error">
-            <XCircle size={12} weight="bold" />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-error">
+            <XCircle size={13} weight="bold" />
             <span>Failed</span>
           </span>
         );
       case "rejected":
         return (
-          <span className="inline-flex items-center gap-1 rounded-[4px] border border-outline-variant/30 bg-surface-container px-1.5 py-0.5 font-mono text-[11px] font-medium text-on-surface-variant">
-            <XCircle size={12} />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-on-surface-variant">
+            <XCircle size={13} />
             <span>Rejected</span>
           </span>
         );
       case "expired":
         return (
-          <span className="inline-flex items-center gap-1 rounded-[4px] border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500">
-            <WarningCircle size={12} />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-amber-500">
+            <WarningCircle size={13} />
             <span>Expired</span>
           </span>
         );
       case "halted":
         return (
-          <span className="inline-flex items-center gap-1 rounded-[4px] border border-error/30 bg-error-container/20 px-1.5 py-0.5 font-mono text-[11px] font-medium text-error">
-            <WarningCircle size={12} />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-error">
+            <WarningCircle size={13} />
             <span>Halted</span>
           </span>
         );
@@ -170,8 +170,8 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
             <h1 className="text-xl font-semibold tracking-tight text-on-surface">
               Audit History
             </h1>
-            <span className="rounded-[4px] border border-outline-variant/30 bg-surface-container-low px-2 py-0.5 font-mono text-[11px] text-on-surface-variant font-medium">
-              {filteredEntries.length} events
+            <span className="font-mono text-[11px] text-on-surface-variant font-medium">
+              ({filteredEntries.length} events)
             </span>
           </div>
           <p className="mt-1 text-xs text-on-surface-variant">
@@ -266,13 +266,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
 
                   {/* Type */}
                   <td className="px-4 py-2.5 whitespace-nowrap">
-                    <span
-                      className={`rounded-[4px] px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase border ${
-                        entry.actionType === "comment"
-                          ? "bg-tertiary-container/15 text-tertiary border-tertiary/20"
-                          : "bg-secondary/10 text-secondary border-secondary/20"
-                      }`}
-                    >
+                    <span className="font-mono text-[11px] font-medium uppercase text-on-surface-variant">
                       {entry.actionType}
                     </span>
                   </td>

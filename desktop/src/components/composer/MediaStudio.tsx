@@ -56,7 +56,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] px-2 py-0.5 rounded-[4px] bg-surface-container text-on-surface-variant font-medium border border-outline/40">
+          <span className="text-[11px] text-on-surface-variant font-medium">
             {activeMedia
               ? activeMedia.media_type === "carousel_pdf"
                 ? "Carousel PDF"
@@ -138,7 +138,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({
             <span className="truncate max-w-[200px]" title={activeMedia.file_name}>
               {activeMedia.file_name}
             </span>
-            <span className="rounded-[4px] bg-surface-container px-1.5 py-0.2 text-on-surface font-medium border border-outline/40">
+            <span className="text-on-surface font-medium text-[11px]">
               {activeMedia.media_type === "carousel_pdf"
                 ? `${activeMedia.slide_count} Slides`
                 : "Single Image"}

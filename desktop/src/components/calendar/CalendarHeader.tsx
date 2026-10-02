@@ -38,10 +38,6 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             <h1 className="text-sm font-semibold text-on-surface tracking-tight">
               Content Calendar &amp; Planner
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] bg-secondary-container/20 text-on-surface font-medium text-[11px] border border-outline/40">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
-              HITL Schedule
-            </span>
           </div>
           <p className="text-[11px] text-on-surface-variant">
             Coordinate original thought leadership posts alongside autonomous comment scout engagement windows.

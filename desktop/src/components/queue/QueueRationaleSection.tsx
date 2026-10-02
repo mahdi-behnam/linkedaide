@@ -20,12 +20,12 @@ export const QueueRationaleSection: React.FC<QueueRationaleSectionProps> = ({ it
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-on-surface-variant px-1.5 py-0.2 rounded bg-surface-container-highest border border-outline/40 flex items-center gap-1 font-sans">
-            <span>Llama-3.1-70b (NVIDIA NIM)</span>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-[11px] text-on-surface-variant font-sans">
+            Llama-3.1-70b (NVIDIA NIM)
           </span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary/15 text-tertiary border border-tertiary/30 font-medium tabular-nums">
-            {matchPercent}% Confidence
+          <span className="text-[11px] text-tertiary font-medium tabular-nums">
+            · {matchPercent}% Confidence
           </span>
         </div>
       </div>

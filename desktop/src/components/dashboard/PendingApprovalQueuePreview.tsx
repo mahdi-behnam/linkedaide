@@ -97,8 +97,8 @@ export const PendingApprovalQueuePreview: React.FC<PendingApprovalQueuePreviewPr
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-on-surface">Pending Approval Queue</h3>
-            <span className="px-1.5 py-0.2 rounded-[4px] bg-primary/10 text-primary text-[10px] font-medium border border-primary/20 tabular-nums">
-              {pendingCount} Pending
+            <span className="font-mono text-[11px] text-on-surface-variant font-medium tabular-nums">
+              ({pendingCount} Pending)
             </span>
           </div>
           <p className="body-md text-on-surface-variant mt-0.5 text-xs">
@@ -150,12 +150,12 @@ export const PendingApprovalQueuePreview: React.FC<PendingApprovalQueuePreviewPr
                   <span className="text-on-surface-variant text-[12px] font-normal truncate hidden sm:inline">
                     · {item.headline}
                   </span>
-                  <span className="px-1.5 py-0.2 rounded-[4px] bg-surface-container-highest text-on-surface text-[10px] font-medium shrink-0">
-                    {item.type}
+                  <span className="text-[11px] text-on-surface-variant font-medium shrink-0">
+                    · {item.type}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary/10 text-tertiary font-medium border border-tertiary/20">
+                  <span className="text-[11px] text-tertiary font-medium">
                     {item.confidence}
                   </span>
                   <span className="text-[11px] text-on-surface-variant font-sans">{item.timeAgo}</span>

@@ -12,9 +12,6 @@ export const SafeguardsCard: React.FC = () => {
               Schedule Safeguards &amp; Invariants
             </h3>
           </div>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-surface-container text-on-surface-variant font-medium border border-outline/40">
-            Edge Guard
-          </span>
         </div>
 
         <p className="text-xs text-on-surface-variant leading-relaxed">
@@ -59,7 +56,7 @@ export const SafeguardsCard: React.FC = () => {
               </span>
             </div>
           </div>
-          <span className="text-[10px] text-tertiary bg-tertiary-container/20 px-2 py-0.5 rounded-[4px] font-medium border border-tertiary/30">
+          <span className="text-[11px] text-tertiary font-medium">
             Optimal
           </span>
         </div>
@@ -72,19 +69,19 @@ export const SafeguardsCard: React.FC = () => {
         </span>
         <div className="grid grid-cols-2 gap-1.5 text-on-surface-variant text-[11px]">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+            <span className="w-2.5 h-1 rounded-[1px] bg-primary shrink-0" />
             <span>Scheduled Post</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-tertiary shrink-0" />
+            <span className="w-2.5 h-1 rounded-[1px] bg-tertiary shrink-0" />
             <span>Published Post</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-outline shrink-0" />
+            <span className="w-2.5 h-1 rounded-[1px] bg-outline shrink-0" />
             <span>Draft Post</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-secondary shrink-0" />
+            <span className="w-2.5 h-1 rounded-[1px] bg-secondary shrink-0" />
             <span>Scout Window</span>
           </div>
         </div>

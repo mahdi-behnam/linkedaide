@@ -302,7 +302,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
               </h1>
               <span
                 data-testid="pending-count-pill"
-                className="rounded-[4px] border border-outline bg-surface-container px-1.5 py-0.2 font-sans text-[10px] text-on-surface-variant font-medium tabular-nums"
+                className="font-sans text-[11px] text-on-surface-variant font-medium tabular-nums"
               >
                 0 Pending
               </span>

@@ -148,12 +148,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 />
                 {!isCollapsed && <span className="truncate">{item.label}</span>}
                 {!isCollapsed && item.badge !== undefined && item.badge > 0 && (
-                  <span className="ml-auto rounded-[4px] border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.2 font-sans text-[10px] font-medium text-amber-600 dark:text-amber-400 tabular-nums">
+                  <span className="ml-auto font-sans text-[11px] font-medium text-amber-600 dark:text-amber-400 tabular-nums">
                     {item.badge}
                   </span>
                 )}
                 {isCollapsed && item.badge !== undefined && item.badge > 0 && (
-                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="absolute top-1 right-1 font-sans text-[9px] font-bold text-amber-500 tabular-nums">
+                    {item.badge}
+                  </span>
                 )}
               </button>
             );
@@ -164,20 +166,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <div className="border-t border-outline p-2">
           {!isCollapsed ? (
             <div className="flex items-center justify-between rounded-md border border-outline bg-surface-container-lowest px-2.5 py-1.5 shadow-2xs">
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-tertiary" />
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-medium text-on-surface">KV Edge Synced</span>
-                  <span className="text-[9px] text-on-surface-variant">Edge Relay Connected</span>
-                </div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-medium text-on-surface">KV Edge Synced</span>
+                <span className="text-[10px] text-on-surface-variant">Edge Relay Connected</span>
               </div>
-              <span className="rounded-[4px] bg-tertiary/10 border border-tertiary/20 px-1.5 py-0.5 font-sans text-[9px] font-medium text-tertiary">
+              <span className="font-sans text-[10px] font-medium text-tertiary">
                 Active
               </span>
             </div>
           ) : (
-            <div className="flex justify-center py-1">
-              <span className="h-2 w-2 rounded-full bg-tertiary" title="KV Edge Synced · Edge Relay Connected" />
+            <div className="flex justify-center py-1" title="KV Edge Synced · Edge Relay Connected">
+              <Globe size={14} className="text-tertiary" />
             </div>
           )}
         </div>
@@ -217,16 +216,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               <span className="truncate text-[11px]">Search metrics, logs... (⌘K)</span>
             </div>
 
-            {/* Worker Endpoint Chip */}
-            <div className="hidden lg:flex items-center gap-1.5 rounded-md border border-outline bg-surface-container-lowest px-2 py-0.5 text-xs shadow-2xs">
-              <Globe size={12} className="text-on-surface-variant shrink-0" />
-              <div className="flex items-center gap-1 font-mono text-[11px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-tertiary" />
-                <span className="text-on-surface truncate max-w-[180px]">{telemetry.workerUrl}</span>
-              </div>
-              <span className="rounded-[4px] bg-tertiary/10 border border-tertiary/20 px-1 py-0.2 font-sans text-[9px] font-medium text-tertiary">
-                {telemetry.workerStatus}
-              </span>
+            {/* Worker Endpoint */}
+            <div className="hidden lg:flex items-center gap-1.5 text-xs text-on-surface-variant font-mono">
+              <Globe size={13} className="text-on-surface-variant shrink-0" />
+              <span className="text-on-surface truncate max-w-[180px] text-[11px]">{telemetry.workerUrl}</span>
+              <span className="font-sans text-[10px] font-medium text-tertiary">({telemetry.workerStatus})</span>
             </div>
           </div>
 
@@ -240,7 +234,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               type="button"
               data-testid="pending-badge-button"
               onClick={() => setCurrentTab("queue")}
-              className="flex items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/15 active:scale-[0.99] shadow-2xs"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-surface-container-high transition-colors"
             >
               <Inbox size={13} weight="bold" />
               <span className="tabular-nums">{pendingCount} Pending</span>
@@ -307,7 +301,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             data-testid="realtime-toast"
             className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-lg border border-outline bg-surface-bright/95 px-3 py-2 text-xs font-medium text-on-surface shadow-md backdrop-blur-md"
           >
-            <span className="flex h-1.5 w-1.5 rounded-full bg-tertiary" />
             <span>{lastTriggerMessage}</span>
           </div>
         )}

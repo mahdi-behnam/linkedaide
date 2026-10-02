@@ -31,9 +31,6 @@ export const ScoutScheduleCard: React.FC<ScoutScheduleCardProps> = ({
             Automated Comment Scout Schedule
           </h3>
         </div>
-        <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-secondary-container/20 text-on-surface font-medium border border-outline/40">
-          Recurring Cadence
-        </span>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -45,21 +42,13 @@ export const ScoutScheduleCard: React.FC<ScoutScheduleCardProps> = ({
               key={win.id}
               className="flex items-center justify-between p-2.5 rounded-md bg-surface-container-low hover:bg-surface-container transition-colors border border-outline/50"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${
-                    isToggled ? "bg-tertiary" : "bg-outline-variant"
-                  }`}
-                  title={isToggled ? "Active" : "Standby"}
-                />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-semibold text-on-surface truncate">
-                    {win.title}
-                  </span>
-                  <span className="text-[11px] text-on-surface-variant truncate">
-                    Target: {win.topic_filter}
-                  </span>
-                </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-on-surface truncate">
+                  {win.title}
+                </span>
+                <span className="text-[11px] text-on-surface-variant truncate">
+                  Target: {win.topic_filter}
+                </span>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">

@@ -270,7 +270,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <h1 className="text-sm font-semibold tracking-tight text-on-surface">
               LinkedIn Growth Analytics
             </h1>
-            <span className="rounded-[4px] border border-outline/50 bg-surface-container-high px-2 py-0.5 font-mono text-[10px] text-on-surface font-medium">
+            <span className="font-mono text-[11px] text-on-surface-variant font-medium">
               Live Cockpit
             </span>
           </div>

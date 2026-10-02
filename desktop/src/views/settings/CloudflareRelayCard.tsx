@@ -162,7 +162,7 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
               value="hitl-state"
               className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 cursor-default text-[12px]"
             />
-            <span className="font-code-sm text-[11px] text-on-surface-variant ml-2 bg-surface-container px-1.5 py-0.5 rounded-[4px] font-mono border border-outline-variant/20">
+            <span className="font-mono text-[11px] text-on-surface-variant ml-2 font-medium">
               ENV.STATE_KV
             </span>
           </div>

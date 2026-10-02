@@ -37,11 +37,6 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
       ? "High Usage"
       : "Nominal";
 
-  const statusBadgeColor = isExhausted
-    ? "text-error bg-error/10 border-error/20"
-    : isWarning
-      ? "text-amber-500 bg-amber-500/10 border-amber-500/20"
-      : "text-tertiary bg-tertiary/10 border-tertiary/20";
 
   return (
     <div
@@ -64,9 +59,11 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <span
-            className={`rounded-[4px] border px-1.5 py-0.2 font-sans text-[10px] font-medium ${statusBadgeColor}`}
+            className={`font-sans text-[11px] font-medium ${
+              isExhausted ? "text-error" : isWarning ? "text-amber-500" : "text-tertiary"
+            }`}
           >
             {statusLabel}
           </span>

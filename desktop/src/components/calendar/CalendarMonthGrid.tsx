@@ -112,7 +112,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                   {cell.dayNum}
                 </span>
                 {countPosts > 0 && (
-                  <span className="rounded-[4px] bg-primary/10 px-1 py-0.2 font-mono text-[9px] text-primary font-semibold border border-primary/20 tabular-nums">
+                  <span className="font-mono text-[10px] text-primary font-semibold tabular-nums">
                     {countPosts}
                   </span>
                 )}

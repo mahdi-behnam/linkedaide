@@ -84,8 +84,7 @@ export const EdgeDispatcherStatus: React.FC<EdgeDispatcherStatusProps> = ({
         </div>
         <div className="py-2 flex items-center justify-between">
           <span className="text-on-surface-variant">Telegram Webhook Gateway</span>
-          <span className="text-tertiary flex items-center gap-1.5 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-tertiary" />
+          <span className="text-tertiary font-medium">
             Active (0 dropped)
           </span>
         </div>

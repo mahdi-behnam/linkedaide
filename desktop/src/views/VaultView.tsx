@@ -236,7 +236,7 @@ export const VaultView: React.FC = () => {
             </h1>
             <span
               data-testid="encryption-badge"
-              className="inline-flex items-center gap-1.5 rounded-[4px] border border-tertiary/20 bg-tertiary-container/15 px-2 py-0.5 font-mono text-[11px] text-tertiary font-medium"
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-tertiary font-medium"
             >
               <ShieldCheck size={13} weight="bold" />
               <span>AES-128-CBC + HMAC-SHA256 Fernet</span>
@@ -259,9 +259,6 @@ export const VaultView: React.FC = () => {
               <h2 className="font-headline-sm text-headline-sm text-on-surface">
                 1-Click Connect LinkedIn
               </h2>
-              <span className="px-1.5 py-0.5 rounded-[4px] bg-surface-container text-on-surface-variant font-label-sm text-[11px] font-medium border border-outline-variant/20">
-                Isolated Sandbox
-              </span>
             </div>
             <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
               Open a secure, isolated embedded browser session to authenticate. Session cookies are automatically captured, encrypted with Fernet, and synced to Cloudflare KV.

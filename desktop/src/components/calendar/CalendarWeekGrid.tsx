@@ -32,20 +32,18 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         return (
           <span
             data-testid="status-badge-published"
-            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary-container/20 text-on-surface font-medium shrink-0 border border-outline/30"
+            className="text-[11px] text-tertiary font-medium shrink-0"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-tertiary shrink-0" />
-            <span>Published</span>
+            Published
           </span>
         );
       case "scheduled":
         return (
           <span
             data-testid="status-badge-scheduled"
-            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-[4px] bg-primary/10 text-primary font-medium shrink-0 border border-primary/20"
+            className="text-[11px] text-primary font-medium shrink-0"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-            <span>Scheduled</span>
+            Scheduled
           </span>
         );
       case "draft":
@@ -53,10 +51,9 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         return (
           <span
             data-testid="status-badge-draft"
-            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-[4px] bg-surface-container text-on-surface-variant font-medium shrink-0 border border-outline/40"
+            className="text-[11px] text-on-surface-variant font-medium shrink-0"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-outline shrink-0" />
-            <span>Draft</span>
+            Draft
           </span>
         );
     }
@@ -127,7 +124,7 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                     {dayCode}
                   </span>
                   {isToday && (
-                    <span className="px-1 py-0.2 rounded-[3px] bg-primary/15 text-primary text-[9px] font-semibold border border-primary/20">
+                    <span className="text-primary text-[9px] font-semibold">
                       TODAY
                     </span>
                   )}
@@ -165,11 +162,6 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                       >
                         {win.start_time} - {win.end_time} UTC
                       </span>
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isToday ? "bg-primary" : "bg-secondary"
-                        }`}
-                      />
                     </div>
                     <span className="text-xs font-medium text-on-surface truncate">
                       {win.title}
@@ -256,8 +248,7 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                 {/* Live Operator Session indicator for Today */}
                 {isToday && (
                   <div className="mt-auto p-1.5 rounded-md bg-surface-container-low text-center border border-outline/50">
-                    <span className="text-[11px] text-primary font-medium flex items-center justify-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span className="text-[11px] text-primary font-medium">
                       Live Operator Session
                     </span>
                   </div>

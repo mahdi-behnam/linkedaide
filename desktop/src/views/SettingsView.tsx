@@ -258,13 +258,13 @@ export const SettingsView: React.FC = () => {
 
         <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
           {saveSuccess && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border border-tertiary/30 bg-tertiary-container/15 font-mono text-[11px] text-tertiary font-medium">
+            <div className="flex items-center gap-1.5 font-mono text-[11px] text-tertiary font-medium">
               <CheckCircle size={14} weight="bold" />
               <span>Settings Saved &amp; Applied</span>
             </div>
           )}
           {saveError && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border border-error/30 bg-error-container/20 font-mono text-[11px] text-error font-medium">
+            <div className="flex items-center gap-1.5 font-mono text-[11px] text-error font-medium">
               <WarningCircle size={14} weight="bold" />
               <span>{saveError}</span>
             </div>

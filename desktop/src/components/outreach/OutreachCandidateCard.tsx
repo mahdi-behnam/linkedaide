@@ -23,13 +23,6 @@ export const OutreachCandidateCard: React.FC<OutreachCandidateCardProps> = ({
 }) => {
   const initials = getInitials(candidate.target_name);
 
-  const statusStyles: Record<string, string> = {
-    pending: "border-amber-500/30 bg-amber-500/10 text-amber-500",
-    approved: "border-tertiary/30 bg-tertiary/10 text-tertiary",
-    rejected: "border-outline bg-surface-container text-on-surface-variant",
-    sent: "border-primary/30 bg-primary/10 text-primary",
-    failed: "border-error/30 bg-error/10 text-error",
-  };
 
   return (
     <article
@@ -70,8 +63,12 @@ export const OutreachCandidateCard: React.FC<OutreachCandidateCardProps> = ({
         </div>
 
         <span
-          className={`rounded-[4px] border px-1.5 py-0.2 text-[10px] font-medium capitalize shrink-0 ${
-            statusStyles[candidate.status] || statusStyles.pending
+          className={`text-[11px] font-medium capitalize shrink-0 ${
+            candidate.status === "sent"
+              ? "text-tertiary"
+              : candidate.status === "rejected" || candidate.status === "failed"
+              ? "text-error"
+              : "text-amber-500"
           }`}
         >
           {candidate.status}

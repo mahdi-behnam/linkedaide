@@ -78,17 +78,10 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
               <span className="font-code-sm text-code-sm font-medium text-on-surface">li_at status:</span>
               <span
                 data-testid="li-at-status"
-                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] font-label-sm text-[11px] font-medium ${
-                  healthStatus.valid
-                    ? "bg-tertiary-container/15 text-tertiary border border-tertiary/20"
-                    : "bg-error-container/40 text-error border border-error/20"
+                className={`font-label-sm text-[12px] font-medium ${
+                  healthStatus.valid ? "text-tertiary" : "text-error"
                 }`}
               >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    healthStatus.valid ? "bg-tertiary" : "bg-error"
-                  }`}
-                />
                 {healthStatus.valid
                   ? `Active (${healthStatus.daysRemaining} days remaining)`
                   : healthStatus.details === "Checking session..."
@@ -109,17 +102,10 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
               <span className="font-code-sm text-code-sm font-medium text-on-surface">JSESSIONID status:</span>
               <span
                 data-testid="jsessionid-status"
-                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] font-label-sm text-[11px] font-medium ${
-                  healthStatus.valid
-                    ? "bg-tertiary-container/15 text-tertiary border border-tertiary/20"
-                    : "bg-surface-container-highest text-on-surface-variant border border-outline-variant/20"
+                className={`font-label-sm text-[12px] font-medium ${
+                  healthStatus.valid ? "text-tertiary" : "text-on-surface-variant"
                 }`}
               >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    healthStatus.valid ? "bg-tertiary" : "bg-on-surface-variant"
-                  }`}
-                />
                 {healthStatus.valid
                   ? "Active (CSRF token valid)"
                   : healthStatus.details === "Checking session..."
@@ -192,9 +178,8 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
               <span className="font-code-sm text-code-sm font-medium text-on-surface">Key Status:</span>
               <span
                 data-testid="key-status"
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] bg-tertiary-container/15 text-tertiary border border-tertiary/20 font-label-sm text-[11px] font-medium"
+                className="font-label-sm text-[12px] font-medium text-tertiary"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary" />
                 {encryptionKeyStatus.includes("Loaded") ? "Loaded" : encryptionKeyStatus}
               </span>
             </div>
@@ -271,20 +256,11 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
               </h3>
             </div>
             <span
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] font-label-sm text-[11px] font-medium ${
-                healthStatus.valid
-                  ? "bg-tertiary-container/15 text-tertiary border border-tertiary/20"
-                  : "bg-surface-container-highest text-on-surface-variant border border-outline-variant/20"
+              className={`font-label-sm text-[12px] font-medium ${
+                healthStatus.valid ? "text-tertiary" : "text-on-surface-variant"
               }`}
             >
-              {healthStatus.valid ? (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-tertiary" />
-                  <span>Synced</span>
-                </>
-              ) : (
-                <span>Not Synced</span>
-              )}
+              {healthStatus.valid ? "Synced" : "Not Synced"}
             </span>
           </div>
 

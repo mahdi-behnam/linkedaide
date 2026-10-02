@@ -32,7 +32,7 @@ export const OutreachLeftPane: React.FC<OutreachLeftPaneProps> = ({
             </h1>
             <span
               data-testid="pending-count-pill"
-              className="inline-flex items-center px-1.5 py-0.2 rounded-[4px] bg-surface-container-high text-on-surface text-[10px] font-medium tabular-nums"
+              className="inline-flex items-center text-on-surface-variant text-[11px] font-medium tabular-nums"
             >
               {pendingCount} Pending
             </span>

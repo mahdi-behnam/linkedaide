@@ -226,9 +226,6 @@ export const ComposerView: React.FC = () => {
               <h1 className="text-sm font-semibold text-on-surface tracking-tight">
                 Post Composer Studio
               </h1>
-              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-[4px] bg-surface-container-high text-on-surface-variant font-medium border border-outline/40">
-                v1.2 High-Signal
-              </span>
             </div>
             <span className="text-[11px] text-on-surface-variant">
               Structured technical composition with AI hook archetypes &amp; cutoff preview

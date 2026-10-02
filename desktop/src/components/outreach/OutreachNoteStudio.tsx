@@ -35,15 +35,15 @@ export const OutreachNoteStudio: React.FC<OutreachNoteStudioProps> = ({
           <h3 className="text-sm font-semibold text-on-surface">Personalized Note</h3>
         </div>
 
-        {/* Character countdown pill */}
+        {/* Character countdown */}
         <div
           data-testid="char-count-pill"
-          className={`rounded-[4px] border px-2 py-0.5 font-mono text-[11px] tabular-nums ${
+          className={`font-mono text-[11px] tabular-nums font-medium ${
             isOverLimit
-              ? "border-error/40 bg-error/10 font-bold text-error"
+              ? "text-error"
               : isWarning
-              ? "border-amber-500/40 bg-amber-500/10 font-medium text-amber-500"
-              : "border-outline bg-surface-container text-on-surface-variant"
+              ? "text-amber-500"
+              : "text-on-surface-variant"
           }`}
         >
           {charCount} / 300 chars

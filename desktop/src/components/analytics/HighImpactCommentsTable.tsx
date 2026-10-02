@@ -99,8 +99,8 @@ export const HighImpactCommentsTable: React.FC<HighImpactCommentsTableProps> = (
                       </p>
                     </td>
                     <td className="py-2.5 pr-3 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 rounded-[4px] border border-tertiary/25 bg-tertiary/10 px-2 py-0.5 text-[10px] font-semibold text-tertiary">
-                        <CheckCircle size={11} weight="bold" />
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-tertiary">
+                        <CheckCircle size={13} weight="bold" />
                         Author Replied
                       </span>
                     </td>

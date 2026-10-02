@@ -42,7 +42,7 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
         </div>
 
         {executionMode === "cloud" && (
-          <span className="rounded-[4px] border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-mono text-amber-500 font-medium self-start sm:self-auto">
+          <span className="text-[11px] font-mono text-amber-500 font-medium self-start sm:self-auto">
             Required for Cloud Mode
           </span>
         )}

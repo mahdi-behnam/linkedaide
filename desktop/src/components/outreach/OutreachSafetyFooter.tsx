@@ -32,8 +32,8 @@ export const OutreachSafetyFooter: React.FC<OutreachSafetyFooterProps> = ({
         <span className="font-mono text-xs text-on-surface-variant tabular-nums">
           Quota: {connectionsSent}/{connectionsMax}
         </span>
-        <span className="px-2 py-0.5 rounded-[4px] bg-tertiary/15 text-tertiary text-[11px] font-medium border border-tertiary/20">
-          Edge Protected
+        <span className="text-[11px] font-medium text-tertiary">
+          · Edge Protected
         </span>
       </div>
     </footer>
