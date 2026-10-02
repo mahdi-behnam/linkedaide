@@ -188,6 +188,46 @@ describe("WorkerClient", () => {
       expect(state.paused).toBe(false);
       expect(state.seen_posts_count).toBe(42);
     });
+
+    it("handles Worker response containing pending array in state.pending", async () => {
+      const mockWorkerResponse = {
+        success: true,
+        state: {
+          pending: [
+            {
+              item_id: "act-cloud-1",
+              action_type: "approve_comment",
+              author_name: "Satya Nadella",
+              created_at: "2026-10-01T12:00:00Z",
+              draft_text: "Deterministic guardrails over probabilistic scaling.",
+            },
+          ],
+          daily_counters: {
+            date: "2026-10-01",
+            comments_executed: 1,
+            posts_executed: 0,
+            suggestions_sent: 3,
+          },
+          history: [],
+          incident: null,
+          paused: false,
+        },
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(mockWorkerResponse),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const state = await client.fetchState();
+
+      expect(state.pending_actions).toHaveLength(1);
+      expect(state.pending_actions[0].item_id).toBe("act-cloud-1");
+      expect(state.pendingActions).toEqual(state.pending_actions);
+      expect(state.pending).toEqual(state.pending_actions);
+    });
   });
 
   describe("executeAction", () => {

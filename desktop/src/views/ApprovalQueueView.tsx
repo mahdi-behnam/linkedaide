@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext";
 import {
   Check,
@@ -66,52 +66,68 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
   const [actionError, setActionError] = useState<string | null>(null);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState<boolean>(false);
   const [currentToneIndex, setCurrentToneIndex] = useState<number>(-1);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const queueListRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
+  const loadQueue = useCallback(async () => {
     if (initialItems !== undefined) return;
     if (typeof window === "undefined" || !window.api?.fetchState) return;
 
-    let isMounted = true;
+    setIsLoading(true);
+    setFetchError(null);
     try {
-      const promise = window.api.fetchState();
-      if (promise && typeof promise.then === "function") {
-        promise
-          .then((state) => {
-            if (!isMounted || !state) return;
-            const rawPending = state.pending_actions || state.pendingActions || [];
-            if (rawPending.length > 0) {
-              const mapped: PendingItem[] = rawPending.map((p) => ({
-                id: p.item_id,
-                actionType: (p.action_type?.includes("post") ? "post" : "comment") as "comment" | "post",
-                author: p.author_name || "Unknown Author",
-                headline: p.author_headline || "LinkedIn Member",
-                postUrl: p.post_url || "",
-                postExcerpt: p.post_excerpt || "",
-                draftText: p.draft_text || "",
-                confidence: p.confidence ?? 0.85,
-                reasoning: p.reasoning || "",
-                engagementStyle: p.engagement_style || "Thought Leadership",
-                createdAt: p.created_at || new Date().toISOString(),
-                topic: "Engineering",
-              }));
-              setItems(mapped);
-              setSelectedId((prev) => prev ?? mapped[0]?.id ?? null);
-              setPendingCount(mapped.length);
-            }
-          })
-          .catch(() => {});
-      }
-    } catch {
-      // ignore
-    }
+      const state = await window.api.fetchState();
+      if (!state) return;
+      const rawPending =
+        state.pending_actions ||
+        state.pendingActions ||
+        state.pending ||
+        [];
 
-    return () => {
-      isMounted = false;
-    };
+      const mapped: PendingItem[] = rawPending.map((p: any) => ({
+        id: p.item_id,
+        actionType: (p.action_type?.includes("post") ? "post" : "comment") as "comment" | "post",
+        author: p.author_name || "Unknown Author",
+        headline: p.author_headline || "LinkedIn Member",
+        postUrl: p.post_url || "",
+        postExcerpt: p.post_excerpt || "",
+        draftText: p.draft_text || "",
+        confidence: p.confidence ?? 0.85,
+        reasoning: p.reasoning || "",
+        engagementStyle: p.engagement_style || "Thought Leadership",
+        createdAt: p.created_at || new Date().toISOString(),
+        topic: "Engineering",
+      }));
+      setItems(mapped);
+      setSelectedId((prev) => (mapped.some((m) => m.id === prev) ? prev : mapped[0]?.id ?? null));
+      setPendingCount(mapped.length);
+    } catch (err) {
+      setFetchError(
+        err instanceof Error ? err.message : "Failed to load approval queue."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }, [initialItems, setPendingCount]);
+
+  useEffect(() => {
+    loadQueue();
+  }, [loadQueue]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.api?.onRealtimeEvent) return;
+    const unsubscribe = window.api.onRealtimeEvent((event: any) => {
+      if (event?.type === "queue_updated" || event?.type === "action_executed") {
+        loadQueue();
+      }
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [loadQueue]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return items;
@@ -299,20 +315,54 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
             </p>
           </div>
 
-          <button
-            type="button"
-            data-testid="shortcuts-help-btn"
-            onClick={() => setIsShortcutsModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200"
-            title="Keyboard shortcuts cheat sheet (?)"
-          >
-            <Keyboard size={14} className="text-zinc-400" />
-            <span>Shortcuts</span>
-            <kbd className="rounded border border-zinc-700/60 bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
-              ?
-            </kbd>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              data-testid="refresh-queue-btn"
+              onClick={() => loadQueue()}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-50"
+              title="Refresh approval queue"
+            >
+              <ArrowClockwise
+                size={14}
+                className={isLoading ? "animate-spin text-zinc-300" : "text-zinc-400"}
+              />
+              <span>{isLoading ? "Refreshing..." : "Refresh"}</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="shortcuts-help-btn"
+              onClick={() => setIsShortcutsModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200"
+              title="Keyboard shortcuts cheat sheet (?)"
+            >
+              <Keyboard size={14} className="text-zinc-400" />
+              <span>Shortcuts</span>
+              <kbd className="rounded border border-zinc-700/60 bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                ?
+              </kbd>
+            </button>
+          </div>
         </div>
+
+        {fetchError && (
+          <div
+            data-testid="queue-fetch-error"
+            className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300"
+          >
+            <WarningCircle size={16} className="shrink-0 text-rose-400" />
+            <span className="flex-1">{fetchError}</span>
+            <button
+              type="button"
+              onClick={() => loadQueue()}
+              className="font-medium underline hover:text-rose-100"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <div
           data-testid="empty-queue-state"
@@ -381,6 +431,21 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
           <button
             type="button"
+            data-testid="refresh-queue-btn"
+            onClick={() => loadQueue()}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-50"
+            title="Refresh approval queue"
+          >
+            <ArrowClockwise
+              size={14}
+              className={isLoading ? "animate-spin text-zinc-300" : "text-zinc-400"}
+            />
+            <span>{isLoading ? "Refreshing..." : "Refresh"}</span>
+          </button>
+
+          <button
+            type="button"
             data-testid="shortcuts-help-btn"
             onClick={() => setIsShortcutsModalOpen(true)}
             className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200"
@@ -394,6 +459,23 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
           </button>
         </div>
       </div>
+
+      {fetchError && (
+        <div
+          data-testid="queue-fetch-error"
+          className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300"
+        >
+          <WarningCircle size={16} className="shrink-0 text-rose-400" />
+          <span className="flex-1">{fetchError}</span>
+          <button
+            type="button"
+            onClick={() => loadQueue()}
+            className="font-medium underline hover:text-rose-100"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* 2-Column Cockpit Layout */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">

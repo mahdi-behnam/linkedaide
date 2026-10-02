@@ -54,6 +54,7 @@ export interface Incident {
 }
 
 export interface AgentState {
+  pending?: PendingAction[];
   pending_actions: PendingAction[];
   pendingActions?: PendingAction[];
   connection_queue?: ConnectionRequestAction[];

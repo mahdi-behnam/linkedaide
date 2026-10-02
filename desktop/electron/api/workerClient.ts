@@ -257,11 +257,15 @@ export class WorkerClient {
     // Worker may return { state: ... } or { success: true, data: ... } or raw state directly
     const stateObj = (raw.state || raw.data || raw) as Record<string, unknown>;
 
-    const pendingActions = Array.isArray(stateObj.pending_actions)
-      ? stateObj.pending_actions
-      : Array.isArray(stateObj.pendingActions)
-        ? stateObj.pendingActions
-        : [];
+    const pendingActions = (
+      Array.isArray(stateObj.pending_actions)
+        ? stateObj.pending_actions
+        : Array.isArray(stateObj.pendingActions)
+          ? stateObj.pendingActions
+          : Array.isArray(stateObj.pending)
+            ? stateObj.pending
+            : []
+    ) as AgentState["pending_actions"];
 
     const dailyCounters = (stateObj.daily_counters ||
       stateObj.dailyCounters || {
@@ -283,6 +287,7 @@ export class WorkerClient {
           : undefined;
 
     return {
+      pending: pendingActions,
       pending_actions: pendingActions,
       pendingActions,
       daily_counters: dailyCounters,

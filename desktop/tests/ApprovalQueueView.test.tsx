@@ -292,4 +292,77 @@ describe("ApprovalQueueView", () => {
       expect(textarea.value).toContain("[rewritten with regenerate]");
     });
   });
+
+  it("clicking Refresh button re-fetches state and loads items from state.pending", async () => {
+    (window.api.fetchState as any).mockResolvedValue({
+      pending: [
+        {
+          item_id: "act-refreshed-1",
+          action_type: "approve_comment",
+          author_name: "Andrej Karpathy",
+          author_headline: "AI Researcher",
+          post_url: "https://linkedin.com/feed/update/urn:li:activity:9999",
+          post_excerpt: "Scaling inference compute is the new frontier.",
+          draft_text: "Inference-time search completely alters the trade-off space.",
+          confidence: 0.95,
+          reasoning: "High signal AI post",
+          engagement_style: "technical_deep_dive",
+        },
+      ],
+      daily_counters: { comments_executed: 0, posts_executed: 0, suggestions_sent: 1 },
+      history: [],
+      incident: null,
+      paused: false,
+    });
+
+    render(
+      <AppProvider>
+        <ApprovalQueueView />
+      </AppProvider>
+    );
+
+    // Initial mount calls fetchState and populates the card
+    await waitFor(() => {
+      expect(screen.getByText("Andrej Karpathy")).toBeTruthy();
+    });
+
+    const refreshBtn = screen.getByTestId("refresh-queue-btn");
+    fireEvent.click(refreshBtn);
+
+    await waitFor(() => {
+      expect(window.api.fetchState).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("renders error banner with retry button when fetchState throws", async () => {
+    (window.api.fetchState as any).mockRejectedValue(
+      new Error("Authentication failed (401 Unauthorized)")
+    );
+
+    render(
+      <AppProvider>
+        <ApprovalQueueView />
+      </AppProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("queue-fetch-error")).toBeTruthy();
+      expect(
+        screen.getByText("Authentication failed (401 Unauthorized)")
+      ).toBeTruthy();
+    });
+
+    // Verify retry button works
+    (window.api.fetchState as any).mockResolvedValueOnce({
+      pending: [],
+      history: [],
+    });
+
+    const retryBtn = screen.getByText("Retry");
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("queue-fetch-error")).toBeNull();
+    });
+  });
 });

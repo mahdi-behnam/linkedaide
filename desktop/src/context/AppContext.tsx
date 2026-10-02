@@ -105,7 +105,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const state = await window.api.fetchState();
       if (!state) return;
 
-      const rawPending = state.pending_actions || state.pendingActions || [];
+      const rawPending =
+        state.pending_actions ||
+        state.pendingActions ||
+        state.pending ||
+        [];
       const newPendingCount = rawPending.length;
 
       setPendingCount((prev) => {

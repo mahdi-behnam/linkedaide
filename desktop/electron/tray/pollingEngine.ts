@@ -117,7 +117,10 @@ export class PollingEngine {
     try {
       const state: AgentState = await this.workerClient.fetchState();
       const pendingActions: PendingAction[] =
-        state?.pending_actions || state?.pendingActions || [];
+        state?.pending_actions ||
+        state?.pendingActions ||
+        state?.pending ||
+        [];
 
       // Update paused state in tray if present in state response
       if (typeof state?.paused === "boolean") {
