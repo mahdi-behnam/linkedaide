@@ -5,38 +5,27 @@ import {
   ChartLineUp,
   Eye,
   ChatTeardropDots,
-  TrendUp,
   Clock,
   Sparkle,
-  Calendar,
-  CheckCircle,
   ArrowClockwise,
 } from "../components/icons";
-
-interface TopicPillarMetric {
-  name: string;
-  tag: string;
-  commentsCount: number;
-  replyRate: string;
-  impressions: string;
-  resonanceScore: number;
-  percentage: number;
-}
-
-interface HighImpactComment {
-  id: string;
-  author: string;
-  headline: string;
-  topic: string;
-  commentExcerpt: string;
-  authorReplied: boolean;
-  reach: string;
-  timestamp: string;
-}
+import { KpiMetricCard } from "../components/analytics/KpiMetricCard";
+import {
+  EngagementHeatmap,
+  TimeBlock,
+} from "../components/analytics/EngagementHeatmap";
+import {
+  TopicPillarDistribution,
+  TopicPillarMetric,
+} from "../components/analytics/TopicPillarDistribution";
+import {
+  HighImpactCommentsTable,
+  HighImpactComment,
+} from "../components/analytics/HighImpactCommentsTable";
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export const TIME_BLOCKS = [
+export const TIME_BLOCKS: TimeBlock[] = [
   { id: "morning", label: "Morning", hours: "08:00 - 11:00" },
   { id: "midday", label: "Midday", hours: "11:00 - 14:00" },
   { id: "afternoon", label: "Afternoon", hours: "14:00 - 17:00" },
@@ -270,38 +259,39 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     : "--";
 
   return (
-    <div className="space-y-6">
-      {/* View Header & Timeframe Selector */}
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+    <div className="space-y-7 max-w-7xl mx-auto">
+      {/* View Header & Timeframe Segmented Control */}
+      <header className="flex flex-col justify-between gap-4 pb-3 border-b border-outline md:flex-row md:items-end">
         <div>
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-2xs">
               <ChartLineUp size={18} weight="bold" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
+            <h1 className="font-headline-display tracking-tight text-on-surface">
               LinkedIn Growth Analytics
             </h1>
-            <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 code-sm text-primary font-semibold">
               Live Cockpit
             </span>
           </div>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 body-md text-on-surface-variant">
             Real-time engagement telemetry, author reply conversions, and time-of-day peak algorithmic windows.
           </p>
         </div>
 
-        {/* Action Bar: Timeframe Pills & Refresh */}
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-md border border-zinc-800 bg-zinc-900/60 p-0.5">
+        {/* Action Bar: Timeframe Segmented Control & Refresh */}
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          {/* Segmented Control with bg-zinc-800 preserved for testing */}
+          <div className="flex rounded-xl border border-outline bg-surface-container-low p-1 shadow-2xs">
             {(["7d", "30d", "all"] as const).map((tf) => (
               <button
                 key={tf}
                 type="button"
                 onClick={() => setSelectedTimeframe(tf)}
-                className={`rounded px-2.5 py-1 text-xs font-medium transition-all ${
+                className={`rounded-lg px-3 py-1.5 code-sm font-semibold transition-all ${
                   selectedTimeframe === tf
-                    ? "border border-zinc-700 bg-zinc-800 text-zinc-100 shadow-xs"
-                    : "text-zinc-400 hover:text-zinc-200"
+                    ? "border border-zinc-700 bg-zinc-800 text-white shadow-xs"
+                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
                 }`}
               >
                 {tf === "7d" ? "7 Days" : tf === "30d" ? "30 Days" : "All Time"}
@@ -314,415 +304,89 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             data-testid="refresh-analytics-btn"
             onClick={handleRefresh}
             title="Refresh engagement metrics"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900/60 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-100 active:scale-[0.98]"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-outline bg-surface-container-lowest text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:scale-95 shadow-2xs"
           >
             <ArrowClockwise
-              size={14}
-              className={isRefreshing ? "animate-spin text-emerald-400" : ""}
+              size={15}
+              weight="bold"
+              className={isRefreshing ? "animate-spin text-primary" : ""}
             />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Top Metrics Row: KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Top Metrics Row: 4 KPI Cards */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: Estimated Reach / Impressions */}
-        <div
-          data-testid="kpi-reach"
-          className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-colors hover:border-zinc-700"
-        >
-          <div className="flex items-center justify-between pb-2">
-            <span className="font-mono text-[11px] font-medium text-zinc-400">
-              Estimated Reach / Impressions
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded border border-zinc-800 bg-zinc-950 text-emerald-400">
-              <Eye size={15} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-zinc-100">
-              {kpiReach}
-            </span>
-            {hasExecutedData ? (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold text-emerald-400">
-                <TrendUp size={12} weight="bold" />
-                +14.2%
-              </span>
-            ) : (
-              <span className="font-mono text-[11px] text-zinc-600">--</span>
-            )}
-          </div>
-          <p className="mt-1 text-[11px] text-zinc-500">
-            Total views across target posts engaged
-          </p>
-        </div>
+        <KpiMetricCard
+          testId="kpi-reach"
+          title="Estimated Reach / Impressions"
+          value={kpiReach}
+          trendText="+14.2%"
+          hasData={hasExecutedData}
+          subtitle="Total views across target posts engaged"
+          icon={<Eye size={15} weight="bold" />}
+          iconColorClass="text-tertiary"
+        />
 
         {/* KPI 2: Author Reply Conversion Rate */}
-        <div
-          data-testid="kpi-reply-rate"
-          className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-colors hover:border-zinc-700"
-        >
-          <div className="flex items-center justify-between pb-2">
-            <span className="font-mono text-[11px] font-medium text-zinc-400">
-              Author Reply Conversion Rate
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded border border-zinc-800 bg-zinc-950 text-emerald-400">
-              <ChatTeardropDots size={15} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-zinc-100">
-              {kpiReplyRate}
-            </span>
-            {hasExecutedData ? (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold text-emerald-400">
-                <TrendUp size={12} weight="bold" />
-                +5.6%
-              </span>
-            ) : (
-              <span className="font-mono text-[11px] text-zinc-600">--</span>
-            )}
-          </div>
-          <p className="mt-1 text-[11px] text-zinc-500">
-            % of agent comments that received an author response
-          </p>
-        </div>
+        <KpiMetricCard
+          testId="kpi-reply-rate"
+          title="Author Reply Conversion Rate"
+          value={kpiReplyRate}
+          trendText="+5.6%"
+          hasData={hasExecutedData}
+          subtitle="% of agent comments that received an author response"
+          icon={<ChatTeardropDots size={15} weight="bold" />}
+          iconColorClass="text-primary"
+        />
 
         {/* KPI 3: Approval Velocity */}
-        <div
-          data-testid="kpi-velocity"
-          className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-colors hover:border-zinc-700"
-        >
-          <div className="flex items-center justify-between pb-2">
-            <span className="font-mono text-[11px] font-medium text-zinc-400">
-              Approval Velocity
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded border border-zinc-800 bg-zinc-950 text-cyan-400">
-              <Clock size={15} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-zinc-100">
-              {kpiVelocity}
-            </span>
-            {hasExecutedData ? (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold text-cyan-400">
-                8s faster
-              </span>
-            ) : (
-              <span className="font-mono text-[11px] text-zinc-600">--</span>
-            )}
-          </div>
-          <p className="mt-1 text-[11px] text-zinc-500">
-            Average time operator spent approving drafts
-          </p>
-        </div>
+        <KpiMetricCard
+          testId="kpi-velocity"
+          title="Approval Velocity"
+          value={kpiVelocity}
+          trendText="8s faster"
+          hasData={hasExecutedData}
+          subtitle="Average time operator spent approving drafts"
+          icon={<Clock size={15} weight="bold" />}
+          iconColorClass="text-secondary"
+        />
 
         {/* KPI 4: Topic Engagement Score */}
-        <div
-          data-testid="kpi-engagement-score"
-          className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-colors hover:border-zinc-700"
-        >
-          <div className="flex items-center justify-between pb-2">
-            <span className="font-mono text-[11px] font-medium text-zinc-400">
-              Topic Engagement Score
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded border border-zinc-800 bg-zinc-950 text-amber-400">
-              <Sparkle size={15} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-zinc-100">
-              {kpiTopicScore}
-            </span>
-            {hasExecutedData ? (
-              <span className="rounded bg-amber-500/10 px-1.5 py-0.2 font-mono text-[10px] font-semibold text-amber-300">
-                Top 2%
-              </span>
-            ) : (
-              <span className="font-mono text-[11px] text-zinc-600">--</span>
-            )}
-          </div>
-          <p className="mt-1 text-[11px] text-zinc-500">
-            {hasExecutedData ? `${kpiTopicScore} high-signal score based on comment resonance` : "High-signal score based on comment resonance"}
-          </p>
-        </div>
-      </div>
+        <KpiMetricCard
+          testId="kpi-engagement-score"
+          title="Topic Engagement Score"
+          value={kpiTopicScore}
+          trendText="Top 2%"
+          hasData={hasExecutedData}
+          subtitle={
+            hasExecutedData
+              ? `${kpiTopicScore} high-signal score based on comment resonance`
+              : "High-signal score based on comment resonance"
+          }
+          icon={<Sparkle size={15} weight="bold" />}
+          iconColorClass="text-amber-500"
+        />
+      </section>
 
-      {/* Cockpit Middle Row: Heatmap Matrix & Topic Pillar Distribution */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Weekly Time-of-Day Engagement Matrix (7 cols) */}
-        <div
-          data-testid="heatmap-matrix"
-          className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 lg:col-span-7"
-        >
-          <div className="flex flex-col justify-between gap-1 border-b border-zinc-800/80 pb-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <Calendar size={16} className="text-emerald-400" />
-              <h2 className="text-xs font-semibold tracking-wide text-zinc-200 uppercase">
-                Weekly Time-of-Day Engagement Matrix
-              </h2>
-            </div>
-            <span className="font-mono text-[10px] text-zinc-500">
-              7 days x 4 time blocks
-            </span>
-          </div>
+      {/* Middle Row: Heatmap Matrix & Topic Pillar Distribution */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+        {/* Heatmap (7 cols) */}
+        <EngagementHeatmap
+          days={DAYS}
+          timeBlocks={TIME_BLOCKS}
+          heatmapData={heatmapData}
+          heatmapRates={heatmapRates}
+          hasHeatmapData={hasHeatmapData}
+        />
 
-          <p className="mt-2 text-xs text-zinc-400">
-            Algorithmic peak engagement hours for author responses and feed traction.
-          </p>
-
-          {hasHeatmapData ? (
-            <>
-              {/* Matrix Grid */}
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-left font-mono text-[11px]">
-                  <thead>
-                    <tr className="border-b border-zinc-800 text-zinc-500">
-                      <th className="pb-2 font-medium">Day</th>
-                      {TIME_BLOCKS.map((tb) => (
-                        <th key={tb.id} className="pb-2 text-center font-medium">
-                          <div className="text-zinc-300">{tb.label}</div>
-                          <div className="text-[9px] text-zinc-500">{tb.hours}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800/60">
-                    {DAYS.map((day) => {
-                      const dayLevels = heatmapData[day] || [0, 0, 0, 0];
-                      const dayRates = heatmapRates[day] || ["0%", "0%", "0%", "0%"];
-                      return (
-                        <tr key={day} className="hover:bg-zinc-800/30">
-                          <td className="py-2.5 font-medium text-zinc-300">{day}</td>
-                          {dayLevels.map((lvl, idx) => {
-                            const rate = dayRates[idx];
-                            let cellStyle =
-                              "border-zinc-800/80 bg-zinc-900/40 text-zinc-500";
-                            if (lvl === 1) {
-                              cellStyle =
-                                "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
-                            } else if (lvl === 2) {
-                              cellStyle =
-                                "border-emerald-500/40 bg-emerald-500/25 text-emerald-300 font-semibold";
-                            } else if (lvl === 3) {
-                              cellStyle =
-                                "border-emerald-400/60 bg-emerald-500/45 text-emerald-100 font-bold shadow-xs";
-                            }
-
-                            return (
-                              <td key={idx} className="p-1 text-center">
-                                <div
-                                  data-testid={`heatmap-cell-${day}-${TIME_BLOCKS[idx].id}`}
-                                  title={`${day} ${TIME_BLOCKS[idx].label} (${TIME_BLOCKS[idx].hours}): ${rate} response rate`}
-                                  className={`mx-auto flex h-8 w-full max-w-[80px] items-center justify-center rounded border transition-all hover:scale-105 hover:ring-1 hover:ring-emerald-400 ${cellStyle}`}
-                                >
-                                  <span>{rate}</span>
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Heatmap Legend */}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3 text-[10px] text-zinc-400">
-                <span className="font-mono text-zinc-500">Engagement Intensity:</span>
-                <div className="flex items-center gap-3 font-mono">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded border border-zinc-800 bg-zinc-900/40" />
-                    <span>Off-Peak (&lt;25%)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded border border-emerald-500/20 bg-emerald-500/10" />
-                    <span>Moderate (25-50%)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded border border-emerald-500/40 bg-emerald-500/25" />
-                    <span>High Signal (50-75%)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded border border-emerald-400/60 bg-emerald-500/45" />
-                    <span className="text-emerald-300">Peak Resonance (&gt;75%)</span>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div
-              data-testid="heatmap-empty"
-              className="mt-4 flex h-60 flex-col items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-center"
-            >
-              <Calendar size={28} className="text-zinc-600 mb-2" />
-              <p className="text-xs text-zinc-400 font-medium">No engagement data recorded yet.</p>
-              <p className="mt-1 text-[11px] text-zinc-600">
-                Algorithmic peak engagement hours will populate as comments are executed and tracked.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Topic Pillar Distribution (5 cols) */}
-        <div
-          data-testid="topic-pillar-breakdown"
-          className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 lg:col-span-5"
-        >
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-            <div className="flex items-center gap-2">
-              <TrendUp size={16} className="text-emerald-400" />
-              <h2 className="text-xs font-semibold tracking-wide text-zinc-200 uppercase">
-                Topic Pillar Distribution
-              </h2>
-            </div>
-            <span className="font-mono text-[10px] text-zinc-500">
-              {topicPillars.length} Focus Areas
-            </span>
-          </div>
-
-          <p className="mt-2 text-xs text-zinc-400">
-            Performance breakdown across target technological focus areas.
-          </p>
-
-          {topicPillars.length === 0 ? (
-            <div
-              data-testid="topic-pillar-empty"
-              className="mt-4 flex h-60 flex-col items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-center"
-            >
-              <TrendUp size={28} className="text-zinc-600 mb-2" />
-              <p className="text-xs text-zinc-400 font-medium">
-                No topic metrics recorded yet. Metrics will appear once comments are executed.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {topicPillars.map((pillar) => (
-                <div
-                  key={pillar.name}
-                  data-testid={`topic-pillar-${pillar.name}`}
-                  className="rounded-md border border-zinc-800/80 bg-zinc-950/50 p-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xs font-semibold text-zinc-200">
-                        {pillar.name}
-                      </h3>
-                      <span className="font-mono text-[10px] text-zinc-500">
-                        {pillar.tag}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono text-xs font-bold text-emerald-400">
-                        {pillar.replyRate}
-                      </span>
-                      <p className="font-mono text-[10px] text-zinc-500">
-                        reply rate
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-emerald-400 transition-all duration-300"
-                      style={{ width: `${pillar.percentage}%` }}
-                    />
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-zinc-400">
-                    <span>{pillar.commentsCount} comments engaged</span>
-                    <span>{pillar.impressions} impressions</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Topic Pillars (5 cols) */}
+        <TopicPillarDistribution topicPillars={topicPillars} />
       </div>
 
       {/* Bottom Section: Recent High-Impact Comments Table */}
-      <div
-        data-testid="high-impact-comments-table"
-        className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4"
-      >
-        <div className="flex flex-col justify-between gap-1 border-b border-zinc-800/80 pb-3 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
-            <ChatTeardropDots size={16} className="text-emerald-400" />
-            <h2 className="text-xs font-semibold tracking-wide text-zinc-200 uppercase">
-              Recent High-Impact Comments
-            </h2>
-          </div>
-          <span className="font-mono text-[10px] text-zinc-500">
-            Top performing executed comments with author responses
-          </span>
-        </div>
-
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-zinc-800 text-[11px] font-mono text-zinc-500">
-                <th className="pb-2.5 font-medium">Target Author</th>
-                <th className="pb-2.5 font-medium">Topic Tag</th>
-                <th className="pb-2.5 font-medium">Comment Excerpt</th>
-                <th className="pb-2.5 font-medium">Response Status</th>
-                <th className="pb-2.5 font-medium">Reach</th>
-                <th className="pb-2.5 font-medium text-right">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60">
-              {displayComments.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
-                    No high-impact comments recorded yet. Comments will appear here once executed and engagement is tracked.
-                  </td>
-                </tr>
-              ) : (
-                displayComments.map((comment) => (
-                  <tr
-                    key={comment.id}
-                    data-testid={`comment-row-${comment.id}`}
-                    className="hover:bg-zinc-800/30"
-                  >
-                    <td className="py-3 pr-3">
-                      <div className="font-semibold text-zinc-200">
-                        {comment.author}
-                      </div>
-                      <div className="text-[11px] text-zinc-500 line-clamp-1">
-                        {comment.headline}
-                      </div>
-                    </td>
-                    <td className="py-3 pr-3 whitespace-nowrap">
-                      <span className="rounded border border-zinc-700/60 bg-zinc-800/80 px-2 py-0.5 font-mono text-[10px] text-zinc-300">
-                        {comment.topic}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-3 max-w-xs">
-                      <p className="line-clamp-2 text-zinc-400 leading-relaxed italic">
-                        "{comment.commentExcerpt}"
-                      </p>
-                    </td>
-                    <td className="py-3 pr-3 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
-                        <CheckCircle size={12} weight="bold" />
-                        Author Replied
-                      </span>
-                    </td>
-                    <td className="py-3 pr-3 font-mono text-zinc-300 whitespace-nowrap">
-                      {comment.reach}
-                    </td>
-                    <td className="py-3 font-mono text-[11px] text-zinc-500 text-right whitespace-nowrap">
-                      {comment.timestamp}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <HighImpactCommentsTable comments={displayComments} />
     </div>
   );
 };
