@@ -60,6 +60,8 @@ Settings can be provided via environment variables, a local `.env` file, or GitH
 | `GITHUB_REPO_OWNER` | `string` | *(Required)* | No | GitHub username or organization name. |
 | `GITHUB_REPO_NAME` | `string` | *(Required)* | No | GitHub repository name (e.g. `linkedin-hitl-agent`). |
 | `DESKTOP_API_SECRET` | `string` | *(Required)* | **Yes** | High-entropy secret authenticating Desktop app calls to Worker REST/WebSocket API. |
+| `NVIDIA_NIM_API_KEY` | `string` | *(Required for Desktop App)* | **Yes** | NVIDIA NIM API key (`nvapi-...`) allowing the worker's `/api/rewrite` endpoint to rewrite drafts into different tones. |
+| `LLM_BASE_URL` | `string` | `https://integrate.api.nvidia.com/v1` | No | Custom base URL if using a custom endpoint or proxy for Worker LLM calls. |
 
 ---
 

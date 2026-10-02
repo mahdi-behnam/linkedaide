@@ -27,7 +27,7 @@ Before proceeding, here is a quick map of all secrets used in the system, where 
 
 | Secret / Variable Name | What It Is & Where It Comes From | Where It Is Configured |
 |---|---|---|
-| `NVIDIA_NIM_API_KEY` | API key from [NVIDIA API Catalog](https://build.nvidia.com/) (`nvapi-...`). | Local `.env`, GitHub Secrets |
+| `NVIDIA_NIM_API_KEY` | API key from [NVIDIA API Catalog](https://build.nvidia.com/) (`nvapi-...`). | Local `.env`, GitHub Secrets, Cloudflare Worker Secret *(powers Desktop App draft tone rewrites)* |
 | `TELEGRAM_BOT_TOKEN` | Bot token created via [`@BotFather`](https://t.me/BotFather). | Local `.env`, GitHub Secrets, Cloudflare Worker Secret |
 | `TELEGRAM_AUTHORIZED_CHAT_ID` | Your numeric Telegram User ID retrieved from [`@userinfobot`](https://t.me/userinfobot). | Local `.env`, GitHub Secrets, Cloudflare Worker Secret |
 | `SESSION_ENCRYPTION_KEY` | 32-byte Fernet key generated via `scripts/generate_secrets.py`. | Local `.env`, GitHub Secrets |
@@ -272,7 +272,14 @@ npx wrangler secret put GITHUB_REPO_NAME
 
 # 7. Desktop API Secret (from Step 1 — for desktop app realtime sync & API access)
 npx wrangler secret put DESKTOP_API_SECRET
+
+# 8. NVIDIA NIM API Key (from Step 2 — powers AI draft rewriting & tone adjustments in Desktop Control Panel)
+npx wrangler secret put NVIDIA_NIM_API_KEY
 ```
+
+> [!IMPORTANT]
+> **Why does the Cloudflare Worker need `NVIDIA_NIM_API_KEY`?**  
+> The Desktop Control Panel features on-the-fly AI draft rewriting (Technical, Inquisitive, Contrarian, Shorter) and comment regeneration directly from the **Approval Queue** tab. These fast LLM rewrite requests are processed directly on the Cloudflare Worker edge using NVIDIA NIM. If this secret is missing, clicking tone pills in the desktop app will fail with `Worker API Error (500 Internal Server Error): NVIDIA_NIM_API_KEY is not configured`.
 
 ### 5. Register the Webhook with Telegram
 Return to the project root directory and run the registration utility:

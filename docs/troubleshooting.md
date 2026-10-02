@@ -11,6 +11,7 @@ This guide details common operational scenarios, diagnostic steps, and recovery 
 | Workflows skip immediately with "System Paused" | Circuit breaker active or `AGENT_PAUSED=true` | Check for `state/incident.json` or review `AGENT_PAUSED` repo variable. |
 | Telegram suggestions stop arriving | Feed had no matching posts, or session expired | Check GitHub Actions logs for `Scout` job or run `Session Health Check`. |
 | Approval button clicked in Telegram, but action never executes | Relay webhook secret mismatch or expired GitHub PAT | Check Cloudflare Worker logs and inspect GitHub `repository_dispatch` events. |
+| Desktop App displays "Worker API Error (500): NVIDIA_NIM_API_KEY is not configured" | Missing `NVIDIA_NIM_API_KEY` secret in Cloudflare Worker | Run `npx wrangler secret put NVIDIA_NIM_API_KEY` in `infra/telegram-relay-worker` or add in Cloudflare Dashboard. |
 | Workflow fails with `BotDetectionError` | LinkedIn displayed CAPTCHA or checkpoint | Halt automated runs, log in manually via browser to clear challenge, and reset breaker. |
 
 ---
@@ -105,6 +106,27 @@ If clicking **Approve** or **Reject** in Telegram results in an error alert:
   - **Fine-Grained PAT**: `Repository permissions` -> **Contents: Read and write**.
   - **Classic PAT**: **`repo`** scope.
 - Verify `GITHUB_REPO_OWNER` and `GITHUB_REPO_NAME` match your repository exactly.
+
+### 3. Desktop App Tone Rewrite Fails with `NVIDIA_NIM_API_KEY is not configured`
+**Symptoms:**  
+When clicking an AI tone quick-pill (*Technical*, *Inquisitive*, *Contrarian*, *Shorter & Punchier*) or *Regenerate* in the Desktop App's **Approval Queue** or **Connection Outreach Studio**, a red banner appears:  
+`Error invoking remote method 'api:rewriteDraft': Error: Worker API Error (500 Internal Server Error): NVIDIA_NIM_API_KEY is not configured`
+
+**Cause:**  
+The Desktop App delegates draft rewriting to the Cloudflare Worker's `/api/rewrite` endpoint, which calls NVIDIA NIM on the edge. This requires `NVIDIA_NIM_API_KEY` to be set as an encrypted secret directly in your Cloudflare Worker environment.
+
+**Resolution:**  
+1. **Via Wrangler CLI:**
+   ```bash
+   cd infra/telegram-relay-worker
+   npx wrangler secret put NVIDIA_NIM_API_KEY
+   ```
+   Paste your NVIDIA NIM API key (`nvapi-...`).
+2. **Via Cloudflare Dashboard:**
+   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com/) &rarr; **Compute (Workers & Pages)**.
+   - Select your worker (`linkedin-agent-telegram-relay`).
+   - Go to **Settings** &rarr; **Variables and Secrets** &rarr; click **Add** under Secrets.
+   - Enter variable name `NVIDIA_NIM_API_KEY`, paste your `nvapi-...` value, and click **Deploy**.
 
 ---
 
