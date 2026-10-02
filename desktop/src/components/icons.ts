@@ -56,6 +56,8 @@ import {
   ChatTeardropDots,
   Sun,
   Moon,
+  DeviceMobile,
+  Desktop,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -119,4 +121,6 @@ export {
   ChatTeardropDots,
   Sun,
   Moon,
+  DeviceMobile,
+  Desktop,
 };
