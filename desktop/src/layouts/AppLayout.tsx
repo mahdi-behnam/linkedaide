@@ -83,13 +83,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           isCollapsed ? "w-16" : "w-60"
         }`}
       >
-        {/* macOS Traffic Lights Window Dots */}
-        <div className="flex items-center justify-between px-3.5 pt-3 pb-2" style={dragRegion}>
-          <div className="flex items-center gap-2" style={noDragRegion}>
-            <span className="h-3 w-3 rounded-full bg-[#ff5f56] border border-black/15 inline-block" />
-            <span className="h-3 w-3 rounded-full bg-[#ffbd2e] border border-black/15 inline-block" />
-            <span className="h-3 w-3 rounded-full bg-[#27c93f] border border-black/15 inline-block" />
-          </div>
+        <div
+          className={`flex items-center pt-3 pb-2 px-3.5 ${
+            isCollapsed ? "justify-center" : "justify-end"
+          }`}
+          style={dragRegion}
+        >
           <button
             data-testid="collapse-toggle"
             type="button"
