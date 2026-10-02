@@ -226,9 +226,9 @@ export const VaultView: React.FC = () => {
   }, [encryptionKey]);
 
   return (
-    <div className="w-full max-w-[960px] mx-auto flex flex-col gap-6">
-      {/* Page Header Block matching Stitch */}
-      <div className="flex flex-col gap-1.5 pb-1">
+    <div className="w-full max-w-[960px] mx-auto flex flex-col gap-5">
+      {/* Page Header Block matching macOS HIG */}
+      <div className="flex flex-col gap-1 pb-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
@@ -236,7 +236,7 @@ export const VaultView: React.FC = () => {
             </h1>
             <span
               data-testid="encryption-badge"
-              className="inline-flex items-center gap-1.5 rounded-full border border-tertiary/20 bg-tertiary-container/15 px-3 py-0.5 font-mono text-xs text-tertiary font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-tertiary/20 bg-tertiary-container/15 px-2 py-0.5 font-mono text-[11px] text-tertiary font-medium"
             >
               <ShieldCheck size={13} weight="bold" />
               <span>AES-128-CBC + HMAC-SHA256 Fernet</span>
@@ -249,17 +249,17 @@ export const VaultView: React.FC = () => {
       </div>
 
       {/* 1-Click Connect LinkedIn Highlight Banner */}
-      <div className="rounded-2xl bg-surface-container-lowest p-6 shadow-xs border border-surface-container-high flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all">
-        <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-            <Key size={22} weight="bold" />
+      <div className="rounded-lg bg-surface-container-lowest p-5 border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all">
+        <div className="flex items-start gap-3.5">
+          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+            <Key size={18} weight="bold" />
           </div>
           <div className="flex flex-col gap-1 max-w-xl">
             <div className="flex items-center gap-2">
               <h2 className="font-headline-sm text-headline-sm text-on-surface">
                 1-Click Connect LinkedIn
               </h2>
-              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm font-semibold">
+              <span className="px-1.5 py-0.5 rounded-[4px] bg-surface-container text-on-surface-variant font-label-sm text-[11px] font-medium border border-outline-variant/20">
                 Isolated Sandbox
               </span>
             </div>
@@ -275,20 +275,20 @@ export const VaultView: React.FC = () => {
             data-testid="launch-login-btn"
             disabled={isCapturing}
             onClick={handleLaunchLogin}
-            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-body-strong text-body-strong shadow-xs transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md font-medium text-[13px] shadow-xs transition-colors cursor-pointer ${
               isCapturing
                 ? "bg-surface-container-highest text-on-surface-variant cursor-not-allowed opacity-75"
-                : "bg-primary hover:bg-primary-container text-on-primary active:scale-[0.98]"
+                : "bg-primary hover:bg-primary-container text-on-primary active:bg-primary/90"
             }`}
           >
             {isCapturing ? (
               <>
-                <ArrowClockwise size={16} className="animate-spin text-on-primary" />
+                <ArrowClockwise size={14} className="animate-spin text-on-primary" />
                 <span>Waiting for Login...</span>
               </>
             ) : (
               <>
-                <LockKey size={16} weight="bold" />
+                <LockKey size={14} weight="bold" />
                 <span>Launch Secure Login</span>
               </>
             )}
@@ -300,9 +300,9 @@ export const VaultView: React.FC = () => {
       {captureSuccess && (
         <div
           data-testid="capture-success-banner"
-          className="p-4 rounded-xl border border-tertiary/30 bg-tertiary-container/15 flex items-center gap-3 text-tertiary text-xs font-body-strong shadow-2xs"
+          className="p-3 rounded-lg border border-tertiary/30 bg-tertiary-container/15 flex items-center gap-2.5 text-tertiary text-xs font-medium"
         >
-          <CheckCircle size={18} weight="fill" className="shrink-0" />
+          <CheckCircle size={16} weight="fill" className="shrink-0" />
           <div className="flex-1">{captureSuccess}</div>
         </div>
       )}
@@ -311,9 +311,9 @@ export const VaultView: React.FC = () => {
       {captureError && (
         <div
           data-testid="capture-error-banner"
-          className="p-4 rounded-xl border border-error/30 bg-error-container/30 flex items-center gap-3 text-error text-xs font-body-strong shadow-2xs"
+          className="p-3 rounded-lg border border-error/30 bg-error-container/30 flex items-center gap-2.5 text-error text-xs font-medium"
         >
-          <Warning size={18} weight="fill" className="shrink-0" />
+          <Warning size={16} weight="fill" className="shrink-0" />
           <div className="flex-1">{captureError}</div>
         </div>
       )}
@@ -354,16 +354,16 @@ export const VaultView: React.FC = () => {
       <ArchitectureDiagram />
 
       {/* Bottom Status Bar matching Things 3 Calm Footer */}
-      <footer className="p-4 rounded-2xl bg-surface-container flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-on-surface-variant">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface">
-            <ShieldCheck size={18} weight="bold" />
+      <footer className="p-3.5 rounded-lg bg-surface-container border border-outline-variant/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-on-surface-variant">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-md bg-surface-container-highest flex items-center justify-center text-on-surface">
+            <ShieldCheck size={16} weight="bold" />
           </div>
           <div className="flex flex-col">
-            <span className="font-body-strong text-body-strong text-on-surface">
+            <span className="font-body-strong text-body-strong text-on-surface text-[13px]">
               Vault Memory Guard Active
             </span>
-            <span className="font-label-sm text-label-sm">
+            <span className="font-label-sm text-[11px]">
               Isolated sandbox process · Zero plain cookies stored on disk
             </span>
           </div>
@@ -376,7 +376,7 @@ export const VaultView: React.FC = () => {
             type="button"
             id="flush-cache-btn"
             onClick={() => showToast("Security audit invariants verified against Cloudflare Worker binding.")}
-            className="px-3 py-1 rounded-xl bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors cursor-pointer"
+            className="px-2.5 py-1 rounded-md bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-label-md text-[12px] transition-colors cursor-pointer border border-outline-variant/30"
           >
             Audit Rule
           </button>
@@ -385,8 +385,8 @@ export const VaultView: React.FC = () => {
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-surface-container-highest text-on-surface shadow-xl font-body-strong text-body-strong border border-outline">
-          <CheckCircle size={18} weight="fill" className="text-tertiary" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-container-highest text-on-surface shadow-lg font-medium text-[13px] border border-outline">
+          <CheckCircle size={16} weight="fill" className="text-tertiary" />
           <span>{toastMessage}</span>
         </div>
       )}

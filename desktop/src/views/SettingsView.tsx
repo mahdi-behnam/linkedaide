@@ -239,14 +239,14 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 pb-10">
-      {/* Top Header Block matching Stitch */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="flex flex-col gap-1.5 max-w-2xl">
-          <div className="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md mb-1">
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-5 pb-8">
+      {/* Top Header Block matching macOS HIG */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-1">
+        <div className="flex flex-col gap-1 max-w-2xl">
+          <div className="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-[11px] mb-0.5">
             <span>System</span>
             <span className="text-outline-variant">/</span>
-            <span className="text-on-surface font-semibold">Settings</span>
+            <span className="text-on-surface font-medium">Settings</span>
           </div>
           <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold">
             Agent Configuration &amp; Settings
@@ -256,23 +256,23 @@ export const SettingsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
+        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
           {saveSuccess && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-tertiary/30 bg-tertiary-container/15 font-mono text-xs text-tertiary font-semibold">
-              <CheckCircle size={15} weight="bold" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border border-tertiary/30 bg-tertiary-container/15 font-mono text-[11px] text-tertiary font-medium">
+              <CheckCircle size={14} weight="bold" />
               <span>Settings Saved &amp; Applied</span>
             </div>
           )}
           {saveError && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-error/30 bg-error-container/20 font-mono text-xs text-error font-semibold">
-              <WarningCircle size={15} weight="bold" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border border-error/30 bg-error-container/20 font-mono text-[11px] text-error font-medium">
+              <WarningCircle size={14} weight="bold" />
               <span>{saveError}</span>
             </div>
           )}
           <button
             type="button"
             onClick={() => void handleDiscard()}
-            className="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors font-body-strong text-body-strong flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/30 transition-colors font-medium text-[13px] flex items-center gap-1.5 cursor-pointer"
           >
             <span>Discard</span>
           </button>
@@ -280,19 +280,19 @@ export const SettingsView: React.FC = () => {
             type="button"
             onClick={() => handleSave()}
             disabled={isSaving}
-            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-container text-on-primary transition-all font-body-strong text-body-strong shadow-xs flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer active:scale-95 disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-container text-on-primary transition-colors font-medium text-[13px] shadow-xs flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer active:bg-primary/90 disabled:opacity-50"
           >
             {isSaving ? (
-              <ArrowClockwise size={16} className="animate-spin text-on-primary" />
+              <ArrowClockwise size={14} className="animate-spin text-on-primary" />
             ) : (
-              <Check size={16} weight="bold" />
+              <Check size={14} weight="bold" />
             )}
             <span>Save Changes</span>
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="flex flex-col gap-6">
+      <form onSubmit={handleSave} className="flex flex-col gap-4">
         {/* Section 1: Execution Mode */}
         <ExecutionModeCard
           executionMode={settings.executionMode ?? "cloud"}
@@ -377,14 +377,14 @@ export const SettingsView: React.FC = () => {
         />
 
         {/* Bottom Save Button Bar */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-container-high">
+        <div className="flex items-center justify-end gap-3 pt-2 border-t border-surface-container-high">
           <button
             type="submit"
             data-testid="save-settings-btn"
             disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-body-strong text-body-strong shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-1.5 rounded-md bg-primary hover:bg-primary-container text-on-primary font-medium text-[13px] shadow-xs transition-colors cursor-pointer active:bg-primary/90 disabled:opacity-50"
           >
-            {isSaving && <ArrowClockwise size={15} className="animate-spin" />}
+            {isSaving && <ArrowClockwise size={14} className="animate-spin" />}
             <span>{isSaving ? "Saving Configuration..." : "Save & Apply Settings"}</span>
           </button>
         </div>

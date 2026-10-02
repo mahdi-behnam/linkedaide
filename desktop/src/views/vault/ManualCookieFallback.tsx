@@ -107,38 +107,38 @@ export const ManualCookieFallback: React.FC<ManualCookieFallbackProps> = ({
   );
 
   return (
-    <div className="rounded-2xl bg-surface-container-lowest shadow-xs border border-surface-container-high transition-all overflow-hidden">
+    <div className="rounded-lg bg-surface-container-lowest border border-outline-variant/30 overflow-hidden transition-all">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="w-full p-5 flex items-center justify-between hover:bg-surface-container-low/40 transition-colors text-left"
+        className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low/40 transition-colors text-left cursor-pointer"
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant">
-            <LockKey size={16} />
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-container text-on-surface-variant">
+            <LockKey size={15} />
           </span>
           <div className="flex flex-col">
-            <span className="font-body-strong text-body-strong text-on-surface">
+            <span className="font-body-strong text-body-strong text-on-surface text-[13px]">
               Manual Cookie Fallback (Advanced)
             </span>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
+            <span className="font-label-sm text-[11px] text-on-surface-variant">
               Alternative for air-gapped systems or strict pop-up policies
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2 text-on-surface-variant">
-          <span className="font-label-sm text-label-sm hidden sm:inline">
+          <span className="font-label-sm text-[12px] hidden sm:inline">
             {isOpen ? "Hide Form" : "Enter Cookies"}
           </span>
           <CaretRight
-            size={14}
+            size={13}
             className={`transition-transform duration-150 ${isOpen ? "rotate-90" : ""}`}
           />
         </div>
       </button>
 
       {isOpen && (
-        <div className="px-5 pb-5 pt-2 border-t border-surface-container-high flex flex-col gap-4">
+        <div className="px-4 pb-4 pt-1 border-t border-surface-container-high flex flex-col gap-3.5">
           <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
             If the 1-Click popup cannot run, copy your session cookies from LinkedIn in DevTools (
             <code className="font-code-sm text-code-sm bg-surface-container px-1 py-0.5 rounded text-on-surface">
@@ -149,16 +149,16 @@ export const ManualCookieFallback: React.FC<ManualCookieFallbackProps> = ({
 
           {saveBanner && (
             <div
-              className={`p-3 rounded-xl flex items-center gap-2 font-body-md text-body-md ${
+              className={`p-2.5 rounded-md flex items-center gap-2 font-body-md text-body-md ${
                 saveBanner.type === "success"
                   ? "bg-tertiary-container/15 text-tertiary border border-tertiary/20"
                   : "bg-error-container/20 text-error border border-error/20"
               }`}
             >
               {saveBanner.type === "success" ? (
-                <CheckCircle size={16} weight="fill" className="shrink-0" />
+                <CheckCircle size={15} weight="fill" className="shrink-0" />
               ) : (
-                <WarningCircle size={16} weight="fill" className="shrink-0" />
+                <WarningCircle size={15} weight="fill" className="shrink-0" />
               )}
               <span>{saveBanner.text}</span>
             </div>
@@ -167,7 +167,7 @@ export const ManualCookieFallback: React.FC<ManualCookieFallbackProps> = ({
           <form onSubmit={handleManualSave} className="flex flex-col gap-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="font-body-strong text-body-strong text-on-surface">
+                <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
                   li_at cookie value <span className="text-error">*</span>
                 </label>
                 <input
@@ -175,12 +175,12 @@ export const ManualCookieFallback: React.FC<ManualCookieFallbackProps> = ({
                   value={liAtCookie}
                   onChange={(e) => setLiAtCookie(e.target.value)}
                   placeholder="AQED..."
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-surface-container-high focus:border-primary focus:bg-surface-container-lowest outline-none font-code-sm text-code-sm text-on-surface transition-colors"
+                  className="w-full px-2.5 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus:border-primary focus:bg-surface-container-lowest outline-none font-code-sm text-code-sm text-on-surface transition-colors"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="font-body-strong text-body-strong text-on-surface">
+                <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
                   JSESSIONID cookie value (optional)
                 </label>
                 <input
@@ -188,21 +188,21 @@ export const ManualCookieFallback: React.FC<ManualCookieFallbackProps> = ({
                   value={jsessionIdCookie}
                   onChange={(e) => setJsessionIdCookie(e.target.value)}
                   placeholder='ajax:...'
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-surface-container-high focus:border-primary focus:bg-surface-container-lowest outline-none font-code-sm text-code-sm text-on-surface transition-colors"
+                  className="w-full px-2.5 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus:border-primary focus:bg-surface-container-lowest outline-none font-code-sm text-code-sm text-on-surface transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 type="submit"
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-body-strong text-body-strong shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-container text-on-primary font-medium text-[13px] shadow-xs transition-colors cursor-pointer disabled:opacity-50 active:bg-primary/90"
               >
                 {isSaving ? (
-                  <ArrowClockwise size={14} className="animate-spin text-on-primary" />
+                  <ArrowClockwise size={13} className="animate-spin text-on-primary" />
                 ) : (
-                  <ShieldCheck size={16} weight="bold" />
+                  <ShieldCheck size={15} weight="bold" />
                 )}
                 <span>{isSaving ? "Encrypting & Saving..." : "Encrypt & Save Session"}</span>
               </button>

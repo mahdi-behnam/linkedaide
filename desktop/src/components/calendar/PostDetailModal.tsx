@@ -24,23 +24,23 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
     switch (status) {
       case "published":
         return (
-          <span className="inline-flex items-center gap-1 font-label-sm text-[10px] px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-semibold">
-            <CheckCircle size={10} weight="bold" />
+          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-tertiary-container/20 text-on-surface font-semibold border border-outline/30">
+            <CheckCircle size={11} weight="bold" />
             <span>Published</span>
           </span>
         );
       case "scheduled":
         return (
-          <span className="inline-flex items-center gap-1 font-label-sm text-[10px] px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold">
-            <Clock size={10} weight="bold" />
+          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-primary/10 text-primary font-semibold border border-primary/20">
+            <Clock size={11} weight="bold" />
             <span>Scheduled</span>
           </span>
         );
       case "draft":
       default:
         return (
-          <span className="inline-flex items-center gap-1 font-label-sm text-[10px] px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-medium">
-            <PencilSimple size={10} />
+          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-surface-container text-on-surface-variant font-medium border border-outline/40">
+            <PencilSimple size={11} />
             <span>Draft</span>
           </span>
         );
@@ -50,19 +50,19 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
   return (
     <div
       data-testid="post-detail-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
     >
-      <div className="relative w-full max-w-xl rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 shadow-2xl flex flex-col gap-4">
+      <div className="relative w-full max-w-xl rounded-xl border border-outline/70 bg-surface-bright p-5 shadow-2xl flex flex-col gap-3.5">
         {/* Modal Header */}
-        <div className="flex items-start justify-between pb-3 border-b border-surface-container-high/70">
+        <div className="flex items-start justify-between pb-2.5 border-b border-outline/50">
           <div>
             <div className="flex items-center gap-2">
               {getStatusBadge(post.status)}
-              <span className="rounded-full bg-surface-container px-2 py-0.5 font-mono text-[10px] text-on-surface-variant font-medium">
+              <span className="rounded-[4px] bg-surface-container px-2 py-0.5 font-mono text-[10px] text-on-surface-variant font-medium border border-outline/40">
                 {post.topic_pillar}
               </span>
             </div>
-            <h3 className="mt-2 text-base font-semibold text-on-surface">
+            <h3 className="mt-2 text-sm font-semibold text-on-surface">
               {post.headline || "Original Scheduled Post"}
             </h3>
           </div>
@@ -70,20 +70,20 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
             type="button"
             data-testid="close-modal-btn"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+            className="rounded-md p-1 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
         {/* Post Content Excerpt */}
-        <div className="max-h-60 overflow-y-auto rounded-xl border border-surface-container-high bg-surface-container-low p-4 font-sans text-xs leading-relaxed text-on-surface whitespace-pre-wrap">
+        <div className="max-h-60 overflow-y-auto rounded-md border border-outline/50 bg-surface-container-low p-3.5 font-sans text-xs leading-relaxed text-on-surface whitespace-pre-wrap">
           {post.post_text}
         </div>
 
         {/* Media Information */}
         {post.media.length > 0 && (
-          <div className="rounded-xl border border-surface-container-high bg-surface-container-low p-3.5 flex flex-col gap-2">
+          <div className="rounded-md border border-outline/50 bg-surface-container-low p-3 flex flex-col gap-2">
             <div className="text-[11px] font-semibold text-on-surface-variant">
               Attached Media:
             </div>
@@ -94,9 +94,9 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
               >
                 <div className="flex items-center gap-2">
                   {m.media_type === "carousel_pdf" ? (
-                    <FilePdf size={16} className="text-error" />
+                    <FilePdf size={15} className="text-error" />
                   ) : (
-                    <ImageIcon size={16} className="text-primary" />
+                    <ImageIcon size={15} className="text-primary" />
                   )}
                   <span className="font-medium">{m.file_name}</span>
                 </div>
@@ -111,8 +111,8 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
         )}
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-surface-container-high/70">
-          <span className="font-mono text-[11px] text-on-surface-variant">
+        <div className="flex items-center justify-between pt-2.5 border-t border-outline/50">
+          <span className="font-mono text-[10px] text-on-surface-variant">
             Scheduled:{" "}
             {post.scheduled_time
               ? new Date(post.scheduled_time).toUTCString()
@@ -123,7 +123,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-surface-container-high bg-surface-container-low px-3.5 py-1.5 text-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-medium"
+              className="rounded-md border border-outline/60 bg-surface-container-low px-3 py-1.5 text-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-medium"
             >
               Close
             </button>
@@ -131,7 +131,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
               type="button"
               data-testid="edit-in-composer-btn"
               onClick={() => onEditInComposer(post)}
-              className="flex items-center gap-1.5 rounded-xl bg-primary hover:bg-primary-container px-3.5 py-1.5 text-xs font-semibold text-on-primary transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 rounded-md bg-primary hover:bg-primary/90 px-3 py-1.5 text-xs font-semibold text-on-primary transition-colors shadow-2xs"
             >
               <PencilSimple size={13} weight="bold" />
               <span>Edit in Composer</span>

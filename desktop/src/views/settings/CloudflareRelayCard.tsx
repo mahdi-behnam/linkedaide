@@ -39,17 +39,17 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
   onTestConnection,
 }) => {
   return (
-    <div className="flex flex-col gap-4 p-6 rounded-2xl bg-surface-container-lowest shadow-xs border border-surface-container-high">
+    <div className="flex flex-col gap-3.5 p-4.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-surface-container-high">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <Globe size={18} weight="bold" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Globe size={16} weight="bold" />
           </div>
           <div>
-            <h2 className="font-headline-sm text-headline-sm text-on-surface">
+            <h2 className="font-headline-sm text-headline-sm text-on-surface text-[14px]">
               Cloudflare Worker Edge Relay
             </h2>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
+            <p className="font-label-sm text-[11px] text-on-surface-variant">
               Bi-directional message relay &amp; persistent KV orchestration
             </p>
           </div>
@@ -61,10 +61,10 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
             data-testid="test-connection-btn"
             disabled={isTesting}
             onClick={onTestConnection}
-            className="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors font-body-strong text-body-strong flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer disabled:opacity-50"
+            className="px-3 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/30 transition-colors font-medium text-[12px] flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer disabled:opacity-50"
           >
             <ArrowClockwise
-              size={14}
+              size={13}
               weight="bold"
               className={isTesting ? "animate-spin text-primary" : "text-on-surface-variant"}
             />
@@ -75,7 +75,7 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
 
       {testResult && (
         <div
-          className={`flex items-center justify-between rounded-xl border p-3 text-xs font-mono ${
+          className={`flex items-center justify-between rounded-md border p-2.5 text-xs font-mono ${
             testResult.success
               ? "border-tertiary/30 bg-tertiary-container/15 text-tertiary"
               : "border-error/30 bg-error-container/20 text-error"
@@ -83,9 +83,9 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
         >
           <div className="flex items-center gap-2">
             {testResult.success ? (
-              <CheckCircle size={16} weight="fill" />
+              <CheckCircle size={15} weight="fill" />
             ) : (
-              <WarningCircle size={16} weight="fill" />
+              <WarningCircle size={15} weight="fill" />
             )}
             <span>
               {testResult.success
@@ -101,86 +101,86 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-0.5">
         {/* Worker URL */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body-strong text-body-strong text-on-surface">
+          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             Worker API Endpoint URL
           </label>
-          <div className="flex items-center px-3.5 py-2.5 rounded-xl bg-surface-container-low focus-within:bg-surface-container-lowest border border-surface-container-high focus-within:border-primary transition-all">
+          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low focus-within:bg-surface-container-lowest border border-outline-variant/30 focus-within:border-primary transition-all">
             <input
               type="text"
               data-testid="worker-url-input"
               value={workerUrl}
               onChange={(e) => onWorkerUrlChange(e.target.value)}
               placeholder="https://relay.your-subdomain.workers.dev"
-              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant"
+              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
             />
-            <Globe size={16} className="text-on-surface-variant shrink-0 ml-2" />
+            <Globe size={15} className="text-on-surface-variant shrink-0 ml-2" />
           </div>
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Public gateway for receiving incoming approvals and dispatch pulses
           </span>
         </div>
 
         {/* API Secret */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body-strong text-body-strong text-on-surface">
+          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             Desktop API Secret (Bearer Token)
           </label>
-          <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface-container-low focus-within:bg-surface-container-lowest border border-surface-container-high focus-within:border-primary transition-all">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-md bg-surface-container-low focus-within:bg-surface-container-lowest border border-outline-variant/30 focus-within:border-primary transition-all">
             <input
               type={showSecret ? "text" : "password"}
               data-testid="api-secret-input"
               value={apiSecret}
               onChange={(e) => onApiSecretChange(e.target.value)}
               placeholder="Enter DESKTOP_API_SECRET"
-              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant"
+              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
             />
             <button
               type="button"
               onClick={onToggleShowSecret}
               className="text-on-surface-variant hover:text-on-surface shrink-0 ml-2 cursor-pointer"
             >
-              <Eye size={16} />
+              <Eye size={15} />
             </button>
           </div>
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Validated against Worker HMAC authentication header
           </span>
         </div>
 
         {/* KV Namespace */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body-strong text-body-strong text-on-surface">
+          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             Cloudflare KV Namespace
           </label>
-          <div className="flex items-center px-3.5 py-2.5 rounded-xl bg-surface-container-low border border-surface-container-high">
+          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30">
             <input
               type="text"
               readOnly
               value="hitl-state"
-              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 cursor-default"
+              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 cursor-default text-[12px]"
             />
-            <span className="font-code-sm text-code-sm text-on-surface-variant ml-2 bg-surface-container px-2 py-0.5 rounded-md font-mono">
+            <span className="font-code-sm text-[11px] text-on-surface-variant ml-2 bg-surface-container px-1.5 py-0.5 rounded-[4px] font-mono border border-outline-variant/20">
               ENV.STATE_KV
             </span>
           </div>
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Direct key-value store identifier for active triage queues
           </span>
         </div>
 
         {/* Sync Frequency */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body-strong text-body-strong text-on-surface">
+          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             Edge Sync Frequency
           </label>
-          <div className="flex items-center px-3.5 py-2 rounded-xl bg-surface-container-low border border-surface-container-high focus-within:border-primary">
+          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus-within:border-primary">
             <select
               value={autoRefreshInterval}
               onChange={(e) => onIntervalChange(Number(e.target.value))}
-              className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface p-0 focus:ring-0 cursor-pointer"
+              className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface text-[13px] p-0 focus:ring-0 cursor-pointer"
             >
               <option value={60}>Realtime Long-Polling (1 Minute)</option>
               <option value={120}>Active Polling (2 Minutes)</option>
@@ -189,7 +189,7 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
               <option value={900}>Conservative (15 Minutes)</option>
             </select>
           </div>
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Balances local CPU resource usage with multi-client response speed
           </span>
         </div>

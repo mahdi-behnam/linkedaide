@@ -124,7 +124,7 @@ export const OutreachQueueView: React.FC<OutreachQueueViewProps> = ({ initialIte
   const connectionsMax = quota?.connectionsMax ?? 10;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] -m-6 overflow-hidden bg-surface text-on-surface">
+    <div className="flex h-[calc(100vh-2.75rem)] -m-5 overflow-hidden bg-surface text-on-surface">
       {/* Left Column: Candidate List Pane */}
       <OutreachLeftPane
         items={items}

@@ -32,7 +32,7 @@ export const OutreachLeftPane: React.FC<OutreachLeftPaneProps> = ({
             </h1>
             <span
               data-testid="pending-count-pill"
-              className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm font-semibold"
+              className="inline-flex items-center px-1.5 py-0.2 rounded-[4px] bg-surface-container-high text-on-surface text-[10px] font-medium tabular-nums"
             >
               {pendingCount} Pending
             </span>
@@ -41,21 +41,21 @@ export const OutreachLeftPane: React.FC<OutreachLeftPaneProps> = ({
           {/* Daily Connection Cap Quota Badge */}
           <div
             data-testid="connection-quota-badge"
-            className="flex items-center gap-2.5 rounded-xl border border-outline/60 bg-surface-container-lowest px-3 py-1.5 shadow-2xs"
+            className="flex items-center gap-2 rounded-md border border-outline bg-surface-container-lowest px-2.5 py-1 shadow-2xs"
           >
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-tertiary/10 text-tertiary">
-              <ShieldCheck size={14} weight="bold" />
+            <div className="flex h-5 w-5 items-center justify-center rounded-sm bg-tertiary/10 text-tertiary">
+              <ShieldCheck size={13} weight="bold" />
             </div>
             <div className="flex flex-col">
               <div className="flex items-center justify-between gap-2 text-[10px]">
                 <span className="font-medium text-on-surface-variant">Daily Cap</span>
-                <span className="font-mono font-semibold text-tertiary">
+                <span className="font-sans font-medium text-tertiary tabular-nums">
                   {connectionsSent} / {connectionsMax}
                 </span>
               </div>
-              <div className="mt-0.5 h-1 w-20 overflow-hidden rounded-full bg-surface-container-high">
+              <div className="mt-0.5 h-1 w-16 overflow-hidden rounded-xs bg-surface-container-high">
                 <div
-                  className="h-full rounded-full bg-tertiary transition-all duration-300"
+                  className="h-full rounded-xs bg-tertiary transition-all duration-300"
                   style={{ width: `${quotaPercent}%` }}
                 />
               </div>

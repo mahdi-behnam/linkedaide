@@ -259,22 +259,22 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     : "--";
 
   return (
-    <div className="space-y-7 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-5 max-w-7xl mx-auto">
       {/* View Header & Timeframe Segmented Control */}
-      <header className="flex flex-col justify-between gap-4 pb-3 border-b border-outline md:flex-row md:items-end">
+      <header className="flex flex-col justify-between gap-4 pb-3 border-b border-outline/60 md:flex-row md:items-end">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-2xs">
-              <ChartLineUp size={18} weight="bold" />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md border border-outline/50 bg-surface-container-high text-primary shadow-2xs">
+              <ChartLineUp size={16} weight="bold" />
             </div>
-            <h1 className="font-headline-display tracking-tight text-on-surface">
+            <h1 className="text-sm font-semibold tracking-tight text-on-surface">
               LinkedIn Growth Analytics
             </h1>
-            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 code-sm text-primary font-semibold">
+            <span className="rounded-[4px] border border-outline/50 bg-surface-container-high px-2 py-0.5 font-mono text-[10px] text-on-surface font-medium">
               Live Cockpit
             </span>
           </div>
-          <p className="mt-1 body-md text-on-surface-variant">
+          <p className="mt-1 text-[11px] text-on-surface-variant">
             Real-time engagement telemetry, author reply conversions, and time-of-day peak algorithmic windows.
           </p>
         </div>
@@ -282,15 +282,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         {/* Action Bar: Timeframe Segmented Control & Refresh */}
         <div className="flex items-center gap-2 self-start md:self-auto">
           {/* Segmented Control with bg-zinc-800 preserved for testing */}
-          <div className="flex rounded-xl border border-outline bg-surface-container-low p-1 shadow-2xs">
+          <div className="flex rounded-md border border-outline/50 bg-surface-container-low p-0.5 shadow-2xs">
             {(["7d", "30d", "all"] as const).map((tf) => (
               <button
                 key={tf}
                 type="button"
                 onClick={() => setSelectedTimeframe(tf)}
-                className={`rounded-lg px-3 py-1.5 code-sm font-semibold transition-all ${
+                className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
                   selectedTimeframe === tf
-                    ? "border border-zinc-700 bg-zinc-800 text-white shadow-xs"
+                    ? "border border-zinc-700 bg-zinc-800 text-white shadow-2xs"
                     : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
                 }`}
               >
@@ -304,10 +304,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             data-testid="refresh-analytics-btn"
             onClick={handleRefresh}
             title="Refresh engagement metrics"
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-outline bg-surface-container-lowest text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface active:scale-95 shadow-2xs"
+            className="flex h-7 w-7 items-center justify-center rounded-md border border-outline/60 bg-surface-container-lowest text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface shadow-2xs"
           >
             <ArrowClockwise
-              size={15}
+              size={14}
               weight="bold"
               className={isRefreshing ? "animate-spin text-primary" : ""}
             />

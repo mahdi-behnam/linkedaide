@@ -25,67 +25,67 @@ export const EdgeDispatcherStatus: React.FC<EdgeDispatcherStatusProps> = ({
   ];
 
   return (
-    <section className="bg-surface-container-lowest rounded-xl p-5 border border-outline shadow-2xs flex flex-col gap-4">
+    <section className="bg-surface-bright rounded-lg p-4 border border-outline shadow-2xs flex flex-col gap-3.5">
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Globe size={17} weight="bold" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Globe size={14} weight="bold" />
           </div>
-          <h2 className="headline-sm text-on-surface">Edge Dispatcher Status</h2>
+          <h2 className="text-sm font-semibold text-on-surface">Edge Dispatcher Status</h2>
         </div>
-        <span className="code-sm px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium border border-outline">
+        <span className="text-[11px] px-1.5 py-0.2 rounded bg-surface-container-high text-on-surface-variant font-medium border border-outline font-sans">
           Cloudflare Worker
         </span>
       </div>
 
-      {/* Native Things 3 Activity Chart Pane */}
-      <div className="p-4 rounded-xl bg-surface-container-low border border-outline flex flex-col gap-3">
+      {/* Activity Chart Pane */}
+      <div className="p-3 rounded-md bg-surface-container-low border border-outline flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
-          <span className="label-sm font-semibold uppercase tracking-wider text-on-surface-variant">
+          <span className="text-[11px] font-semibold text-on-surface-variant">
             24h Invocations &amp; Latency
           </span>
-          <span className="code-sm text-tertiary font-medium">99.98% Healthy</span>
+          <span className="text-[11px] text-tertiary font-medium">All Systems Operational</span>
         </div>
 
         {/* Clean Native Bar Chart */}
-        <div className="h-20 w-full flex items-end gap-1.5 pt-2 pb-1">
+        <div className="h-16 w-full flex items-end gap-1.5 pt-2 pb-1">
           {bars.map((bar, i) => (
             <div
               key={i}
               title={`${bar.time} - ${bar.req}`}
               style={{ height: bar.height }}
-              className={`flex-1 rounded-t-sm transition-all duration-300 ${
+              className={`flex-1 rounded-t-xs transition-colors ${
                 bar.isCurrent
-                  ? "bg-primary shadow-xs"
-                  : "bg-primary/25 hover:bg-primary/70"
+                  ? "bg-primary"
+                  : "bg-primary/25 hover:bg-primary/60"
               }`}
             />
           ))}
         </div>
 
-        <div className="flex items-center justify-between text-on-surface-variant code-sm border-t border-outline/70 pt-2">
+        <div className="flex items-center justify-between text-on-surface-variant text-[11px] border-t border-outline/70 pt-1.5 font-sans">
           <span>02:00</span>
           <span>08:00</span>
           <span>14:00</span>
-          <span className="text-on-surface font-semibold">20:00 (Now)</span>
+          <span className="text-on-surface font-medium">20:00 (Now)</span>
         </div>
       </div>
 
       {/* Health Metric Breakdown List */}
-      <div className="flex flex-col divide-y divide-outline/60 body-md">
-        <div className="py-2.5 flex items-center justify-between">
+      <div className="flex flex-col divide-y divide-outline/60 text-xs">
+        <div className="py-2 flex items-center justify-between">
           <span className="text-on-surface-variant">Average Dispatch Latency</span>
-          <span className="code-sm font-semibold text-on-surface">{latencyMs} ms</span>
+          <span className="font-medium text-on-surface tabular-nums">{latencyMs} ms</span>
         </div>
-        <div className="py-2.5 flex items-center justify-between">
+        <div className="py-2 flex items-center justify-between">
           <span className="text-on-surface-variant">KV Edge Read Time</span>
-          <span className="code-sm font-semibold text-on-surface">{kvReadTimeMs} ms</span>
+          <span className="font-medium text-on-surface tabular-nums">{kvReadTimeMs} ms</span>
         </div>
-        <div className="py-2.5 flex items-center justify-between">
+        <div className="py-2 flex items-center justify-between">
           <span className="text-on-surface-variant">Telegram Webhook Gateway</span>
-          <span className="code-sm text-tertiary flex items-center gap-1.5 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" />
+          <span className="text-tertiary flex items-center gap-1.5 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-tertiary" />
             Active (0 dropped)
           </span>
         </div>

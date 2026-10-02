@@ -302,7 +302,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
               </h1>
               <span
                 data-testid="pending-count-pill"
-                className="rounded-full border border-outline bg-surface-container px-2.5 py-0.5 font-mono text-xs text-on-surface-variant font-medium"
+                className="rounded-[4px] border border-outline bg-surface-container px-1.5 py-0.2 font-sans text-[10px] text-on-surface-variant font-medium tabular-nums"
               >
                 0 Pending
               </span>
@@ -318,11 +318,11 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
               data-testid="refresh-queue-btn"
               onClick={() => loadQueue()}
               disabled={isLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-outline bg-surface-container px-2.5 py-1.5 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-high disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-md border border-outline bg-surface-container px-2.5 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-high disabled:opacity-50"
               title="Refresh approval queue"
             >
               <ArrowClockwise
-                size={14}
+                size={13}
                 className={isLoading ? "animate-spin text-primary" : "text-on-surface-variant"}
               />
               <span>{isLoading ? "Refreshing..." : "Refresh"}</span>
@@ -332,12 +332,12 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
               type="button"
               data-testid="shortcuts-help-btn"
               onClick={() => setIsShortcutsModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-outline bg-surface-container px-2.5 py-1.5 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-high"
+              className="flex items-center gap-1.5 rounded-md border border-outline bg-surface-container px-2.5 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-high"
               title="Keyboard shortcuts cheat sheet (?)"
             >
-              <Keyboard size={14} className="text-on-surface-variant" />
+              <Keyboard size={13} className="text-on-surface-variant" />
               <span>Shortcuts</span>
-              <kbd className="rounded border border-outline bg-surface-container-highest px-1.5 py-0.5 font-mono text-[10px] text-on-surface-variant">
+              <kbd className="rounded border border-outline bg-surface-container-highest px-1 py-0.2 font-sans text-[10px] text-on-surface-variant">
                 ?
               </kbd>
             </button>
@@ -347,9 +347,9 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
         {fetchError && (
           <div
             data-testid="queue-fetch-error"
-            className="flex items-center gap-2 rounded-lg border border-error/30 bg-error/10 p-3.5 text-xs text-error"
+            className="flex items-center gap-2 rounded-md border border-error/30 bg-error/10 p-3 text-xs text-error"
           >
-            <WarningCircle size={16} className="shrink-0" />
+            <WarningCircle size={15} className="shrink-0" />
             <span className="flex-1">{fetchError}</span>
             <button
               type="button"
@@ -363,10 +363,10 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
         <div
           data-testid="empty-queue-state"
-          className="flex flex-col items-center justify-center rounded-2xl border border-outline/60 bg-surface-container-low p-16 text-center shadow-xs"
+          className="flex flex-col items-center justify-center rounded-lg border border-outline/60 bg-surface-container-low p-12 text-center shadow-2xs"
         >
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-tertiary/30 bg-tertiary/10 text-tertiary">
-            <Check size={24} weight="bold" />
+          <div className="mb-2.5 flex h-10 w-10 items-center justify-center rounded-md border border-tertiary/30 bg-tertiary/10 text-tertiary">
+            <Check size={20} weight="bold" />
           </div>
           <h3 className="text-sm font-semibold text-on-surface">
             All caught up. Zero pending approvals.
@@ -385,7 +385,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] -m-6 overflow-hidden bg-surface text-on-surface">
+    <div className="flex h-[calc(100vh-2.75rem)] -m-5 overflow-hidden bg-surface text-on-surface">
       {/* LEFT PANE: Triage Queue List (Things 3 / Apple Mail column) */}
       <QueueLeftPane
         items={items}

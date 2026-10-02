@@ -41,31 +41,31 @@ export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
   const initials = getInitials(item.author);
 
   return (
-    <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur-md border-b border-outline px-8 py-3.5 flex flex-col gap-3">
+    <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur-md border-b border-outline px-6 py-3 flex flex-col gap-2.5">
       {/* Top author row & profile link */}
-      <div className="flex items-center justify-between gap-3.5 w-full">
-        <div className="flex items-center gap-3.5 min-w-0 flex-1">
-          <div className="w-10 h-10 rounded-full bg-secondary/15 text-secondary font-headline-sm font-semibold flex items-center justify-center shrink-0 shadow-xs border border-secondary/20 select-none text-[14px]">
+      <div className="flex items-center justify-between gap-3 w-full">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-md bg-primary/10 text-primary font-semibold flex items-center justify-center shrink-0 border border-primary/20 select-none text-xs">
             {initials}
           </div>
           <div className="flex flex-col justify-center min-w-0 flex-1 gap-0.5">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="font-headline-sm text-[16px] text-on-surface font-semibold tracking-tight">
+              <h2 className="text-sm text-on-surface font-semibold tracking-tight">
                 Post by {item.author}
               </h2>
               <span title="Verified" className="inline-flex items-center shrink-0">
                 <CheckCircle
-                  size={16}
+                  size={14}
                   weight="fill"
                   className="text-primary"
                 />
               </span>
               <span className="opacity-40 text-on-surface-variant text-[12px]">·</span>
-              <span className="text-on-surface-variant font-body-md text-[13px] font-normal truncate max-w-md">
+              <span className="text-on-surface-variant text-xs font-normal truncate max-w-md">
                 {item.headline}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-on-surface-variant font-label-sm text-[12px]">
+            <div className="flex items-center gap-2 text-on-surface-variant text-[11px]">
               {item.postUrl ? (
                 <a
                   href={item.postUrl}
@@ -75,31 +75,31 @@ export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
                   className="inline-flex items-center gap-1 text-primary hover:underline font-medium transition-colors"
                 >
                   <span>View on LinkedIn</span>
-                  <ArrowSquareOut size={13} />
+                  <ArrowSquareOut size={12} />
                 </a>
               ) : (
                 <span className="text-on-surface-variant">Original Post</span>
               )}
               <span className="opacity-40 text-on-surface-variant text-[10px]">·</span>
-              <span className="text-on-surface-variant opacity-75 font-code-sm">
+              <span className="text-on-surface-variant opacity-75 font-sans">
                 via Feed Scout · Published {item.createdAt}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Top Action Buttons (Things 3 / Apple Header) */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Top Action Buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             data-testid="reject-btn"
             disabled={isProcessing || isRewriting}
             onClick={onReject}
-            className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-error-container hover:text-on-error-container text-on-surface-variant transition-colors font-body-strong whitespace-nowrap disabled:opacity-50"
+            className="group flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container hover:bg-error/10 hover:text-error text-on-surface-variant transition-colors text-xs font-medium whitespace-nowrap disabled:opacity-50"
           >
-            <X size={15} weight="bold" className="group-hover:text-error" />
+            <X size={13} weight="bold" className="group-hover:text-error" />
             <span>Reject</span>
-            <kbd className="font-code-sm opacity-60 ml-0.5">R</kbd>
+            <kbd className="opacity-60 ml-0.5 font-sans text-[10px]">R</kbd>
           </button>
 
           <button
@@ -107,10 +107,10 @@ export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
             data-testid="top-regenerate-btn"
             disabled={isProcessing || isRewriting}
             onClick={onRegenerate}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-body-strong transition-colors whitespace-nowrap disabled:opacity-50"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-medium transition-colors whitespace-nowrap disabled:opacity-50"
           >
             <ArrowClockwise
-              size={15}
+              size={13}
               className={isRewriting ? "animate-spin text-primary" : "text-on-surface-variant"}
             />
             <span>Regenerate</span>
@@ -121,11 +121,11 @@ export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
             data-testid="approve-btn"
             disabled={isProcessing || isRewriting}
             onClick={onApprove}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-body-strong shadow-sm hover:shadow transition-all whitespace-nowrap disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary hover:bg-primary-container text-on-primary text-xs font-medium shadow-2xs transition-colors whitespace-nowrap disabled:opacity-50"
           >
-            <PaperPlaneRight size={15} weight="bold" />
-            <span>Approve & Dispatch</span>
-            <kbd className="font-code-sm px-1.5 py-0.2 rounded bg-surface-container-lowest/20 text-on-primary">
+            <PaperPlaneRight size={13} weight="bold" />
+            <span>Approve &amp; Dispatch</span>
+            <kbd className="px-1 py-0.2 rounded bg-surface-bright/20 text-on-primary font-sans text-[10px]">
               A
             </kbd>
           </button>

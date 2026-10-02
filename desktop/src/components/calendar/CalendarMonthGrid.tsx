@@ -71,17 +71,17 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
   return (
     <div
       data-testid="calendar-month-grid"
-      className="rounded-2xl border border-surface-container-high/70 bg-surface-container-lowest p-4 shadow-xs"
+      className="rounded-lg border border-outline/70 bg-surface-container-lowest p-3 shadow-2xs"
     >
       {/* Month Days Header */}
-      <div className="grid grid-cols-7 gap-2 pb-2.5 border-b border-surface-container-high text-center font-code-sm text-code-sm text-on-surface-variant font-medium">
+      <div className="grid grid-cols-7 gap-1.5 pb-2 border-b border-outline/60 text-center font-mono text-[11px] text-on-surface-variant font-medium">
         {dayNames.map((d) => (
           <div key={d}>{d}</div>
         ))}
       </div>
 
       {/* Month Day Cells */}
-      <div className="mt-2.5 grid grid-cols-7 gap-2">
+      <div className="mt-2 grid grid-cols-7 gap-1.5">
         {monthDays.map((cell, i) => {
           const dayPosts = filteredPosts.filter((p) =>
             isSameDay(cell.date, p.scheduled_time)
@@ -91,17 +91,17 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
           return (
             <div
               key={i}
-              className={`min-h-[82px] rounded-xl border p-2 transition-colors flex flex-col justify-between ${
+              className={`min-h-[76px] rounded-md border p-1.5 transition-colors flex flex-col justify-between ${
                 cell.isToday
-                  ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                   : cell.isCurrentMonth
-                  ? "border-surface-container-high/70 bg-surface-container-low hover:bg-surface-container"
-                  : "border-surface-container-high/40 bg-surface-container-low/30 opacity-40 hover:opacity-75"
+                  ? "border-outline/50 bg-surface-container-low hover:bg-surface-container"
+                  : "border-outline/30 bg-surface-container-low/30 opacity-40 hover:opacity-75"
               }`}
             >
               <div className="flex items-center justify-between text-[11px]">
                 <span
-                  className={`font-mono font-medium ${
+                  className={`font-mono ${
                     cell.isToday
                       ? "font-bold text-primary"
                       : cell.isCurrentMonth
@@ -112,7 +112,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                   {cell.dayNum}
                 </span>
                 {countPosts > 0 && (
-                  <span className="rounded-full bg-primary/10 px-1.5 py-0.2 font-code-sm text-[10px] text-primary font-semibold border border-primary/20">
+                  <span className="rounded-[4px] bg-primary/10 px-1 py-0.2 font-mono text-[9px] text-primary font-semibold border border-primary/20 tabular-nums">
                     {countPosts}
                   </span>
                 )}
@@ -124,14 +124,14 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                     <div
                       key={p.id}
                       onClick={() => onSelectPost(p)}
-                      className="cursor-pointer truncate rounded-md bg-surface-container-lowest px-1.5 py-0.5 font-mono text-[9px] text-on-surface hover:text-primary transition-colors border border-surface-container-high shadow-2xs"
+                      className="cursor-pointer truncate rounded-sm bg-surface-container-lowest px-1.5 py-0.5 font-mono text-[9px] text-on-surface hover:text-primary transition-colors border border-outline/50 shadow-2xs"
                       title={p.headline}
                     >
                       {p.headline || p.id}
                     </div>
                   ))}
                   {countPosts > 2 && (
-                    <span className="font-code-sm text-[8px] text-on-surface-variant">
+                    <span className="font-mono text-[8px] text-on-surface-variant">
                       +{countPosts - 2} more
                     </span>
                   )}

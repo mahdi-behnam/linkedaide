@@ -28,53 +28,53 @@
 }
 
 :root {
-  --surface: #fbfbfd;
-  --surface-dim: #dad9df;
-  --surface-bright: #faf8fe;
+  --surface: #f5f5f7;
+  --surface-dim: #e5e5ea;
+  --surface-bright: #ffffff;
   --surface-container-lowest: #ffffff;
-  --surface-container-low: #f4f3f8;
-  --surface-container: #eeedf3;
-  --surface-container-high: #e9e7ed;
-  --surface-container-highest: #e3e2e7;
+  --surface-container-low: #f2f2f7;
+  --surface-container: #e5e5ea;
+  --surface-container-high: #d1d1d6;
+  --surface-container-highest: #c7c7cc;
   --on-surface: #1d1d1f;
   --on-surface-variant: #86868b;
-  --outline: #e5e5ea;
-  --outline-variant: #c1c6d7;
+  --outline: rgba(0, 0, 0, 0.08);
+  --outline-variant: rgba(0, 0, 0, 0.15);
   --primary: #007aff;
-  --primary-container: #0070eb;
+  --primary-container: #0062cc;
   --on-primary: #ffffff;
-  --secondary: #4a47d2;
-  --secondary-container: #6462ec;
+  --secondary: #6e6e73;
+  --secondary-container: #8e8e93;
   --on-secondary: #ffffff;
-  --tertiary: #006b27;
-  --tertiary-container: #008733;
+  --tertiary: #34c759;
+  --tertiary-container: #28a745;
   --on-tertiary: #ffffff;
-  --error: #ba1a1a;
+  --error: #ff3b30;
   --error-container: #ffdad6;
   --on-error: #ffffff;
 }
 
 .dark {
-  --surface: #1c1c1e;
-  --surface-dim: #141416;
-  --surface-bright: #242426;
-  --surface-container-lowest: #2c2c2e;
-  --surface-container-low: #242426;
-  --surface-container: #2f2f32;
+  --surface: #1e1e1e;
+  --surface-dim: #181818;
+  --surface-bright: #282828;
+  --surface-container-lowest: #282828;
+  --surface-container-low: #222222;
+  --surface-container: #2c2c2e;
   --surface-container-high: #3a3a3c;
   --surface-container-highest: #48484a;
   --on-surface: #f5f5f7;
   --on-surface-variant: #98989d;
-  --outline: #38383a;
-  --outline-variant: #48484a;
+  --outline: rgba(255, 255, 255, 0.08);
+  --outline-variant: rgba(255, 255, 255, 0.16);
   --primary: #0a84ff;
   --primary-container: #0070eb;
   --on-primary: #ffffff;
-  --secondary: #7d7aff;
-  --secondary-container: #6462ec;
+  --secondary: #8e8e93;
+  --secondary-container: #48484a;
   --on-secondary: #ffffff;
   --tertiary: #30d158;
-  --tertiary-container: #008733;
+  --tertiary-container: #248a3d;
   --on-tertiary: #ffffff;
   --error: #ff453a;
   --error-container: #93000a;
@@ -124,13 +124,16 @@
     line-height: 1.35;
   }
   .code-sm {
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
     font-size: 11px;
     line-height: 1.4;
   }
   .font-body-md {
     font-size: 13px;
     line-height: 1.45;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -142,8 +145,11 @@
   body {
     background-color: var(--surface);
     color: var(--on-surface);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
     font-size: 13px;
     line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     -ms-overflow-style: none;
     scrollbar-width: none;
   }

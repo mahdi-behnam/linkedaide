@@ -63,14 +63,14 @@ export const DashboardView: React.FC = () => {
               runDoctorCheck();
               setCurrentTab("doctor");
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest border border-outline hover:bg-surface-container text-on-surface body-strong transition-colors shadow-2xs shrink-0 active:scale-[0.98]"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container-lowest border border-outline hover:bg-surface-container text-on-surface text-xs font-medium transition-colors shadow-2xs shrink-0 active:scale-[0.99]"
           >
-            <Stethoscope size={15} className="text-secondary" />
+            <Stethoscope size={14} className="text-secondary" />
             <span>Health Check</span>
           </button>
 
           {/* Edge Cycle Badge */}
-          <span className="code-sm text-on-surface-variant bg-surface-container-low px-2.5 py-1.5 rounded-lg border border-outline">
+          <span className="text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md border border-outline font-sans tabular-nums">
             Edge Cycle: #4,192
           </span>
 
@@ -79,20 +79,20 @@ export const DashboardView: React.FC = () => {
             type="button"
             data-testid="toggle-pause-btn"
             onClick={togglePause}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border body-strong transition-colors shadow-2xs shrink-0 active:scale-[0.98] ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors shadow-2xs shrink-0 active:scale-[0.99] ${
               isPaused
-                ? "border-amber-500/40 bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                ? "border-amber-500/35 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
                 : "border-outline bg-surface-container hover:bg-surface-container-high text-on-surface"
             }`}
           >
             {isPaused ? (
               <>
-                <Play size={13} weight="fill" className="text-amber-500" />
+                <Play size={12} weight="fill" className="text-amber-500" />
                 <span>Resume Agent</span>
               </>
             ) : (
               <>
-                <Pause size={13} weight="fill" className="text-on-surface-variant" />
+                <Pause size={12} weight="fill" className="text-on-surface-variant" />
                 <span>Pause Agent</span>
               </>
             )}
@@ -104,29 +104,29 @@ export const DashboardView: React.FC = () => {
             data-testid="trigger-scout-btn"
             disabled={isScouting || isPaused}
             onClick={triggerScout}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary body-strong transition-all shadow-xs shrink-0 ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary hover:bg-primary-container text-on-primary text-xs font-medium transition-colors shadow-2xs shrink-0 ${
               isScouting || isPaused
                 ? "opacity-60 cursor-not-allowed"
-                : "active:scale-[0.98]"
+                : "active:scale-[0.99]"
             }`}
           >
             <ArrowClockwise
-              size={15}
+              size={13}
               weight="bold"
               className={isScouting ? "animate-spin" : ""}
             />
             <span>{isScouting ? "Scouting..." : "Trigger Scout Now"}</span>
           </button>
 
-          {/* Reset Circuit Breaker Button (Apple HIG warning/destructive pill) */}
+          {/* Reset Circuit Breaker Button (Apple HIG warning/destructive button) */}
           {telemetry.circuitBreakerTripped && clearIncident && (
             <button
               type="button"
               data-testid="clear-incident-btn"
               onClick={clearIncident}
-              className="flex items-center gap-1.5 rounded-lg border border-error/40 bg-error/15 px-3 py-1.5 body-strong text-error hover:bg-error/25 active:scale-[0.98] transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 rounded-md border border-error/40 bg-error/10 px-2.5 py-1 text-xs font-medium text-error hover:bg-error/20 active:scale-[0.99] transition-colors shadow-2xs"
             >
-              <WarningCircle size={15} weight="bold" />
+              <WarningCircle size={14} weight="bold" />
               <span>Reset Circuit Breaker</span>
             </button>
           )}
@@ -137,7 +137,7 @@ export const DashboardView: React.FC = () => {
       {lastTriggerMessage && (
         <div
           data-testid="trigger-feedback"
-          className="flex items-center justify-between rounded-xl border border-outline bg-surface-container-low px-4 py-2.5 text-xs text-on-surface shadow-xs transition-all"
+          className="flex items-center justify-between rounded-lg border border-outline bg-surface-container-low px-3 py-2 text-xs text-on-surface shadow-2xs transition-all"
         >
           <div className="flex items-center gap-2">
             <CheckCircle size={15} weight="bold" className="text-tertiary" />

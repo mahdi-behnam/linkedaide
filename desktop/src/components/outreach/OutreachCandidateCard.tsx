@@ -35,30 +35,30 @@ export const OutreachCandidateCard: React.FC<OutreachCandidateCardProps> = ({
     <article
       data-testid={`candidate-card-${candidate.id}`}
       onClick={onSelect}
-      className={`group relative p-3.5 rounded-xl cursor-pointer transition-all text-left ${
+      className={`group relative p-2.5 rounded-md cursor-pointer transition-colors text-left ${
         isSelected
-          ? "bg-surface-container-lowest shadow-sm ring-1 ring-primary/20"
-          : "bg-surface-container-lowest/60 hover:bg-surface-container-lowest border border-outline/40 hover:border-outline shadow-2xs"
+          ? "bg-surface-bright shadow-2xs border border-primary/30"
+          : "bg-surface-bright/70 hover:bg-surface-bright border border-outline/50 hover:border-outline shadow-2xs"
       }`}
     >
       {/* Selected Indicator Bar */}
       {isSelected && (
-        <div className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full" />
+        <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-primary rounded-r-xs" />
       )}
 
       {/* Header: Avatar, Name, Status Pill */}
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 font-label-sm font-semibold border border-primary/20">
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 text-[10px] font-semibold border border-primary/20">
             {initials}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <h3 className="font-body-strong text-on-surface truncate">
+              <h3 className="text-xs font-semibold text-on-surface truncate">
                 {candidate.target_name}
               </h3>
               <CheckCircle
-                size={13}
+                size={12}
                 weight="fill"
                 className="text-primary shrink-0"
               />
@@ -70,7 +70,7 @@ export const OutreachCandidateCard: React.FC<OutreachCandidateCardProps> = ({
         </div>
 
         <span
-          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase shrink-0 ${
+          className={`rounded-[4px] border px-1.5 py-0.2 text-[10px] font-medium capitalize shrink-0 ${
             statusStyles[candidate.status] || statusStyles.pending
           }`}
         >
@@ -80,8 +80,8 @@ export const OutreachCandidateCard: React.FC<OutreachCandidateCardProps> = ({
 
       {/* Mutual Context Citation */}
       {candidate.mutual_context && (
-        <div className="mt-2.5 flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[11px] text-primary">
-          <ChatText size={13} weight="bold" className="shrink-0" />
+        <div className="mt-2 flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-[11px] text-primary">
+          <ChatText size={12} weight="bold" className="shrink-0" />
           <span className="line-clamp-1">{candidate.mutual_context}</span>
         </div>
       )}

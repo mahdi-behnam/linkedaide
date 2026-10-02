@@ -91,17 +91,17 @@ export const PendingApprovalQueuePreview: React.FC<PendingApprovalQueuePreviewPr
   const displayItems = pendingCount > 0 ? items.slice(0, Math.max(1, Math.min(3, pendingCount))) : [];
 
   return (
-    <section className="bg-surface-container-lowest rounded-xl p-6 border border-outline shadow-2xs flex flex-col gap-4">
+    <section className="bg-surface-bright rounded-lg p-4 border border-outline shadow-2xs flex flex-col gap-3.5">
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-outline">
         <div className="flex flex-col">
-          <div className="flex items-center gap-2.5">
-            <h3 className="headline-sm text-on-surface">Pending Approval Queue</h3>
-            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary label-sm font-semibold border border-primary/20">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-on-surface">Pending Approval Queue</h3>
+            <span className="px-1.5 py-0.2 rounded-[4px] bg-primary/10 text-primary text-[10px] font-medium border border-primary/20 tabular-nums">
               {pendingCount} Pending
             </span>
           </div>
-          <p className="body-md text-on-surface-variant mt-0.5">
+          <p className="body-md text-on-surface-variant mt-0.5 text-xs">
             Draft responses awaiting human verification. Decisions can also be taken via Telegram bot.
           </p>
         </div>
@@ -110,78 +110,78 @@ export const PendingApprovalQueuePreview: React.FC<PendingApprovalQueuePreviewPr
         <button
           type="button"
           onClick={onOpenQueue}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-primary body-strong transition-colors self-start sm:self-auto border border-outline shadow-2xs active:scale-[0.98] shrink-0"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container-low hover:bg-surface-container text-primary text-xs font-medium transition-colors self-start sm:self-auto border border-outline shadow-2xs active:scale-[0.99] shrink-0"
         >
           <span>Review Queue</span>
-          <span className="code-sm px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant">
+          <span className="text-[10px] px-1 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-sans">
             ⌘1
           </span>
-          <CaretRight size={14} weight="bold" />
+          <CaretRight size={13} weight="bold" />
         </button>
       </div>
 
       {/* Content: Either Items List or Clean Empty State */}
       {displayItems.length > 0 ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {displayItems.map((item) => (
             <article
               key={item.id}
-              className="p-4 rounded-xl bg-surface-container-low border border-outline hover:border-outline-variant transition-all flex flex-col gap-3"
+              className="p-3.5 rounded-md bg-surface-container-low border border-outline hover:border-outline-variant transition-colors flex flex-col gap-2.5"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <div
-                    className={`w-7 h-7 rounded-full ${item.avatarBg} ${item.avatarText} font-headline-sm font-semibold flex items-center justify-center text-[12px] shrink-0 border border-outline/40`}
+                    className={`w-6 h-6 rounded-md ${item.avatarBg} ${item.avatarText} font-semibold flex items-center justify-center text-[11px] shrink-0 border border-outline/40`}
                   >
                     {item.initials}
                   </div>
-                  <span className="body-strong text-on-surface font-semibold truncate">
+                  <span className="text-xs text-on-surface font-semibold truncate">
                     {item.author}
                   </span>
                   {item.verified && (
                     <span title="Verified" className="inline-flex shrink-0">
                       <CheckCircle
-                        size={15}
+                        size={14}
                         weight="fill"
                         className="text-primary"
                       />
                     </span>
                   )}
-                  <span className="text-on-surface-variant text-[13px] font-normal truncate hidden sm:inline">
+                  <span className="text-on-surface-variant text-[12px] font-normal truncate hidden sm:inline">
                     · {item.headline}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded-full bg-surface-container-highest text-on-surface label-sm shrink-0">
+                  <span className="px-1.5 py-0.2 rounded-[4px] bg-surface-container-highest text-on-surface text-[10px] font-medium shrink-0">
                     {item.type}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span className="label-sm px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-semibold border border-tertiary/20">
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary/10 text-tertiary font-medium border border-tertiary/20">
                     {item.confidence}
                   </span>
-                  <span className="code-sm text-on-surface-variant">{item.timeAgo}</span>
+                  <span className="text-[11px] text-on-surface-variant font-sans">{item.timeAgo}</span>
                 </div>
               </div>
 
               {/* Context Quote & Proposed Draft */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                <div className="md:col-span-8 flex flex-col gap-1.5">
+                <div className="md:col-span-8 flex flex-col gap-1">
                   {item.quote && (
-                    <p className="body-md text-on-surface-variant italic border-l-2 border-primary/40 pl-2.5 line-clamp-1">
+                    <p className="text-xs text-on-surface-variant italic border-l-2 border-primary/40 pl-2 line-clamp-1">
                       {item.quote}
                     </p>
                   )}
-                  <p className="body-md text-on-surface line-clamp-2">{item.draft}</p>
+                  <p className="text-xs text-on-surface line-clamp-2 leading-relaxed">{item.draft}</p>
                 </div>
 
                 {/* Inline Decision Actions */}
-                <div className="md:col-span-4 flex items-center justify-end gap-2">
+                <div className="md:col-span-4 flex items-center justify-end gap-1.5">
                   <button
                     type="button"
                     onClick={() => {
                       if (onActionClick) onActionClick(item.secondaryAction, item.id);
                       else onOpenQueue();
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-error/10 hover:text-error text-on-surface-variant body-strong transition-colors border border-outline shrink-0 active:scale-[0.98]"
+                    className="px-2.5 py-1 rounded-md bg-surface-container-lowest hover:bg-error/10 hover:text-error text-on-surface-variant text-xs font-medium transition-colors border border-outline shrink-0 active:scale-[0.99]"
                   >
                     {item.secondaryAction}
                   </button>
@@ -191,16 +191,16 @@ export const PendingApprovalQueuePreview: React.FC<PendingApprovalQueuePreviewPr
                       if (onActionClick) onActionClick(item.primaryAction, item.id);
                       else onOpenQueue();
                     }}
-                    className={`px-3.5 py-1.5 rounded-lg body-strong transition-all shadow-2xs flex items-center gap-1.5 shrink-0 active:scale-[0.98] ${
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors shadow-2xs flex items-center gap-1.5 shrink-0 active:scale-[0.99] ${
                       item.primaryAction === "Approve"
                         ? "bg-primary hover:bg-primary-container text-on-primary"
                         : "bg-surface-container-highest hover:bg-surface-container text-on-surface border border-outline"
                     }`}
                   >
                     {item.primaryAction === "Approve" ? (
-                      <Check size={14} weight="bold" />
+                      <Check size={13} weight="bold" />
                     ) : (
-                      <PencilSimple size={14} weight="bold" />
+                      <PencilSimple size={13} weight="bold" />
                     )}
                     <span>{item.primaryAction}</span>
                   </button>

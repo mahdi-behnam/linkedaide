@@ -110,35 +110,35 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
     switch (status) {
       case "executed_success":
         return (
-          <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] font-medium text-emerald-400">
+          <span className="inline-flex items-center gap-1 rounded-[4px] border border-tertiary/30 bg-tertiary-container/15 px-1.5 py-0.5 font-mono text-[11px] font-medium text-tertiary">
             <CheckCircle size={12} weight="bold" />
             <span>Success</span>
           </span>
         );
       case "executed_failed":
         return (
-          <span className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 font-mono text-[11px] font-medium text-rose-400">
+          <span className="inline-flex items-center gap-1 rounded-[4px] border border-error/30 bg-error-container/20 px-1.5 py-0.5 font-mono text-[11px] font-medium text-error">
             <XCircle size={12} weight="bold" />
             <span>Failed</span>
           </span>
         );
       case "rejected":
         return (
-          <span className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 font-mono text-[11px] font-medium text-zinc-400">
+          <span className="inline-flex items-center gap-1 rounded-[4px] border border-outline-variant/30 bg-surface-container px-1.5 py-0.5 font-mono text-[11px] font-medium text-on-surface-variant">
             <XCircle size={12} />
             <span>Rejected</span>
           </span>
         );
       case "expired":
         return (
-          <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] font-medium text-amber-400">
+          <span className="inline-flex items-center gap-1 rounded-[4px] border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500">
             <WarningCircle size={12} />
             <span>Expired</span>
           </span>
         );
       case "halted":
         return (
-          <span className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 font-mono text-[11px] font-medium text-rose-400">
+          <span className="inline-flex items-center gap-1 rounded-[4px] border border-error/30 bg-error-container/20 px-1.5 py-0.5 font-mono text-[11px] font-medium text-error">
             <WarningCircle size={12} />
             <span>Halted</span>
           </span>
@@ -162,32 +162,32 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-5 pb-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center pb-1">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
+            <h1 className="text-xl font-semibold tracking-tight text-on-surface">
               Audit History
             </h1>
-            <span className="rounded-full border border-zinc-800 bg-zinc-900/80 px-2.5 py-0.5 font-mono text-xs text-zinc-400">
+            <span className="rounded-[4px] border border-outline-variant/30 bg-surface-container-low px-2 py-0.5 font-mono text-[11px] text-on-surface-variant font-medium">
               {filteredEntries.length} events
             </span>
           </div>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-on-surface-variant">
             Append-only verification log of all operator approvals, rejections, and Playwright execution outcomes.
           </p>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-3">
         <div className="flex flex-1 items-center gap-3">
           {/* Search Box */}
           <div className="relative min-w-[220px] max-w-sm flex-1">
             <MagnifyingGlass
               size={14}
-              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-500"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-on-surface-variant"
             />
             <input
               type="text"
@@ -195,18 +195,18 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by author, item ID, or draft..."
-              className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pr-3 pl-8 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+              className="w-full rounded-md border border-outline-variant/30 bg-surface-container-low py-1.5 pr-3 pl-8 text-xs text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none"
             />
           </div>
 
           {/* Status Filter */}
           <div className="flex items-center gap-1.5">
-            <Funnel size={14} className="text-zinc-500" />
+            <Funnel size={14} className="text-on-surface-variant" />
             <select
               data-testid="status-filter-select"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-300 focus:border-zinc-700 focus:outline-none"
+              className="rounded-md border border-outline-variant/30 bg-surface-container-low px-2.5 py-1.5 font-mono text-xs text-on-surface focus:border-outline focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="executed_success">Executed Success</option>
@@ -222,7 +222,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
             data-testid="type-filter-select"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-300 focus:border-zinc-700 focus:outline-none"
+            className="rounded-md border border-outline-variant/30 bg-surface-container-low px-2.5 py-1.5 font-mono text-xs text-on-surface focus:border-outline focus:outline-none cursor-pointer"
           >
             <option value="all">All Types</option>
             <option value="comment">Comments</option>
@@ -230,26 +230,26 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
           </select>
         </div>
 
-        <span className="font-mono text-[11px] text-zinc-500">
+        <span className="font-mono text-[11px] text-on-surface-variant">
           Showing {filteredEntries.length} of {auditEntries.length}
         </span>
       </div>
 
       {/* Audit Entries Table */}
-      <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40">
+      <div className="overflow-hidden rounded-lg border border-outline-variant/30 bg-surface-container-lowest">
         <table className="w-full text-left text-xs">
-          <thead className="border-b border-zinc-800 bg-zinc-900/80 font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+          <thead className="border-b border-outline-variant/30 bg-surface-container-low font-mono text-[11px] uppercase tracking-wider text-on-surface-variant">
             <tr>
-              <th className="px-4 py-3">Time</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Item ID</th>
-              <th className="px-4 py-3">Target / Author</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Draft Excerpt</th>
-              <th className="px-4 py-3 text-right">Proof / Inspect</th>
+              <th className="px-4 py-2.5">Time</th>
+              <th className="px-4 py-2.5">Type</th>
+              <th className="px-4 py-2.5">Item ID</th>
+              <th className="px-4 py-2.5">Target / Author</th>
+              <th className="px-4 py-2.5">Status</th>
+              <th className="px-4 py-2.5">Draft Excerpt</th>
+              <th className="px-4 py-2.5 text-right">Proof / Inspect</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/80">
+          <tbody className="divide-y divide-outline-variant/20">
             {filteredEntries.map((entry) => {
               const shotPath = getEntryScreenshotPath(entry);
               return (
@@ -257,20 +257,20 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                   key={entry.id}
                   data-testid={`audit-row-${entry.id}`}
                   onClick={() => setSelectedEntry(entry)}
-                  className="cursor-pointer transition-colors hover:bg-zinc-850/50"
+                  className="cursor-pointer transition-colors hover:bg-surface-container-low/50"
                 >
                   {/* Timestamp */}
-                  <td className="px-4 py-3 font-mono text-zinc-400 whitespace-nowrap">
+                  <td className="px-4 py-2.5 font-mono text-on-surface-variant whitespace-nowrap text-[11px]">
                     {formatDate(entry.decidedAt)}
                   </td>
 
                   {/* Type */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-2.5 whitespace-nowrap">
                     <span
-                      className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase ${
+                      className={`rounded-[4px] px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase border ${
                         entry.actionType === "comment"
-                          ? "bg-emerald-500/10 text-emerald-400"
-                          : "bg-violet-500/10 text-violet-400"
+                          ? "bg-tertiary-container/15 text-tertiary border-tertiary/20"
+                          : "bg-secondary/10 text-secondary border-secondary/20"
                       }`}
                     >
                       {entry.actionType}
@@ -278,7 +278,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                   </td>
 
                   {/* Item ID */}
-                  <td className="px-4 py-3 whitespace-nowrap font-mono text-zinc-300">
+                  <td className="px-4 py-2.5 whitespace-nowrap font-mono text-on-surface text-[11px]">
                     <div className="flex items-center gap-1.5">
                       <span>{entry.itemId}</span>
                       <button
@@ -288,10 +288,10 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                           copyToClipboard(entry.itemId);
                         }}
                         title="Copy item ID"
-                        className="text-zinc-500 hover:text-zinc-300"
+                        className="text-on-surface-variant hover:text-on-surface cursor-pointer"
                       >
                         {copiedId === entry.itemId ? (
-                          <Check size={12} className="text-emerald-400" />
+                          <Check size={12} className="text-tertiary" />
                         ) : (
                           <Copy size={12} />
                         )}
@@ -300,33 +300,33 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                   </td>
 
                   {/* Target / Author */}
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="max-w-[160px] truncate font-medium text-zinc-200">
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    <div className="max-w-[160px] truncate font-medium text-on-surface text-[12px]">
                       {entry.targetAuthor || "Self Post"}
                     </div>
                     {entry.targetHeadline && (
-                      <div className="max-w-[160px] truncate text-[11px] text-zinc-500">
+                      <div className="max-w-[160px] truncate text-[11px] text-on-surface-variant">
                         {entry.targetHeadline}
                       </div>
                     )}
                   </td>
 
                   {/* Status */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-2.5 whitespace-nowrap">
                     {getStatusBadge(entry.status)}
                   </td>
 
                   {/* Draft Excerpt */}
-                  <td className="max-w-xs truncate px-4 py-3 text-zinc-400">
+                  <td className="max-w-xs truncate px-4 py-2.5 text-on-surface-variant text-[12px]">
                     {entry.error ? (
-                      <span className="text-rose-400">Error: {entry.error}</span>
+                      <span className="text-error font-medium">Error: {entry.error}</span>
                     ) : (
                       entry.draftExcerpt
                     )}
                   </td>
 
                   {/* Proof Screenshot / Inspect Action */}
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
                       {shotPath && (
                         <button
@@ -336,7 +336,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                             e.stopPropagation();
                             openScreenshotPreview(entry);
                           }}
-                          className="inline-flex items-center gap-1.5 rounded border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 font-mono text-[11px] font-medium text-cyan-400 transition-colors hover:border-cyan-500/50 hover:bg-cyan-500/20"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 font-mono text-[11px] font-medium text-primary transition-colors hover:border-primary/50 hover:bg-primary/20 cursor-pointer"
                           title="View Proof Screenshot"
                         >
                           <Eye size={12} weight="bold" />
@@ -350,7 +350,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                           e.stopPropagation();
                           setSelectedEntry(entry);
                         }}
-                        className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                        className="rounded-md p-1 text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer"
                         title="Inspect details"
                       >
                         <ArrowSquareOut size={14} />
@@ -363,7 +363,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
 
             {filteredEntries.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-xs text-zinc-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-xs text-on-surface-variant">
                   No audit log entries match the selected filters.
                 </td>
               </tr>
@@ -376,53 +376,53 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
       {selectedEntry && (
         <div
           data-testid="audit-detail-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
         >
-          <div className="w-full max-w-xl rounded-lg border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
+          <div className="w-full max-w-xl rounded-xl border border-outline bg-surface-container-lowest p-5 shadow-xl">
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-zinc-100">
+                  <h3 className="text-sm font-semibold text-on-surface">
                     Audit Record Details
                   </h3>
                   {getStatusBadge(selectedEntry.status)}
                 </div>
-                <p className="mt-1 font-mono text-xs text-zinc-400">
+                <p className="mt-1 font-mono text-xs text-on-surface-variant">
                   Item ID: {selectedEntry.itemId}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedEntry(null)}
-                className="rounded-md border border-zinc-800 p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                className="rounded-md border border-outline-variant/30 bg-surface-container px-2 py-0.5 text-xs text-on-surface-variant hover:text-on-surface cursor-pointer"
               >
                 Close
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 font-mono text-xs">
-              <div className="flex justify-between border-b border-zinc-800/80 pb-2">
-                <span className="text-zinc-500">Action Type</span>
-                <span className="text-zinc-200 uppercase">{selectedEntry.actionType}</span>
+            <div className="mt-4 space-y-2.5 font-mono text-xs">
+              <div className="flex justify-between border-b border-outline-variant/20 pb-2">
+                <span className="text-on-surface-variant">Action Type</span>
+                <span className="text-on-surface uppercase font-medium">{selectedEntry.actionType}</span>
               </div>
-              <div className="flex justify-between border-b border-zinc-800/80 pb-2">
-                <span className="text-zinc-500">Decision Timestamp</span>
-                <span className="text-zinc-200">{selectedEntry.decidedAt}</span>
+              <div className="flex justify-between border-b border-outline-variant/20 pb-2">
+                <span className="text-on-surface-variant">Decision Timestamp</span>
+                <span className="text-on-surface">{selectedEntry.decidedAt}</span>
               </div>
               {selectedEntry.executedAt && (
-                <div className="flex justify-between border-b border-zinc-800/80 pb-2">
-                  <span className="text-zinc-500">Execution Timestamp</span>
-                  <span className="text-zinc-200">{selectedEntry.executedAt}</span>
+                <div className="flex justify-between border-b border-outline-variant/20 pb-2">
+                  <span className="text-on-surface-variant">Execution Timestamp</span>
+                  <span className="text-on-surface">{selectedEntry.executedAt}</span>
                 </div>
               )}
               {getEntryScreenshotPath(selectedEntry) && (
-                <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-                  <span className="text-zinc-500">Proof Screenshot</span>
+                <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
+                  <span className="text-on-surface-variant">Proof Screenshot</span>
                   <button
                     type="button"
                     data-testid={`modal-view-proof-btn-${selectedEntry.id}`}
                     onClick={() => openScreenshotPreview(selectedEntry)}
-                    className="inline-flex items-center gap-1.5 rounded border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 font-mono text-[11px] font-medium text-cyan-400 transition-colors hover:border-cyan-500/50 hover:bg-cyan-500/20"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium text-primary transition-colors hover:border-primary/50 hover:bg-primary/20 cursor-pointer"
                   >
                     <Eye size={12} weight="bold" />
                     <span>View Proof Screenshot</span>
@@ -430,34 +430,34 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                 </div>
               )}
               {selectedEntry.targetAuthor && (
-                <div className="flex justify-between border-b border-zinc-800/80 pb-2">
-                  <span className="text-zinc-500">Target Author</span>
-                  <span className="text-zinc-200">{selectedEntry.targetAuthor}</span>
+                <div className="flex justify-between border-b border-outline-variant/20 pb-2">
+                  <span className="text-on-surface-variant">Target Author</span>
+                  <span className="text-on-surface">{selectedEntry.targetAuthor}</span>
                 </div>
               )}
               {selectedEntry.targetUrl && (
-                <div className="flex justify-between border-b border-zinc-800/80 pb-2">
-                  <span className="text-zinc-500">Target Post URL</span>
+                <div className="flex justify-between border-b border-outline-variant/20 pb-2">
+                  <span className="text-on-surface-variant">Target Post URL</span>
                   <a
                     href={selectedEntry.targetUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="max-w-xs truncate text-emerald-400 hover:underline"
+                    className="max-w-xs truncate text-primary hover:underline"
                   >
                     {selectedEntry.targetUrl}
                   </a>
                 </div>
               )}
               {selectedEntry.error && (
-                <div className="rounded-md border border-rose-500/20 bg-rose-500/10 p-2.5 text-rose-300">
+                <div className="rounded-md border border-error/20 bg-error-container/20 p-2.5 text-error">
                   <p className="font-semibold">Execution Failure:</p>
                   <p className="mt-1">{selectedEntry.error}</p>
                 </div>
               )}
               {selectedEntry.draftExcerpt && (
                 <div className="pt-2">
-                  <span className="text-zinc-500">Draft Content:</span>
-                  <div className="mt-1 rounded-md border border-zinc-800 bg-zinc-950 p-3 font-sans text-xs leading-relaxed text-zinc-300">
+                  <span className="text-on-surface-variant">Draft Content:</span>
+                  <div className="mt-1 rounded-md border border-outline-variant/30 bg-surface-container-low p-3 font-sans text-xs leading-relaxed text-on-surface">
                     {selectedEntry.draftExcerpt}
                   </div>
                 </div>
@@ -475,30 +475,30 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
         return (
           <div
             data-testid="screenshot-preview-modal"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/85 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             onClick={() => setPreviewScreenshotEntry(null)}
           >
             <div
-              className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden"
+              className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-outline bg-surface-container-lowest shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-6 py-4">
+              <div className="flex items-center justify-between border-b border-outline-variant/30 bg-surface-container px-5 py-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
-                    <Eye size={18} weight="bold" />
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary">
+                    <Eye size={16} weight="bold" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold tracking-tight text-zinc-100">
+                      <h3 className="text-sm font-semibold tracking-tight text-on-surface">
                         Execution Proof Screenshot
                       </h3>
-                      <span className="rounded bg-zinc-800 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-zinc-300">
+                      <span className="rounded-[4px] bg-surface-container-highest px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase text-on-surface">
                         {previewScreenshotEntry.actionType}
                       </span>
                       {getStatusBadge(previewScreenshotEntry.status)}
                     </div>
-                    <p className="mt-0.5 font-mono text-xs text-zinc-400">
+                    <p className="mt-0.5 font-mono text-[11px] text-on-surface-variant">
                       Item: {previewScreenshotEntry.itemId}
                     </p>
                   </div>
@@ -507,25 +507,25 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                   type="button"
                   data-testid="close-screenshot-modal-btn"
                   onClick={() => setPreviewScreenshotEntry(null)}
-                  className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200"
+                  className="flex items-center gap-1.5 rounded-md border border-outline-variant/30 bg-surface-container-highest px-2.5 py-1 font-mono text-xs text-on-surface-variant transition-colors hover:text-on-surface cursor-pointer"
                 >
-                  <X size={14} weight="bold" />
+                  <X size={13} weight="bold" />
                   <span>Close</span>
                 </button>
               </div>
 
               {/* Modal Metadata Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/60 px-6 py-2.5 font-mono text-xs">
-                <div className="flex flex-wrap items-center gap-4 text-zinc-400">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/30 bg-surface-container-low px-5 py-2 font-mono text-xs">
+                <div className="flex flex-wrap items-center gap-4 text-on-surface-variant text-[11px]">
                   <div>
-                    <span className="text-zinc-500">Timestamp: </span>
-                    <span className="text-zinc-200">
+                    <span className="text-on-surface-variant">Timestamp: </span>
+                    <span className="text-on-surface font-medium">
                       {previewScreenshotEntry.executedAt || previewScreenshotEntry.decidedAt}
                     </span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">Key: </span>
-                    <span className="text-zinc-300">{shotKey}</span>
+                    <span className="text-on-surface-variant">Key: </span>
+                    <span className="text-on-surface">{shotKey}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -537,16 +537,16 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                       setCopiedScreenshotKey(true);
                       setTimeout(() => setCopiedScreenshotKey(false), 2000);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 px-2.5 py-1 text-xs text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-outline-variant/30 bg-surface-container px-2 py-0.5 text-xs text-on-surface transition-colors hover:bg-surface-container-high cursor-pointer"
                   >
                     {copiedScreenshotKey ? (
                       <>
-                        <CheckCircle size={13} weight="bold" className="text-emerald-400" />
-                        <span className="text-emerald-400">Copied</span>
+                        <CheckCircle size={12} weight="bold" className="text-tertiary" />
+                        <span className="text-tertiary font-medium">Copied</span>
                       </>
                     ) : (
                       <>
-                        <Copy size={13} />
+                        <Copy size={12} />
                         <span>Copy Key</span>
                       </>
                     )}
@@ -557,26 +557,26 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                     target="_blank"
                     rel="noreferrer"
                     data-testid="download-screenshot-btn"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 px-2.5 py-1 text-xs text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-outline-variant/30 bg-surface-container px-2 py-0.5 text-xs text-on-surface transition-colors hover:bg-surface-container-high"
                   >
-                    <Download size={13} weight="bold" />
+                    <Download size={12} weight="bold" />
                     <span>Download</span>
                   </a>
                 </div>
               </div>
 
               {/* Modal Image Viewport */}
-              <div className="flex flex-1 items-center justify-center overflow-auto bg-zinc-950 p-6 min-h-[360px]">
+              <div className="flex flex-1 items-center justify-center overflow-auto bg-surface-container-lowest p-6 min-h-[360px]">
                 {imgLoadError ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-800 bg-zinc-900/40 p-8 text-center">
-                    <WarningCircle size={32} className="text-amber-400" />
-                    <p className="mt-2 text-xs font-medium text-zinc-300">
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-outline-variant/30 bg-surface-container-low p-8 text-center">
+                    <WarningCircle size={28} className="text-amber-500" />
+                    <p className="mt-2 text-xs font-medium text-on-surface">
                       Remote image preview failed to load from R2 vault.
                     </p>
-                    <p className="mt-1 font-mono text-[11px] text-zinc-500 max-w-md break-all">
+                    <p className="mt-1 font-mono text-[11px] text-on-surface-variant max-w-md break-all">
                       URL: {mediaUrl}
                     </p>
-                    <p className="mt-2 font-mono text-[11px] text-zinc-400">
+                    <p className="mt-2 font-mono text-[11px] text-on-surface-variant">
                       Local path fallback: {shotKey}
                     </p>
                   </div>
@@ -586,7 +586,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                     alt={`Audit proof screenshot for ${previewScreenshotEntry.itemId}`}
                     data-testid="screenshot-modal-image"
                     onError={() => setImgLoadError(true)}
-                    className="max-h-[62vh] w-auto max-w-full rounded-md border border-zinc-800 object-contain shadow-lg"
+                    className="max-h-[62vh] w-auto max-w-full rounded-md border border-outline-variant/30 object-contain shadow-md"
                   />
                 )}
               </div>

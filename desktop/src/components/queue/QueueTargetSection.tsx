@@ -18,28 +18,28 @@ export const QueueTargetSection: React.FC<QueueTargetSectionProps> = ({ item }) 
         </span>
       </div>
 
-      <div className="p-5 rounded-2xl bg-surface-container-lowest border border-outline/50 shadow-xs relative overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary" />
+      <div className="p-4 rounded-lg bg-surface-bright border border-outline shadow-2xs relative overflow-hidden">
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary/60" />
         <blockquote
           data-testid="target-excerpt"
-          className="font-body-lg text-on-surface leading-relaxed italic"
+          className="text-xs text-on-surface leading-relaxed italic"
         >
           "{item.postExcerpt}"
         </blockquote>
 
-        <div className="mt-4 pt-3 border-t border-outline/40 flex items-center justify-between text-on-surface-variant">
-          <div className="flex items-center gap-4 text-xs font-label-md">
+        <div className="mt-3 pt-2.5 border-t border-outline/40 flex items-center justify-between text-on-surface-variant">
+          <div className="flex items-center gap-3 text-xs">
             <span className="inline-flex items-center gap-1">
-              <ThumbsUp size={14} className="text-primary" />
-              <span>Engaged Discussion</span>
+              <ThumbsUp size={13} className="text-primary" />
+              <span className="text-[11px]">Engaged Discussion</span>
             </span>
             <span className="inline-flex items-center gap-1">
-              <ChatCircleText size={14} className="text-secondary" />
-              <span>Active Thread</span>
+              <ChatCircleText size={13} className="text-on-surface-variant" />
+              <span className="text-[11px]">Active Thread</span>
             </span>
           </div>
 
-          <div className="text-right text-[11px] text-on-surface-variant font-body-md">
+          <div className="text-right text-[11px] text-on-surface-variant">
             : {item.author}, {item.headline}
           </div>
         </div>

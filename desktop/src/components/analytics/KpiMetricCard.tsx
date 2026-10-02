@@ -25,30 +25,30 @@ export const KpiMetricCard: React.FC<KpiMetricCardProps> = ({
   return (
     <div
       data-testid={testId}
-      className="rounded-xl border border-outline bg-surface-container-lowest p-4 shadow-2xs transition-all hover:border-outline-variant flex flex-col justify-between"
+      className="rounded-lg border border-outline/70 bg-surface-container-lowest p-3.5 shadow-2xs flex flex-col justify-between"
     >
       <div className="flex items-center justify-between pb-2">
-        <span className="code-sm font-medium text-on-surface-variant">
+        <span className="text-[11px] font-medium text-on-surface-variant">
           {title}
         </span>
         <div
-          className={`flex h-7 w-7 items-center justify-center rounded-lg border border-outline bg-surface-container-low ${iconColorClass}`}
+          className={`flex h-6 w-6 items-center justify-center rounded-md border border-outline/50 bg-surface-container-low ${iconColorClass}`}
         >
           {icon}
         </div>
       </div>
       <div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold tracking-tight text-on-surface">
+          <span className="text-xl font-bold tracking-tight text-on-surface tabular-nums">
             {value}
           </span>
           {hasData && trendText ? (
-            <span className="inline-flex items-center gap-0.5 code-sm font-semibold text-tertiary">
-              <TrendUp size={12} weight="bold" />
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-tertiary">
+              <TrendUp size={11} weight="bold" />
               {trendText}
             </span>
           ) : (
-            <span className="code-sm text-on-surface-variant/60">--</span>
+            <span className="text-[11px] text-on-surface-variant/60 font-mono">--</span>
           )}
         </div>
         <p className="mt-1 text-[11px] text-on-surface-variant truncate">

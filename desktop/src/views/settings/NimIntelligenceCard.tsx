@@ -40,17 +40,17 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
   onFetchModels,
 }) => {
   return (
-    <div className="flex flex-col gap-4 p-6 rounded-2xl bg-surface-container-lowest shadow-xs border border-surface-container-high">
+    <div className="flex flex-col gap-3.5 p-4.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-surface-container-high">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
-            <Cpu size={18} weight="bold" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
+            <Cpu size={16} weight="bold" />
           </div>
           <div>
-            <h2 className="font-headline-sm text-headline-sm text-on-surface">
+            <h2 className="font-headline-sm text-headline-sm text-on-surface text-[14px]">
               NVIDIA NIM Intelligence &amp; LLM Engine
             </h2>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
+            <p className="font-label-sm text-[11px] text-on-surface-variant">
               Model selection, structured output parser, and inference credentials
             </p>
           </div>
@@ -60,10 +60,10 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
           type="button"
           onClick={onFetchModels}
           disabled={isFetchingModels}
-          className="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors font-body-strong text-body-strong flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer disabled:opacity-50 self-end sm:self-auto"
+          className="px-3 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/30 transition-colors font-medium text-[12px] flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer disabled:opacity-50 self-end sm:self-auto"
         >
           <ArrowClockwise
-            size={14}
+            size={13}
             weight="bold"
             className={isFetchingModels ? "animate-spin text-secondary" : "text-on-surface-variant"}
           />
@@ -73,37 +73,37 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
 
       {modelFetchFeedback && (
         <div
-          className={`flex items-center gap-2 rounded-xl border p-3 text-xs font-mono ${
+          className={`flex items-center gap-2 rounded-md border p-2.5 text-xs font-mono ${
             modelFetchFeedback.type === "success"
               ? "border-tertiary/30 bg-tertiary-container/15 text-tertiary"
               : "border-error/30 bg-error-container/20 text-error"
           }`}
         >
           {modelFetchFeedback.type === "success" ? (
-            <CheckCircle size={16} weight="fill" className="shrink-0" />
+            <CheckCircle size={15} weight="fill" className="shrink-0" />
           ) : (
-            <WarningCircle size={16} weight="fill" className="shrink-0" />
+            <WarningCircle size={15} weight="fill" className="shrink-0" />
           )}
           <span>{modelFetchFeedback.message}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-0.5">
         {/* Model Selection */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <label
               htmlFor="primary-nim-model-select"
-              className="font-body-strong text-body-strong text-on-surface"
+              className="font-body-strong text-body-strong text-on-surface text-[12px]"
             >
               Primary NIM Model
             </label>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
+            <span className="font-label-sm text-[11px] text-on-surface-variant">
               {modelsList.length} models available
             </span>
           </div>
 
-          <div className="flex items-center px-3.5 py-2 rounded-xl bg-surface-container-low border border-surface-container-high focus-within:border-secondary">
+          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus-within:border-secondary">
             <select
               id="primary-nim-model-select"
               aria-label="Primary NIM Model"
@@ -118,7 +118,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
                   onModelChange(val);
                 }
               }}
-              className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface p-0 focus:ring-0 cursor-pointer"
+              className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface text-[13px] p-0 focus:ring-0 cursor-pointer"
             >
               <optgroup label="Available Models">
                 {modelsList.map((m) => (
@@ -128,7 +128,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
                 ))}
               </optgroup>
               <optgroup label="Other">
-                <option value="__custom__">✏️ Enter custom model name...</option>
+                <option value="__custom__">Enter custom model name...</option>
               </optgroup>
             </select>
           </div>
@@ -140,11 +140,11 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               value={nimModel}
               onChange={(e) => onModelChange(e.target.value)}
               placeholder="e.g. meta/llama-3.1-8b-instruct or custom NIM URN"
-              className="mt-1 w-full px-3.5 py-2 rounded-xl bg-surface-container-low focus:bg-surface-container-lowest border border-secondary focus:border-secondary outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant"
+              className="mt-1 w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-secondary focus:border-secondary outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
             />
           )}
 
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Default: <code className="text-on-surface font-mono">meta/llama-3.1-70b-instruct</code>. Used for post triage, reasoning, and drafting.
           </span>
         </div>
@@ -152,7 +152,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
         {/* NIM API Key */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <label className="font-body-strong text-body-strong text-on-surface">
+            <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
               NVIDIA NIM API Key
             </label>
             <button
@@ -160,22 +160,22 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               onClick={onToggleShowNimKey}
               className="text-xs text-on-surface-variant hover:text-on-surface flex items-center gap-1 cursor-pointer"
             >
-              <Eye size={14} />
+              <Eye size={13} />
               <span>{showNimKey ? "Hide" : "Show"}</span>
             </button>
           </div>
 
-          <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface-container-low focus-within:bg-surface-container-lowest border border-surface-container-high focus-within:border-secondary transition-all">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-md bg-surface-container-low focus-within:bg-surface-container-lowest border border-outline-variant/30 focus-within:border-secondary transition-all">
             <input
               type={showNimKey ? "text" : "password"}
               data-testid="nim-key-input"
               value={nimApiKey}
               onChange={(e) => onApiKeyChange(e.target.value)}
               placeholder="Enter NVIDIA_NIM_API_KEY (nvapi-...)"
-              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant"
+              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
             />
           </div>
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Personal API key from NVIDIA build catalog for local and agent execution.
           </span>
         </div>

@@ -214,23 +214,23 @@ export const ComposerView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Things 3 / Apple Mail Studio Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-surface-container-high">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center text-primary shadow-xs border border-surface-container-high">
-            <PencilSimple size={20} weight="bold" />
+    <div className="flex flex-col gap-5">
+      {/* macOS Studio Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-outline/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md bg-surface-container-highest flex items-center justify-center text-primary shadow-2xs border border-outline/40">
+            <PencilSimple size={17} weight="bold" />
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <h1 className="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">
+              <h1 className="text-sm font-semibold text-on-surface tracking-tight">
                 Post Composer Studio
               </h1>
-              <span className="font-code-sm text-[10px] px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">
+              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-[4px] bg-surface-container-high text-on-surface-variant font-medium border border-outline/40">
                 v1.2 High-Signal
               </span>
             </div>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
+            <span className="text-[11px] text-on-surface-variant">
               Structured technical composition with AI hook archetypes &amp; cutoff preview
             </span>
           </div>
@@ -242,9 +242,9 @@ export const ComposerView: React.FC = () => {
             <button
               type="button"
               onClick={handleDiscard}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-container-high bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors font-body-strong text-body-strong shadow-2xs"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-outline/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors text-xs font-medium shadow-2xs"
             >
-              <Trash size={14} />
+              <Trash size={13} />
               <span>{activePostForEditing ? "New Blank Post" : "Discard"}</span>
             </button>
           )}
@@ -253,9 +253,9 @@ export const ComposerView: React.FC = () => {
             type="button"
             data-testid="view-calendar-quick-btn"
             onClick={() => setCurrentTab("calendar")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors font-body-strong text-body-strong shadow-2xs border border-surface-container-high"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors text-xs font-medium shadow-2xs border border-outline/60"
           >
-            <Calendar size={15} className="text-on-surface-variant" />
+            <Calendar size={14} className="text-on-surface-variant" />
             <span>Open Calendar</span>
           </button>
         </div>
@@ -265,34 +265,34 @@ export const ComposerView: React.FC = () => {
       {feedbackMessage && (
         <div
           data-testid="composer-feedback"
-          className="flex items-center justify-between rounded-xl border border-tertiary/30 bg-tertiary-container/15 px-4 py-2.5 text-xs text-on-surface shadow-xs transition-all animate-fadeIn"
+          className="flex items-center justify-between rounded-lg border border-tertiary/30 bg-tertiary-container/15 px-3.5 py-2 text-xs text-on-surface shadow-2xs transition-all"
         >
           <div className="flex items-center gap-2">
-            <CheckCircle size={16} weight="fill" className="text-tertiary" />
+            <CheckCircle size={15} weight="fill" className="text-tertiary" />
             <span className="font-medium">{feedbackMessage}</span>
           </div>
-          <span className="font-code-sm text-[10px] text-tertiary font-semibold">
+          <span className="font-mono text-[10px] text-tertiary font-semibold">
             Status Updated
           </span>
         </div>
       )}
 
       {/* Two-Pane Studio Workspace Layout */}
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-5">
         {/* LEFT / MAIN PANE: Composition & Analysis Canvas (flex-1) */}
-        <div className="flex-1 flex flex-col gap-5 min-w-0">
+        <div className="flex-1 flex flex-col gap-4 min-w-0">
           {/* 1. Topic Pillar & Working Headline Input Card */}
-          <div className="p-4 rounded-2xl bg-surface-container-lowest border border-surface-container-high/70 shadow-xs flex flex-col gap-3">
+          <div className="p-3.5 rounded-lg bg-surface-container-lowest border border-outline/70 shadow-2xs flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
-              <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold text-outline">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-outline">
                 Post Configuration
               </span>
-              <span className="font-code-sm text-code-sm text-on-surface-variant">
+              <span className="font-mono text-[10px] text-on-surface-variant">
                 Pillar ID: #{topicPillar.toLowerCase().replace(/\s+/g, "-")}
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-              <div className="md:col-span-8 flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-low border border-surface-container-high/60 focus-within:border-primary/60 transition-colors">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
+              <div className="md:col-span-8 flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-surface-container-low border border-outline/60 focus-within:border-primary/60 transition-colors">
                 <input
                   id="headline-input"
                   data-testid="post-headline-input"
@@ -300,15 +300,15 @@ export const ComposerView: React.FC = () => {
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
                   placeholder="Catchy post title or working concept..."
-                  className="w-full bg-transparent border-0 outline-hidden font-body-strong text-body-strong text-on-surface placeholder:text-on-surface-variant/60 font-medium"
+                  className="w-full bg-transparent border-0 outline-none text-xs text-on-surface placeholder:text-on-surface-variant/60 font-medium"
                 />
               </div>
-              <div className="md:col-span-4 relative flex items-center px-3 py-2 rounded-xl bg-surface-container-low border border-surface-container-high/60 focus-within:border-primary/60 transition-colors">
+              <div className="md:col-span-4 relative flex items-center px-2.5 py-1.5 rounded-md bg-surface-container-low border border-outline/60 focus-within:border-primary/60 transition-colors">
                 <select
                   data-testid="topic-pillar-select"
                   value={topicPillar}
                   onChange={(e) => setTopicPillar(e.target.value)}
-                  className="w-full bg-transparent border-0 outline-hidden font-body-strong text-body-strong text-on-surface appearance-none cursor-pointer pr-5"
+                  className="w-full bg-transparent border-0 outline-none text-xs text-on-surface appearance-none cursor-pointer pr-5"
                 >
                   {TOPIC_PILLARS.map((p) => (
                     <option key={p} value={p} className="bg-surface text-on-surface">
@@ -316,7 +316,7 @@ export const ComposerView: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute right-3 text-on-surface-variant">
+                <div className="pointer-events-none absolute right-2.5 text-[10px] text-on-surface-variant">
                   ▼
                 </div>
               </div>
@@ -330,14 +330,14 @@ export const ComposerView: React.FC = () => {
           />
 
           {/* 3. Post Text Editor Canvas */}
-          <div className="p-5 rounded-2xl bg-surface-container-lowest border border-surface-container-high/70 shadow-xs flex flex-col gap-3 focus-within:shadow-md transition-shadow">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-surface-container-high/60 gap-2">
+          <div className="p-4 rounded-lg bg-surface-container-lowest border border-outline/70 shadow-2xs flex flex-col gap-3 transition-shadow">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-outline/50 gap-2">
               <div className="flex items-center gap-2">
-                <Quotes size={18} className="text-primary" />
-                <span className="font-headline-sm text-headline-sm text-on-surface">
+                <Quotes size={16} className="text-primary" />
+                <span className="text-xs font-semibold text-on-surface">
                   Post Text Editor
                 </span>
-                <div className="mx-1 h-3.5 w-px bg-surface-container-high" />
+                <div className="mx-1 h-3 w-px bg-outline/50" />
                 <VoiceDictationButton
                   onTranscript={(text) => {
                     setPostText((prev) => (prev ? `${prev} ${text}` : text));
@@ -346,8 +346,8 @@ export const ComposerView: React.FC = () => {
               </div>
 
               {/* Real-time Character, Word & Reading Time Badges */}
-              <div className="flex items-center gap-2.5 font-code-sm text-code-sm text-on-surface-variant">
-                <span data-testid="char-counter" className="text-on-surface font-semibold">
+              <div className="flex items-center gap-2 font-mono text-[11px] text-on-surface-variant tabular-nums">
+                <span data-testid="char-counter" className="text-on-surface font-medium">
                   {charCount} / 3000 chars
                 </span>
                 <span>·</span>
@@ -364,19 +364,19 @@ export const ComposerView: React.FC = () => {
               data-testid="post-content-editor"
               value={postText}
               onChange={(e) => setPostText(e.target.value)}
-              rows={11}
+              rows={10}
               placeholder="Write your LinkedIn post here... Focus on technical depth, clear takeaways, and concrete metrics."
-              className="w-full resize-y bg-transparent border-0 outline-hidden font-body-lg text-body-lg text-on-surface placeholder:text-on-surface-variant/60 leading-relaxed min-h-[220px]"
+              className="w-full resize-y bg-transparent border-0 outline-none text-xs text-on-surface placeholder:text-on-surface-variant/60 leading-relaxed min-h-[200px]"
             />
 
-            {/* High-Signal Formatting Bar & Tone Selector */}
-            <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-surface-container-high/60">
+            {/* Formatting Bar & Tone Selector */}
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-2.5 border-t border-outline/50">
               <div className="flex items-center gap-1 text-on-surface-variant">
                 <button
                   type="button"
                   onClick={() => handleFormatText("bold")}
                   title="Bold (**text**)"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors font-bold text-xs"
+                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container hover:text-on-surface transition-colors font-bold text-xs"
                 >
                   B
                 </button>
@@ -384,7 +384,7 @@ export const ComposerView: React.FC = () => {
                   type="button"
                   onClick={() => handleFormatText("italic")}
                   title="Italic (*text*)"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors italic text-xs"
+                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container hover:text-on-surface transition-colors italic text-xs"
                 >
                   I
                 </button>
@@ -392,7 +392,7 @@ export const ComposerView: React.FC = () => {
                   type="button"
                   onClick={() => handleFormatText("list")}
                   title="Bullet List (- item)"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors text-xs font-mono"
+                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container hover:text-on-surface transition-colors text-xs font-mono"
                 >
                   •-
                 </button>
@@ -400,7 +400,7 @@ export const ComposerView: React.FC = () => {
                   type="button"
                   onClick={() => handleFormatText("code")}
                   title="Code Block"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors text-xs font-mono"
+                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container hover:text-on-surface transition-colors text-xs font-mono"
                 >
                   &lt;/&gt;
                 </button>
@@ -408,21 +408,21 @@ export const ComposerView: React.FC = () => {
                   type="button"
                   onClick={() => handleFormatText("tag")}
                   title="Hashtags"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors text-xs font-bold"
+                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container hover:text-on-surface transition-colors text-xs font-bold"
                 >
                   #
                 </button>
               </div>
 
               {/* Tone Quick-Buttons */}
-              <div className="flex items-center gap-1 p-0.5 rounded-lg bg-surface-container-low text-xs">
+              <div className="flex items-center gap-0.5 p-0.5 rounded-md bg-surface-container text-xs border border-outline/40">
                 {["High-Signal Engineering", "Executive Brief", "Pragmatic Teardown"].map(
                   (tone) => (
                     <button
                       key={tone}
                       type="button"
                       onClick={() => setActiveTone(tone)}
-                      className={`px-2.5 py-1 rounded-md text-label-md font-medium transition-colors ${
+                      className={`px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors ${
                         activeTone === tone
                           ? "bg-surface-container-lowest text-on-surface shadow-2xs font-semibold"
                           : "text-on-surface-variant hover:text-on-surface"

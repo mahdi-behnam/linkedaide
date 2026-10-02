@@ -142,16 +142,16 @@ export const VoiceDictationButton: React.FC<VoiceDictationButtonProps> = ({
           onClick={handleClick}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className={`inline-flex items-center gap-1.5 rounded-md border border-zinc-800/80 bg-zinc-900/30 px-2.5 py-1 text-xs text-zinc-500 cursor-not-allowed opacity-75 transition-colors ${className}`}
+          className={`inline-flex items-center gap-1.5 rounded-md border border-outline bg-surface-container-low px-2 py-0.5 text-xs text-on-surface-variant cursor-not-allowed opacity-60 transition-colors ${className}`}
         >
-          <MicrophoneSlash size={14} className="shrink-0 text-zinc-500" />
-          <span className="font-mono text-[10px]">Voice</span>
+          <MicrophoneSlash size={13} className="shrink-0 text-on-surface-variant" />
+          <span className="text-[11px]">Voice</span>
         </button>
         {showTooltip && (
           <div
             data-testid="unsupported-notice"
             role="tooltip"
-            className="absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[10px] text-zinc-300 shadow-md"
+            className="absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-outline bg-surface-bright px-2 py-1 text-[11px] text-on-surface shadow-md"
           >
             Speech recognition not available in this environment
           </div>
@@ -170,31 +170,28 @@ export const VoiceDictationButton: React.FC<VoiceDictationButtonProps> = ({
         title={isRecording ? "Click to stop dictation" : "Dictate text by voice"}
         onClick={handleClick}
         disabled={disabled}
-        className={`group relative inline-flex items-center gap-1.5 rounded-md border text-xs font-medium transition-all duration-150 active:translate-y-[1px] active:scale-[0.98] ${
+        className={`group relative inline-flex items-center gap-1.5 rounded-md border text-xs font-medium transition-colors ${
           isRecording
-            ? "border-emerald-500/60 bg-emerald-500/15 px-2.5 py-1 text-emerald-400 ring-2 ring-emerald-500/30 animate-pulse"
-            : "border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200"
+            ? "border-error/40 bg-error/10 px-2 py-0.5 text-error shadow-2xs"
+            : "border-outline bg-surface-container-low px-2 py-0.5 text-on-surface-variant hover:border-outline-variant hover:bg-surface-container hover:text-on-surface shadow-2xs"
         } ${className}`}
       >
-        {isRecording && (
-          <span className="pointer-events-none absolute -inset-0.5 rounded-md bg-emerald-500/20 opacity-75 animate-ping" />
-        )}
         <Microphone
-          size={14}
+          size={13}
           weight={isRecording ? "fill" : "regular"}
           className={`shrink-0 ${
-            isRecording ? "text-emerald-400 animate-pulse" : "text-zinc-400 group-hover:text-zinc-200"
+            isRecording ? "text-error" : "text-on-surface-variant group-hover:text-on-surface"
           }`}
         />
         {isRecording ? (
           <>
-            <Waveform size={14} className="shrink-0 text-emerald-400 animate-pulse" />
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+            <Waveform size={13} className="shrink-0 text-error" />
+            <span className="text-[11px] font-medium text-error">
               Listening...
             </span>
           </>
         ) : (
-          <span className="font-mono text-[10px]">Dictate</span>
+          <span className="text-[11px]">Dictate</span>
         )}
       </button>
     </div>

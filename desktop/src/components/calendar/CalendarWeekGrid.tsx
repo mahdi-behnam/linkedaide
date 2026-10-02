@@ -32,9 +32,9 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         return (
           <span
             data-testid="status-badge-published"
-            className="inline-flex items-center gap-1 font-label-sm text-[10px] px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-semibold shrink-0"
+            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary-container/20 text-on-surface font-medium shrink-0 border border-outline/30"
           >
-            <span className="w-1 h-1 rounded-full bg-tertiary shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-tertiary shrink-0" />
             <span>Published</span>
           </span>
         );
@@ -42,9 +42,9 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         return (
           <span
             data-testid="status-badge-scheduled"
-            className="inline-flex items-center gap-1 font-label-sm text-[10px] px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold shrink-0"
+            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-[4px] bg-primary/10 text-primary font-medium shrink-0 border border-primary/20"
           >
-            <span className="w-1 h-1 rounded-full bg-primary shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
             <span>Scheduled</span>
           </span>
         );
@@ -53,9 +53,9 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         return (
           <span
             data-testid="status-badge-draft"
-            className="inline-flex items-center gap-1 font-label-sm text-[10px] px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-medium shrink-0"
+            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-[4px] bg-surface-container text-on-surface-variant font-medium shrink-0 border border-outline/40"
           >
-            <span className="w-1 h-1 rounded-full bg-outline shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-outline shrink-0" />
             <span>Draft</span>
           </span>
         );
@@ -63,15 +63,15 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3.5">
       {/* Empty State Banner (when no posts are scheduled) */}
       {filteredPosts.length === 0 && (
         <div
           data-testid="calendar-empty-prompt"
-          className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-3 text-xs text-on-surface-variant"
+          className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-md border border-dashed border-outline bg-surface-container-low px-3.5 py-2.5 text-xs text-on-surface-variant"
         >
           <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-on-surface-variant shrink-0" />
+            <Calendar size={15} className="text-on-surface-variant shrink-0" />
             <span>
               No scheduled posts found for this view. Create a new post in Composer to schedule content.
             </span>
@@ -80,7 +80,7 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
             type="button"
             data-testid="empty-new-post-btn"
             onClick={onNewPost}
-            className="shrink-0 flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1 font-semibold text-primary hover:bg-primary/20 transition-colors"
+            className="shrink-0 flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
           >
             <Plus size={13} weight="bold" />
             <span>New Post</span>
@@ -88,10 +88,10 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         </div>
       )}
 
-      {/* 7-Day Weekly Grid (Crisp Apple Calendar / Things 3 aesthetic) */}
+      {/* 7-Day Weekly Grid (Crisp Apple Calendar aesthetic) */}
       <div
         data-testid="calendar-week-grid"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2.5"
       >
         {weekDays.map((dayDate, idx) => {
           const isToday = isSameDay(dayDate, new Date().toISOString());
@@ -110,56 +110,56 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
             <div
               key={dayDate.toISOString()}
               data-testid={`day-col-${dayCode.toLowerCase()}`}
-              className={`flex flex-col gap-2.5 rounded-xl p-3 min-h-[460px] transition-all border ${
+              className={`flex flex-col gap-2 rounded-lg p-2.5 min-h-[440px] transition-colors border ${
                 isToday
-                  ? "bg-surface-container-lowest shadow-sm ring-1 ring-primary/30 border-primary/30 relative"
-                  : "bg-surface-container-low/60 border-surface-container-high/60"
+                  ? "bg-surface-container-lowest shadow-2xs ring-1 ring-primary/20 border-primary/40 relative"
+                  : "bg-surface-container-low/60 border-outline/50"
               }`}
             >
               {/* Day Header */}
               <div className="flex items-center justify-between px-1 py-0.5">
                 <div className="flex items-center gap-1.5">
                   <span
-                    className={`font-label-sm text-label-sm uppercase tracking-wider font-semibold ${
+                    className={`font-mono text-[11px] uppercase tracking-wider font-semibold ${
                       isToday ? "text-primary" : "text-on-surface-variant"
                     }`}
                   >
                     {dayCode}
                   </span>
                   {isToday && (
-                    <span className="px-1.5 py-0.2 rounded bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] font-semibold">
+                    <span className="px-1 py-0.2 rounded-[3px] bg-primary/15 text-primary text-[9px] font-semibold border border-primary/20">
                       TODAY
                     </span>
                   )}
                 </div>
 
                 {isToday ? (
-                  <div className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md font-semibold">
+                  <div className="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-semibold">
                     {dayDate.getDate()}
                   </div>
                 ) : (
-                  <span className="font-headline-sm text-headline-sm text-on-surface font-medium">
+                  <span className="text-xs text-on-surface font-medium">
                     {dayDate.getDate()}
                   </span>
                 )}
               </div>
 
               {/* Day Content Area */}
-              <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto">
                 {/* Automated Comment Windows */}
                 {applicableWindows.map((win) => (
                   <div
                     key={win.id}
                     data-testid="calendar-comment-window"
-                    className={`p-2.5 rounded-lg border shadow-2xs flex flex-col gap-1 transition-colors cursor-pointer ${
+                    className={`p-2 rounded-md border shadow-2xs flex flex-col gap-0.5 transition-colors cursor-pointer ${
                       isToday
-                        ? "bg-primary-fixed/20 border-primary-fixed-dim/40 hover:bg-primary-fixed/30"
-                        : "bg-surface-container-lowest border-surface-container-high/70 hover:border-secondary/40"
+                        ? "bg-primary-container/10 border-primary/30 hover:bg-primary-container/20"
+                        : "bg-surface-container-lowest border-outline/50 hover:border-outline"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className={`font-code-sm text-code-sm font-semibold ${
+                        className={`font-mono text-[10px] font-semibold tabular-nums ${
                           isToday ? "text-primary" : "text-secondary"
                         }`}
                       >
@@ -167,14 +167,14 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                       </span>
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          isToday ? "bg-primary animate-pulse" : "bg-secondary"
+                          isToday ? "bg-primary" : "bg-secondary"
                         }`}
                       />
                     </div>
-                    <span className="font-body-strong text-body-strong text-on-surface truncate">
+                    <span className="text-xs font-medium text-on-surface truncate">
                       {win.title}
                     </span>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
+                    <span className="text-[10px] text-on-surface-variant truncate">
                       {win.topic_filter}
                     </span>
                   </div>
@@ -196,11 +196,11 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                       key={post.id}
                       data-testid="calendar-post-card"
                       onClick={() => onSelectPost(post)}
-                      className="p-2.5 rounded-xl bg-surface-container-lowest shadow-2xs border border-surface-container-high hover:shadow-md hover:border-primary/40 transition-all flex flex-col gap-1.5 cursor-pointer min-w-0"
+                      className="p-2 rounded-md bg-surface-container-lowest shadow-2xs border border-outline/50 hover:border-outline transition-colors flex flex-col gap-1 cursor-pointer min-w-0"
                     >
                       <div className="flex items-center justify-between gap-1 w-full min-w-0 flex-wrap">
                         <span
-                          className={`font-code-sm text-[10px] font-semibold shrink-0 ${
+                          className={`font-mono text-[10px] font-semibold shrink-0 tabular-nums ${
                             post.status === "published"
                               ? "text-tertiary"
                               : post.status === "scheduled"
@@ -213,12 +213,12 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                         {getStatusBadge(post.status)}
                       </div>
 
-                      <h2 className="font-body-strong text-body-strong text-on-surface line-clamp-2 min-w-0 hover:text-primary transition-colors">
+                      <h2 className="text-xs font-semibold text-on-surface line-clamp-2 min-w-0 hover:text-primary transition-colors">
                         {post.headline || "Untitled Original Post"}
                       </h2>
 
-                      <div className="flex items-center justify-between pt-1 border-t border-surface-container min-w-0">
-                        <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
+                      <div className="flex items-center justify-between pt-1 border-t border-outline/40 min-w-0">
+                        <span className="text-[10px] text-on-surface-variant truncate">
                           {post.topic_pillar}
                         </span>
                         {hasPdf ? (
@@ -226,14 +226,14 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                             className="flex items-center gap-0.5 text-error font-mono text-[9px]"
                             title="Carousel PDF Document"
                           >
-                            <FilePdf size={13} weight="bold" />
+                            <FilePdf size={12} weight="bold" />
                           </span>
                         ) : hasImg ? (
                           <span
                             className="flex items-center gap-0.5 text-primary font-mono text-[9px]"
                             title="Image Attachment"
                           >
-                            <ImageIcon size={13} />
+                            <ImageIcon size={12} />
                           </span>
                         ) : null}
                       </div>
@@ -244,20 +244,20 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                 {/* Empty State when no events on this day */}
                 {dayPosts.length === 0 && applicableWindows.length === 0 && (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-3">
-                    <span className="font-label-md text-label-md text-on-surface-variant/70">
+                    <span className="text-[11px] text-on-surface-variant/70">
                       No events
                     </span>
-                    <span className="font-code-sm text-[10px] text-outline/60 mt-1">
-                      Autonomous quiet mode
+                    <span className="font-mono text-[10px] text-outline/60 mt-0.5">
+                      No events scheduled
                     </span>
                   </div>
                 )}
 
                 {/* Live Operator Session indicator for Today */}
                 {isToday && (
-                  <div className="mt-auto p-2 rounded-lg bg-surface-container-low text-center border border-surface-container-high/60">
-                    <span className="font-label-sm text-label-sm text-primary font-medium flex items-center justify-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <div className="mt-auto p-1.5 rounded-md bg-surface-container-low text-center border border-outline/50">
+                    <span className="text-[11px] text-primary font-medium flex items-center justify-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                       Live Operator Session
                     </span>
                   </div>

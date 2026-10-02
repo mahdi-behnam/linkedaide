@@ -46,12 +46,12 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
   return (
     <div
       data-testid="quota-card"
-      className={`group relative flex flex-col justify-between rounded-xl border border-outline bg-surface-container-lowest p-4 shadow-xs transition-all duration-150 hover:bg-surface-container-low hover:border-outline-variant active:scale-[0.99] ${className}`}
+      className={`group relative flex flex-col justify-between rounded-lg border border-outline bg-surface-container-lowest p-3.5 shadow-2xs transition-colors hover:bg-surface-container-low/60 ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {icon && (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-outline bg-surface-container-low text-on-surface-variant transition-colors group-hover:text-primary group-hover:border-primary/30">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-outline bg-surface-container-low text-on-surface-variant transition-colors group-hover:text-primary">
               {icon}
             </div>
           )}
@@ -66,20 +66,20 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
         </div>
         <div className="flex items-center gap-1.5">
           <span
-            className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${statusBadgeColor}`}
+            className={`rounded-[4px] border px-1.5 py-0.2 font-sans text-[10px] font-medium ${statusBadgeColor}`}
           >
             {statusLabel}
           </span>
-          <span className="label-sm font-medium text-on-surface-variant">
+          <span className="label-sm font-medium text-on-surface-variant tabular-nums">
             {remaining} left
           </span>
         </div>
       </div>
 
-      <div className="mt-4 space-y-2">
-        <div className="flex items-baseline justify-between font-mono">
+      <div className="mt-3.5 space-y-1.5">
+        <div className="flex items-baseline justify-between font-sans tabular-nums">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-semibold tracking-tight text-on-surface">
+            <span className="text-xl font-semibold tracking-tight text-on-surface">
               {executed}
             </span>
             <span className="label-md text-on-surface-variant">/ {max}</span>
@@ -89,13 +89,13 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
           </span>
         </div>
 
-        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-surface-container-highest">
+        <div className="relative h-1.5 w-full overflow-hidden rounded-xs bg-surface-container-highest">
           <div
             role="progressbar"
             aria-valuenow={percentage}
             aria-valuemin={0}
             aria-valuemax={100}
-            className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+            className={`h-full rounded-xs transition-all duration-300 ${barColor}`}
             style={{ width: `${percentage}%` }}
           />
         </div>

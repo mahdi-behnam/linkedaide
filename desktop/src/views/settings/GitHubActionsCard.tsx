@@ -25,37 +25,37 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
   onDispatchPatChange,
 }) => {
   return (
-    <div className="flex flex-col gap-4 p-6 rounded-2xl bg-surface-container-lowest shadow-xs border border-surface-container-high">
+    <div className="flex flex-col gap-3.5 p-4.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-surface-container-high">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-            <Lightning size={18} weight="bold" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+            <Lightning size={16} weight="bold" />
           </div>
           <div>
-            <h2 className="font-headline-sm text-headline-sm text-on-surface">
+            <h2 className="font-headline-sm text-headline-sm text-on-surface text-[14px]">
               GitHub Actions Cloud Runner Dispatch
             </h2>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
+            <p className="font-label-sm text-[11px] text-on-surface-variant">
               Workflow dispatch triggers for scout.yml and execute.yml
             </p>
           </div>
         </div>
 
         {executionMode === "cloud" && (
-          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-0.5 text-[11px] font-mono text-amber-500 font-semibold self-start sm:self-auto">
+          <span className="rounded-[4px] border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-mono text-amber-500 font-medium self-start sm:self-auto">
             Required for Cloud Mode
           </span>
         )}
       </div>
 
-      <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+      <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed text-[12px]">
         Dispatches automated workflows (<code className="font-code-sm text-code-sm text-on-surface px-1 py-0.5 rounded bg-surface-container">scout.yml</code> and <code className="font-code-sm text-code-sm text-on-surface px-1 py-0.5 rounded bg-surface-container">execute.yml</code>) via GitHub Actions when using Cloud Remote Runner. Configure your repository coordinates and a Personal Access Token (PAT).
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-0.5">
         {/* Repo Owner */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body-strong text-body-strong text-on-surface">
+          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             GitHub Repository Owner
           </label>
           <input
@@ -63,16 +63,16 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
             value={githubRepoOwner}
             onChange={(e) => onRepoOwnerChange(e.target.value)}
             placeholder="e.g. mahdi-behnam"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low focus:bg-surface-container-lowest border border-surface-container-high focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant"
+            className="w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-outline-variant/30 focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
           />
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Username or organization owning the repository
           </span>
         </div>
 
         {/* Repo Name */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body-strong text-body-strong text-on-surface">
+          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             GitHub Repository Name
           </label>
           <input
@@ -80,18 +80,18 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
             value={githubRepoName}
             onChange={(e) => onRepoNameChange(e.target.value)}
             placeholder="e.g. linkedin-hitl-agent"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low focus:bg-surface-container-lowest border border-surface-container-high focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant"
+            className="w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-outline-variant/30 focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
           />
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
             Repository name hosting the agent workflows
           </span>
         </div>
       </div>
 
       {/* GitHub PAT */}
-      <div className="flex flex-col gap-1.5 pt-1">
+      <div className="flex flex-col gap-1.5 pt-0.5">
         <div className="flex items-center justify-between">
-          <label className="font-body-strong text-body-strong text-on-surface">
+          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             GitHub Personal Access Token (GITHUB_DISPATCH_PAT)
           </label>
           <button
@@ -100,7 +100,7 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
             onClick={onToggleShowPat}
             className="text-xs text-on-surface-variant hover:text-on-surface flex items-center gap-1 cursor-pointer"
           >
-            <Eye size={14} />
+            <Eye size={13} />
             <span>{showGithubPat ? "Hide" : "Show"}</span>
           </button>
         </div>
@@ -110,14 +110,14 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
           value={githubDispatchPat}
           onChange={(e) => onDispatchPatChange(e.target.value)}
           placeholder="Enter GITHUB_DISPATCH_PAT (ghp_... or github_pat_...)"
-          className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low focus:bg-surface-container-lowest border border-surface-container-high focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant"
+          className="w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-outline-variant/30 focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
         />
 
-        <div className="mt-1 rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 text-xs space-y-1.5 text-on-surface-variant">
+        <div className="mt-1 rounded-md border border-amber-500/25 bg-amber-500/5 p-2.5 text-xs space-y-1 text-on-surface-variant">
           <span className="font-semibold text-amber-500">
             Required GitHub Personal Access Token (PAT) Scopes:
           </span>
-          <ul className="list-disc list-inside space-y-1">
+          <ul className="list-disc list-inside space-y-0.5">
             <li>
               <strong className="text-on-surface">Classic PAT (<code className="font-mono">ghp_...</code>):</strong> Must check both <code className="text-amber-500 font-mono font-semibold">workflow</code> (&quot;Update GitHub Action workflows&quot;) AND <code className="text-amber-500 font-mono font-semibold">repo</code>.
             </li>

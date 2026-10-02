@@ -96,51 +96,51 @@ export const EnvSecretsAudit: React.FC<EnvSecretsAuditProps> = ({
   };
 
   return (
-    <div className="p-6 rounded-2xl bg-surface-container-lowest shadow-xs border border-surface-container-high flex flex-col gap-4">
+    <div className="p-4.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 flex flex-col gap-3.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-surface-container-high">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-tertiary/10 text-tertiary">
-            <ShieldCheck size={18} weight="bold" />
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-tertiary/10 text-tertiary">
+            <ShieldCheck size={16} weight="bold" />
           </span>
-          <h3 className="font-headline-sm text-headline-sm text-on-surface">
+          <h3 className="font-headline-sm text-headline-sm text-on-surface text-[14px]">
             Environment Secrets Audit
           </h3>
         </div>
-        <span className="font-label-sm text-label-sm px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-medium">
+        <span className="font-label-sm text-[11px] px-2 py-0.5 rounded-[4px] bg-surface-container-low border border-outline-variant/20 text-on-surface-variant font-medium">
           {loadedVarsCount} / {envAuditList.length} Variables Configured &amp; Cryptographically Verified
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {envAuditList.map((item) => {
           const detail = getVarDetails(item.key, item.loaded);
           return (
             <div
               key={item.key}
-              className="p-3.5 rounded-xl bg-surface-container-low/70 border border-surface-container-high/60 flex items-center justify-between gap-3"
+              className="p-2.5 rounded-md bg-surface-container-low/70 border border-outline-variant/20 flex items-center justify-between gap-2.5"
             >
               <div className="flex flex-col min-w-0">
-                <span className="font-code-sm text-code-sm text-on-surface font-medium truncate">
+                <span className="font-code-sm text-code-sm text-on-surface font-medium truncate text-[12px]">
                   {item.key}
                 </span>
-                <span className="font-code-sm text-code-sm text-on-surface-variant truncate">
+                <span className="font-code-sm text-code-sm text-on-surface-variant truncate text-[11px]">
                   {detail.masked}
                 </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <span
-                  className={`px-2 py-0.5 rounded-md font-label-sm text-label-sm font-semibold ${
+                  className={`px-1.5 py-0.5 rounded-[4px] font-label-sm text-[11px] font-medium border ${
                     item.loaded
-                      ? "bg-tertiary-container/15 text-tertiary"
-                      : "bg-error-container/30 text-error"
+                      ? "bg-tertiary-container/15 text-tertiary border-tertiary/20"
+                      : "bg-error-container/30 text-error border-error/20"
                   }`}
                 >
                   {detail.tag}
                 </span>
                 {item.loaded ? (
-                  <CheckCircle size={14} weight="fill" className="text-tertiary shrink-0" />
+                  <CheckCircle size={13} weight="fill" className="text-tertiary shrink-0" />
                 ) : (
-                  <WarningCircle size={14} weight="fill" className="text-amber-500 shrink-0" />
+                  <WarningCircle size={13} weight="fill" className="text-amber-500 shrink-0" />
                 )}
               </div>
             </div>

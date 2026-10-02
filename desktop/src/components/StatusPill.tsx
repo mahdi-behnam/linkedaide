@@ -52,22 +52,17 @@ export const StatusPill: React.FC<StatusPillProps> = ({
 
   const sizeStyles =
     size === "sm"
-      ? "px-2.5 py-0.5 text-[11px] gap-1.5"
-      : "px-3 py-1 text-xs font-medium gap-2";
+      ? "px-2 py-0.5 text-[11px] gap-1.5"
+      : "px-2.5 py-1 text-xs font-medium gap-1.5";
 
   return (
     <span
       data-testid="status-pill"
       data-status={status}
-      className={`inline-flex items-center rounded-full border font-mono tracking-tight transition-colors ${colorStyles} ${sizeStyles} ${className}`}
+      className={`inline-flex items-center rounded-md border font-sans tracking-normal transition-colors ${colorStyles} ${sizeStyles} ${className}`}
     >
       {showDot && (
-        <span className="relative flex h-2 w-2">
-          {isHealthy && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-tertiary opacity-60" />
-          )}
-          <span className={`relative inline-flex h-2 w-2 rounded-full ${dotStyles}`} />
-        </span>
+        <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotStyles}`} />
       )}
       <span>{text}</span>
     </span>

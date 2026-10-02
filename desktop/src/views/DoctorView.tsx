@@ -71,10 +71,10 @@ export const DoctorView: React.FC = () => {
   const isAllPassing = totalCount > 0 && passedCount === totalCount;
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col gap-8">
-      {/* Header Section matching Stitch */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="flex flex-col gap-2">
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-5">
+      {/* Header Section matching macOS HIG */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-1">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-3">
             <h1 className="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">
               System Diagnostics
@@ -91,7 +91,7 @@ export const DoctorView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
-          <span className="font-label-sm text-label-sm text-on-surface-variant hidden sm:inline">
+          <span className="font-label-sm text-[12px] text-on-surface-variant hidden sm:inline">
             Last run: {totalCount > 0 ? "Just now" : "Pending"}
           </span>
           <button
@@ -99,10 +99,10 @@ export const DoctorView: React.FC = () => {
             data-testid="run-doctor-btn"
             disabled={isCheckingDoctor}
             onClick={runDoctorCheck}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary hover:bg-primary-container shadow-xs transition-all font-body-strong text-body-strong cursor-pointer active:scale-95 shrink-0 whitespace-nowrap disabled:opacity-50"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary text-on-primary hover:bg-primary-container shadow-xs transition-colors font-medium text-[13px] cursor-pointer active:bg-primary/90 shrink-0 whitespace-nowrap disabled:opacity-50"
           >
             <ArrowClockwise
-              size={16}
+              size={14}
               weight="bold"
               className={isCheckingDoctor ? "animate-spin text-on-primary" : "text-on-primary"}
             />
@@ -112,26 +112,26 @@ export const DoctorView: React.FC = () => {
       </div>
 
       {/* System Status Summary Banner */}
-      <div className="p-5 rounded-2xl bg-surface-container-lowest shadow-xs border border-surface-container-high flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="flex items-start md:items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-tertiary/10 text-tertiary flex items-center justify-center shrink-0">
-            <CheckCircle size={22} weight="fill" />
+      <div className="p-4 rounded-lg bg-surface-container-lowest border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start md:items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-tertiary/10 text-tertiary flex items-center justify-center shrink-0">
+            <CheckCircle size={18} weight="fill" />
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="font-body-strong text-body-strong text-on-surface">
+            <span className="font-body-strong text-body-strong text-on-surface text-[13px]">
               {totalCount === 0
                 ? "Diagnostics Ready to Execute"
                 : isAllPassing
                 ? "All Core Subsystems Operational"
                 : `${passedCount} of ${totalCount} Subsystems Passing`}
             </span>
-            <span className="font-body-md text-body-md text-on-surface-variant">
+            <span className="font-body-md text-body-md text-on-surface-variant text-[12px]">
               The agent is configured to scout, generate proposals, and dispatch verified actions.
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 px-4 py-2 rounded-xl bg-surface-container-low shrink-0 text-on-surface-variant font-code-sm text-code-sm">
+        <div className="flex items-center gap-3 px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/20 shrink-0 text-on-surface-variant font-code-sm text-code-sm text-[12px]">
           <div>
             Edge latency: <strong className="font-medium text-on-surface">18ms</strong>
           </div>
@@ -147,27 +147,27 @@ export const DoctorView: React.FC = () => {
       </div>
 
       {/* Diagnostic Subsystems Grid */}
-      <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between px-1">
-          <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
+          <span className="font-label-md text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">
             Monitored Subsystems
           </span>
-          <span className="font-label-sm text-label-sm text-on-surface-variant font-code-sm">
+          <span className="font-label-sm text-[11px] text-on-surface-variant font-code-sm">
             P99 TARGET &lt; 350ms
           </span>
         </div>
 
         {doctorChecks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-surface-container-high bg-surface-container-lowest p-10 text-center gap-2">
-            <p className="font-headline-sm text-headline-sm text-on-surface font-medium">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-outline-variant/30 bg-surface-container-lowest p-8 text-center gap-1.5">
+            <p className="font-headline-sm text-headline-sm text-on-surface font-medium text-[15px]">
               No diagnostic checks performed yet
             </p>
-            <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
+            <p className="font-body-md text-body-md text-on-surface-variant max-w-md text-[13px]">
               Click &apos;Run Doctor Checks&apos; above to verify runtime dependencies, session health, and cloud connectivity.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {doctorChecks.map((check) => (
               <DiagnosticCard key={check.id} check={check} />
             ))}

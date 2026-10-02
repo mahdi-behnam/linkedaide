@@ -99,16 +99,16 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
   return (
     <div
       data-testid={`doctor-check-${check.id}`}
-      className="p-5 rounded-2xl bg-surface-container-lowest shadow-xs hover:shadow-sm border border-surface-container-high transition-all flex flex-col justify-between gap-4"
+      className="p-4 rounded-lg bg-surface-container-lowest border border-outline-variant/30 transition-all flex flex-col justify-between gap-3.5"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
-          <span className="px-2 py-0.5 rounded-md bg-surface-container font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">
+          <span className="px-1.5 py-0.5 rounded-[4px] bg-surface-container border border-outline-variant/20 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wide font-medium">
             {meta.label}
           </span>
           <div className="flex items-center gap-2">
             {check.latencyMs !== undefined && (
-              <span className="font-code-sm text-code-sm text-on-surface-variant font-mono">
+              <span className="font-code-sm text-code-sm text-on-surface-variant font-mono text-[11px]">
                 {check.latencyMs}ms
               </span>
             )}
@@ -118,28 +118,28 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
 
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-surface-container shrink-0">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-surface-container shrink-0">
               {meta.icon}
             </span>
-            <h3 className="font-headline-sm text-headline-sm text-on-surface">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface text-[14px]">
               {check.title}
             </h3>
           </div>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-2 leading-relaxed">
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1.5 leading-relaxed text-[12px]">
             {check.detail}
           </p>
         </div>
       </div>
 
       {check.recommendation && (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-500">
+        <div className="rounded-md border border-amber-500/25 bg-amber-500/10 p-2.5 text-xs text-amber-500">
           <span className="font-semibold">Recommendation: </span>
           {check.recommendation}
         </div>
       )}
 
       {/* Sub-strip with contextual metrics */}
-      <div className="pt-3 bg-surface-container-low/60 -mx-5 -mb-5 px-5 py-2.5 rounded-b-2xl border-t border-surface-container flex flex-wrap items-center gap-x-4 gap-y-1 font-code-sm text-code-sm text-on-surface-variant">
+      <div className="pt-2 bg-surface-container-low/60 -mx-4 -mb-4 px-4 py-2 rounded-b-lg border-t border-outline-variant/20 flex flex-wrap items-center gap-x-3.5 gap-y-1 font-code-sm text-code-sm text-on-surface-variant text-[11px]">
         {meta.footer.map((item, idx) => (
           <React.Fragment key={item.label}>
             <span>

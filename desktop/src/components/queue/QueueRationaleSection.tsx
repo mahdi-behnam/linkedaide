@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkle, Cpu } from "@phosphor-icons/react";
+import { Cpu } from "@phosphor-icons/react";
 import { PendingItem } from "./QueueTriageCard";
 
 interface QueueRationaleSectionProps {
@@ -11,21 +11,20 @@ export const QueueRationaleSection: React.FC<QueueRationaleSectionProps> = ({ it
   const formattedStyle = item.engagementStyle.replace(/_/g, " ");
 
   return (
-    <section className="p-4 rounded-xl bg-surface-container-low border border-outline/50 flex flex-col gap-3 shadow-2xs">
+    <section className="p-3.5 rounded-lg bg-surface-container-low border border-outline/50 flex flex-col gap-2.5 shadow-2xs">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Sparkle size={18} weight="fill" className="text-primary" />
-          <span className="font-body-strong text-on-surface">
-            Synthesis & Rationale
+        <div className="flex items-center gap-1.5">
+          <Cpu size={14} className="text-primary" />
+          <span className="text-xs font-semibold text-on-surface">
+            Synthesis &amp; Rationale
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="font-code-sm text-on-surface-variant px-2 py-0.5 rounded bg-surface-container-highest border border-outline/40 flex items-center gap-1">
-            <Cpu size={12} className="text-secondary" />
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-on-surface-variant px-1.5 py-0.2 rounded bg-surface-container-highest border border-outline/40 flex items-center gap-1 font-sans">
             <span>Llama-3.1-70b (NVIDIA NIM)</span>
           </span>
-          <span className="font-label-sm px-2 py-0.5 rounded-full bg-tertiary/15 text-tertiary border border-tertiary/30 font-semibold">
+          <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-tertiary/15 text-tertiary border border-tertiary/30 font-medium tabular-nums">
             {matchPercent}% Confidence
           </span>
         </div>

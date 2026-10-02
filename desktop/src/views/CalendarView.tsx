@@ -120,7 +120,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-[1540px] mx-auto w-full">
+    <div className="flex flex-col gap-5 max-w-[1540px] mx-auto w-full">
       {/* Calendar Header with Stepper, View Switcher & Filters */}
       <CalendarHeader
         viewMode={viewMode}
@@ -155,7 +155,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       )}
 
       {/* Bottom Section: Automated Comment Scout Schedule & Safeguards */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-0.5">
         {/* Left Column (7 cols): Automated Comment Scout Schedule */}
         <div className="lg:col-span-7">
           <ScoutScheduleCard commentWindows={commentWindows} />

@@ -6,7 +6,6 @@ import {
   Tag,
   ArrowCounterClockwise,
   MagicWand,
-  Sparkle,
 } from "@phosphor-icons/react";
 import { VoiceDictationButton } from "../VoiceDictationButton";
 
@@ -70,14 +69,14 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
       <div className="flex items-center justify-between">
         <label
           htmlFor="responseEditor"
-          className="font-headline-sm text-on-surface"
+          className="text-xs font-semibold text-on-surface"
         >
           Proposed Response Draft
         </label>
         <div className="flex items-center gap-2">
           <span
             data-testid="char-word-counter"
-            className="font-label-md text-on-surface-variant font-mono"
+            className="text-[11px] text-on-surface-variant font-sans tabular-nums"
           >
             {charCount} chars · {wordCount} words
           </span>
@@ -85,15 +84,15 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
           {isSweetSpot ? (
             <span
               data-testid="sweet-spot-badge"
-              className="inline-flex items-center gap-1 rounded-full border border-tertiary/30 bg-tertiary/10 px-2 py-0.5 text-label-sm font-semibold text-tertiary"
+              className="inline-flex items-center gap-1 rounded-[4px] border border-tertiary/30 bg-tertiary/10 px-1.5 py-0.2 text-[10px] font-medium text-tertiary"
             >
-              <Check size={11} weight="bold" />
+              <Check size={10} weight="bold" />
               Sweet Spot
             </span>
           ) : (
             <span
               data-testid="length-indicator"
-              className="rounded-full border border-outline bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant"
+              className="rounded-[4px] border border-outline bg-surface-container px-1.5 py-0.2 text-[10px] text-on-surface-variant font-sans"
             >
               {charCount < 150 ? "Target: 150-350 chars" : "Long (> 350)"}
             </span>
@@ -101,8 +100,8 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
         </div>
       </div>
 
-      {/* Calm, Focused Text Editing Area */}
-      <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline/60 shadow-xs flex flex-col gap-3 focus-within:border-primary/60 focus-within:shadow-md transition-all">
+      {/* Focused Text Editing Area */}
+      <div className="p-3.5 rounded-lg bg-surface-bright border border-outline shadow-2xs flex flex-col gap-2.5 focus-within:border-primary/60 transition-colors">
         <textarea
           ref={textareaRef}
           id="responseEditor"
@@ -112,13 +111,13 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
           onChange={(e) => onDraftChange(e.target.value)}
           rows={5}
           placeholder="Refine response text before dispatch..."
-          className="w-full bg-transparent border-0 outline-none font-body-lg text-on-surface resize-none leading-relaxed placeholder:text-on-surface-variant"
+          className="w-full bg-transparent border-0 outline-none text-xs text-on-surface resize-none leading-relaxed placeholder:text-on-surface-variant"
         />
 
         {/* Tone Selector & Formatting Controls */}
-        <div className="pt-2 border-t border-outline/40 flex flex-wrap items-center justify-between gap-2">
-          {/* Segmented Tone Selector (Things 3 / Apple segmented design) */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container-low flex-wrap border border-outline/40">
+        <div className="pt-2 border-t border-outline/50 flex flex-wrap items-center justify-between gap-2">
+          {/* Segmented Tone Selector (macOS native segmented control) */}
+          <div className="flex items-center gap-0.5 p-0.5 rounded-md bg-surface-container-low border border-outline/50">
             {TONE_OPTIONS.map((opt) => {
               const isSelected = activeRewriteTone === opt.tone;
               return (
@@ -128,16 +127,14 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
                   data-testid={`tone-pill-${opt.tone}`}
                   disabled={!!activeRewriteTone || isProcessing}
                   onClick={() => onRewrite(opt.tone)}
-                  className={`px-2.5 py-1 rounded-lg font-label-md transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 active:scale-[0.98] disabled:opacity-50 ${
+                  className={`px-2 py-0.5 rounded-sm text-[11px] transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 disabled:opacity-50 ${
                     isSelected
-                      ? "bg-surface-container-lowest text-on-surface shadow-xs font-semibold ring-1 ring-primary/20"
-                      : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                      ? "bg-surface-bright text-on-surface shadow-2xs font-medium"
+                      : "text-on-surface-variant hover:text-on-surface"
                   }`}
                 >
-                  {isSelected ? (
-                    <ArrowClockwise size={12} className="animate-spin text-primary" />
-                  ) : (
-                    <Sparkle size={12} className="text-on-surface-variant" />
+                  {isSelected && (
+                    <ArrowClockwise size={11} className="animate-spin text-primary" />
                   )}
                   <span>{opt.label}</span>
                 </button>
@@ -146,33 +143,33 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
           </div>
 
           {/* Quick Formatting Actions & Voice Dictation */}
-          <div className="flex items-center gap-1 text-on-surface-variant">
+          <div className="flex items-center gap-0.5 text-on-surface-variant">
             <button
               type="button"
               onClick={handleAddHashtag}
               title="Add Hashtags"
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface"
+              className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface"
             >
-              <Tag size={16} />
+              <Tag size={13} />
             </button>
             <button
               type="button"
               onClick={() => onRewrite("technical")}
               title="Check Tone & Grammar"
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface"
+              className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface"
             >
-              <MagicWand size={16} />
+              <MagicWand size={13} />
             </button>
             <button
               type="button"
               onClick={handleResetDraft}
               title="Discard Edits"
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface"
+              className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface"
             >
-              <ArrowCounterClockwise size={16} />
+              <ArrowCounterClockwise size={13} />
             </button>
 
-            <div className="mx-1 h-4 w-px bg-outline/60" />
+            <div className="mx-1 h-3.5 w-px bg-outline/60" />
 
             {/* Embedded Voice Dictation Button */}
             <VoiceDictationButton
@@ -184,17 +181,17 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
         </div>
 
         {/* Bottom Workspace Action Buttons */}
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-outline/40 pt-3">
-          <div className="flex items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2 border-t border-outline/50 pt-2.5">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               data-testid="regenerate-action-btn"
               disabled={isProcessing || !!activeRewriteTone}
               onClick={onRegenerate}
-              className="flex items-center gap-1.5 rounded-lg border border-outline bg-surface-container px-3 py-1.5 text-xs font-medium text-on-surface transition-all hover:bg-surface-container-high active:scale-[0.98] disabled:opacity-50"
+              className="flex items-center gap-1 rounded-md border border-outline bg-surface-container px-2.5 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-high active:scale-[0.99] disabled:opacity-50"
             >
               <ArrowClockwise
-                size={13}
+                size={12}
                 className={
                   activeRewriteTone === "regenerate"
                     ? "animate-spin text-primary"
@@ -205,17 +202,17 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               data-testid="reject-action-btn"
               disabled={isProcessing || !!activeRewriteTone}
               onClick={onReject}
-              className="flex items-center gap-1.5 rounded-lg border border-error/30 bg-error/10 px-3.5 py-1.5 text-xs font-medium text-error transition-all hover:bg-error/20 active:scale-[0.98] disabled:opacity-50"
+              className="flex items-center gap-1 rounded-md border border-error/30 bg-error/10 px-2.5 py-1 text-xs font-medium text-error transition-colors hover:bg-error/20 active:scale-[0.99] disabled:opacity-50"
             >
-              <X size={13} weight="bold" />
+              <X size={12} weight="bold" />
               <span>Reject</span>
-              <kbd className="ml-1 rounded border border-error/30 bg-error/10 px-1.5 py-0.5 font-mono text-[10px] text-error">
+              <kbd className="ml-0.5 rounded border border-error/30 bg-error/10 px-1 py-0.2 font-sans text-[10px] text-error">
                 R
               </kbd>
             </button>
@@ -225,11 +222,11 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
               data-testid="approve-action-btn"
               disabled={isProcessing || !!activeRewriteTone}
               onClick={onApprove}
-              className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary px-4 py-1.5 text-xs font-semibold text-on-primary transition-all hover:bg-primary-container active:scale-[0.98] disabled:opacity-50 shadow-xs"
+              className="flex items-center gap-1 rounded-md border border-primary/40 bg-primary px-3 py-1 text-xs font-medium text-on-primary transition-colors hover:bg-primary-container active:scale-[0.99] disabled:opacity-50 shadow-2xs"
             >
-              <Check size={13} weight="bold" />
-              <span>Approve & Queue</span>
-              <kbd className="ml-1 rounded border border-white/20 bg-white/15 px-1.5 py-0.5 font-mono text-[10px] text-on-primary">
+              <Check size={12} weight="bold" />
+              <span>Approve &amp; Queue</span>
+              <kbd className="ml-0.5 rounded border border-white/20 bg-white/15 px-1 py-0.2 font-sans text-[10px] text-on-primary">
                 A
               </kbd>
             </button>
