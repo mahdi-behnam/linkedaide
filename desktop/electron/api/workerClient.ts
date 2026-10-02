@@ -468,13 +468,20 @@ export class WorkerClient {
       return res;
     }
 
-    const rewritten =
-      (res.draft as string) ||
-      (res.rewrittenText as string) ||
-      (res.draftText as string) ||
-      (res.text as string);
+    const dataObj =
+      res && typeof res === "object" && "data" in res && res.data && typeof res.data === "object"
+        ? (res.data as Record<string, unknown>)
+        : res;
 
-    if (rewritten) {
+    const rewritten =
+      (dataObj.rewritten_text as string) ||
+      (dataObj.rewrittenText as string) ||
+      (dataObj.draft as string) ||
+      (dataObj.draft_text as string) ||
+      (dataObj.draftText as string) ||
+      (dataObj.text as string);
+
+    if (rewritten && typeof rewritten === "string") {
       return rewritten;
     }
 

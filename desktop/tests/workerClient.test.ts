@@ -417,6 +417,23 @@ describe("WorkerClient", () => {
       );
       expect(result).toBe("This is a polished and insightful perspective.");
     });
+
+    it("parses snake_case rewritten_text from Worker API response", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            success: true,
+            rewritten_text: "Technical analysis with substantive domain context.",
+            tone: "technical",
+          }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await client.rewriteDraft("Test draft", "technical");
+      expect(result).toBe("Technical analysis with substantive domain context.");
+    });
   });
 
   describe("saveSession", () => {

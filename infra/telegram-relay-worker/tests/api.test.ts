@@ -785,6 +785,8 @@ describe("Authenticated Worker REST API Suite", () => {
       expect(data).toEqual({
         success: true,
         rewritten_text: mockRewritten,
+        rewrittenText: mockRewritten,
+        draft: mockRewritten,
         tone: "technical",
       });
 
@@ -799,8 +801,16 @@ describe("Authenticated Worker REST API Suite", () => {
       );
     });
 
-    it("supports tones: technical, inquisitive, contrarian, shorter", async () => {
-      const tones = ["technical", "inquisitive", "contrarian", "shorter"] as const;
+    it("supports tones: technical, inquisitive, contrarian, shorter, regenerate, casual, concise", async () => {
+      const tones = [
+        "technical",
+        "inquisitive",
+        "contrarian",
+        "shorter",
+        "regenerate",
+        "casual",
+        "concise",
+      ] as const;
 
       for (const tone of tones) {
         const fetchMock = vi.fn().mockResolvedValue(
@@ -825,6 +835,8 @@ describe("Authenticated Worker REST API Suite", () => {
         expect(data.success).toBe(true);
         expect(data.tone).toBe(tone);
         expect(data.rewritten_text).toBe(`Rewritten as ${tone}`);
+        expect(data.rewrittenText).toBe(`Rewritten as ${tone}`);
+        expect(data.draft).toBe(`Rewritten as ${tone}`);
       }
     });
 

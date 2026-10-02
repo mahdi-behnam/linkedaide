@@ -694,7 +694,15 @@ export async function handlePostRewrite(request: Request, env: Env): Promise<Res
     return jsonResponse({ error: "Fields 'draft_text' and 'tone' are required" }, 400);
   }
 
-  const validTones = ["technical", "inquisitive", "contrarian", "shorter"];
+  const validTones = [
+    "technical",
+    "inquisitive",
+    "contrarian",
+    "shorter",
+    "regenerate",
+    "casual",
+    "concise",
+  ];
   if (!validTones.includes(tone)) {
     return jsonResponse(
       { error: `Invalid tone. Allowed tones: ${validTones.join(", ")}` },
@@ -718,6 +726,12 @@ export async function handlePostRewrite(request: Request, env: Env): Promise<Res
       "Rewrite with a constructive contrarian perspective, politely challenging common industry assumptions with clear rationale.",
     shorter:
       "Rewrite to be concise, punchy, and direct, removing filler words while keeping the core insight.",
+    regenerate:
+      "Provide an alternative fresh draft with engaging domain insights, sharp perspective, and natural conversational flow.",
+    casual:
+      "Rewrite in a warm, approachable, conversational tone suitable for direct professional outreach.",
+    concise:
+      "Rewrite to be brief, clear, and high-impact within 300 characters.",
   };
 
   const toneModifier = toneInstructions[tone] || `Rewrite in a ${tone} tone.`;
@@ -777,6 +791,8 @@ export async function handlePostRewrite(request: Request, env: Env): Promise<Res
   return jsonResponse({
     success: true,
     rewritten_text: rewrittenText,
+    rewrittenText: rewrittenText,
+    draft: rewrittenText,
     tone,
   });
 }
