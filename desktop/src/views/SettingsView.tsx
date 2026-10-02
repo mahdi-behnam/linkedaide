@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import {
-  SlidersHorizontal,
-  Globe,
-  LockKey,
-  Key,
-  CheckCircle,
-  WarningCircle,
-  ArrowClockwise,
-  Copy,
-  Check,
-  Cpu,
-  ShieldCheck,
-  Lightning,
-} from "../components/icons";
+import { Check, CheckCircle, WarningCircle, ArrowClockwise } from "../components/icons";
+import { ExecutionModeCard } from "./settings/ExecutionModeCard";
+import { CloudflareRelayCard } from "./settings/CloudflareRelayCard";
+import { GitHubActionsCard } from "./settings/GitHubActionsCard";
+import { VaultEncryptionCard } from "./settings/VaultEncryptionCard";
+import { NimIntelligenceCard } from "./settings/NimIntelligenceCard";
+import { SafetyGuardrailsCard } from "./settings/SafetyGuardrailsCard";
+import { NotificationsCard } from "./settings/NotificationsCard";
 import type { DesktopSettings } from "../types/api";
 
 const defaultSettings: DesktopSettings = {
@@ -69,9 +63,22 @@ export const SettingsView: React.FC = () => {
   } | null>(null);
   const [isCustomModel, setIsCustomModel] = useState(false);
 
+  const handleDiscard = async () => {
+    if (typeof window !== "undefined" && window.api?.getSettings) {
+      try {
+        const loaded = await window.api.getSettings();
+        if (loaded) {
+          setSettings((prev) => ({ ...prev, ...loaded }));
+        }
+      } catch (err) {
+        console.error("Failed to discard settings:", err);
+      }
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
-    const load = async () => {
+    const init = async () => {
       if (typeof window !== "undefined" && window.api?.getSettings) {
         try {
           const loaded = await window.api.getSettings();
@@ -88,7 +95,7 @@ export const SettingsView: React.FC = () => {
         }
       }
     };
-    load();
+    void init();
     return () => {
       isMounted = false;
     };
@@ -103,8 +110,8 @@ export const SettingsView: React.FC = () => {
     setSaveError(null);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
@@ -119,7 +126,6 @@ export const SettingsView: React.FC = () => {
           setSaveError("Failed to save settings to local disk.");
         }
       } else {
-        // Fallback simulated save in browser/test
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       }
@@ -233,559 +239,152 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* View Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
-            Agent Configuration & Settings
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 pb-10">
+      {/* Top Header Block matching Stitch */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+        <div className="flex flex-col gap-1.5 max-w-2xl">
+          <div className="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md mb-1">
+            <span>System</span>
+            <span className="text-outline-variant">/</span>
+            <span className="text-on-surface font-semibold">Settings</span>
+          </div>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold">
+            Agent Configuration &amp; Settings
           </h1>
-          <p className="mt-1 text-xs text-zinc-400">
-            Configure dual execution modes (Cloudflare KV vs Local Playwright), API tokens, encryption keys, and safety caps.
+          <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            Configure execution architecture, Cloudflare Workers edge credentials, Fernet encryption keyrings, notification triggers, and autonomous safety boundaries.
           </p>
         </div>
 
-        {saveSuccess && (
-          <div className="flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-mono text-xs text-emerald-400">
-            <CheckCircle size={14} weight="bold" />
-            <span>Settings Saved & Applied</span>
-          </div>
-        )}
-        {saveError && (
-          <div className="flex items-center gap-1.5 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-1 font-mono text-xs text-rose-400">
-            <WarningCircle size={14} weight="bold" />
-            <span>{saveError}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
+          {saveSuccess && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-tertiary/30 bg-tertiary-container/15 font-mono text-xs text-tertiary font-semibold">
+              <CheckCircle size={15} weight="bold" />
+              <span>Settings Saved &amp; Applied</span>
+            </div>
+          )}
+          {saveError && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-error/30 bg-error-container/20 font-mono text-xs text-error font-semibold">
+              <WarningCircle size={15} weight="bold" />
+              <span>{saveError}</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleDiscard()}
+            className="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors font-body-strong text-body-strong flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Discard</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSave()}
+            disabled={isSaving}
+            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-container text-on-primary transition-all font-body-strong text-body-strong shadow-xs flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            {isSaving ? (
+              <ArrowClockwise size={16} className="animate-spin text-on-primary" />
+            ) : (
+              <Check size={16} weight="bold" />
+            )}
+            <span>Save Changes</span>
+          </button>
+        </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Execution Mode Selector */}
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-3">
-            <Cpu size={16} className="text-emerald-400" />
-            <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-              Execution Architecture Mode
-            </h2>
-          </div>
+      <form onSubmit={handleSave} className="flex flex-col gap-6">
+        {/* Section 1: Execution Mode */}
+        <ExecutionModeCard
+          executionMode={settings.executionMode ?? "cloud"}
+          onChange={(mode) => handleChange("executionMode", mode)}
+        />
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* Cloud Runner Option */}
-            <label
-              className={`flex cursor-pointer flex-col rounded-lg border p-4 transition-all ${
-                settings.executionMode === "cloud"
-                  ? "border-emerald-500/50 bg-emerald-500/5 shadow-xs"
-                  : "border-zinc-800 bg-zinc-950/60 hover:border-zinc-700"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe size={18} className="text-emerald-400" />
-                  <span className="text-xs font-semibold text-zinc-100">
-                    Cloud Remote Runner
-                  </span>
-                </div>
-                <input
-                  type="radio"
-                  name="executionMode"
-                  value="cloud"
-                  checked={settings.executionMode === "cloud"}
-                  onChange={() => handleChange("executionMode", "cloud")}
-                  className="accent-emerald-500"
-                />
-              </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
-                Orchestrates state via Cloudflare Workers KV and triggers GitHub Actions dispatch runners. Zero local machine uptime required.
-              </p>
-            </label>
+        {/* Section 2: Cloudflare Relay */}
+        <CloudflareRelayCard
+          workerUrl={settings.workerUrl}
+          apiSecret={settings.apiSecret}
+          autoRefreshInterval={settings.autoRefreshInterval ?? 300}
+          showSecret={showSecret}
+          onToggleShowSecret={() => setShowSecret((prev) => !prev)}
+          onWorkerUrlChange={(url) => handleChange("workerUrl", url)}
+          onApiSecretChange={(secret) => handleChange("apiSecret", secret)}
+          onIntervalChange={(interval) => handleChange("autoRefreshInterval", interval)}
+          isTesting={isTesting}
+          testResult={testResult}
+          onTestConnection={handleTestConnection}
+        />
 
-            {/* Local Runner Option */}
-            <label
-              className={`flex cursor-pointer flex-col rounded-lg border p-4 transition-all ${
-                settings.executionMode === "local"
-                  ? "border-cyan-500/50 bg-cyan-500/5 shadow-xs"
-                  : "border-zinc-800 bg-zinc-950/60 hover:border-zinc-700"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-cyan-400" />
-                  <span className="text-xs font-semibold text-zinc-100">
-                    Local Playwright Runner
-                  </span>
-                </div>
-                <input
-                  type="radio"
-                  name="executionMode"
-                  value="local"
-                  checked={settings.executionMode === "local"}
-                  onChange={() => handleChange("executionMode", "local")}
-                  className="accent-cyan-500"
-                />
-              </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
-                Executes browser actions directly on this machine using local Playwright and Python agent CLI. Ideal for desktop-first control.
-              </p>
-            </label>
-          </div>
-        </div>
+        {/* Section 3: GitHub Actions Cloud Runner Dispatch */}
+        <GitHubActionsCard
+          executionMode={settings.executionMode ?? "cloud"}
+          githubRepoOwner={settings.githubRepoOwner || ""}
+          githubRepoName={settings.githubRepoName || ""}
+          githubDispatchPat={settings.githubDispatchPat || ""}
+          showGithubPat={showGithubPat}
+          onToggleShowPat={() => setShowGithubPat((prev) => !prev)}
+          onRepoOwnerChange={(owner) => handleChange("githubRepoOwner", owner)}
+          onRepoNameChange={(name) => handleChange("githubRepoName", name)}
+          onDispatchPatChange={(pat) => handleChange("githubDispatchPat", pat)}
+        />
 
-        {/* Cloudflare Worker & API Credentials */}
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-            <div className="flex items-center gap-2">
-              <Globe size={16} className="text-emerald-400" />
-              <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-                Cloudflare Worker Edge Relay
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={isTesting}
-              className="flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100 active:translate-y-[1px] disabled:opacity-50"
-            >
-              <ArrowClockwise size={13} className={isTesting ? "animate-spin" : ""} />
-              <span>{isTesting ? "Testing..." : "Test Connection"}</span>
-            </button>
-          </div>
+        {/* Section 4: Vault Encryption */}
+        <VaultEncryptionCard
+          encryptionKey={settings.encryptionKey || ""}
+          onKeyChange={(key) => handleChange("encryptionKey", key)}
+          onGenerateKey={handleGenerateKey}
+          onCopyKey={handleCopyKey}
+          copiedKey={copiedKey}
+        />
 
-          {testResult && (
-            <div
-              className={`mt-3 flex items-center justify-between rounded-md border px-3 py-2 text-xs font-mono ${
-                testResult.success
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                  : "border-rose-500/30 bg-rose-500/10 text-rose-400"
-              }`}
-            >
-              <span>
-                {testResult.success
-                  ? "Connected successfully to Cloudflare Worker API. Remember to click 'Save & Apply Settings' below to persist."
-                  : `Connection error: ${testResult.error}`}
-              </span>
-              {testResult.latencyMs !== undefined && (
-                <span className="font-semibold">{testResult.latencyMs} ms</span>
-              )}
-            </div>
-          )}
+        {/* Section 5: NVIDIA NIM Intelligence */}
+        <NimIntelligenceCard
+          nimModel={settings.nimModel || "meta/llama-3.1-70b-instruct"}
+          nimApiKey={settings.nimApiKey || ""}
+          modelsList={modelsList}
+          isCustomModel={isCustomModel}
+          isFetchingModels={isFetchingModels}
+          modelFetchFeedback={modelFetchFeedback}
+          showNimKey={showNimKey}
+          onToggleShowNimKey={() => setShowNimKey((prev) => !prev)}
+          onModelChange={(model) => handleChange("nimModel", model)}
+          onCustomModelToggle={(custom) => setIsCustomModel(custom)}
+          onApiKeyChange={(key) => handleChange("nimApiKey", key)}
+          onFetchModels={handleFetchModels}
+        />
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300">
-                Worker API Endpoint URL
-              </label>
-              <input
-                type="text"
-                value={settings.workerUrl}
-                onChange={(e) => handleChange("workerUrl", e.target.value)}
-                placeholder="https://relay.your-subdomain.workers.dev"
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-emerald-500 focus:outline-hidden"
-              />
-            </div>
+        {/* Section 6: Safety Guardrails */}
+        <SafetyGuardrailsCard
+          maxCommentsPerDay={settings.maxCommentsPerDay ?? quota.commentsMax}
+          maxPostsPerDay={settings.maxPostsPerDay ?? quota.postsMax}
+          maxSuggestionsPerRun={settings.maxSuggestionsPerRun ?? 10}
+          actionTtlHours={settings.actionTtlHours ?? 24}
+          autoRefreshInterval={settings.autoRefreshInterval ?? 300}
+          headless={settings.headless ?? true}
+          onCommentsChange={(val) => handleChange("maxCommentsPerDay", val)}
+          onPostsChange={(val) => handleChange("maxPostsPerDay", val)}
+          onSuggestionsChange={(val) => handleChange("maxSuggestionsPerRun", val)}
+          onTtlChange={(val) => handleChange("actionTtlHours", val)}
+          onIntervalChange={(val) => handleChange("autoRefreshInterval", val)}
+          onHeadlessChange={(val) => handleChange("headless", val)}
+        />
 
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-medium text-zinc-300">
-                  Desktop API Secret (Bearer Token)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowSecret((prev) => !prev)}
-                  className="text-[11px] text-zinc-500 hover:text-zinc-300"
-                >
-                  {showSecret ? "Hide" : "Show"}
-                </button>
-              </div>
-              <input
-                type={showSecret ? "text" : "password"}
-                value={settings.apiSecret}
-                onChange={(e) => handleChange("apiSecret", e.target.value)}
-                placeholder="Enter DESKTOP_API_SECRET"
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-emerald-500 focus:outline-hidden"
-              />
-            </div>
-          </div>
-        </div>
+        {/* Section 7: Notifications & Desktop Integration */}
+        <NotificationsCard
+          minimizeToTray={settings.minimizeToTray ?? true}
+          notificationsEnabled={settings.notificationsEnabled ?? true}
+          onMinimizeChange={(val) => handleChange("minimizeToTray", val)}
+          onNotificationsChange={(val) => handleChange("notificationsEnabled", val)}
+        />
 
-        {/* GitHub Actions Cloud Runner Dispatch */}
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-            <div className="flex items-center gap-2">
-              <Lightning size={16} className="text-amber-400" />
-              <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-                GitHub Actions Cloud Runner Dispatch
-              </h2>
-            </div>
-            {settings.executionMode === "cloud" && (
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-300">
-                Required for Cloud Mode
-              </span>
-            )}
-          </div>
-
-          <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
-            Dispatches automated workflows (<code className="text-zinc-300">scout.yml</code> and <code className="text-zinc-300">execute.yml</code>) via GitHub Actions when using the Cloud Remote Runner. Configure your repository coordinates and a Personal Access Token (PAT) with <code className="text-zinc-300">repo</code> or <code className="text-zinc-300">workflow</code> permissions.
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300">
-                GitHub Repository Owner
-              </label>
-              <input
-                type="text"
-                value={settings.githubRepoOwner || ""}
-                onChange={(e) => handleChange("githubRepoOwner", e.target.value)}
-                placeholder="e.g. mahdi-behnam"
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-amber-500 focus:outline-hidden"
-              />
-              <p className="mt-1 text-[11px] text-zinc-500">
-                Username or organization owning the repository.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300">
-                GitHub Repository Name
-              </label>
-              <input
-                type="text"
-                value={settings.githubRepoName || ""}
-                onChange={(e) => handleChange("githubRepoName", e.target.value)}
-                placeholder="e.g. linkedin-hitl-agent"
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-amber-500 focus:outline-hidden"
-              />
-              <p className="mt-1 text-[11px] text-zinc-500">
-                Repository name hosting the agent workflows.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-medium text-zinc-300">
-                GitHub Personal Access Token (GITHUB_DISPATCH_PAT)
-              </label>
-              <button
-                type="button"
-                aria-label="Toggle GitHub PAT visibility"
-                onClick={() => setShowGithubPat((prev) => !prev)}
-                className="text-[11px] text-zinc-500 hover:text-zinc-300"
-              >
-                {showGithubPat ? "Hide" : "Show"}
-              </button>
-            </div>
-            <input
-              type={showGithubPat ? "text" : "password"}
-              value={settings.githubDispatchPat || ""}
-              onChange={(e) => handleChange("githubDispatchPat", e.target.value)}
-              placeholder="Enter GITHUB_DISPATCH_PAT (ghp_... or github_pat_...)"
-              className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-amber-500 focus:outline-hidden"
-            />
-            <div className="mt-2.5 rounded-md border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] space-y-1.5">
-              <span className="font-semibold text-amber-300">
-                Required GitHub Personal Access Token (PAT) Scopes:
-              </span>
-              <ul className="list-disc list-inside space-y-1 text-zinc-400">
-                <li>
-                  <strong className="text-zinc-200">Classic PAT (<code className="text-zinc-300">ghp_...</code>):</strong> Must check both <code className="text-amber-300 font-mono font-semibold">workflow</code> (&quot;Update GitHub Action workflows&quot;) AND <code className="text-amber-300 font-mono font-semibold">repo</code>. Without <code className="text-amber-300 font-mono">workflow</code>, GitHub returns <em>403 Resource not accessible</em>.
-                </li>
-                <li>
-                  <strong className="text-zinc-200">Fine-grained PAT (<code className="text-zinc-300">github_pat_...</code>):</strong> Under <em>Repository Permissions</em>, set <code className="text-amber-300 font-mono font-semibold">Actions</code> to <strong>Read and write</strong> and select this repository under Repository Access.
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Session Encryption & Fernet Key */}
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-            <div className="flex items-center gap-2">
-              <LockKey size={16} className="text-violet-400" />
-              <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-                Session Vault Encryption (Fernet AES-128-CBC)
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopyKey}
-                disabled={!settings.encryptionKey}
-                className="flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-400 hover:text-zinc-200 active:translate-y-[1px] disabled:opacity-40"
-              >
-                {copiedKey ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                <span>{copiedKey ? "Copied" : "Copy"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleGenerateKey}
-                className="flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-xs text-violet-300 hover:bg-violet-500/20 active:translate-y-[1px]"
-              >
-                <Key size={12} />
-                <span>Generate Key</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="block text-xs font-medium text-zinc-300">
-              32-Byte URL-Safe Base64 Fernet Key
-            </label>
-            <input
-              type="text"
-              value={settings.encryptionKey || ""}
-              onChange={(e) => handleChange("encryptionKey", e.target.value)}
-              placeholder="Base64 URL-safe 32-byte key matching SESSION_ENCRYPTION_KEY"
-              className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-violet-500 focus:outline-hidden"
-            />
-            <p className="mt-1.5 text-[11px] text-zinc-500">
-              Must match the SESSION_ENCRYPTION_KEY repository secret used by Python agents to decrypt LinkedIn session state.
-            </p>
-          </div>
-        </div>
-
-        {/* NVIDIA NIM LLM Intelligence & Models */}
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-            <div className="flex items-center gap-2">
-              <Cpu size={16} className="text-violet-400" />
-              <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-                NVIDIA NIM Intelligence & LLM Engine
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={handleFetchModels}
-              disabled={isFetchingModels}
-              className="flex items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs text-violet-300 hover:bg-violet-500/20 active:translate-y-[1px] disabled:opacity-50"
-            >
-              <ArrowClockwise
-                size={13}
-                className={isFetchingModels ? "animate-spin" : ""}
-              />
-              <span>{isFetchingModels ? "Fetching Models..." : "Fetch Models from NVIDIA"}</span>
-            </button>
-          </div>
-
-          {modelFetchFeedback && (
-            <div
-              className={`mt-3 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-mono ${
-                modelFetchFeedback.type === "success"
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                  : "border-rose-500/30 bg-rose-500/10 text-rose-400"
-              }`}
-            >
-              {modelFetchFeedback.type === "success" ? (
-                <CheckCircle size={14} weight="bold" />
-              ) : (
-                <WarningCircle size={14} weight="bold" />
-              )}
-              <span>{modelFetchFeedback.message}</span>
-            </div>
-          )}
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-medium text-zinc-300">
-                  Primary NIM Model
-                </label>
-                <span className="text-[11px] text-zinc-500">
-                  {modelsList.length} models available
-                </span>
-              </div>
-
-              <select
-                aria-label="Primary NIM Model"
-                value={isCustomModel ? "__custom__" : (settings.nimModel || "meta/llama-3.1-70b-instruct")}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "__custom__") {
-                    setIsCustomModel(true);
-                  } else {
-                    setIsCustomModel(false);
-                    handleChange("nimModel", val);
-                  }
-                }}
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 focus:border-violet-500 focus:outline-hidden"
-              >
-                <optgroup label="Available Models">
-                  {modelsList.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="__custom__">✏️ Enter custom model name...</option>
-                </optgroup>
-              </select>
-
-              {isCustomModel && (
-                <input
-                  type="text"
-                  aria-label="Custom NIM Model Identifier"
-                  value={settings.nimModel || ""}
-                  onChange={(e) => handleChange("nimModel", e.target.value)}
-                  placeholder="e.g. meta/llama-3.1-8b-instruct or custom NIM URN"
-                  className="mt-2 w-full rounded-md border border-violet-500/50 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-violet-500 focus:outline-hidden"
-                />
-              )}
-
-              <p className="mt-1.5 text-[11px] text-zinc-500">
-                Default: <code className="text-zinc-400">meta/llama-3.1-70b-instruct</code>. Used for post triage, reasoning, and drafting.
-              </p>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-medium text-zinc-300">
-                  NVIDIA NIM API Key
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowNimKey((prev) => !prev)}
-                  className="text-[11px] text-zinc-500 hover:text-zinc-300"
-                >
-                  {showNimKey ? "Hide" : "Show"}
-                </button>
-              </div>
-              <input
-                type={showNimKey ? "text" : "password"}
-                value={settings.nimApiKey || ""}
-                onChange={(e) => handleChange("nimApiKey", e.target.value)}
-                placeholder="Enter NVIDIA_NIM_API_KEY (nvapi-...)"
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-violet-500 focus:outline-hidden"
-              />
-              <p className="mt-1.5 text-[11px] text-zinc-500">
-                Personal API key from NVIDIA build catalog for local and agent execution.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Background Polling & App Preferences */}
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-3">
-            <SlidersHorizontal size={16} className="text-amber-400" />
-            <h2 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-              Background Monitoring & Safety Limits
-            </h2>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300">
-                Poll Interval
-              </label>
-              <select
-                value={settings.autoRefreshInterval ?? 300}
-                onChange={(e) =>
-                  handleChange("autoRefreshInterval", Number(e.target.value))
-                }
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 focus:border-amber-500 focus:outline-hidden"
-              >
-                <option value={60}>1 Minute (Fast)</option>
-                <option value={120}>2 Minutes</option>
-                <option value={300}>5 Minutes (Default)</option>
-                <option value={600}>10 Minutes</option>
-                <option value={900}>15 Minutes</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300">
-                Max Comments / Day
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={settings.maxCommentsPerDay ?? quota.commentsMax}
-                onChange={(e) =>
-                  handleChange("maxCommentsPerDay", Number(e.target.value))
-                }
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 focus:border-amber-500 focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300">
-                Max Posts / Day
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                value={settings.maxPostsPerDay ?? quota.postsMax}
-                onChange={(e) =>
-                  handleChange("maxPostsPerDay", Number(e.target.value))
-                }
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 focus:border-amber-500 focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300">
-                Approval TTL (Hours)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={72}
-                value={settings.actionTtlHours ?? 24}
-                onChange={(e) =>
-                  handleChange("actionTtlHours", Number(e.target.value))
-                }
-                className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 focus:border-amber-500 focus:outline-hidden"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-6 pt-3 border-t border-zinc-800/60">
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
-              <input
-                type="checkbox"
-                checked={settings.minimizeToTray ?? true}
-                onChange={(e) => handleChange("minimizeToTray", e.target.checked)}
-                className="accent-emerald-500 rounded"
-              />
-              <span>Minimize to System Tray on Window Close</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
-              <input
-                type="checkbox"
-                checked={settings.notificationsEnabled ?? true}
-                onChange={(e) =>
-                  handleChange("notificationsEnabled", e.target.checked)
-                }
-                className="accent-emerald-500 rounded"
-              />
-              <span>Native OS Notifications on New Approvals</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
-              <input
-                type="checkbox"
-                checked={settings.headless ?? true}
-                onChange={(e) => handleChange("headless", e.target.checked)}
-                className="accent-emerald-500 rounded"
-              />
-              <span>Headless Playwright Browser (Local Mode)</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        {/* Bottom Save Button Bar */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-container-high">
           <button
             type="submit"
+            data-testid="save-settings-btn"
             disabled={isSaving}
-            className="flex items-center gap-2 rounded-md bg-emerald-500 px-5 py-2 text-xs font-semibold text-zinc-950 shadow-sm transition-all hover:bg-emerald-400 active:translate-y-[1px] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-body-strong text-body-strong shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
           >
-            {isSaving && <ArrowClockwise size={14} className="animate-spin" />}
+            {isSaving && <ArrowClockwise size={15} className="animate-spin" />}
             <span>{isSaving ? "Saving Configuration..." : "Save & Apply Settings"}</span>
           </button>
         </div>
