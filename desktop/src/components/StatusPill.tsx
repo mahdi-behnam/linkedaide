@@ -39,21 +39,21 @@ export const StatusPill: React.FC<StatusPillProps> = ({
   const text = label || defaultLabel;
 
   const colorStyles = isHealthy
-    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+    ? "bg-tertiary/10 text-tertiary border-tertiary/20"
     : isWarning
-      ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-      : "bg-rose-500/10 text-rose-400 border-rose-500/20";
+      ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+      : "bg-error/10 text-error border-error/20";
 
   const dotStyles = isHealthy
-    ? "bg-emerald-400"
+    ? "bg-tertiary"
     : isWarning
-      ? "bg-amber-400"
-      : "bg-rose-400";
+      ? "bg-amber-500"
+      : "bg-error";
 
   const sizeStyles =
     size === "sm"
-      ? "px-2 py-0.5 text-xs gap-1.5"
-      : "px-2.5 py-1 text-xs font-medium gap-2";
+      ? "px-2.5 py-0.5 text-[11px] gap-1.5"
+      : "px-3 py-1 text-xs font-medium gap-2";
 
   return (
     <span
@@ -64,7 +64,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({
       {showDot && (
         <span className="relative flex h-2 w-2">
           {isHealthy && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-tertiary opacity-60" />
           )}
           <span className={`relative inline-flex h-2 w-2 rounded-full ${dotStyles}`} />
         </span>

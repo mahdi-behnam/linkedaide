@@ -26,10 +26,10 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
   const isWarning = percentage >= 75 && !isExhausted;
 
   const barColor = isExhausted
-    ? "bg-rose-500"
+    ? "bg-error"
     : isWarning
       ? "bg-amber-500"
-      : "bg-emerald-500";
+      : "bg-primary";
 
   const statusLabel = isExhausted
     ? "Exhausted"
@@ -37,54 +37,59 @@ export const QuotaCard: React.FC<QuotaCardProps> = ({
       ? "High Usage"
       : "Nominal";
 
-  const statusColor = isExhausted
-    ? "text-rose-400 bg-rose-500/10 border-rose-500/20"
+  const statusBadgeColor = isExhausted
+    ? "text-error bg-error/10 border-error/20"
     : isWarning
-      ? "text-amber-400 bg-amber-500/10 border-amber-500/20"
-      : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+      ? "text-amber-500 bg-amber-500/10 border-amber-500/20"
+      : "text-tertiary bg-tertiary/10 border-tertiary/20";
 
   return (
     <div
       data-testid="quota-card"
-      className={`group relative flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all duration-150 hover:border-zinc-700/80 hover:bg-zinc-900/80 active:scale-[0.99] ${className}`}
+      className={`group relative flex flex-col justify-between rounded-xl border border-outline bg-surface-container-lowest p-4 shadow-xs transition-all duration-150 hover:bg-surface-container-low hover:border-outline-variant active:scale-[0.99] ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           {icon && (
-            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-zinc-300 transition-colors group-hover:border-zinc-700 group-hover:text-zinc-100">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-outline bg-surface-container-low text-on-surface-variant transition-colors group-hover:text-primary group-hover:border-primary/30">
               {icon}
             </div>
           )}
           <div>
-            <h4 className="text-xs font-medium tracking-tight text-zinc-300 group-hover:text-zinc-100">
+            <h4 className="body-strong tracking-tight text-on-surface transition-colors">
               {title}
             </h4>
-            <p className="text-[11px] text-zinc-500">
+            <p className="label-sm text-on-surface-variant">
               {subtitle || `${remaining} ${unit} remaining today`}
             </p>
           </div>
         </div>
-        <span
-          className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${statusColor}`}
-        >
-          {statusLabel}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${statusBadgeColor}`}
+          >
+            {statusLabel}
+          </span>
+          <span className="label-sm font-medium text-on-surface-variant">
+            {remaining} left
+          </span>
+        </div>
       </div>
 
       <div className="mt-4 space-y-2">
         <div className="flex items-baseline justify-between font-mono">
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-semibold tracking-tight text-zinc-100">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-semibold tracking-tight text-on-surface">
               {executed}
             </span>
-            <span className="text-xs text-zinc-500">/ {max}</span>
+            <span className="label-md text-on-surface-variant">/ {max}</span>
           </div>
-          <span className="text-xs font-medium text-zinc-400">
+          <span className="label-md font-medium text-on-surface-variant">
             {percentage}%
           </span>
         </div>
 
-        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/80">
+        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-surface-container-highest">
           <div
             role="progressbar"
             aria-valuenow={percentage}

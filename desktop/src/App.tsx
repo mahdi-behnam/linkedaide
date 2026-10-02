@@ -1,4 +1,5 @@
 import React from "react";
+import { ThemeProvider } from "./context/ThemeContext";
 import { AppProvider, useApp } from "./context/AppContext";
 import { AppLayout } from "./layouts/AppLayout";
 import { DashboardView } from "./views/DashboardView";
@@ -43,11 +44,13 @@ const MainContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <AppProvider>
-      <AppLayout>
-        <MainContent />
-      </AppLayout>
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <AppLayout>
+          <MainContent />
+        </AppLayout>
+      </AppProvider>
+    </ThemeProvider>
   );
 };
 

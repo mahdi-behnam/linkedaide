@@ -54,6 +54,8 @@ import {
   TrendUp,
   Waveform,
   ChatTeardropDots,
+  Sun,
+  Moon,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -115,4 +117,6 @@ export {
   TrendUp,
   Waveform,
   ChatTeardropDots,
+  Sun,
+  Moon,
 };

@@ -1,16 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AppProvider } from "../src/context/AppContext";
+import { ThemeProvider } from "../src/context/ThemeContext";
 import { AppLayout } from "../src/layouts/AppLayout";
 
 describe("AppLayout", () => {
   const renderLayout = () => {
     return render(
-      <AppProvider>
-        <AppLayout>
-          <div data-testid="test-content">Main Content Area</div>
-        </AppLayout>
-      </AppProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <AppLayout>
+            <div data-testid="test-content">Main Content Area</div>
+          </AppLayout>
+        </AppProvider>
+      </ThemeProvider>
     );
   };
 
@@ -24,6 +27,7 @@ describe("AppLayout", () => {
     renderLayout();
     expect(screen.getByTestId("nav-dashboard")).toBeTruthy();
     expect(screen.getByTestId("nav-queue")).toBeTruthy();
+    expect(screen.getByTestId("nav-outreach")).toBeTruthy();
     expect(screen.getByTestId("nav-composer")).toBeTruthy();
     expect(screen.getByTestId("nav-calendar")).toBeTruthy();
     expect(screen.getByTestId("nav-analytics")).toBeTruthy();
@@ -76,6 +80,6 @@ describe("AppLayout", () => {
     renderLayout();
     const queueNav = screen.getByTestId("nav-queue");
     fireEvent.click(queueNav);
-    expect(queueNav.className).toContain("bg-zinc-800/90");
+    expect(queueNav.className).toContain("bg-surface-container-highest");
   });
 });
