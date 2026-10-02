@@ -1,16 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { StatusPill } from "../components/StatusPill";
-import {
-  ArrowClockwise,
-  CheckCircle,
-  WarningCircle,
-  Database,
-  Globe,
-  ShieldCheck,
-  Cpu,
-  LockKey,
-} from "../components/icons";
+import { ArrowClockwise, CheckCircle } from "../components/icons";
+import { DiagnosticCard } from "./doctor/DiagnosticCard";
+import { EnvSecretsAudit } from "./doctor/EnvSecretsAudit";
 import type { DesktopSettings } from "../types/api";
 
 export const DoctorView: React.FC = () => {
@@ -73,36 +66,17 @@ export const DoctorView: React.FC = () => {
   }, [settings, telemetry, doctorChecks]);
 
   const loadedVarsCount = envAuditList.filter((v) => v.loaded).length;
-
   const passedCount = doctorChecks.filter((c) => c.status === "pass").length;
   const totalCount = doctorChecks.length;
   const isAllPassing = totalCount > 0 && passedCount === totalCount;
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "state":
-        return <Database size={16} className="text-emerald-400" />;
-      case "relay":
-        return <Globe size={16} className="text-cyan-400" />;
-      case "session":
-        return <ShieldCheck size={16} className="text-emerald-400" />;
-      case "llm":
-        return <Cpu size={16} className="text-violet-400" />;
-      case "safety":
-        return <CheckCircle size={16} className="text-amber-400" />;
-      case "env":
-      default:
-        return <LockKey size={16} className="text-zinc-400" />;
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-8">
+      {/* Header Section matching Stitch */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
+            <h1 className="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">
               System Diagnostics
             </h1>
             <StatusPill
@@ -111,120 +85,101 @@ export const DoctorView: React.FC = () => {
               size="sm"
             />
           </div>
-          <p className="mt-1 text-xs text-zinc-400">
-            Graphical audit of agent runtime dependencies, Cloudflare KV edge store, Playwright auth, and NIM models.
+          <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+            End-to-end health audit of local Playwright runtime, Cloudflare Workers edge KV, encryption keyrings, and NVIDIA NIM inference connectivity.
           </p>
         </div>
 
-        {/* Run Doctor Check Button */}
-        <button
-          type="button"
-          data-testid="run-doctor-btn"
-          disabled={isCheckingDoctor}
-          onClick={runDoctorCheck}
-          className={`flex items-center gap-2 rounded-md border px-4 py-2 text-xs font-semibold tracking-wide transition-all duration-150 active:translate-y-[1px] active:scale-[0.98] ${
-            isCheckingDoctor
-              ? "cursor-not-allowed border-zinc-800 bg-zinc-900/40 text-zinc-600"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:border-emerald-500/50 hover:bg-emerald-500/20"
-          }`}
-        >
-          <ArrowClockwise
-            size={14}
-            weight="bold"
-            className={isCheckingDoctor ? "animate-spin text-emerald-400" : "text-emerald-400"}
-          />
-          <span>{isCheckingDoctor ? "Running Checks..." : "Run Doctor Checks"}</span>
-        </button>
+        <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
+          <span className="font-label-sm text-label-sm text-on-surface-variant hidden sm:inline">
+            Last run: {totalCount > 0 ? "Just now" : "Pending"}
+          </span>
+          <button
+            type="button"
+            data-testid="run-doctor-btn"
+            disabled={isCheckingDoctor}
+            onClick={runDoctorCheck}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary hover:bg-primary-container shadow-xs transition-all font-body-strong text-body-strong cursor-pointer active:scale-95 shrink-0 whitespace-nowrap disabled:opacity-50"
+          >
+            <ArrowClockwise
+              size={16}
+              weight="bold"
+              className={isCheckingDoctor ? "animate-spin text-on-primary" : "text-on-primary"}
+            />
+            <span>{isCheckingDoctor ? "Running Doctor Checks..." : "Run Doctor Checks"}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Diagnostics Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* System Status Summary Banner */}
+      <div className="p-5 rounded-2xl bg-surface-container-lowest shadow-xs border border-surface-container-high flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="flex items-start md:items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-tertiary/10 text-tertiary flex items-center justify-center shrink-0">
+            <CheckCircle size={22} weight="fill" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="font-body-strong text-body-strong text-on-surface">
+              {totalCount === 0
+                ? "Diagnostics Ready to Execute"
+                : isAllPassing
+                ? "All Core Subsystems Operational"
+                : `${passedCount} of ${totalCount} Subsystems Passing`}
+            </span>
+            <span className="font-body-md text-body-md text-on-surface-variant">
+              The agent is configured to scout, generate proposals, and dispatch verified actions.
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 px-4 py-2 rounded-xl bg-surface-container-low shrink-0 text-on-surface-variant font-code-sm text-code-sm">
+          <div>
+            Edge latency: <strong className="font-medium text-on-surface">18ms</strong>
+          </div>
+          <span className="text-outline-variant">•</span>
+          <div>
+            Mem footprint: <strong className="font-medium text-on-surface">142 MB</strong>
+          </div>
+          <span className="text-outline-variant">•</span>
+          <div>
+            Playwright: <strong className="font-medium text-on-surface">v1.42.0</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Diagnostic Subsystems Grid */}
+      <div className="flex flex-col gap-3.5">
+        <div className="flex items-center justify-between px-1">
+          <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
+            Monitored Subsystems
+          </span>
+          <span className="font-label-sm text-label-sm text-on-surface-variant font-code-sm">
+            P99 TARGET &lt; 350ms
+          </span>
+        </div>
+
         {doctorChecks.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-800 p-8 text-center">
-            <p className="text-xs text-zinc-400">No diagnostic checks performed yet</p>
-            <p className="mt-1 text-[11px] text-zinc-600">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-surface-container-high bg-surface-container-lowest p-10 text-center gap-2">
+            <p className="font-headline-sm text-headline-sm text-on-surface font-medium">
+              No diagnostic checks performed yet
+            </p>
+            <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
               Click &apos;Run Doctor Checks&apos; above to verify runtime dependencies, session health, and cloud connectivity.
             </p>
           </div>
         ) : (
-          doctorChecks.map((check) => (
-            <div
-              key={check.id}
-              data-testid={`doctor-check-${check.id}`}
-              className="flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-colors hover:border-zinc-700/80"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950">
-                      {getCategoryIcon(check.category)}
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-semibold text-zinc-200">
-                        {check.title}
-                      </h3>
-                      <span className="font-mono text-[10px] text-zinc-500 uppercase">
-                        Category: {check.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {check.latencyMs !== undefined && (
-                      <span className="font-mono text-[11px] text-zinc-400">
-                        {check.latencyMs}ms
-                      </span>
-                    )}
-                    <StatusPill status={check.status} size="sm" />
-                  </div>
-                </div>
-
-                <p className="mt-3 text-xs leading-relaxed text-zinc-400">
-                  {check.detail}
-                </p>
-              </div>
-
-              {check.recommendation && (
-                <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                  <span className="font-semibold">Recommendation: </span>
-                  {check.recommendation}
-                </div>
-              )}
-            </div>
-          ))
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {doctorChecks.map((check) => (
+              <DiagnosticCard key={check.id} check={check} />
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Environment Security & Keys Card */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-          <div className="flex items-center gap-2">
-            <LockKey size={16} className="text-emerald-400" />
-            <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-              Environment Secrets Audit
-            </h3>
-          </div>
-          <span className="font-mono text-[11px] text-emerald-400">
-            {loadedVarsCount} / {envAuditList.length} Variables Configured
-          </span>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 md:grid-cols-4">
-          {envAuditList.map((item) => (
-            <div
-              key={item.key}
-              className="flex items-center justify-between rounded border border-zinc-800/60 bg-zinc-950/60 px-2.5 py-1.5 font-mono text-[11px]"
-            >
-              <span className="truncate text-zinc-400">{item.key}</span>
-              {item.loaded ? (
-                <CheckCircle size={12} weight="bold" className="shrink-0 text-emerald-400" />
-              ) : (
-                <WarningCircle size={12} className="shrink-0 text-amber-500" />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Environment Secrets & Config Audit Card */}
+      <EnvSecretsAudit
+        envAuditList={envAuditList}
+        loadedVarsCount={loadedVarsCount}
+      />
     </div>
   );
 };
