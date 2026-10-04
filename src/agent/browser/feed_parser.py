@@ -152,25 +152,34 @@ async def parse_feed_card(
 
     post_url = f"https://www.linkedin.com/feed/update/{urn}/"
 
-    # 3. Extract Author Name
+    # 3. Extract Author Name and Profile URL
     author_name = "LinkedIn Member"
+    author_profile_url: str | None = None
     try:
         in_links = card.locator("a[href*='/in/'], a[href*='/company/']")
         in_count = await in_links.count()
         # First priority: Link with network degree indicator (• 1st, • 2nd, • 3rd, • Following)
         for idx in range(in_count):
-            raw_a = (await in_links.nth(idx).inner_text()).strip()
+            link_el = in_links.nth(idx)
+            raw_a = (await link_el.inner_text()).strip()
             if not raw_a or raw_a.startswith("http"):
                 continue
             if any(deg in raw_a for deg in ("• 1st", "• 2nd", "• 3rd", "• Following", "• Follow")):
                 clean_a = raw_a.split("\n")[0].split("•")[0].split(",")[0].strip()
                 if clean_a:
                     author_name = clean_a
+                    href = await link_el.get_attribute("href")
+                    if href:
+                        clean_href = href.split("?")[0].strip()
+                        if clean_href.startswith("/"):
+                            clean_href = f"https://www.linkedin.com{clean_href}"
+                        author_profile_url = clean_href
                     break
         # Second priority: Any profile link not inside social proof ("likes this")
         if author_name == "LinkedIn Member" and in_count > 0:
             for idx in range(in_count):
-                raw_a = (await in_links.nth(idx).inner_text()).strip()
+                link_el = in_links.nth(idx)
+                raw_a = (await link_el.inner_text()).strip()
                 if (
                     raw_a
                     and not raw_a.startswith("http")
@@ -182,6 +191,12 @@ async def parse_feed_card(
                     clean_a = raw_a.split("\n")[0].split("•")[0].split(",")[0].strip()
                     if clean_a:
                         author_name = clean_a
+                        href = await link_el.get_attribute("href")
+                        if href:
+                            clean_href = href.split("?")[0].strip()
+                            if clean_href.startswith("/"):
+                                clean_href = f"https://www.linkedin.com{clean_href}"
+                            author_profile_url = clean_href
                         break
     except Exception:
         pass
@@ -294,6 +309,7 @@ async def parse_feed_card(
         post_urn=urn,
         post_url=post_url,
         author_name=author_name,
+        author_profile_url=author_profile_url,
         post_text=post_text,
         content_hash=content_hash,
         scraped_at=now,

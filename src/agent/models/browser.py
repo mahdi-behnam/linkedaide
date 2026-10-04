@@ -50,6 +50,10 @@ class PostRecord(BaseModel):
     post_urn: str = Field(description="Unique LinkedIn post URN")
     post_url: str = Field(description="URL to the post")
     author_name: str = Field(description="Author name")
+    author_profile_url: str | None = Field(
+        default=None,
+        description="Direct URL to author LinkedIn profile if extractable from card",
+    )
     post_text: str = Field(description="Full text content of the post")
     content_hash: str = Field(description="SHA-256 hash of normalized post text")
     scraped_at: datetime = Field(

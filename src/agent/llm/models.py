@@ -37,16 +37,16 @@ except ImportError:
     pass
 
 try:
-    from langchain_anthropic import ChatAnthropic as _ChatAnthropic  # type: ignore[import-not-found]
+    import langchain_anthropic  # type: ignore[import-not-found]
 
-    ChatAnthropic = _ChatAnthropic
+    ChatAnthropic = langchain_anthropic.ChatAnthropic
 except ImportError:
     pass
 
 try:
-    from langchain_google_genai import ChatGoogleGenerativeAI as _ChatGoogleGenerativeAI  # type: ignore[import-not-found]
+    import langchain_google_genai  # type: ignore[import-not-found]
 
-    ChatGoogleGenerativeAI = _ChatGoogleGenerativeAI
+    ChatGoogleGenerativeAI = langchain_google_genai.ChatGoogleGenerativeAI
 except ImportError:
     pass
 

@@ -307,8 +307,10 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
 
         # Connection outreach candidate discovery
         if post.author_name and post.author_name != "LinkedIn Member" and triage.confidence >= 0.7:
-            slug = re.sub(r"[^a-zA-Z0-9-]", "", post.author_name.lower().replace(" ", "-"))
-            profile_url = f"https://www.linkedin.com/in/{slug}/"
+            profile_url = getattr(post, "author_profile_url", None) or ""
+            if not profile_url:
+                slug = re.sub(r"[^a-zA-Z0-9-]", "", post.author_name.lower().replace(" ", "-"))
+                profile_url = f"https://www.linkedin.com/in/{slug}/"
             conn_id = f"conn-{hashlib.sha256(profile_url.encode()).hexdigest()[:8]}"
             first_name = post.author_name.split()[0]
             candidate = ConnectionRequestAction(
