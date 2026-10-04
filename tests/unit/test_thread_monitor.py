@@ -215,7 +215,8 @@ async def test_run_thread_monitor_flow_halted(mock_settings: Settings, tmp_path:
     from agent.orchestration.thread_monitor_flow import run_thread_monitor_flow
 
     with patch(
-        "agent.orchestration.thread_monitor_flow.is_halted", return_value=(True, "Kill switch active")
+        "agent.orchestration.thread_monitor_flow.is_halted",
+        return_value=(True, "Kill switch active"),
     ):
         result = await run_thread_monitor_flow(settings=mock_settings, repo_root=tmp_path)
         assert result["status"] == "halted"
@@ -266,4 +267,3 @@ def test_cli_run_thread_monitor_exit_code() -> None:
         }
         code = run_thread_monitor(args)
         assert code == 0
-

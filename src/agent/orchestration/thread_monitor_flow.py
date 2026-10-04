@@ -62,7 +62,7 @@ async def run_thread_monitor_flow(
     telegram = TelegramClient(cfg) if cfg.telegram_bot_token else None
 
     # 4. Browser session
-    session_path = ensure_session_file(cfg, root)
+    session_path = ensure_session_file(cfg)
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
             headless=headless,
@@ -79,7 +79,7 @@ async def run_thread_monitor_flow(
             await page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded")
             await wait_for_login_redirect(page)
 
-            executor = ActionExecutor(page, cfg, state_store)
+            executor = ActionExecutor(page, cfg, state_store=state_store)
             queued = await find_thread_replies(
                 executor=executor,
                 llm=llm,

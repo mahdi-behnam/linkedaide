@@ -607,4 +607,3 @@ def test_multimodal_analyzer_initializes_nvidia_nim_vision_model(test_settings: 
             nvidia_api_key="nvapi-test",
             temperature=0.1,
         )
-
