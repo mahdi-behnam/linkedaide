@@ -502,10 +502,26 @@ async def capture_dom_telemetry(
 
             return {"tag": "empty", "classes": [], "attrs": {}}, 0
 
-        structure, node_count = await asyncio.wait_for(
-            _eval_dom(),
-            timeout=timeout_seconds,
-        )
+        eval_task = asyncio.create_task(_eval_dom())
+        try:
+            structure, node_count = await asyncio.wait_for(
+                asyncio.shield(eval_task),
+                timeout=timeout_seconds,
+            )
+        except (TimeoutError, asyncio.TimeoutError):
+            eval_task.cancel()
+            try:
+                await eval_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            raise TimeoutError(f"DOM telemetry capture timed out after {timeout_seconds}s")
+        except asyncio.CancelledError:
+            eval_task.cancel()
+            try:
+                await eval_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            raise
 
         timestamp = datetime.now(UTC)
         record = DOMTelemetryRecord(
