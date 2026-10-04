@@ -232,10 +232,10 @@ class TestActionExecutorConnectionInvitation:
         page.locator = MagicMock(side_effect=locator_side_effect)
 
         executor = ActionExecutor(page, test_settings)
-        executor.biometrics.click_element = AsyncMock()
-        executor.biometrics.type_text = AsyncMock()
-        executor._verify_connection_sent = AsyncMock(return_value=True)
-        executor._refresh_and_persist_session = AsyncMock()
+        executor.biometrics.click_element = AsyncMock()  # type: ignore[method-assign]
+        executor.biometrics.type_text = AsyncMock()  # type: ignore[method-assign]
+        executor._verify_connection_sent = AsyncMock(return_value=True)  # type: ignore[method-assign]
+        executor._refresh_and_persist_session = AsyncMock()  # type: ignore[method-assign]
 
         result = await executor.send_connection_request(
             profile_url="https://www.linkedin.com/in/marcus-ai/",
@@ -301,9 +301,9 @@ class TestActionExecutorConnectionInvitation:
         page.locator = MagicMock(side_effect=locator_side_effect)
 
         executor = ActionExecutor(page, test_settings)
-        executor.biometrics.click_element = AsyncMock()
-        executor._verify_connection_sent = AsyncMock(return_value=True)
-        executor._refresh_and_persist_session = AsyncMock()
+        executor.biometrics.click_element = AsyncMock()  # type: ignore[method-assign]
+        executor._verify_connection_sent = AsyncMock(return_value=True)  # type: ignore[method-assign]
+        executor._refresh_and_persist_session = AsyncMock()  # type: ignore[method-assign]
 
         result = await executor.send_connection_request(
             profile_url="https://www.linkedin.com/in/sarah-langchain/",

@@ -66,7 +66,7 @@ async def refresh_and_persist_session(
             remaining_days = max(0.0, round(remaining_seconds / 86400.0, 1))
 
     try:
-        storage_state_data = await context.storage_state()
+        storage_state_data: Any = await context.storage_state()
         if isinstance(storage_state_data, dict):
             raw_json = json.dumps(storage_state_data).encode("utf-8")
         elif isinstance(storage_state_data, str):

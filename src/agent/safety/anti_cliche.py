@@ -242,10 +242,10 @@ class AntiClicheScanner:
 
         # 3. Banned AI buzzwords set (case-insensitive)
         for buzzword in sorted(self._banned_buzzwords):
-            pattern = BUZZWORD_REGEX_MAP.get(buzzword)
-            if pattern is None:
-                pattern = re.compile(r"\b" + re.escape(buzzword) + r"\b", re.IGNORECASE)
-            if pattern.search(raw_text):
+            buzz_pattern = BUZZWORD_REGEX_MAP.get(buzzword)
+            if buzz_pattern is None:
+                buzz_pattern = re.compile(r"\b" + re.escape(buzzword) + r"\b", re.IGNORECASE)
+            if buzz_pattern.search(raw_text):
                 violations.append(f"Banned AI buzzword detected: '{buzzword}'")
 
         # 4. Stylometric limit: emojis

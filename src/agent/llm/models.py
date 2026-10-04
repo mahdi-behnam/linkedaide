@@ -7,7 +7,7 @@ Architecture Invariants:
 - API keys are retrieved securely from SecretStr configuration.
 """
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import SecretStr
@@ -30,35 +30,35 @@ except ImportError:
     pass
 
 try:
-    from langchain_openai import ChatOpenAI as _ChatOpenAI
+    from langchain_openai import ChatOpenAI as _ChatOpenAI  # type: ignore[import-not-found]
 
     ChatOpenAI = _ChatOpenAI
 except ImportError:
     pass
 
 try:
-    from langchain_anthropic import ChatAnthropic as _ChatAnthropic
+    from langchain_anthropic import ChatAnthropic as _ChatAnthropic  # type: ignore[import-not-found]
 
     ChatAnthropic = _ChatAnthropic
 except ImportError:
     pass
 
 try:
-    from langchain_google_genai import ChatGoogleGenerativeAI as _ChatGoogleGenerativeAI
+    from langchain_google_genai import ChatGoogleGenerativeAI as _ChatGoogleGenerativeAI  # type: ignore[import-not-found]
 
     ChatGoogleGenerativeAI = _ChatGoogleGenerativeAI
 except ImportError:
     pass
 
 try:
-    from langchain_groq import ChatGroq as _ChatGroq
+    from langchain_groq import ChatGroq as _ChatGroq  # type: ignore[import-not-found]
 
     ChatGroq = _ChatGroq
 except ImportError:
     pass
 
 try:
-    from langchain_ollama import ChatOllama as _ChatOllama
+    from langchain_ollama import ChatOllama as _ChatOllama  # type: ignore[import-not-found]
 
     ChatOllama = _ChatOllama
 except ImportError:
@@ -68,11 +68,11 @@ except ImportError:
 def _resolve_chat_nvidia() -> type:
     """Resolve and return ChatNVIDIA class or raise friendly ImportError."""
     if ChatNVIDIA is not None:
-        return ChatNVIDIA  # type: ignore[no-any-return]
+        return cast(type, ChatNVIDIA)
     try:
         from langchain_nvidia_ai_endpoints import ChatNVIDIA as cls
 
-        return cls
+        return cast(type, cls)
     except ImportError as e:
         raise ImportError(
             "To use NVIDIA NIM, install langchain-nvidia-ai-endpoints: uv add langchain-nvidia-ai-endpoints"
@@ -82,11 +82,11 @@ def _resolve_chat_nvidia() -> type:
 def _resolve_chat_openai() -> type:
     """Resolve and return ChatOpenAI class or raise friendly ImportError."""
     if ChatOpenAI is not None:
-        return ChatOpenAI  # type: ignore[no-any-return]
+        return cast(type, ChatOpenAI)
     try:
         from langchain_openai import ChatOpenAI as cls
 
-        return cls
+        return cast(type, cls)
     except ImportError as e:
         raise ImportError(
             "To use OpenAI or OpenAI-compatible endpoints, install langchain-openai: uv add langchain-openai"
@@ -96,11 +96,11 @@ def _resolve_chat_openai() -> type:
 def _resolve_chat_anthropic() -> type:
     """Resolve and return ChatAnthropic class or raise friendly ImportError."""
     if ChatAnthropic is not None:
-        return ChatAnthropic  # type: ignore[no-any-return]
+        return cast(type, ChatAnthropic)
     try:
         from langchain_anthropic import ChatAnthropic as cls
 
-        return cls
+        return cast(type, cls)
     except ImportError as e:
         raise ImportError(
             "To use Anthropic, install langchain-anthropic: uv add langchain-anthropic"
@@ -110,11 +110,11 @@ def _resolve_chat_anthropic() -> type:
 def _resolve_chat_gemini() -> type:
     """Resolve and return ChatGoogleGenerativeAI class or raise friendly ImportError."""
     if ChatGoogleGenerativeAI is not None:
-        return ChatGoogleGenerativeAI  # type: ignore[no-any-return]
+        return cast(type, ChatGoogleGenerativeAI)
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI as cls
 
-        return cls
+        return cast(type, cls)
     except ImportError as e:
         raise ImportError(
             "To use Google Gemini, install langchain-google-genai: uv add langchain-google-genai"
@@ -124,11 +124,11 @@ def _resolve_chat_gemini() -> type:
 def _resolve_chat_groq() -> type:
     """Resolve and return ChatGroq class or raise friendly ImportError."""
     if ChatGroq is not None:
-        return ChatGroq  # type: ignore[no-any-return]
+        return cast(type, ChatGroq)
     try:
         from langchain_groq import ChatGroq as cls
 
-        return cls
+        return cast(type, cls)
     except ImportError as e:
         raise ImportError("To use Groq, install langchain-groq: uv add langchain-groq") from e
 
@@ -136,11 +136,11 @@ def _resolve_chat_groq() -> type:
 def _resolve_chat_ollama() -> type:
     """Resolve and return ChatOllama class or raise friendly ImportError."""
     if ChatOllama is not None:
-        return ChatOllama  # type: ignore[no-any-return]
+        return cast(type, ChatOllama)
     try:
         from langchain_ollama import ChatOllama as cls
 
-        return cls
+        return cast(type, cls)
     except ImportError as e:
         raise ImportError("To use Ollama, install langchain-ollama: uv add langchain-ollama") from e
 
@@ -170,6 +170,7 @@ def build_chat_model(
     max_tokens = kwargs.pop("max_tokens", settings.nim_max_tokens)
     timeout = kwargs.pop("timeout", settings.nim_timeout_seconds)
     top_p = kwargs.pop("top_p", settings.nim_top_p)
+    api_key_str: str | None = None
 
     if provider == "nvidia":
         cls = _resolve_chat_nvidia()
@@ -191,7 +192,7 @@ def build_chat_model(
             model_kwargs["base_url"] = settings.nim_base_url
         if top_p is not None:
             model_kwargs["top_p"] = top_p
-        return cls(**model_kwargs)
+        return cast(BaseChatModel, cls(**model_kwargs))
 
     if provider in ("openai", "openai-compatible"):
         cls = _resolve_chat_openai()
@@ -216,7 +217,7 @@ def build_chat_model(
             model_kwargs["base_url"] = settings.nim_base_url
         if top_p is not None:
             model_kwargs["top_p"] = top_p
-        return cls(**model_kwargs)
+        return cast(BaseChatModel, cls(**model_kwargs))
 
     if provider == "anthropic":
         cls = _resolve_chat_anthropic()
@@ -237,7 +238,7 @@ def build_chat_model(
             model_kwargs["api_key"] = api_key_str
         if top_p is not None:
             model_kwargs["top_p"] = top_p
-        return cls(**model_kwargs)
+        return cast(BaseChatModel, cls(**model_kwargs))
 
     if provider == "gemini":
         cls = _resolve_chat_gemini()
@@ -258,7 +259,7 @@ def build_chat_model(
             model_kwargs["google_api_key"] = api_key_str
         if top_p is not None:
             model_kwargs["top_p"] = top_p
-        return cls(**model_kwargs)
+        return cast(BaseChatModel, cls(**model_kwargs))
 
     if provider == "groq":
         cls = _resolve_chat_groq()
@@ -279,7 +280,7 @@ def build_chat_model(
             model_kwargs["groq_api_key"] = api_key_str
         if top_p is not None:
             model_kwargs["top_p"] = top_p
-        return cls(**model_kwargs)
+        return cast(BaseChatModel, cls(**model_kwargs))
 
     if provider == "ollama":
         cls = _resolve_chat_ollama()
@@ -291,7 +292,7 @@ def build_chat_model(
         }
         if top_p is not None:
             model_kwargs["top_p"] = top_p
-        return cls(**model_kwargs)
+        return cast(BaseChatModel, cls(**model_kwargs))
 
     raise ValueError(
         f"Unsupported LLM provider '{provider}'. Supported: {', '.join(sorted(SUPPORTED_LLM_PROVIDERS))}"

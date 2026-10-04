@@ -223,10 +223,14 @@ class MultimodalAnalyzer:
             ),
         ]
 
+        if self._vision_model is None:
+            raise RuntimeError("Vision model is not configured or available")
+        vision_model = self._vision_model
+
         # Try structured output first if supported
-        if hasattr(self._vision_model, "with_structured_output"):
+        if hasattr(vision_model, "with_structured_output"):
             try:
-                structured_model = self._vision_model.with_structured_output(VisualContext)
+                structured_model = vision_model.with_structured_output(VisualContext)
                 res = await structured_model.ainvoke(messages)
                 if isinstance(res, VisualContext):
                     return res
@@ -236,7 +240,7 @@ class MultimodalAnalyzer:
                 logger.debug("with_structured_output failed in vision model: %s", struct_err)
 
         # Fallback to direct invocation and JSON parsing
-        response = await self._vision_model.ainvoke(messages)
+        response = await vision_model.ainvoke(messages)
         if isinstance(response, VisualContext):
             return response
         if isinstance(response, dict):

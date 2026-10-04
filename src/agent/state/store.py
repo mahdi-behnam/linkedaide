@@ -399,6 +399,7 @@ class GitStateStore(BaseStateStore):
         backoff_factor: float = 0.5,
         remote: str | None = None,
         branch: str | None = None,
+        **kwargs: Any,
     ) -> bool:
         """Stage state/ directory and commit state changes with rebase resilience.
 

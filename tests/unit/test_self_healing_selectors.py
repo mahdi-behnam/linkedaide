@@ -266,10 +266,10 @@ async def test_find_and_click(mock_page: MagicMock) -> None:
 
 def test_selector_tier_and_catalog() -> None:
     """Test SelectorTier enum and LINKEDIN_SELECTORS catalog integrity."""
-    assert SelectorTier.TIER_1_CANONICAL == 1
-    assert SelectorTier.TIER_2_AXTREE == 2
-    assert SelectorTier.TIER_3_SEMANTIC_TEXT == 3
-    assert SelectorTier.TIER_4_DYNAMIC_CACHE == 4
+    assert SelectorTier.TIER_1_CANONICAL.value == 1
+    assert SelectorTier.TIER_2_AXTREE.value == 2
+    assert SelectorTier.TIER_3_SEMANTIC_TEXT.value == 3
+    assert SelectorTier.TIER_4_DYNAMIC_CACHE.value == 4
 
     assert "comment_box" in LINKEDIN_SELECTORS
     assert "comment_submit" in LINKEDIN_SELECTORS

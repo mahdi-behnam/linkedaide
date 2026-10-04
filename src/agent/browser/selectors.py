@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import logging
 from enum import IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent.errors import SelectorDriftError
 
@@ -107,7 +107,7 @@ class SelfHealingSelectorEngine:
         if self.state_store is None:
             return
         try:
-            raw = self.state_store.get_key("selector_overrides")
+            raw: Any = self.state_store.get_key("selector_overrides")
             if raw:
                 if isinstance(raw, dict):
                     self._overrides = {str(k): str(v) for k, v in raw.items()}

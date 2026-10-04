@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,9 +12,9 @@ from agent.browser.session import build_proxy_config, create_browser_context
 from agent.config import Settings
 
 
-def _create_minimal_settings(**kwargs) -> Settings:
+def _create_minimal_settings(**kwargs: Any) -> Settings:
     """Helper creating a minimal Settings instance with defaults."""
-    base_kwargs = {
+    base_kwargs: dict[str, Any] = {
         "telegram_bot_token": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
         "telegram_authorized_chat_id": 987654321,
         "nvidia_nim_api_key": "nvapi-test-key-12345",
