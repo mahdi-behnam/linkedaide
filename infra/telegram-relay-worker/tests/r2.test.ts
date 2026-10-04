@@ -40,7 +40,7 @@ describe("Cloudflare R2 Media Vault API Suite", () => {
     waitUntil: vi.fn((promise: Promise<unknown>) => promise),
     passThroughOnException: vi.fn(),
     props: {},
-  });
+  } as unknown as ExecutionContext);
 
   const getBaseEnv = (r2Bucket?: R2Bucket): Env => ({
     TELEGRAM_WEBHOOK_SECRET: "test-webhook-secret",

@@ -1178,9 +1178,9 @@ export default {
 
       // 1. Determine action_type from pending item if present
       let actionType = "approve_comment";
-      if (actionCode === "ap" || actionCode === "rp") {
+      if (actionCode === "rp") {
         actionType = "approve_post";
-      } else if (actionCode === "ar" || actionCode === "rr") {
+      } else if (actionCode === "rr") {
         actionType = "approve_reply";
       }
       try {
