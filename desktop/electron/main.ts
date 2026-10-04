@@ -162,10 +162,10 @@ function registerIpcHandlers(): void {
     "api:executeAction",
     async (_event, action: "approve" | "reject", itemId: string) => {
       const settings = loadSettings();
-      if (settings.executionMode === "local" && action === "approve") {
+      if (settings.executionMode === "local") {
         return new Promise<ActionResult>((resolve) => {
           const repoRoot = path.resolve(__dirname, "../..");
-          const child = spawn("uv", ["run", "agent", "execute", "--action-id", itemId], {
+          const child = spawn("uv", ["run", "agent", "execute", "--action", action, "--item-id", itemId], {
             cwd: repoRoot,
             env: {
               ...process.env,
@@ -202,13 +202,48 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(
     "api:executeConnectionAction",
-    async (_event, action: "approve" | "reject", id: string, _note?: string) => {
+    async (_event, action: "approve" | "reject", id: string, note?: string) => {
       const settings = loadSettings();
-      return await workerClient.executeAction(action, id, {
-        repo_owner: settings.githubRepoOwner,
-        repo_name: settings.githubRepoName,
-        github_pat: settings.githubDispatchPat,
-      });
+      if (settings.executionMode === "local") {
+        return new Promise<ActionResult>((resolve) => {
+          const repoRoot = path.resolve(__dirname, "../..");
+          const child = spawn("uv", ["run", "agent", "execute", "--action", action, "--item-id", id], {
+            cwd: repoRoot,
+            env: {
+              ...process.env,
+              HEADLESS: String(settings.headless ?? true),
+              ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
+              ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+            },
+          });
+          child.on("close", (code) => {
+            resolve({
+              success: code === 0,
+              itemId: id,
+              action,
+              message: code === 0 ? "Local execution completed" : "Local execution failed",
+            });
+          });
+          child.on("error", (err) => {
+            resolve({
+              success: false,
+              itemId: id,
+              action,
+              error: err.message,
+            });
+          });
+        });
+      }
+      return await workerClient.executeAction(
+        action,
+        id,
+        {
+          repo_owner: settings.githubRepoOwner,
+          repo_name: settings.githubRepoName,
+          github_pat: settings.githubDispatchPat,
+        },
+        note
+      );
     }
   );
 

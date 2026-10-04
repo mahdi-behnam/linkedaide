@@ -279,6 +279,27 @@ export async function handlePostAction(
     } catch {
       // Continue with defaults
     }
+
+    const noteText = (body as any).note || (body as any).note_text;
+    if (noteText) {
+      try {
+        const rawQueue = await env.LINKEDIN_AGENT_KV.get("connection_queue");
+        if (rawQueue) {
+          const queue = JSON.parse(rawQueue);
+          if (Array.isArray(queue)) {
+            const idx = queue.findIndex((c: any) => c.id === itemId);
+            if (idx >= 0) {
+              queue[idx].note_text = noteText;
+              queue[idx].status = "approved";
+              queue[idx].approved_at = new Date().toISOString();
+              await env.LINKEDIN_AGENT_KV.put("connection_queue", JSON.stringify(queue));
+            }
+          }
+        }
+      } catch {
+        // Continue
+      }
+    }
   }
 
   const repoOwner = (body as any).repo_owner || env.GITHUB_REPO_OWNER;

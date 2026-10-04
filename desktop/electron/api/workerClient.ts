@@ -310,7 +310,8 @@ export class WorkerClient {
   public async executeAction(
     action: "approve" | "reject",
     itemId: string,
-    cloudDispatchConfig?: CloudDispatchConfig
+    cloudDispatchConfig?: CloudDispatchConfig,
+    note?: string
   ): Promise<ActionResult> {
     if (!itemId || !itemId.trim()) {
       return {
@@ -327,6 +328,10 @@ export class WorkerClient {
         itemId: itemId.trim(),
         item_id: itemId.trim(),
       };
+      if (note) {
+        body.note = note;
+        body.note_text = note;
+      }
       if (cloudDispatchConfig?.repo_owner) {
         body.repo_owner = cloudDispatchConfig.repo_owner;
       }
