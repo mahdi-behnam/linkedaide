@@ -173,8 +173,49 @@ export async function handleTelegramWebhook(
   }
 
   const [actionCode, itemId] = parts;
-  const isApproval = actionCode === "ac" || actionCode === "ap" || actionCode === "ar" || actionCode === "apv";
-  const isRejection = actionCode === "rc" || actionCode === "rp" || actionCode === "rr" || actionCode === "rej";
+  const isApproval =
+    actionCode === "ac" ||
+    actionCode === "ap" ||
+    actionCode === "ar" ||
+    actionCode === "apv" ||
+    actionCode === "acon";
+  const isRejection =
+    actionCode === "rc" ||
+    actionCode === "rp" ||
+    actionCode === "rr" ||
+    actionCode === "rej" ||
+    actionCode === "rcon";
+  const isEdit = actionCode === "ed" || actionCode === "edit";
+  const isRegenerate = actionCode === "reg";
+
+  if (isEdit || isRegenerate) {
+    const promptText = isEdit
+      ? "✏️ Reply to this suggestion with your revised draft text."
+      : "🔄 Reply to this suggestion with your preferred tone or new draft.";
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: promptText,
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    return new Response(
+      JSON.stringify({
+        status: isEdit ? "edit_prompted" : "regenerate_prompted",
+        item_id: itemId,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 
   if (!isApproval && !isRejection) {
     return new Response("Unknown action code", { status: 400 });
@@ -193,6 +234,8 @@ export async function handleTelegramWebhook(
       actionType = "approve_post";
     } else if (actionCode === "rr") {
       actionType = "approve_reply";
+    } else if (actionCode === "rcon") {
+      actionType = "approve_connection";
     }
     try {
       const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
@@ -240,14 +283,36 @@ export async function handleTelegramWebhook(
       // Continue
     }
 
-    // 4. Answer callback query
+    // 4. Update connection_queue status if candidate exists
+    try {
+      const rawQueue = await env.LINKEDIN_AGENT_KV.get("connection_queue");
+      if (rawQueue) {
+        const queue = JSON.parse(rawQueue);
+        if (Array.isArray(queue)) {
+          const idx = queue.findIndex((c: any) => c.id === itemId);
+          if (idx >= 0) {
+            queue[idx].status = "rejected";
+            await env.LINKEDIN_AGENT_KV.put("connection_queue", JSON.stringify(queue));
+          }
+        }
+      }
+    } catch {
+      // Continue
+    }
+
+    const rejectionLabel =
+      actionType === "approve_connection"
+        ? "❌ Connection request rejected"
+        : "❌ Suggestion rejected";
+
+    // 5. Answer callback query
     ctx.waitUntil(
       fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           callback_query_id: cb.id,
-          text: "❌ Suggestion rejected",
+          text: rejectionLabel,
           show_alert: false,
         }),
       }).catch(() => {})
@@ -262,7 +327,7 @@ export async function handleTelegramWebhook(
           body: JSON.stringify({
             chat_id: targetChatId,
             message_id: targetMessageId,
-            text: "❌ Suggestion rejected",
+            text: rejectionLabel,
             reply_markup: { inline_keyboard: [] },
           }),
         }).catch(() => {})

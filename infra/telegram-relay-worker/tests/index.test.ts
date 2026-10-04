@@ -286,6 +286,7 @@ describe("Telegram Relay Worker", () => {
         ["ap", "approve"],
         ["ar", "approve"],
         ["apv", "approve"],
+        ["acon", "approve"],
       ])("handles approval action prefix '%s' -> '%s'", async (prefix, expectedAction) => {
         const fetchMock = vi.fn().mockImplementation(async (url: string) => {
           if (url.includes("answerCallbackQuery")) {
@@ -344,7 +345,9 @@ describe("Telegram Relay Worker", () => {
       it.each([
         ["rc", "reject"],
         ["rp", "reject"],
+        ["rr", "reject"],
         ["rej", "reject"],
+        ["rcon", "reject"],
       ])("handles rejection action prefix '%s' -> '%s'", async (prefix, expectedAction) => {
         const fetchMock = vi.fn().mockImplementation(async (url: string) => {
           if (url.includes("answerCallbackQuery")) {
@@ -383,6 +386,45 @@ describe("Telegram Relay Worker", () => {
         const [, dispatchOptions] = dispatchCall!;
         const body = JSON.parse(dispatchOptions.body);
         expect(body.client_payload.action).toBe("reject");
+      });
+
+      it.each([
+        ["reg", "regenerate_prompted", "preferred tone or new draft"],
+        ["ed", "edit_prompted", "revised draft text"],
+        ["edit", "edit_prompted", "revised draft text"],
+      ])("handles '%s' callback by answering callback query with guidance", async (code, expectedStatus, expectedTextMatch) => {
+        let answeredQuery = false;
+        let answeredText = "";
+
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("answerCallbackQuery")) {
+            answeredQuery = true;
+            const parsed = JSON.parse(opts.body);
+            answeredText = parsed.text;
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("Not found", { status: 404 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const req = makeRequest({
+          update_id: 3,
+          callback_query: {
+            id: "cb_tone",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 678, chat: { id: 987654321 } },
+            data: `${code}:item_xyz_789`,
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = await res.json() as any;
+        expect(data.status).toBe(expectedStatus);
+        expect(data.item_id).toBe("item_xyz_789");
+        expect(answeredQuery).toBe(true);
+        expect(answeredText).toContain(expectedTextMatch);
       });
     });
 
