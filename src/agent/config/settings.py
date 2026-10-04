@@ -114,6 +114,13 @@ class Settings(BaseSettings):
             "LLM_MODEL_TRIAGE", "llm_model_triage", "NIM_MODEL_TRIAGE", "nim_model_triage"
         ),
     )
+    nim_model_vision: str = Field(
+        default="meta/llama-3.2-11b-vision-instruct",
+        description="Vision-capable model dedicated to diagram and image analysis",
+        validation_alias=AliasChoices(
+            "LLM_MODEL_VISION", "llm_model_vision", "NIM_MODEL_VISION", "nim_model_vision"
+        ),
+    )
     nim_temperature: float = Field(
         default=0.2,
         ge=0.0,

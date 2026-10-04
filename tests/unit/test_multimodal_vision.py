@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -595,3 +595,16 @@ async def test_llm_service_draft_comment_auto_analyzes_image_if_visual_context_u
     call_arg = mock_comment_chain.ainvoke.call_args[0][0]
     assert "Visual Evidence (Architecture Diagram):" in call_arg["visual_evidence"]
     assert "Kafka, Postgres" in call_arg["visual_evidence"]
+
+
+def test_multimodal_analyzer_initializes_nvidia_nim_vision_model(test_settings: Settings) -> None:
+    """MultimodalAnalyzer initializes ChatNVIDIA vision model when nvidia_nim_api_key is set."""
+    with patch("agent.llm.models.ChatNVIDIA") as mock_chat_nvidia:
+        analyzer = MultimodalAnalyzer(test_settings)
+        assert analyzer._vision_model is not None
+        mock_chat_nvidia.assert_called_once_with(
+            model=test_settings.nim_model_vision,
+            nvidia_api_key="nvapi-test",
+            temperature=0.1,
+        )
+

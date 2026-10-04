@@ -89,14 +89,18 @@ def format_visual_evidence(visual_context: VisualContext | None) -> str:
     return "\n".join(lines) + "\n"
 
 
+_UNSET = object()
+
+
 class MultimodalAnalyzer:
     """Analyzes images in LinkedIn posts for architecture diagrams, charts, and code snippets."""
 
-    def __init__(self, settings: Settings, vision_model: Any | None = None) -> None:
+    def __init__(self, settings: Settings, vision_model: Any = _UNSET) -> None:
         self._settings = settings
-        self._vision_model = vision_model
-        if self._vision_model is None:
+        if vision_model is _UNSET:
             self._vision_model = self._init_vision_model(settings)
+        else:
+            self._vision_model = vision_model
 
     def _init_vision_model(self, settings: Settings) -> Any | None:
         """Initialize a vision-capable chat model based on configured API keys."""
@@ -160,8 +164,31 @@ class MultimodalAnalyzer:
             except Exception as e:
                 logger.debug("Failed initializing Anthropic vision model: %s", e)
 
-        # 4. Check if LLM provider is configured with fallback or primary
-        if settings.llm_provider in ("openai", "gemini", "anthropic"):
+        # 4. NVIDIA NIM (primary provider for vision models)
+        if settings.nvidia_nim_api_key:
+            try:
+                from agent.llm.models import ChatNVIDIA
+
+                if ChatNVIDIA is not None:
+                    api_key = settings.nvidia_nim_api_key
+                    key_str = (
+                        api_key.get_secret_value()
+                        if hasattr(api_key, "get_secret_value")
+                        else str(api_key)
+                    )
+                    model_kwargs: dict[str, Any] = {
+                        "model": settings.nim_model_vision,
+                        "nvidia_api_key": key_str,
+                        "temperature": 0.1,
+                    }
+                    if settings.nim_base_url:
+                        model_kwargs["base_url"] = settings.nim_base_url
+                    return ChatNVIDIA(**model_kwargs)
+            except Exception as e:
+                logger.debug("Failed initializing NVIDIA NIM vision model: %s", e)
+
+        # 5. Check if LLM provider is configured with fallback or primary
+        if settings.llm_provider in ("openai", "gemini", "anthropic", "nvidia"):
             try:
                 return build_chat_model(settings, role="generation")
             except Exception as e:
