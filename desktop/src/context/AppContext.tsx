@@ -11,6 +11,9 @@ import {
   ConnectionRequestAction,
 } from "../types";
 import { ActionResult } from "../types/api";
+import { useScheduledPosts } from "../hooks/useScheduledPosts";
+import { useConnectionQueue } from "../hooks/useConnectionQueue";
+import { useDoctorDiagnostics } from "../hooks/useDoctorDiagnostics";
 
 export interface AppContextType {
   currentTab: NavigationTab;
@@ -78,24 +81,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [telemetry, setTelemetry] = useState<SystemTelemetry>(initialTelemetry);
   const [quota, setQuota] = useState<DailyQuota>(initialQuota);
   const [isScouting, setIsScouting] = useState<boolean>(false);
-  const [isCheckingDoctor, setIsCheckingDoctor] = useState<boolean>(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
-  const [doctorChecks, setDoctorChecks] = useState<DoctorCheck[]>([]);
   const [lastTriggerMessage, setLastTriggerMessage] = useState<string | null>(null);
-  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>(() => {
-    if (typeof window !== "undefined" && window.localStorage) {
-      try {
-        const saved = localStorage.getItem("hitl_scheduled_posts");
-        return saved ? JSON.parse(saved) : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
   const [commentWindows] = useState<AutomatedCommentWindow[]>([]);
-  const [activePostForEditing, setActivePostForEditing] = useState<ScheduledPost | null>(null);
-  const [connectionQueue, setConnectionQueue] = useState<ConnectionRequestAction[]>([]);
+
+  // Modular custom hooks
+  const {
+    scheduledPosts,
+    activePostForEditing,
+    setActivePostForEditing,
+    saveScheduledPost,
+    deleteScheduledPost,
+  } = useScheduledPosts(setLastTriggerMessage);
+
+  const {
+    connectionQueue,
+    setConnectionQueue,
+    executeConnectionAction,
+  } = useConnectionQueue(setLastTriggerMessage);
+
+  const {
+    isCheckingDoctor,
+    doctorChecks,
+    runDoctorCheck,
+  } = useDoctorDiagnostics(telemetry, setTelemetry, setLastTriggerMessage);
 
   const refreshState = useCallback(async () => {
     if (typeof window === "undefined" || !window.api?.fetchState) {
@@ -168,7 +177,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       console.warn("Silent background refreshState failed:", err);
     }
-  }, []);
+  }, [setConnectionQueue]);
 
   useEffect(() => {
     let isMounted = true;
@@ -201,6 +210,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     initTelemetry();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -230,48 +242,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
   }, [refreshState]);
-
-  const executeConnectionAction = useCallback(
-    async (
-      action: "approve" | "reject",
-      id: string,
-      note?: string
-    ): Promise<ActionResult> => {
-      let result: ActionResult = { success: true, itemId: id, action };
-      if (typeof window !== "undefined" && window.api?.executeConnectionAction) {
-        try {
-          result = await window.api.executeConnectionAction(action, id, note);
-        } catch (err: unknown) {
-          const errMsg = err instanceof Error ? err.message : "Failed to execute connection action";
-          result = { success: false, error: errMsg };
-        }
-      }
-
-      setConnectionQueue((prev) =>
-        prev.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                status: action === "approve" ? "approved" : "rejected",
-                note_text: note !== undefined ? note : c.note_text,
-                approved_at: action === "approve" ? new Date().toISOString() : undefined,
-              }
-            : c
-        )
-      );
-
-      const target = connectionQueue.find((c) => c.id === id);
-      const name = target ? target.target_name : id;
-      setLastTriggerMessage(
-        action === "approve"
-          ? `Connection request approved for ${name}. Invitation queued.`
-          : `Connection candidate for ${name} rejected.`
-      );
-
-      return result;
-    },
-    [connectionQueue]
-  );
 
   const systemStatus: SystemStatusType = useMemo(() => {
     if (telemetry.circuitBreakerTripped) return "tripped";
@@ -307,7 +277,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setLastTriggerMessage("Scout execution finished with errors or dispatch failed.");
         }
       } else {
-        // Fallback simulated scout in development / mock browser mode
         await new Promise((resolve) => setTimeout(resolve, 800));
         setTelemetry((t) => ({ ...t, lastScanAt: "Just now" }));
         setLastTriggerMessage("Scout simulation completed (preview mode).");
@@ -323,228 +292,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsScouting(false);
     }
   }, [refreshState]);
-
-  const runDoctorCheck = useCallback(async () => {
-    setIsCheckingDoctor(true);
-    setLastTriggerMessage("Running full system diagnostics...");
-    try {
-      if (typeof window !== "undefined" && window.api) {
-        let kvLatency: number | undefined;
-        let kvPass = false;
-        let kvDetail = "Cloudflare KV State Store verified.";
-        try {
-          const t0 = performance.now();
-          const state = await window.api.fetchState();
-          kvLatency = Math.round(performance.now() - t0);
-          kvPass = Boolean(state);
-          kvDetail = `Namespace bound and active (${kvLatency}ms). Edge read/write verified.`;
-        } catch (err: any) {
-          kvDetail = `State store check failed: ${err?.message || "connection error"}`;
-        }
-
-        let sessionStatus: "pass" | "warn" | "fail" = "pass";
-        let sessionDetail = "LinkedIn session verified.";
-        if (window.api.checkSessionHealth) {
-          try {
-            const health = await window.api.checkSessionHealth();
-            if (health?.valid) {
-              sessionStatus = "pass";
-              sessionDetail = `li_at cookie active (valid for ~${health.daysRemaining ?? 14} days).`;
-              setTelemetry((prev) => ({ ...prev, sessionValid: true }));
-            } else {
-              sessionStatus = "warn";
-              sessionDetail = health?.details || "No valid active LinkedIn session found in storage.";
-              setTelemetry((prev) => ({ ...prev, sessionValid: false }));
-            }
-          } catch (err: any) {
-            sessionStatus = "fail";
-            sessionDetail = `Session health check failed: ${err?.message || "error"}`;
-          }
-        } else {
-          sessionStatus = "warn";
-          sessionDetail = "Session health check interface unavailable.";
-        }
-
-        let envStatus: "pass" | "warn" | "fail" = "pass";
-        let envDetail = "All required secrets and runtime variables detected.";
-        let effectiveNim = telemetry.nimModel;
-        let isCloud = true;
-        let githubDispatchStatus: "pass" | "warn" | "fail" = "pass";
-        let githubDispatchDetail = "GitHub Actions cloud runner dispatch configured.";
-
-        if (window.api.getSettings) {
-          try {
-            const settings = await window.api.getSettings();
-            isCloud = (settings?.executionMode ?? "cloud") === "cloud";
-            const hasKv = Boolean(telemetry.kvBackend && settings?.workerUrl);
-            if (settings?.nimModel) {
-              effectiveNim = settings.nimModel;
-              setTelemetry((prev) => ({ ...prev, nimModel: settings.nimModel! }));
-            }
-            const hasNim = Boolean(effectiveNim);
-            const hasKey = Boolean(settings?.encryptionKey);
-            const hasGithubPat = Boolean(settings?.githubDispatchPat);
-            const hasRepoOwner = Boolean(settings?.githubRepoOwner);
-            const hasRepoName = Boolean(settings?.githubRepoName);
-
-            if (isCloud) {
-              if (hasGithubPat && hasRepoOwner && hasRepoName) {
-                githubDispatchStatus = "pass";
-                githubDispatchDetail = `Targeting ${settings?.githubRepoOwner}/${settings?.githubRepoName} with configured dispatch token.`;
-              } else {
-                const missing = [
-                  !hasGithubPat && "GITHUB_DISPATCH_PAT",
-                  !hasRepoOwner && "GITHUB_REPO_OWNER",
-                  !hasRepoName && "GITHUB_REPO_NAME",
-                ].filter(Boolean);
-                githubDispatchStatus = "fail";
-                githubDispatchDetail = `Cloud runner dispatch credentials missing: ${missing.join(", ")}. Please configure them in Settings.`;
-              }
-            }
-
-            const cloudReady = !isCloud || (hasGithubPat && hasRepoOwner && hasRepoName);
-
-            if (hasKv && hasNim && hasKey && cloudReady) {
-              envStatus = "pass";
-              envDetail = "All required secrets and runtime variables detected and validated.";
-            } else if (!hasKv && !hasNim && !hasKey) {
-              envStatus = "warn";
-              envDetail = "Missing Cloudflare KV, Fernet key, and NVIDIA NIM configuration.";
-            } else if (!cloudReady) {
-              envStatus = "warn";
-              envDetail = "Missing GitHub Actions dispatch credentials for cloud runner.";
-            } else {
-              envStatus = "warn";
-              envDetail = "Partial environment configuration detected.";
-            }
-          } catch (err: any) {
-            envStatus = "fail";
-            envDetail = `Settings query failed: ${err?.message || "error"}`;
-          }
-        }
-
-        const checks: DoctorCheck[] = [
-          {
-            id: "chk-kv",
-            category: "state",
-            title: "Cloudflare KV State Store",
-            status: kvPass ? "pass" : "fail",
-            latencyMs: kvLatency,
-            detail: kvDetail,
-          },
-          {
-            id: "chk-relay",
-            category: "relay",
-            title: "Telegram Relay Worker",
-            status: "pass",
-            latencyMs: kvLatency ? Math.round(kvLatency * 1.2) : undefined,
-            detail: "Webhook operational on Cloudflare Workers edge. HMAC signature validation active.",
-          },
-          ...(isCloud
-            ? [
-                {
-                  id: "chk-gh-actions",
-                  category: "relay" as const,
-                  title: "GitHub Actions Dispatch (Cloud Runner)",
-                  status: githubDispatchStatus,
-                  detail: githubDispatchDetail,
-                  recommendation:
-                    githubDispatchStatus !== "pass"
-                      ? "Configure GITHUB_DISPATCH_PAT, repo owner, and repo name in Settings to enable cloud scouting and actions."
-                      : undefined,
-                },
-              ]
-            : []),
-          {
-            id: "chk-session",
-            category: "session",
-            title: "LinkedIn Playwright Session",
-            status: sessionStatus,
-            detail: sessionDetail,
-          },
-          {
-            id: "chk-llm",
-            category: "llm",
-            title: "NVIDIA NIM Connectivity",
-            status: effectiveNim ? "pass" : "warn",
-            detail: effectiveNim
-              ? `Primary model ${effectiveNim} configured. Structured schema validation passing.`
-              : "NVIDIA NIM model not configured.",
-          },
-          {
-            id: "chk-safety",
-            category: "safety",
-            title: "Safety & Circuit Breaker",
-            status: telemetry.circuitBreakerTripped ? "fail" : "pass",
-            detail: telemetry.circuitBreakerTripped
-              ? "Circuit breaker tripped due to incident. Manual reset required."
-              : "Circuit breaker intact. 0 bot detections. Quotas within configured thresholds.",
-          },
-          {
-            id: "chk-env",
-            category: "env",
-            title: "Environment Configuration",
-            status: envStatus,
-            detail: envDetail,
-          },
-        ];
-        setDoctorChecks(checks);
-        setLastTriggerMessage("Diagnostics complete: System checks verified against runtime.");
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        const fallbackChecks: DoctorCheck[] = [
-          {
-            id: "chk-kv",
-            category: "state",
-            title: "Cloudflare KV State Store",
-            status: "fail",
-            detail: "Desktop API runner not connected. Cannot verify Cloudflare KV.",
-          },
-          {
-            id: "chk-relay",
-            category: "relay",
-            title: "Telegram Relay Worker",
-            status: "warn",
-            detail: "Desktop API runner not connected. Cannot reach worker relay.",
-          },
-          {
-            id: "chk-session",
-            category: "session",
-            title: "LinkedIn Playwright Session",
-            status: "fail",
-            detail: "Session health check unavailable outside desktop runtime.",
-          },
-          {
-            id: "chk-llm",
-            category: "llm",
-            title: "NVIDIA NIM Connectivity",
-            status: "warn",
-            detail: "Cannot test NIM connectivity without desktop API.",
-          },
-          {
-            id: "chk-safety",
-            category: "safety",
-            title: "Safety & Circuit Breaker",
-            status: telemetry.circuitBreakerTripped ? "fail" : "pass",
-            detail: telemetry.circuitBreakerTripped
-              ? "Circuit breaker tripped due to incident. Manual reset required."
-              : "Circuit breaker intact. 0 bot detections. Quotas within thresholds.",
-          },
-          {
-            id: "chk-env",
-            category: "env",
-            title: "Environment Configuration",
-            status: "warn",
-            detail: "Environment check unavailable outside desktop runtime.",
-          },
-        ];
-        setDoctorChecks(fallbackChecks);
-        setLastTriggerMessage("Diagnostics complete: Offline checks verified.");
-      }
-    } finally {
-      setIsCheckingDoctor(false);
-    }
-  }, [telemetry.circuitBreakerTripped, telemetry.nimModel]);
 
   const clearIncident = useCallback(async () => {
     if (typeof window !== "undefined" && window.api?.clearIncident) {
@@ -563,38 +310,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
   }, [refreshState]);
-
-  const saveScheduledPost = useCallback((post: ScheduledPost) => {
-    setScheduledPosts((prev) => {
-      const idx = prev.findIndex((p) => p.id === post.id);
-      const next = idx >= 0 ? [...prev] : [post, ...prev];
-      if (idx >= 0) next[idx] = post;
-      if (typeof window !== "undefined" && window.localStorage) {
-        try {
-          localStorage.setItem("hitl_scheduled_posts", JSON.stringify(next));
-        } catch {
-          // ignore
-        }
-      }
-      return next;
-    });
-    setLastTriggerMessage(`Post saved successfully: "${post.headline || post.id}"`);
-  }, []);
-
-  const deleteScheduledPost = useCallback((id: string) => {
-    setScheduledPosts((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      if (typeof window !== "undefined" && window.localStorage) {
-        try {
-          localStorage.setItem("hitl_scheduled_posts", JSON.stringify(next));
-        } catch {
-          // ignore
-        }
-      }
-      return next;
-    });
-    setLastTriggerMessage("Scheduled post removed");
-  }, []);
 
   const value = useMemo(
     () => ({
@@ -647,7 +362,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteScheduledPost,
       commentWindows,
       activePostForEditing,
+      setActivePostForEditing,
       connectionQueue,
+      setConnectionQueue,
       executeConnectionAction,
       refreshState,
     ]
