@@ -209,16 +209,17 @@ When suggestions arrive in Telegram, you have full control right from your chat:
 
 ---
 
-## Desktop Control Panel App
+## Desktop Control Panel & Advanced Subsystems
 
 The repository includes a modern Electron desktop application in [`desktop/`](desktop/) that acts as your local command center:
 
 * ⚡ **Real-Time Approval Queue**: Review drafted comments with live character countdowns, tone quick-pills (*Technical*, *Inquisitive*, *Contrarian*, *Concise*), and instant approval.
 * ⌨️ **Power-User Keyboard Shortcuts**: Blazing fast triage with `[A]` (Approve), `[R]` (Reject), `[E]` (Edit), `[T]` (Cycle Tone), and `Cmd+Enter` (Submit).
 * 🎙️ **Voice Audio Dictation**: Dictate custom revisions directly into comment and post drafts with native speech-to-text.
-* ✍️ **Post Composer & Visual Calendar**: Draft original LinkedIn thought leadership posts with above-the-fold cutoff indicators and scheduled publishing calendar.
-* 🤝 **Connection Outreach Studio**: Review 2nd-degree connection candidates and personalize 300-character notes with daily safety caps.
-* 🔔 **System Tray & WebSocket Sync**: Live <50ms push updates via Cloudflare Worker WebSockets with native OS desktop notifications.
+* ✍️ **Post Composer Studio & Visual Calendar**: Draft original LinkedIn thought leadership posts with above-the-fold cutoff indicators, rich tone rewriting, and scheduled publishing calendar synchronized across Cloudflare Workers KV and local storage.
+* 🤝 **Connection Outreach Studio**: Automatically discover 2nd-degree connection candidates from qualifying feed posts, personalize 300-character invitation notes with tone assistance, and approve invitations subject to daily safety caps.
+* 💬 **Multi-Turn Thread Reply Monitoring**: Automatically inspect active discussion threads where you commented, triage incoming replies with LLM intelligence, draft high-value follow-ups, and deliver Telegram cards for human sign-off.
+* 🔔 **System Tray & WebSocket Sync**: Live <50ms push updates via Cloudflare Worker WebSockets with native OS desktop notifications and background polling fallback.
 
 ### 📥 1-Click Standalone Download (Recommended)
 
