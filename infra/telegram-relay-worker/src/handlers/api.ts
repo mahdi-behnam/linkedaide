@@ -103,6 +103,17 @@ export async function handleGetState(request: Request, env: Env): Promise<Respon
     }
   }
 
+  // 8. active_threads (optional)
+  const rawActiveThreads = await env.LINKEDIN_AGENT_KV.get("active_threads");
+  let activeThreads: unknown = null;
+  if (rawActiveThreads) {
+    try {
+      activeThreads = JSON.parse(rawActiveThreads);
+    } catch {
+      activeThreads = null;
+    }
+  }
+
   const statePayload: Record<string, unknown> = {
     pending,
     daily_counters: dailyCounters,
@@ -115,6 +126,9 @@ export async function handleGetState(request: Request, env: Env): Promise<Respon
   }
   if (scheduledPosts !== null) {
     statePayload.scheduled_posts = scheduledPosts;
+  }
+  if (activeThreads !== null) {
+    statePayload.active_threads = activeThreads;
   }
 
   return jsonResponse({
