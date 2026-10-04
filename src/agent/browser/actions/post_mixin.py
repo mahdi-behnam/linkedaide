@@ -6,6 +6,7 @@ import asyncio
 import logging
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
@@ -15,7 +16,7 @@ from agent.errors import (
     SessionExpiredError,
     SubmissionVerificationError,
 )
-from agent.models import ExecutionResult
+from agent.models import ExecutionResult, MediaAttachment
 
 if TYPE_CHECKING:
     from playwright.async_api import Locator, Page
@@ -132,6 +133,7 @@ class PostMixin:
         item_id: str = "post_action",
         dry_run: bool | None = None,
         verification_timeout: float = 8.0,
+        media: list[MediaAttachment] | None = None,
     ) -> ExecutionResult:
         """Create an approved original LinkedIn post."""
         is_dry_run = dry_run if dry_run is not None else self.settings.dry_run
@@ -142,7 +144,8 @@ class PostMixin:
             raise BotDetectionError(f"Bot detection challenge on {self.page.url}")
 
         if is_dry_run:
-            logger.info("DRY_RUN: Simulated original post: %s", post_text)
+            media_info = f" with {len(media)} media attachment(s)" if media else ""
+            logger.info("DRY_RUN: Simulated original post%s: %s", media_info, post_text)
             screenshot = await self._capture_screenshot(f"dryrun_post_{item_id}")
             screenshot = await self._upload_screenshot_to_r2(screenshot, f"dryrun_post_{item_id}")
             return ExecutionResult(
@@ -190,6 +193,20 @@ class PostMixin:
                 raise ExecutionError("Post editor textbox not found in DOM")
 
             await self.biometrics.type_text(editor, post_text)
+
+            if media:
+                file_paths = [m.file_url for m in media if m.file_url and Path(m.file_url).exists()]
+                if file_paths:
+                    file_input = self.page.locator("input[type='file']").first
+                    if await file_input.count() > 0:
+                        await file_input.set_input_files(file_paths)
+                        await asyncio.sleep(1.0)
+                        next_btn = self.page.locator(
+                            "button:has-text('Next'), button[aria-label='Next'], button:has-text('Done')"
+                        ).first
+                        if await next_btn.count() > 0:
+                            await self.biometrics.click_element(next_btn)
+                            await asyncio.sleep(0.5)
 
             post_btn_selector = "button.share-actions__primary-action, button:has-text('Post')"
             post_btn = self.page.locator(post_btn_selector).first

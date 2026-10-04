@@ -340,9 +340,7 @@ class TestActionExecutorConnectionInvitation:
         verified = await executor._verify_connection_sent(item_id="item1", timeout=0.5)
         assert verified is True
 
-    async def test_verify_connection_sent_signal_toast(
-        self, test_settings: Settings
-    ) -> None:
+    async def test_verify_connection_sent_signal_toast(self, test_settings: Settings) -> None:
         page = AsyncMock()
         empty_loc = AsyncMock()
         empty_loc.count = AsyncMock(return_value=0)
@@ -359,9 +357,7 @@ class TestActionExecutorConnectionInvitation:
         verified = await executor._verify_connection_sent(item_id="item1", timeout=0.5)
         assert verified is True
 
-    async def test_verify_connection_sent_timeout_raises(
-        self, test_settings: Settings
-    ) -> None:
+    async def test_verify_connection_sent_timeout_raises(self, test_settings: Settings) -> None:
         page = AsyncMock()
         empty_loc = AsyncMock()
         empty_loc.count = AsyncMock(return_value=0)
@@ -371,5 +367,7 @@ class TestActionExecutorConnectionInvitation:
         executor._capture_telemetry = AsyncMock()  # type: ignore[method-assign]
 
         with pytest.raises(SubmissionVerificationError) as exc_info:
-            await executor._verify_connection_sent(item_id="item1", timeout=0.05, poll_interval=0.01)
+            await executor._verify_connection_sent(
+                item_id="item1", timeout=0.05, poll_interval=0.01
+            )
         assert "could not be verified" in str(exc_info.value)

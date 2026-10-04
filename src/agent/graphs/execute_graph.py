@@ -24,7 +24,7 @@ async def check_halted(state: ExecuteState, config: RunnableConfig) -> dict[str,
 
 
 async def load_pending(state: ExecuteState, config: RunnableConfig) -> dict[str, Any]:
-    """Load pending action from GitStateStore or fallback to connection candidate."""
+    """Load pending action from GitStateStore or fallback to connection candidate / scheduled post."""
     context = get_graph_context(config)
     if not context.state_store:
         return {"pending": None, "status": "missing"}
@@ -46,6 +46,22 @@ async def load_pending(state: ExecuteState, config: RunnableConfig) -> dict[str,
                 reasoning=conn_candidate.mutual_context,
                 telegram_chat_id=context.settings.telegram_authorized_chat_id,
             )
+        else:
+            # Check if item_id matches a scheduled post
+            sched_post = context.state_store.read_scheduled_post(item_id)
+            if sched_post is not None:
+                pending = PendingAction(
+                    item_id=sched_post.id,
+                    action_type="approve_post",
+                    created_at=sched_post.created_at,
+                    post_url="",
+                    author_name="You",
+                    author_headline="",
+                    draft_text=sched_post.post_text,
+                    reasoning=sched_post.topic_pillar or "Scheduled original post",
+                    media_attachments=sched_post.media,
+                    telegram_chat_id=context.settings.telegram_authorized_chat_id,
+                )
     return {"pending": pending}
 
 
@@ -85,6 +101,12 @@ async def handle_rejection(state: ExecuteState, config: RunnableConfig) -> dict[
         context.state_store.delete_pending(item_id)
         if pending and pending.action_type == "approve_connection":
             context.state_store.update_connection_status(item_id, status="rejected")
+        elif pending and pending.action_type == "approve_post":
+            sched_post = context.state_store.read_scheduled_post(item_id)
+            if sched_post:
+                context.state_store.save_scheduled_post(
+                    sched_post.model_copy(update={"status": "rejected"})
+                )
 
     chat_id = state.get("telegram_chat_id") or (
         pending.telegram_chat_id if pending else context.settings.telegram_authorized_chat_id
@@ -205,6 +227,7 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
             result = await context.executor.create_post(
                 post_text=pending.draft_text,
                 item_id=pending.item_id,
+                media=getattr(pending, "media_attachments", None) or None,
             )
 
         now = datetime.now(UTC)
@@ -269,6 +292,11 @@ async def persist_success(state: ExecuteState, config: RunnableConfig) -> dict[s
                 context.state_store.save_active_thread(thread_record)
         elif pending.action_type == "approve_post":
             context.state_store.increment_post_count()
+            sched_post = context.state_store.read_scheduled_post(pending.item_id)
+            if sched_post:
+                context.state_store.save_scheduled_post(
+                    sched_post.model_copy(update={"status": "published"})
+                )
         elif pending.action_type == "approve_connection":
             context.state_store.increment_connection_count()
             context.state_store.update_connection_status(pending.item_id, status="sent")

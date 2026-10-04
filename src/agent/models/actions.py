@@ -51,6 +51,10 @@ class PendingAction(BaseModel):
     telegram_message_id: int | None = Field(
         default=None, description="Telegram message ID containing inline keyboard"
     )
+    media_attachments: list[MediaAttachment] = Field(
+        default_factory=list,
+        description="Optional media attachments for original posts",
+    )
 
 
 class MediaAttachment(BaseModel):
@@ -75,7 +79,7 @@ class ScheduledPost(BaseModel):
     scheduled_time: datetime | str | None = Field(
         default=None, description="Scheduled publication timestamp in ISO format"
     )
-    status: Literal["draft", "scheduled", "published", "failed"] = Field(
+    status: Literal["draft", "scheduled", "published", "failed", "rejected"] = Field(
         default="draft", description="Status of the post lifecycle"
     )
     media: list[MediaAttachment] = Field(

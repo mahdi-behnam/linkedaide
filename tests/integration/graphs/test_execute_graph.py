@@ -13,7 +13,12 @@ from pydantic import SecretStr
 from agent.config import Settings
 from agent.graphs.execute_graph import build_execute_graph
 from agent.graphs.state import ExecuteState, GraphContext
-from agent.models import ConnectionRequestAction, ExecutionResult, PendingAction
+from agent.models import (
+    ConnectionRequestAction,
+    ExecutionResult,
+    PendingAction,
+    ScheduledPost,
+)
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state.store import GitStateStore
 
@@ -94,6 +99,18 @@ def mock_context(test_repo: Path) -> GraphContext:
             item_id="conn1",
             comment_text="Note",
             screenshot_path="conn.png",
+            error=None,
+            executed_at=datetime.now(UTC),
+        )
+    )
+    executor.create_post = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            action_type="approve_post",
+            item_id="post1",
+            comment_text=None,
+            post_text="Sample post",
+            screenshot_path="post.png",
             error=None,
             executed_at=datetime.now(UTC),
         )
@@ -359,3 +376,63 @@ async def test_execute_graph_approve_connection_cap_exceeded(mock_context: Graph
     assert result["status"] == "failed"
     assert "cap" in result["error"].lower()
     assert not mock_context.executor.send_connection_request.called  # type: ignore[union-attr]
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_approve_scheduled_post_success(
+    mock_context: GraphContext,
+) -> None:
+    assert mock_context.state_store is not None
+    sched_post = ScheduledPost(
+        id="sched_1",
+        post_text="Excited to share our new system architecture update!",
+        status="scheduled",
+    )
+    mock_context.state_store.save_scheduled_post(sched_post)
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "sched_1",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 508,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "completed_success"
+    assert mock_context.executor.create_post.called  # type: ignore[union-attr]
+
+    updated = mock_context.state_store.read_scheduled_post("sched_1")
+    assert updated is not None
+    assert updated.status == "published"
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_reject_scheduled_post(
+    mock_context: GraphContext,
+) -> None:
+    assert mock_context.state_store is not None
+    sched_post = ScheduledPost(
+        id="sched_2",
+        post_text="Draft post that got cancelled.",
+        status="scheduled",
+    )
+    mock_context.state_store.save_scheduled_post(sched_post)
+
+    initial_state: ExecuteState = {
+        "action": "reject",
+        "item_id": "sched_2",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 509,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "rejected"
+    assert not mock_context.executor.create_post.called  # type: ignore[union-attr]
+
+    updated = mock_context.state_store.read_scheduled_post("sched_2")
+    assert updated is not None
+    assert updated.status == "rejected"
