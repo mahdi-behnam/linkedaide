@@ -104,7 +104,7 @@ async def validate_request(state: ExecuteState, config: RunnableConfig) -> dict[
 
         if context.state_store:
             counters = context.state_store.load_daily_counters()
-            if pending.action_type == "approve_comment":
+            if pending.action_type in ("approve_comment", "approve_reply"):
                 can_exec, reason = context.enforcer.can_execute_comment(counters)
                 if not can_exec:
                     return {
@@ -134,7 +134,7 @@ async def verify_target(state: ExecuteState, config: RunnableConfig) -> dict[str
         if not logged_in:
             return {"error": "LinkedIn session is not authenticated", "status": "session_error"}
 
-        if pending.action_type == "approve_comment":
+        if pending.action_type in ("approve_comment", "approve_reply"):
             exists = await context.executor.verify_post_exists(pending.post_url)
             if not exists:
                 return {"error": "Target post is no longer available", "status": "post_missing"}
@@ -162,6 +162,13 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
             result = await context.executor.post_comment(
                 post_url=pending.post_url,
                 comment_text=pending.draft_text,
+                item_id=pending.item_id,
+            )
+        elif pending.action_type == "approve_reply":
+            result = await context.executor.post_thread_reply(
+                post_url=pending.post_url,
+                comment_urn=pending.post_urn,
+                reply_text=pending.draft_text,
                 item_id=pending.item_id,
             )
         else:
@@ -213,7 +220,7 @@ async def persist_success(state: ExecuteState, config: RunnableConfig) -> dict[s
 
     if pending:
         context.state_store.delete_pending(pending.item_id)
-        if pending.action_type == "approve_comment":
+        if pending.action_type in ("approve_comment", "approve_reply"):
             context.state_store.increment_comment_count()
         elif pending.action_type == "approve_post":
             context.state_store.increment_post_count()
@@ -231,11 +238,12 @@ async def notify_success(state: ExecuteState, config: RunnableConfig) -> dict[st
     msg_id = state.get("telegram_message_id") or (pending.telegram_message_id if pending else None)
 
     if context.telegram and msg_id and chat_id is not None:
-        outcome_text = (
-            "✅ Successfully posted to LinkedIn!"
-            if pending and pending.action_type == "approve_post"
-            else "✅ Successfully commented on LinkedIn post!"
-        )
+        if pending and pending.action_type == "approve_post":
+            outcome_text = "✅ Successfully posted to LinkedIn!"
+        elif pending and pending.action_type == "approve_reply":
+            outcome_text = "✅ Successfully replied to comment thread on LinkedIn!"
+        else:
+            outcome_text = "✅ Successfully commented on LinkedIn post!"
         await context.telegram.edit_to_outcome(chat_id, msg_id, outcome_text)
 
     return {"status": "completed_success"}

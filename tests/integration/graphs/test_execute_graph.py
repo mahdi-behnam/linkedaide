@@ -76,6 +76,17 @@ def mock_context(test_repo: Path) -> GraphContext:
             executed_at=datetime.now(UTC),
         )
     )
+    executor.post_thread_reply = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            action_type="approve_reply",
+            item_id="reply1",
+            comment_text="Sample reply",
+            screenshot_path="path.png",
+            error=None,
+            executed_at=datetime.now(UTC),
+        )
+    )
 
     return GraphContext(
         settings=settings,
@@ -201,3 +212,80 @@ async def test_execute_graph_expired_approval_rejected(mock_context: GraphContex
     assert result["status"] == "failed"
     assert "expired" in result["error"].lower()
     assert not mock_context.executor.post_comment.called  # type: ignore[union-attr]
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_approve_reply_success(mock_context: GraphContext) -> None:
+    pending = PendingAction(
+        item_id="reply001",
+        action_type="approve_reply",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:comment:999",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:4/",
+        author_name="Commenter",
+        post_excerpt="Parent comment text",
+        draft_text="Insightful follow-up reply",
+        confidence=0.92,
+        reasoning="Good context fit",
+        telegram_chat_id=12345,
+        telegram_message_id=504,
+    )
+    mock_context.state_store.write_pending(pending)  # type: ignore[union-attr]
+
+    graph = build_execute_graph()
+    state: ExecuteState = {
+        "action": "approve",
+        "item_id": "reply001",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 504,
+    }
+
+    result = await graph.ainvoke(state, config={"configurable": {"context": mock_context}})
+    assert result["status"] == "completed_success"
+    assert mock_context.state_store.read_pending("reply001") is None  # type: ignore[union-attr]
+    assert mock_context.executor.post_thread_reply.called  # type: ignore[union-attr]
+    assert not mock_context.executor.post_comment.called  # type: ignore[union-attr]
+
+    counters = mock_context.state_store.load_daily_counters()  # type: ignore[union-attr]
+    assert counters.comments_executed == 1
+
+    mock_context.telegram.edit_to_outcome.assert_called_with(  # type: ignore[union-attr]
+        12345, 504, "✅ Successfully replied to comment thread on LinkedIn!"
+    )
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_approve_reply_cap_exceeded(mock_context: GraphContext) -> None:
+    counters = mock_context.state_store.load_daily_counters()  # type: ignore[union-attr]
+    counters.comments_executed = 5  # max is 5
+    mock_context.state_store.save_daily_counters(counters)  # type: ignore[union-attr]
+
+    pending = PendingAction(
+        item_id="reply002",
+        action_type="approve_reply",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:comment:888",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:5/",
+        author_name="Commenter",
+        post_excerpt="Parent comment text",
+        draft_text="Another reply",
+        confidence=0.90,
+        reasoning="Good context fit",
+        telegram_chat_id=12345,
+        telegram_message_id=505,
+    )
+    mock_context.state_store.write_pending(pending)  # type: ignore[union-attr]
+
+    graph = build_execute_graph()
+    state: ExecuteState = {
+        "action": "approve",
+        "item_id": "reply002",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 505,
+    }
+
+    result = await graph.ainvoke(state, config={"configurable": {"context": mock_context}})
+    assert result["status"] == "failed"
+    assert "cap" in result["error"].lower()
+    assert not mock_context.executor.post_thread_reply.called  # type: ignore[union-attr]
+
