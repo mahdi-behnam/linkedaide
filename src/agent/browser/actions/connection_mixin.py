@@ -88,16 +88,6 @@ class ConnectionMixin:
             except Exception:
                 pass
 
-            # Signal 3: Invitation modal closed
-            modal_loc = self.page.locator(
-                "div.send-invite, div[role='dialog']:has-text('Invitation'), div[role='dialog']:has-text('Connect')"
-            )
-            try:
-                if await modal_loc.count() == 0:
-                    return True
-            except Exception:
-                pass
-
             if time.monotonic() >= deadline:
                 break
 

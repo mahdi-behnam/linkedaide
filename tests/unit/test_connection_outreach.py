@@ -10,7 +10,11 @@ from pydantic import SecretStr, ValidationError
 
 from agent.browser.executor import ActionExecutor
 from agent.config import Settings
-from agent.errors import BotDetectionError, ExecutionError
+from agent.errors import (
+    BotDetectionError,
+    ExecutionError,
+    SubmissionVerificationError,
+)
 from agent.models import ConnectionRequestAction, DailyCounters, ExecutionResult
 from agent.safety.rate_limiter import DailyCapEnforcer, can_send_connection
 
@@ -316,3 +320,56 @@ class TestActionExecutorConnectionInvitation:
         executor.biometrics.click_element.assert_any_call(more_btn)
         executor.biometrics.click_element.assert_any_call(dropdown_connect)
         executor.biometrics.click_element.assert_any_call(send_btn)
+
+    async def test_verify_connection_sent_signal_pending_button(
+        self, test_settings: Settings
+    ) -> None:
+        page = AsyncMock()
+        empty_loc = AsyncMock()
+        empty_loc.count = AsyncMock(return_value=0)
+        pending_loc = AsyncMock()
+        pending_loc.count = AsyncMock(return_value=1)
+
+        def locator_se(sel: str) -> AsyncMock:
+            if "Pending" in sel:
+                return pending_loc
+            return empty_loc
+
+        page.locator = MagicMock(side_effect=locator_se)
+        executor = ActionExecutor(page, test_settings)
+        verified = await executor._verify_connection_sent(item_id="item1", timeout=0.5)
+        assert verified is True
+
+    async def test_verify_connection_sent_signal_toast(
+        self, test_settings: Settings
+    ) -> None:
+        page = AsyncMock()
+        empty_loc = AsyncMock()
+        empty_loc.count = AsyncMock(return_value=0)
+        toast_loc = AsyncMock()
+        toast_loc.count = AsyncMock(return_value=1)
+
+        def locator_se(sel: str) -> AsyncMock:
+            if "artdeco-toast-item--success" in sel:
+                return toast_loc
+            return empty_loc
+
+        page.locator = MagicMock(side_effect=locator_se)
+        executor = ActionExecutor(page, test_settings)
+        verified = await executor._verify_connection_sent(item_id="item1", timeout=0.5)
+        assert verified is True
+
+    async def test_verify_connection_sent_timeout_raises(
+        self, test_settings: Settings
+    ) -> None:
+        page = AsyncMock()
+        empty_loc = AsyncMock()
+        empty_loc.count = AsyncMock(return_value=0)
+        page.locator = MagicMock(return_value=empty_loc)
+        executor = ActionExecutor(page, test_settings)
+        executor._capture_screenshot = AsyncMock(return_value="/tmp/screenshot.png")  # type: ignore[method-assign]
+        executor._capture_telemetry = AsyncMock()  # type: ignore[method-assign]
+
+        with pytest.raises(SubmissionVerificationError) as exc_info:
+            await executor._verify_connection_sent(item_id="item1", timeout=0.05, poll_interval=0.01)
+        assert "could not be verified" in str(exc_info.value)
