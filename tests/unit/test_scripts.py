@@ -27,6 +27,9 @@ def test_register_webhook_success() -> None:
             bot_token="123:bot_token",
         )
         assert success is True
+        sent_payload = mock_post.call_args[1]["json"]
+        assert "message" in sent_payload["allowed_updates"]
+        assert "callback_query" in sent_payload["allowed_updates"]
 
 
 def test_delete_webhook_success() -> None:

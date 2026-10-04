@@ -40,6 +40,20 @@ export interface TelegramCallbackQuery {
 export interface TelegramUpdate {
   update_id: number;
   callback_query?: TelegramCallbackQuery;
+  message?: {
+    message_id: number;
+    from?: {
+      id: number;
+      is_bot?: boolean;
+      first_name?: string;
+      username?: string;
+    };
+    chat?: {
+      id: number;
+    };
+    text?: string;
+    reply_to_message?: unknown;
+  };
 }
 
 /** HTML entity escaping helper for Telegram HTML parse_mode */
@@ -121,6 +135,33 @@ export function jsonResponse(data: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+/** Sends an HTML message to Telegram */
+export async function sendTelegramMessage(
+  env: Env,
+  chatId: number,
+  text: string,
+  replyToMessageId?: number | null
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    link_preview_options: { is_disabled: true },
+  };
+  if (typeof replyToMessageId === "number") {
+    payload.reply_to_message_id = replyToMessageId;
+  }
+  try {
+    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Ignore notification errors
+  }
 }
 
 /** Active WebSocket client connections connected to /api/ws */
@@ -988,6 +1029,120 @@ export default {
       return new Response("Invalid JSON Payload", { status: 400 });
     }
 
+    if (update.message) {
+      const msg = update.message;
+      const text = (msg.text || "").trim();
+
+      if (text.startsWith("/")) {
+        const senderId = msg.from?.id;
+        const authorizedId = parseInt(env.TELEGRAM_AUTHORIZED_CHAT_ID, 10);
+        if (senderId !== authorizedId) {
+          return new Response("Unauthorized Sender ID", { status: 403 });
+        }
+
+        const chatId = msg.chat?.id ?? authorizedId;
+        const messageId = msg.message_id;
+        const cmdToken = text.split(" ")[0].substring(1).split("@")[0].toLowerCase();
+
+        if (cmdToken === "status") {
+          let isPaused = false;
+          let hasIncident = false;
+          let incidentReason = "";
+          let commentsCount = 0;
+          let postsCount = 0;
+          let pendingCount = 0;
+
+          if (env.LINKEDIN_AGENT_KV) {
+            const rawPaused = await env.LINKEDIN_AGENT_KV.get("paused");
+            isPaused = rawPaused !== null;
+            const rawIncident = await env.LINKEDIN_AGENT_KV.get("incident");
+            if (rawIncident) {
+              hasIncident = true;
+              try {
+                const inc = JSON.parse(rawIncident);
+                incidentReason = inc.reason || "Incident detected";
+              } catch {
+                incidentReason = String(rawIncident);
+              }
+            }
+            const rawCounters = await env.LINKEDIN_AGENT_KV.get("daily_counters");
+            if (rawCounters) {
+              try {
+                const c = JSON.parse(rawCounters);
+                commentsCount = c.comments_executed ?? 0;
+                postsCount = c.posts_executed ?? 0;
+              } catch {}
+            }
+            const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+            pendingCount = listRes.keys ? listRes.keys.length : 0;
+          }
+
+          let sysStatus = "🟢 <b>Operational</b>";
+          let cbStatus = "🟢 <b>Normal</b> (No active incident)";
+          if (hasIncident) {
+            sysStatus = "🚨 <b>Halted (Circuit Breaker Tripped)</b>";
+            cbStatus = `🔴 <b>Tripped</b>\n  • <i>Reason:</i> ${escapeHtml(incidentReason)}`;
+          } else if (isPaused) {
+            sysStatus = "⏸️ <b>Paused</b>";
+          }
+
+          const report =
+            `🎛️ <b>Agent Status Report</b>\n\n` +
+            `• <b>System State:</b> ${sysStatus}\n` +
+            `• <b>Circuit Breaker:</b> ${cbStatus}\n` +
+            `• <b>Pending Approvals:</b> <b>${pendingCount}</b> action(s) awaiting review\n\n` +
+            `📊 <b>Daily Counters</b>\n` +
+            `• <b>Comments Executed:</b> ${commentsCount}\n` +
+            `• <b>Posts Executed:</b> ${postsCount}`;
+
+          await sendTelegramMessage(env, chatId, report, messageId);
+          return new Response(JSON.stringify({ status: "command_handled", command: "status" }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        } else if (cmdToken === "pause") {
+          if (env.LINKEDIN_AGENT_KV) {
+            await env.LINKEDIN_AGENT_KV.put(
+              "paused",
+              JSON.stringify({ paused_at: new Date().toISOString() })
+            );
+          }
+          const reply =
+            "⏸️ <b>Agent Paused</b>\n\n" +
+            "All automated scouting, triage, and execution workflows are now suspended.\n" +
+            "Use /resume to restart operations.";
+          await sendTelegramMessage(env, chatId, reply, messageId);
+          return new Response(JSON.stringify({ status: "command_handled", command: "pause" }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        } else if (cmdToken === "resume") {
+          if (env.LINKEDIN_AGENT_KV) {
+            await env.LINKEDIN_AGENT_KV.delete("paused");
+          }
+          const reply =
+            "▶️ <b>Agent Resumed</b>\n\n" +
+            "Automated workflows are now active and ready to scout and execute according to schedule.";
+          await sendTelegramMessage(env, chatId, reply, messageId);
+          return new Response(JSON.stringify({ status: "command_handled", command: "resume" }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        } else if (cmdToken === "clear_incident") {
+          if (env.LINKEDIN_AGENT_KV) {
+            await env.LINKEDIN_AGENT_KV.delete("incident");
+          }
+          const reply =
+            "✅ <b>Circuit Breaker Reset</b>\n\n" +
+            "The active incident record has been cleared and the circuit breaker reset to normal.";
+          await sendTelegramMessage(env, chatId, reply, messageId);
+          return new Response(
+            JSON.stringify({ status: "command_handled", command: "clear_incident" }),
+            { headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      return new Response("Ignored non-callback update", { status: 200 });
+    }
+
     const cb = update.callback_query;
     if (!cb || !cb.data) {
       return new Response("Ignored non-callback update", { status: 200 });
@@ -1007,8 +1162,8 @@ export default {
     }
 
     const [actionCode, itemId] = parts;
-    const isApproval = actionCode === "ac" || actionCode === "ap" || actionCode === "apv";
-    const isRejection = actionCode === "rc" || actionCode === "rp" || actionCode === "rej";
+    const isApproval = actionCode === "ac" || actionCode === "ap" || actionCode === "ar" || actionCode === "apv";
+    const isRejection = actionCode === "rc" || actionCode === "rp" || actionCode === "rr" || actionCode === "rej";
 
     if (!isApproval && !isRejection) {
       return new Response("Unknown action code", { status: 400 });
@@ -1023,6 +1178,11 @@ export default {
 
       // 1. Determine action_type from pending item if present
       let actionType = "approve_comment";
+      if (actionCode === "ap" || actionCode === "rp") {
+        actionType = "approve_post";
+      } else if (actionCode === "ar" || actionCode === "rr") {
+        actionType = "approve_reply";
+      }
       try {
         const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
         if (rawPending) {
@@ -1030,7 +1190,7 @@ export default {
           actionType = pending.action_type || actionType;
         }
       } catch {
-        // Fallback actionType
+        // Fallback actionType already set
       }
 
       // 2. Delete pending item from KV

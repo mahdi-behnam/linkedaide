@@ -28,7 +28,7 @@ def register_webhook(
     payload = {
         "url": worker_url,
         "secret_token": secret_token,
-        "allowed_updates": ["callback_query"],
+        "allowed_updates": ["callback_query", "message"],
         "drop_pending_updates": False,
     }
 

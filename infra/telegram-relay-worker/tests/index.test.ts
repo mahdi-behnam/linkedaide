@@ -284,6 +284,7 @@ describe("Telegram Relay Worker", () => {
       it.each([
         ["ac", "approve"],
         ["ap", "approve"],
+        ["ar", "approve"],
         ["apv", "approve"],
       ])("handles approval action prefix '%s' -> '%s'", async (prefix, expectedAction) => {
         const fetchMock = vi.fn().mockImplementation(async (url: string) => {
@@ -710,6 +711,224 @@ describe("Telegram Relay Worker", () => {
           url.includes("api.github.com")
         );
         expect(githubCalls).toHaveLength(1);
+      });
+
+      it("handles 'rr' fast-path rejection via KV with approve_reply fallback action_type", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+          list: vi.fn(async () => ({ keys: [] })),
+        };
+        const envWithKv = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 12,
+          callback_query: {
+            id: "cb_kv_rr_1",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 557, chat: { id: 987654321 } },
+            data: "rr:reply_item_123",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const resJson = (await res.json()) as any;
+        expect(resJson.status).toBe("rejected_via_kv");
+        expect(resJson.item_id).toBe("reply_item_123");
+
+        const updatedHistory = JSON.parse(kvStore.get("history")!);
+        expect(updatedHistory[0].action_type).toBe("approve_reply");
+        expect(updatedHistory[0].final_status).toBe("rejected");
+      });
+    });
+
+    describe("Operator Commands", () => {
+      it("rejects commands from unauthorized senders with 403", async () => {
+        const req = makeRequest({
+          update_id: 100,
+          message: {
+            message_id: 1,
+            from: { id: 111111111 },
+            chat: { id: 111111111 },
+            text: "/status",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+        expect(res.status).toBe(403);
+      });
+
+      it("handles /status command from authorized operator", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set("daily_counters", JSON.stringify({ comments_executed: 3, posts_executed: 1 }));
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+          list: vi.fn(async () => ({ keys: [{ name: "pending:item1" }] })),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 101,
+          message: {
+            message_id: 200,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/status",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("status");
+
+        const sendCall = fetchMock.mock.calls.find(([url]) => url.includes("/sendMessage"));
+        expect(sendCall).toBeDefined();
+        const payload = JSON.parse(sendCall![1].body);
+        expect(payload.text).toContain("Agent Status Report");
+        expect(payload.text).toContain("Comments Executed:</b> 3");
+      });
+
+      it("handles /pause command and sets paused in KV", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 102,
+          message: {
+            message_id: 201,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/pause",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("pause");
+        expect(kvStore.has("paused")).toBe(true);
+      });
+
+      it("handles /resume command and deletes paused in KV", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set("paused", JSON.stringify({ paused_at: new Date().toISOString() }));
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 103,
+          message: {
+            message_id: 202,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/resume",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("resume");
+        expect(kvStore.has("paused")).toBe(false);
+      });
+
+      it("handles /clear_incident command and clears incident in KV", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set("incident", JSON.stringify({ reason: "Bot challenge" }));
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 104,
+          message: {
+            message_id: 203,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/clear_incident",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("clear_incident");
+        expect(kvStore.has("incident")).toBe(false);
       });
     });
   });
