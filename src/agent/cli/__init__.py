@@ -121,6 +121,26 @@ def run_ideate(args: argparse.Namespace) -> int:
         return 1
 
 
+def run_thread_monitor(args: argparse.Namespace) -> int:
+    """Execute LinkedIn active thread comment replies monitoring workflow."""
+    from agent.orchestration.thread_monitor_flow import run_thread_monitor_flow
+
+    cfg = load_settings()
+    headless = not getattr(args, "headed", False)
+    repo_root = Path(args.repo_root) if getattr(args, "repo_root", None) else None
+    try:
+        result = asyncio.run(
+            run_thread_monitor_flow(settings=cfg, repo_root=repo_root, headless=headless)
+        )
+        if result.get("status") in ("failed", "session_error", "halted_challenge"):
+            return 1
+        print(f"Thread monitor finished. Queued {result.get('queued_count', 0)} reply actions.")
+        return 0
+    except Exception as err:
+        print(f"Fatal Thread Monitor error: {err}", file=sys.stderr)
+        return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the top-level CLI parser."""
     parser = argparse.ArgumentParser(
@@ -197,6 +217,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ideate_parser.add_argument("--repo-root", default=None, help="Root repository path")
 
+    # thread-monitor
+    thread_parser = subparsers.add_parser(
+        "thread-monitor", help="Inspect active comment threads for new replies and draft follow-ups"
+    )
+    thread_parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Launch visible Chromium browser window for local inspection",
+    )
+    thread_parser.add_argument("--repo-root", default=None, help="Root repository path")
+
     return parser
 
 
@@ -225,6 +256,8 @@ def main(argv: list[str] | None = None) -> None:
         exit_code = run_poll(args)
     elif args.command == "ideate":
         exit_code = run_ideate(args)
+    elif args.command == "thread-monitor":
+        exit_code = run_thread_monitor(args)
     else:
         parser.print_help()
         exit_code = 1
@@ -242,4 +275,5 @@ __all__ = [
     "run_poll",
     "run_scout",
     "run_setup",
+    "run_thread_monitor",
 ]

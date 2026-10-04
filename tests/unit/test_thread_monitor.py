@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
@@ -207,3 +208,62 @@ async def test_find_thread_replies_success_with_telegram(mock_settings: Settings
     assert action.telegram_message_id == 9988
     assert state_store.write_pending.call_count >= 1
     telegram.send_suggestion.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_run_thread_monitor_flow_halted(mock_settings: Settings, tmp_path: Path) -> None:
+    from agent.orchestration.thread_monitor_flow import run_thread_monitor_flow
+
+    with patch(
+        "agent.orchestration.thread_monitor_flow.is_halted", return_value=(True, "Kill switch active")
+    ):
+        result = await run_thread_monitor_flow(settings=mock_settings, repo_root=tmp_path)
+        assert result["status"] == "halted"
+        assert result["queued_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_run_thread_monitor_flow_no_active_threads(
+    mock_settings: Settings, tmp_path: Path
+) -> None:
+    from agent.orchestration.thread_monitor_flow import run_thread_monitor_flow
+
+    with (
+        patch("agent.orchestration.thread_monitor_flow.is_halted", return_value=(False, None)),
+        patch("agent.orchestration.thread_monitor_flow.get_state_store") as mock_get_store,
+    ):
+        mock_store = MagicMock()
+        mock_store.list_active_threads.return_value = []
+        mock_get_store.return_value = mock_store
+
+        result = await run_thread_monitor_flow(settings=mock_settings, repo_root=tmp_path)
+        assert result["status"] == "no_active_threads"
+        assert result["queued_count"] == 0
+
+
+def test_cli_thread_monitor_parser() -> None:
+    from agent.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args(["thread-monitor", "--headed", "--repo-root", "/tmp/repo"])
+    assert args.command == "thread-monitor"
+    assert args.headed is True
+    assert args.repo_root == "/tmp/repo"
+
+
+def test_cli_run_thread_monitor_exit_code() -> None:
+    from agent.cli import build_parser, run_thread_monitor
+
+    parser = build_parser()
+    args = parser.parse_args(["thread-monitor"])
+    with patch(
+        "agent.orchestration.thread_monitor_flow.run_thread_monitor_flow", new_callable=AsyncMock
+    ) as mock_flow:
+        mock_flow.return_value = {
+            "status": "completed",
+            "queued_count": 2,
+            "queued_actions": ["a1", "a2"],
+        }
+        code = run_thread_monitor(args)
+        assert code == 0
+
