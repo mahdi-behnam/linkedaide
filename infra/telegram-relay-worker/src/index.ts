@@ -12,6 +12,7 @@
 import { Env } from "./types";
 import { handleApiRequest } from "./handlers/api";
 import { handleTelegramWebhook } from "./handlers/webhook";
+import { handleScheduledPostsCron } from "./handlers/scheduled";
 
 // Re-export types
 export * from "./types";
@@ -28,6 +29,9 @@ export * from "./handlers/api";
 // Re-export Webhook handlers
 export * from "./handlers/webhook";
 
+// Re-export Scheduled Cron handlers
+export * from "./handlers/scheduled";
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -39,5 +43,9 @@ export default {
 
     // Telegram webhook handler
     return handleTelegramWebhook(request, env, ctx);
+  },
+
+  async scheduled(controller: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(handleScheduledPostsCron(env));
   },
 };

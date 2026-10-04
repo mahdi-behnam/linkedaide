@@ -1,10 +1,28 @@
 /**
- * Handlers for Scheduled Posts in Cloudflare Worker.
+ * Handlers for Scheduled Posts in Cloudflare Worker:
+ * - REST API endpoints (GET, POST, DELETE)
+ * - Cron trigger edge dispatcher (handleScheduledPostsCron)
  */
 
 import { Env } from "../types";
 import { jsonResponse } from "../utils";
 import { broadcastEvent } from "./ws";
+
+export interface ScheduledPostItem {
+  id: string;
+  headline?: string;
+  post_text: string;
+  scheduled_time?: string | null;
+  status: "draft" | "scheduled" | "published" | "failed" | "rejected";
+  media?: unknown[];
+  dispatched_at?: string | null;
+}
+
+export interface ScheduledCronResult {
+  checked: number;
+  dispatched: number;
+  errors: string[];
+}
 
 export async function handleScheduledPosts(
   request: Request,
@@ -169,4 +187,114 @@ export async function handleScheduledPosts(
   }
 
   return jsonResponse({ error: "Method Not Allowed" }, 405);
+}
+
+export async function handleScheduledPostsCron(
+  env: Env,
+  now: Date = new Date()
+): Promise<ScheduledCronResult> {
+  if (!env.LINKEDIN_AGENT_KV) {
+    return { checked: 0, dispatched: 0, errors: ["No KV binding"] };
+  }
+
+  const rawPosts = await env.LINKEDIN_AGENT_KV.get("scheduled_posts");
+  if (!rawPosts) {
+    return { checked: 0, dispatched: 0, errors: [] };
+  }
+
+  let posts: ScheduledPostItem[];
+  try {
+    posts = JSON.parse(rawPosts);
+  } catch (err: unknown) {
+    return {
+      checked: 0,
+      dispatched: 0,
+      errors: [`Failed to parse scheduled_posts: ${err instanceof Error ? err.message : String(err)}`],
+    };
+  }
+
+  if (!Array.isArray(posts) || posts.length === 0) {
+    return { checked: 0, dispatched: 0, errors: [] };
+  }
+
+  const duePosts: ScheduledPostItem[] = [];
+  const updatedList: ScheduledPostItem[] = [];
+  const errors: string[] = [];
+  let dispatchedCount = 0;
+
+  for (const post of posts) {
+    if (post.status === "scheduled" && post.scheduled_time) {
+      const scheduledDate = new Date(post.scheduled_time);
+      if (!isNaN(scheduledDate.getTime()) && scheduledDate <= now) {
+        // Prevent duplicate dispatches within 1 hour
+        if (post.dispatched_at) {
+          const lastDispatched = new Date(post.dispatched_at);
+          if (
+            !isNaN(lastDispatched.getTime()) &&
+            now.getTime() - lastDispatched.getTime() < 3600000
+          ) {
+            updatedList.push(post);
+            continue;
+          }
+        }
+        duePosts.push(post);
+        continue;
+      }
+    }
+    updatedList.push(post);
+  }
+
+  for (const post of duePosts) {
+    try {
+      const dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
+      const clientPayload = {
+        action: "approve",
+        item_id: post.id,
+      };
+
+      const res = await fetch(dispatchUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
+          "User-Agent": "Telegram-Relay-Worker",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({
+          event_type: "telegram-approval-action",
+          client_payload: clientPayload,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        errors.push(`Failed dispatching ${post.id}: ${res.status} ${text}`);
+        updatedList.push(post);
+      } else {
+        dispatchedCount++;
+        const markedPost: ScheduledPostItem = {
+          ...post,
+          dispatched_at: now.toISOString(),
+        };
+        updatedList.push(markedPost);
+        // Also update individual key
+        await env.LINKEDIN_AGENT_KV.put(`scheduled:${post.id}`, JSON.stringify(markedPost));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Error dispatching ${post.id}: ${msg}`);
+      updatedList.push(post);
+    }
+  }
+
+  // Update full list in KV if any post was dispatched
+  if (dispatchedCount > 0) {
+    await env.LINKEDIN_AGENT_KV.put("scheduled_posts", JSON.stringify(updatedList));
+  }
+
+  return {
+    checked: posts.length,
+    dispatched: dispatchedCount,
+    errors,
+  };
 }

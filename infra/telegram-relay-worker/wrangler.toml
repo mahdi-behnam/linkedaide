@@ -32,3 +32,8 @@ id = "linkedin_agent_kv_namespace"
 # binding = "SCREENSHOTS_BUCKET"
 # bucket_name = "linkedin-agent-media"
 
+# Cron triggers for edge scheduler (runs every 15 minutes to check due scheduled posts)
+[triggers]
+crons = ["*/15 * * * *"]
+
+
