@@ -260,6 +260,22 @@ function registerIpcHandlers(): void {
     return await workerClient.saveSession(sessionData);
   });
 
+  ipcMain.handle("api:fetchScheduledPosts", async () => {
+    return await workerClient.fetchScheduledPosts();
+  });
+
+  ipcMain.handle("api:saveScheduledPost", async (_event, post: any) => {
+    return await workerClient.saveScheduledPost(post);
+  });
+
+  ipcMain.handle("api:deleteScheduledPost", async (_event, id: string) => {
+    return await workerClient.deleteScheduledPost(id);
+  });
+
+  ipcMain.handle("api:fetchConnectionQueue", async () => {
+    return await workerClient.fetchConnectionQueue();
+  });
+
   // Local Settings Handlers
   ipcMain.handle("settings:get", async () => {
     return loadSettings();

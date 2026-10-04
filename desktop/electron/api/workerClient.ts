@@ -9,6 +9,8 @@ import type {
   ActionResult,
   AgentState,
   Incident,
+  ScheduledPost,
+  ConnectionRequestAction,
 } from "../types";
 
 export interface WorkerClientConfig {
@@ -505,5 +507,66 @@ export class WorkerClient {
     });
 
     return res.success !== false;
+  }
+
+  /**
+   * Fetches all scheduled posts from Worker KV.
+   */
+  public async fetchScheduledPosts(): Promise<ScheduledPost[]> {
+    const res = await this.request<{ success?: boolean; posts?: ScheduledPost[] }>(
+      "/api/scheduled-posts",
+      { method: "GET" }
+    );
+    return Array.isArray(res?.posts) ? res.posts : [];
+  }
+
+  /**
+   * Creates or updates a scheduled post in Worker KV.
+   */
+  public async saveScheduledPost(post: ScheduledPost): Promise<ScheduledPost> {
+    const res = await this.request<{ success?: boolean; post?: ScheduledPost }>(
+      "/api/scheduled-posts",
+      {
+        method: "POST",
+        body: { post },
+      }
+    );
+    return res?.post || post;
+  }
+
+  /**
+   * Deletes a scheduled post from Worker KV.
+   */
+  public async deleteScheduledPost(id: string): Promise<boolean> {
+    const res = await this.request<{ success?: boolean }>(
+      `/api/scheduled-posts/${id}`,
+      { method: "DELETE" }
+    );
+    return res?.success !== false;
+  }
+
+  /**
+   * Fetches outreach connection queue from Worker KV.
+   */
+  public async fetchConnectionQueue(): Promise<ConnectionRequestAction[]> {
+    const res = await this.request<{ success?: boolean; queue?: ConnectionRequestAction[] }>(
+      "/api/connection-queue",
+      { method: "GET" }
+    );
+    return Array.isArray(res?.queue) ? res.queue : [];
+  }
+
+  /**
+   * Adds or updates a candidate in the outreach connection queue.
+   */
+  public async saveConnectionCandidate(candidate: ConnectionRequestAction): Promise<boolean> {
+    const res = await this.request<{ success?: boolean }>(
+      "/api/connection-queue",
+      {
+        method: "POST",
+        body: candidate,
+      }
+    );
+    return res?.success !== false;
   }
 }

@@ -49,6 +49,37 @@ export interface Incident {
   context?: Record<string, unknown>;
 }
 
+export interface ConnectionRequestAction {
+  id: string;
+  profile_url: string;
+  target_name: string;
+  target_headline?: string;
+  mutual_context?: string;
+  note_text?: string;
+  status: "pending" | "approved" | "rejected" | "sent" | "failed";
+  created_at: string;
+  approved_at?: string | null;
+}
+
+export interface MediaAttachment {
+  media_type: "image" | "carousel_pdf";
+  file_name: string;
+  file_url: string;
+  slide_count: number;
+}
+
+export interface ScheduledPost {
+  id: string;
+  headline: string;
+  post_text: string;
+  scheduled_time?: string | null;
+  status: "draft" | "scheduled" | "published" | "failed";
+  media: MediaAttachment[];
+  topic_pillar: string;
+  created_at: string;
+  approved_at?: string | null;
+}
+
 export interface AgentState {
   pending?: PendingAction[];
   pending_actions: PendingAction[];
@@ -60,6 +91,10 @@ export interface AgentState {
   paused: boolean;
   seen_posts_count?: number;
   seenPostsCount?: number;
+  connection_queue?: ConnectionRequestAction[];
+  connectionQueue?: ConnectionRequestAction[];
+  scheduled_posts?: ScheduledPost[];
+  scheduledPosts?: ScheduledPost[];
   last_updated?: string;
   lastUpdated?: string;
 }
@@ -115,5 +150,9 @@ export interface ElectronAPI {
   checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
   fetchNimModels?: (apiKey?: string) => Promise<{ success: boolean; models: string[]; error?: string }>;
   onRealtimeEvent?: (callback: (event: any) => void) => () => void;
+  fetchScheduledPosts?: () => Promise<ScheduledPost[]>;
+  saveScheduledPost?: (post: ScheduledPost) => Promise<ScheduledPost>;
+  deleteScheduledPost?: (id: string) => Promise<boolean>;
+  fetchConnectionQueue?: () => Promise<ConnectionRequestAction[]>;
 }
 

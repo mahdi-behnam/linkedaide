@@ -5,6 +5,8 @@
 import { Env } from "../types";
 import { inferContentType, jsonResponse } from "../utils";
 import { broadcastEvent, handleWebSocketUpgrade } from "./ws";
+import { handleScheduledPosts } from "./scheduled";
+import { handleConnectionQueue } from "./connectionQueue";
 
 export async function handleGetState(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") {
@@ -79,15 +81,45 @@ export async function handleGetState(request: Request, env: Env): Promise<Respon
   const rawPaused = await env.LINKEDIN_AGENT_KV.get("paused");
   const paused: boolean = rawPaused !== null;
 
+  // 6. connection_queue (optional)
+  const rawConnectionQueue = await env.LINKEDIN_AGENT_KV.get("connection_queue");
+  let connectionQueue: unknown = null;
+  if (rawConnectionQueue) {
+    try {
+      connectionQueue = JSON.parse(rawConnectionQueue);
+    } catch {
+      connectionQueue = null;
+    }
+  }
+
+  // 7. scheduled_posts (optional)
+  const rawScheduledPosts = await env.LINKEDIN_AGENT_KV.get("scheduled_posts");
+  let scheduledPosts: unknown = null;
+  if (rawScheduledPosts) {
+    try {
+      scheduledPosts = JSON.parse(rawScheduledPosts);
+    } catch {
+      scheduledPosts = null;
+    }
+  }
+
+  const statePayload: Record<string, unknown> = {
+    pending,
+    daily_counters: dailyCounters,
+    history,
+    incident,
+    paused,
+  };
+  if (connectionQueue !== null) {
+    statePayload.connection_queue = connectionQueue;
+  }
+  if (scheduledPosts !== null) {
+    statePayload.scheduled_posts = scheduledPosts;
+  }
+
   return jsonResponse({
     success: true,
-    state: {
-      pending,
-      daily_counters: dailyCounters,
-      history,
-      incident,
-      paused,
-    },
+    state: statePayload,
   });
 }
 
@@ -172,6 +204,23 @@ export async function handlePostAction(
         error: "Rejected by operator via API",
       });
       await env.LINKEDIN_AGENT_KV.put("history", JSON.stringify(history));
+    } catch {
+      // Continue
+    }
+
+    // Also update connection_queue status if candidate exists
+    try {
+      const rawQueue = await env.LINKEDIN_AGENT_KV.get("connection_queue");
+      if (rawQueue) {
+        const queue = JSON.parse(rawQueue);
+        if (Array.isArray(queue)) {
+          const idx = queue.findIndex((c: any) => c.id === itemId);
+          if (idx >= 0) {
+            queue[idx].status = "rejected";
+            await env.LINKEDIN_AGENT_KV.put("connection_queue", JSON.stringify(queue));
+          }
+        }
+      }
     } catch {
       // Continue
     }
@@ -772,6 +821,12 @@ export async function handleApiRequest(
   }
   if (pathname === "/api/session") {
     return handlePostSession(request, env);
+  }
+  if (pathname === "/api/scheduled-posts" || pathname.startsWith("/api/scheduled-posts/")) {
+    return handleScheduledPosts(request, env, url);
+  }
+  if (pathname === "/api/connection-queue") {
+    return handleConnectionQueue(request, env);
   }
 
   return jsonResponse({ error: "Not Found" }, 404);

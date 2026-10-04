@@ -2,7 +2,7 @@
  * API types and global window definition for Desktop Renderer process.
  */
 
-import type { ConnectionRequestAction } from "./index";
+import type { ConnectionRequestAction, ScheduledPost } from "./index";
 export type { ScheduledPost, MediaAttachment, ScheduledPostStatus, AutomatedCommentWindow, ConnectionRequestAction } from "./index";
 
 export interface PendingAction {
@@ -121,6 +121,10 @@ export interface ElectronAPI {
   checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
   fetchNimModels?: (apiKey?: string) => Promise<{ success: boolean; models: string[]; error?: string }>;
   onRealtimeEvent?: (callback: (event: any) => void) => () => void;
+  fetchScheduledPosts?: () => Promise<ScheduledPost[]>;
+  saveScheduledPost?: (post: ScheduledPost) => Promise<ScheduledPost>;
+  deleteScheduledPost?: (id: string) => Promise<boolean>;
+  fetchConnectionQueue?: () => Promise<ConnectionRequestAction[]>;
 }
 
 declare global {

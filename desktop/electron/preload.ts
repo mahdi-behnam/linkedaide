@@ -11,6 +11,8 @@ import type {
   AgentState,
   DesktopSettings,
   ElectronAPI,
+  ScheduledPost,
+  ConnectionRequestAction,
 } from "./types";
 
 const api: ElectronAPI = {
@@ -85,6 +87,18 @@ const api: ElectronAPI = {
       ipcRenderer.removeListener("realtime:event", subscription);
     };
   },
+
+  fetchScheduledPosts: (): Promise<ScheduledPost[]> =>
+    ipcRenderer.invoke("api:fetchScheduledPosts"),
+
+  saveScheduledPost: (post: ScheduledPost): Promise<ScheduledPost> =>
+    ipcRenderer.invoke("api:saveScheduledPost", post),
+
+  deleteScheduledPost: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke("api:deleteScheduledPost", id),
+
+  fetchConnectionQueue: (): Promise<ConnectionRequestAction[]> =>
+    ipcRenderer.invoke("api:fetchConnectionQueue"),
 };
 
 contextBridge.exposeInMainWorld("api", api);
