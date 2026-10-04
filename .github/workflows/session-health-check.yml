@@ -55,6 +55,7 @@ jobs:
       - name: Execute Health Check Flow
         env:
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          SESSION_ENCRYPTION_KEY: ${{ secrets.SESSION_ENCRYPTION_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
           LINKEDIN_STORAGE_STATE_PATH: /tmp/runner_storage_state.json
