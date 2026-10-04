@@ -68,6 +68,7 @@ jobs:
           LINKEDIN_STORAGE_STATE_PATH: /tmp/runner_storage_state.json
           USER_FOCUS_AREAS: ${{ vars.USER_FOCUS_AREAS || '["AI Agents", "Python", "Distributed Systems"]' }}
           MAX_SUGGESTIONS_PER_RUN: ${{ vars.MAX_SUGGESTIONS_PER_RUN || 3 }}
+          MAX_CONNECTIONS_PER_DAY: ${{ vars.MAX_CONNECTIONS_PER_DAY || 10 }}
           DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || false }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID || vars.CLOUDFLARE_KV_NAMESPACE_ID }}
