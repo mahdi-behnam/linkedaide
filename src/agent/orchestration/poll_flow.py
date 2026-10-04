@@ -20,12 +20,26 @@ from agent.telegram.draft_editor import handle_draft_edit, handle_edit_callback
 
 logger = logging.getLogger("agent.orchestration.poll_flow")
 
+_last_offset: int | None = None
+
+
+def get_last_offset() -> int | None:
+    """Return the last tracked Telegram update offset."""
+    return _last_offset
+
+
+def set_last_offset(offset: int | None) -> None:
+    """Set or reset the tracked Telegram update offset."""
+    global _last_offset
+    _last_offset = offset
+
 
 async def run_poll_flow(
     settings: Settings | None = None,
     repo_root: Path | None = None,
     timeout_seconds: int = 20,
     telegram_client: TelegramClient | None = None,
+    offset: int | None = None,
 ) -> list[dict[str, Any]]:
     """Poll Telegram getUpdates for approvals, draft edits, and operator commands.
 
@@ -34,10 +48,12 @@ async def run_poll_flow(
         repo_root: Optional repository root path.
         timeout_seconds: Long polling timeout in seconds.
         telegram_client: Optional pre-constructed TelegramClient instance.
+        offset: Optional Telegram update offset to acknowledge processed updates.
 
     Returns:
         list[dict[str, Any]]: Execution outcomes and handled action records.
     """
+    global _last_offset
     cfg = settings or load_settings()
     root = repo_root or Path.cwd()
     state_store = get_state_store(settings=cfg, repo_root=root)
@@ -51,14 +67,19 @@ async def run_poll_flow(
 
     results: list[dict[str, Any]] = []
 
+    poll_params: dict[str, Any] = {
+        "timeout": timeout_seconds,
+        "allowed_updates": ["callback_query", "message"],
+    }
+    current_offset = offset if offset is not None else _last_offset
+    if current_offset is not None:
+        poll_params["offset"] = current_offset
+
     async with httpx.AsyncClient(timeout=timeout_seconds + 5) as client:
         try:
             resp = await client.get(
                 url,
-                params={
-                    "timeout": timeout_seconds,
-                    "allowed_updates": ["callback_query", "message"],
-                },
+                params=poll_params,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -66,11 +87,19 @@ async def run_poll_flow(
             logger.error("Failed to poll Telegram updates: %s", err)
             return results
 
+        updates = data.get("result", [])
+        update_ids = [
+            u["update_id"]
+            for u in updates
+            if isinstance(u, dict) and "update_id" in u and isinstance(u["update_id"], int)
+        ]
+        if update_ids:
+            _last_offset = max(update_ids) + 1
+
     tg = telegram_client or TelegramClient(cfg)
     cmd_handler = CommandHandler(settings=cfg, state_store=state_store, telegram=tg, repo_root=root)
 
     try:
-        updates = data.get("result", [])
         for update in updates:
             # 1. Process incoming messages (operator commands or draft editing replies)
             msg = update.get("message")

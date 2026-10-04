@@ -22,8 +22,12 @@ from agent.orchestration.health_check_flow import main as health_check_main
 from agent.orchestration.health_check_flow import run_health_check_flow
 from agent.orchestration.ideation_flow import main as ideation_main
 from agent.orchestration.ideation_flow import run_ideation_flow
-from agent.orchestration.poll_flow import main as poll_main
-from agent.orchestration.poll_flow import run_poll_flow
+from agent.orchestration.poll_flow import (
+    get_last_offset,
+    main as poll_main,
+    run_poll_flow,
+    set_last_offset,
+)
 from agent.orchestration.scout_flow import main as scout_main
 from agent.orchestration.scout_flow import run_scout_flow
 from agent.state.store import GitStateStore
@@ -826,6 +830,57 @@ def test_poll_flow_dunder_main(base_settings: Settings) -> None:
         with pytest.raises(SystemExit) as exc:
             runpy.run_module("agent.orchestration.poll_flow", run_name="__main__")
         assert exc.value.code == 0
+
+
+@pytest.mark.asyncio
+async def test_poll_flow_tracks_and_advances_offset(
+    test_repo: Path, base_settings: Settings
+) -> None:
+    set_last_offset(None)
+    sample_updates = {
+        "ok": True,
+        "result": [
+            {"update_id": 42, "message": {"text": "unrelated"}},
+            {"update_id": 45, "message": {"text": "unrelated"}},
+        ],
+    }
+
+    mock_resp = AsyncMock()
+    mock_resp.raise_for_status = lambda: None
+    mock_resp.json = lambda: sample_updates
+
+    with patch("httpx.AsyncClient.get", return_value=mock_resp) as mock_get:
+        await run_poll_flow(settings=base_settings, repo_root=test_repo)
+        # Verify first call had no offset
+        first_call_params = mock_get.call_args[1]["params"]
+        assert "offset" not in first_call_params
+        # Offset should advance to max(42, 45) + 1 = 46
+        assert get_last_offset() == 46
+
+        # Second poll should use tracked offset 46
+        await run_poll_flow(settings=base_settings, repo_root=test_repo)
+        second_call_params = mock_get.call_args[1]["params"]
+        assert second_call_params["offset"] == 46
+
+    set_last_offset(None)
+
+
+@pytest.mark.asyncio
+async def test_poll_flow_explicit_offset_override(
+    test_repo: Path, base_settings: Settings
+) -> None:
+    set_last_offset(10)
+    mock_resp = AsyncMock()
+    mock_resp.raise_for_status = lambda: None
+    mock_resp.json = lambda: {"ok": True, "result": []}
+
+    with patch("httpx.AsyncClient.get", return_value=mock_resp) as mock_get:
+        await run_poll_flow(settings=base_settings, repo_root=test_repo, offset=999)
+        call_params = mock_get.call_args[1]["params"]
+        assert call_params["offset"] == 999
+
+    set_last_offset(None)
+
 
 
 # ============================================================================
