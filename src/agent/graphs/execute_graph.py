@@ -10,7 +10,7 @@ from langgraph.graph import END, START, StateGraph
 
 from agent.errors import BotDetectionError, SessionExpiredError
 from agent.graphs.state import ExecuteState, get_graph_context
-from agent.models import HistoryEntry
+from agent.models import ActiveThreadRecord, HistoryEntry, PendingAction
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 
 
@@ -24,13 +24,28 @@ async def check_halted(state: ExecuteState, config: RunnableConfig) -> dict[str,
 
 
 async def load_pending(state: ExecuteState, config: RunnableConfig) -> dict[str, Any]:
-    """Load pending action from GitStateStore."""
+    """Load pending action from GitStateStore or fallback to connection candidate."""
     context = get_graph_context(config)
     if not context.state_store:
         return {"pending": None, "status": "missing"}
 
     item_id = state.get("item_id", "")
     pending = context.state_store.read_pending(item_id)
+    if pending is None:
+        # Check if item_id matches a connection request candidate
+        conn_candidate = context.state_store.read_connection_candidate(item_id)
+        if conn_candidate is not None:
+            pending = PendingAction(
+                item_id=conn_candidate.id,
+                action_type="approve_connection",
+                created_at=conn_candidate.created_at,
+                post_url=conn_candidate.profile_url,
+                author_name=conn_candidate.target_name,
+                author_headline=conn_candidate.target_headline,
+                draft_text=conn_candidate.note_text,
+                reasoning=conn_candidate.mutual_context,
+                telegram_chat_id=context.settings.telegram_authorized_chat_id,
+            )
     return {"pending": pending}
 
 
@@ -68,6 +83,8 @@ async def handle_rejection(state: ExecuteState, config: RunnableConfig) -> dict[
     if context.state_store:
         context.state_store.append_history(entry)
         context.state_store.delete_pending(item_id)
+        if pending and pending.action_type == "approve_connection":
+            context.state_store.update_connection_status(item_id, status="rejected")
 
     chat_id = state.get("telegram_chat_id") or (
         pending.telegram_chat_id if pending else context.settings.telegram_authorized_chat_id
@@ -116,6 +133,13 @@ async def validate_request(state: ExecuteState, config: RunnableConfig) -> dict[
                 if not can_exec:
                     return {
                         "error": reason or "Daily post cap reached",
+                        "status": "validation_failed_cap",
+                    }
+            elif pending.action_type == "approve_connection":
+                can_exec, reason = context.enforcer.can_execute_connection(counters)
+                if not can_exec:
+                    return {
+                        "error": reason or "Daily connection cap reached",
                         "status": "validation_failed_cap",
                     }
 
@@ -171,6 +195,12 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
                 reply_text=pending.draft_text,
                 item_id=pending.item_id,
             )
+        elif pending.action_type == "approve_connection":
+            result = await context.executor.send_connection_request(
+                profile_url=pending.post_url,
+                note_text=pending.draft_text or None,
+                item_id=pending.item_id,
+            )
         else:
             result = await context.executor.create_post(
                 post_text=pending.draft_text,
@@ -222,8 +252,26 @@ async def persist_success(state: ExecuteState, config: RunnableConfig) -> dict[s
         context.state_store.delete_pending(pending.item_id)
         if pending.action_type in ("approve_comment", "approve_reply"):
             context.state_store.increment_comment_count()
+            # If a top-level comment was successfully posted, save ActiveThreadRecord for thread monitoring
+            if (
+                pending.action_type == "approve_comment"
+                and outcome
+                and outcome.final_status == "executed_success"
+            ):
+                thread_record = ActiveThreadRecord(
+                    id=f"thread-{pending.item_id}",
+                    post_url=pending.post_url,
+                    post_urn=pending.post_urn,
+                    our_comment_urn=f"urn:li:comment:({pending.post_urn})",
+                    our_comment_text=pending.draft_text,
+                    post_author=pending.author_name,
+                )
+                context.state_store.save_active_thread(thread_record)
         elif pending.action_type == "approve_post":
             context.state_store.increment_post_count()
+        elif pending.action_type == "approve_connection":
+            context.state_store.increment_connection_count()
+            context.state_store.update_connection_status(pending.item_id, status="sent")
 
     return {}
 
@@ -242,6 +290,8 @@ async def notify_success(state: ExecuteState, config: RunnableConfig) -> dict[st
             outcome_text = "✅ Successfully posted to LinkedIn!"
         elif pending and pending.action_type == "approve_reply":
             outcome_text = "✅ Successfully replied to comment thread on LinkedIn!"
+        elif pending and pending.action_type == "approve_connection":
+            outcome_text = f"✅ Sent connection invitation to {pending.author_name}!"
         else:
             outcome_text = "✅ Successfully commented on LinkedIn post!"
         await context.telegram.edit_to_outcome(chat_id, msg_id, outcome_text)

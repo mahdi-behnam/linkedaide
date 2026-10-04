@@ -13,7 +13,7 @@ from pydantic import SecretStr
 from agent.config import Settings
 from agent.graphs.execute_graph import build_execute_graph
 from agent.graphs.state import ExecuteState, GraphContext
-from agent.models import ExecutionResult, PendingAction
+from agent.models import ConnectionRequestAction, ExecutionResult, PendingAction
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state.store import GitStateStore
 
@@ -83,6 +83,17 @@ def mock_context(test_repo: Path) -> GraphContext:
             item_id="reply1",
             comment_text="Sample reply",
             screenshot_path="path.png",
+            error=None,
+            executed_at=datetime.now(UTC),
+        )
+    )
+    executor.send_connection_request = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            action_type="approve_connection",
+            item_id="conn1",
+            comment_text="Note",
+            screenshot_path="conn.png",
             error=None,
             executed_at=datetime.now(UTC),
         )
@@ -288,4 +299,69 @@ async def test_execute_graph_approve_reply_cap_exceeded(mock_context: GraphConte
     assert result["status"] == "failed"
     assert "cap" in result["error"].lower()
     assert not mock_context.executor.post_thread_reply.called  # type: ignore[union-attr]
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_approve_connection_success(mock_context: GraphContext) -> None:
+    assert mock_context.state_store is not None
+    conn_candidate = ConnectionRequestAction(
+        id="conn1",
+        profile_url="https://linkedin.com/in/test-conn",
+        target_name="Bob Engineer",
+        note_text="Let's connect!",
+    )
+    mock_context.state_store.add_connection_candidate(conn_candidate)
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "conn1",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 506,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(
+        initial_state, config={"configurable": {"context": mock_context}}
+    )
+
+    assert result["status"] == "completed_success"
+    assert mock_context.executor.send_connection_request.called  # type: ignore[union-attr]
+    counters = mock_context.state_store.load_daily_counters()
+    assert counters.connections_sent == 1
+    mock_context.telegram.edit_to_outcome.assert_called_with(  # type: ignore[union-attr]
+        12345, 506, "✅ Sent connection invitation to Bob Engineer!"
+    )
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_approve_connection_cap_exceeded(mock_context: GraphContext) -> None:
+    assert mock_context.state_store is not None
+    counters = mock_context.state_store.load_daily_counters()
+    counters.connections_sent = 10  # cap is 10
+    mock_context.state_store.save_daily_counters(counters)
+
+    conn_candidate = ConnectionRequestAction(
+        id="conn2",
+        profile_url="https://linkedin.com/in/test-conn-2",
+        target_name="Alice Architect",
+        note_text="Hi Alice",
+    )
+    mock_context.state_store.add_connection_candidate(conn_candidate)
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "conn2",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 507,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(
+        initial_state, config={"configurable": {"context": mock_context}}
+    )
+
+    assert result["status"] == "failed"
+    assert "cap" in result["error"].lower()
+    assert not mock_context.executor.send_connection_request.called  # type: ignore[union-attr]
+
 

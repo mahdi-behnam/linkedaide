@@ -13,6 +13,7 @@ from agent.config import Settings
 from agent.llm.service import LLMService
 from agent.models import (
     CommentDraft,
+    ConnectionRequestAction,
     HistoryEntry,
     PendingAction,
     PostIdea,
@@ -32,6 +33,7 @@ class ScoutState(TypedDict, total=False):
     triage_results: list[tuple[PostRecord, TriageResult]]
     drafts: list[tuple[PostRecord, TriageResult, CommentDraft]]
     pending_items: list[PendingAction]
+    connection_candidates: list[ConnectionRequestAction]
     pruned_items: list[PendingAction]
     errors: list[str]
     halted_reason: str | None

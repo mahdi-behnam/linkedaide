@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -16,7 +17,13 @@ from agent.browser.url_utils import hashtag_to_feed_url
 from agent.config import Settings
 from agent.errors import BotDetectionError, ScrapeError, SessionExpiredError
 from agent.graphs.state import ScoutState, get_graph_context
-from agent.models import CommentDraft, PendingAction, PostRecord, TriageResult
+from agent.models import (
+    CommentDraft,
+    ConnectionRequestAction,
+    PendingAction,
+    PostRecord,
+    TriageResult,
+)
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 
 logger = logging.getLogger(__name__)
@@ -277,6 +284,7 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
 
     now = datetime.now(UTC)
     pending_items: list[PendingAction] = []
+    connection_candidates: list[ConnectionRequestAction] = []
 
     for post, triage, draft in top_candidates:
         item_id = hashlib.sha256(f"{post.post_urn}:{now.isoformat()}".encode()).hexdigest()[:8]
@@ -297,20 +305,41 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
         )
         pending_items.append(pending)
 
-    return {"pending_items": pending_items}
+        # Connection outreach candidate discovery
+        if post.author_name and post.author_name != "LinkedIn Member" and triage.confidence >= 0.7:
+            slug = re.sub(r"[^a-zA-Z0-9-]", "", post.author_name.lower().replace(" ", "-"))
+            profile_url = f"https://www.linkedin.com/in/{slug}/"
+            conn_id = f"conn-{hashlib.sha256(profile_url.encode()).hexdigest()[:8]}"
+            first_name = post.author_name.split()[0]
+            candidate = ConnectionRequestAction(
+                id=conn_id,
+                profile_url=profile_url,
+                target_name=post.author_name,
+                mutual_context=f"Interacted with {post.author_name}'s post on LinkedIn",
+                note_text=f"Hi {first_name}, I enjoyed your recent post on LinkedIn and would value connecting!",
+                status="pending",
+                created_at=now,
+            )
+            connection_candidates.append(candidate)
+
+    return {"pending_items": pending_items, "connection_candidates": connection_candidates}
 
 
 async def persist_state(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
-    """Persist new pending items and update seen hashes in durable state."""
+    """Persist new pending items, connection candidates, and update seen hashes in durable state."""
     context = get_graph_context(config)
     if not context.state_store:
         return {}
 
     pending_items = state.get("pending_items", [])
+    connection_candidates = state.get("connection_candidates", [])
     posts = state.get("posts", [])
 
     for item in pending_items:
         context.state_store.write_pending(item)
+
+    for candidate in connection_candidates:
+        context.state_store.add_connection_candidate(candidate)
 
     if posts:
         context.state_store.record_seen_posts(posts)

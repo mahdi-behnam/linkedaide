@@ -622,3 +622,53 @@ async def test_scout_graph_bot_detection_halts_immediately_multi_target(
     assert len(result.get("posts", [])) == 0
     assert telegram_mock is not None
     assert telegram_mock.send_notification.called
+
+
+@pytest.mark.asyncio
+async def test_scout_graph_connection_candidate_discovery(mock_context: GraphContext) -> None:
+    """Verify qualifying posts discover connection outreach candidates and persist them to connection_queue."""
+    now = datetime.now(UTC)
+    sample_posts = [
+        PostRecord(
+            post_urn="urn:li:activity:conn_disc_1",
+            post_url="https://www.linkedin.com/feed/update/urn:li:activity:conn_disc_1/",
+            author_name="Alice Engineer",
+            post_text="Deep dive into distributed systems and consensus!",
+            content_hash="hash_conn_disc_1",
+            scraped_at=now,
+        )
+    ]
+    scraper_mock: Any = mock_context.scraper
+    scraper_mock.scrape_feed = AsyncMock(return_value=sample_posts)
+
+    llm_mock: Any = mock_context.llm
+    llm_mock.evaluate_post = AsyncMock(
+        return_value=TriageResult(
+            recommendation="comment",
+            confidence=0.95,
+            reasoning="Strong technical post",
+            risk_flags=[],
+        )
+    )
+    llm_mock.draft_comment = AsyncMock(
+        return_value=CommentDraft(
+            draft_comment="Insightful thoughts on consensus protocols!",
+            topic_tags=["distributed-systems"],
+        )
+    )
+
+    graph = build_scout_graph()
+    result = await graph.ainvoke({}, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "completed"
+    candidates = result.get("connection_candidates", [])
+    assert len(candidates) > 0
+    assert candidates[0].target_name == "Alice Engineer"
+    assert "linkedin.com/in/" in candidates[0].profile_url
+
+    # Verify persisted in state_store connection_queue
+    assert mock_context.state_store is not None
+    queue = mock_context.state_store.load_connection_queue()
+    assert len(queue) > 0
+    assert queue[0].target_name == "Alice Engineer"
+    assert queue[0].status == "pending"
