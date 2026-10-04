@@ -76,7 +76,7 @@ export interface DailyQuota {
 export interface AuditEntry {
   id: string;
   itemId: string;
-  actionType: "comment" | "post";
+  actionType: "comment" | "post" | "connection" | "reply";
   status: HistoryStatus;
   decidedAt: string;
   executedAt?: string;

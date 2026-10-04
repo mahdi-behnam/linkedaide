@@ -161,16 +161,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setAuditEntries([]);
         } else {
           setAuditEntries(
-            state.history.map((h, i) => ({
-              id: `hist-${h.item_id || i}`,
-              itemId: h.item_id || `item-${i}`,
-              actionType: (h.action_type?.includes("post") ? "post" : "comment") as "post" | "comment",
-              status: (h.final_status as any) || "executed_success",
-              decidedAt: h.decided_at || new Date().toISOString(),
-              executedAt: h.executed_at || undefined,
-              screenshotPath: h.screenshot_path || undefined,
-              error: h.error || undefined,
-            }))
+            state.history.map((h, i) => {
+              const rawType = (h.action_type || "").toLowerCase();
+              const actionType: "comment" | "post" | "connection" | "reply" =
+                rawType.includes("conn")
+                  ? "connection"
+                  : rawType.includes("reply")
+                    ? "reply"
+                    : rawType.includes("post")
+                      ? "post"
+                      : "comment";
+              return {
+                id: `hist-${h.item_id || i}`,
+                itemId: h.item_id || `item-${i}`,
+                actionType,
+                status: (h.final_status as any) || "executed_success",
+                decidedAt: h.decided_at || new Date().toISOString(),
+                executedAt: h.executed_at || undefined,
+                screenshotPath: h.screenshot_path || undefined,
+                error: h.error || undefined,
+              };
+            })
           );
         }
       }

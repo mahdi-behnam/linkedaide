@@ -226,7 +226,9 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
           >
             <option value="all">All Types</option>
             <option value="comment">Comments</option>
+            <option value="reply">Replies</option>
             <option value="post">Posts</option>
+            <option value="connection">Connections</option>
           </select>
         </div>
 
