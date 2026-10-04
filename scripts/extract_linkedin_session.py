@@ -52,11 +52,12 @@ async def extract_session(
 
         print("Login detected! Capturing storage state...")
         temp_state_file = Path("temp_storage_state.json")
-        await context.storage_state(path=str(temp_state_file))
-        await browser.close()
-
-        raw_bytes = temp_state_file.read_bytes()
-        temp_state_file.unlink(missing_ok=True)
+        try:
+            await context.storage_state(path=str(temp_state_file))
+            raw_bytes = temp_state_file.read_bytes()
+        finally:
+            temp_state_file.unlink(missing_ok=True)
+            await browser.close()
 
         # Save local storage state for immediate local workstation use
         local_storage_file = Path("storage_state.json")
