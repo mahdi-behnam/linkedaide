@@ -8,9 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from agent.models import (
-    ActiveThreadRecord,
     PendingAction,
-    ThreadReplyItem,
 )
 
 if TYPE_CHECKING:

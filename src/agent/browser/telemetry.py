@@ -5,18 +5,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-import urllib.parse
 from datetime import UTC, datetime
-from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
-
 if TYPE_CHECKING:
     from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 from agent.browser.telemetry_sanitizer import (
     EMAIL_REGEX,
@@ -34,6 +28,8 @@ from agent.browser.telemetry_sanitizer import (
     sanitize_text,
     sanitize_url,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def capture_dom_telemetry(
@@ -104,13 +100,13 @@ async def capture_dom_telemetry(
                 asyncio.shield(eval_task),
                 timeout=timeout_seconds,
             )
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError as err:
             eval_task.cancel()
             try:
                 await eval_task
             except (asyncio.CancelledError, Exception):
                 pass
-            raise TimeoutError(f"DOM telemetry capture timed out after {timeout_seconds}s")
+            raise TimeoutError(f"DOM telemetry capture timed out after {timeout_seconds}s") from err
         except asyncio.CancelledError:
             eval_task.cancel()
             try:

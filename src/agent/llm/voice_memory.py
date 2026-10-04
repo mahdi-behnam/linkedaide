@@ -13,14 +13,11 @@ from __future__ import annotations
 import json
 import logging
 import math
-import re
 from pathlib import Path
 from typing import Any
 
 import yaml
 from langchain_core.embeddings import Embeddings
-
-logger = logging.getLogger(__name__)
 
 from agent.llm.voice_defaults import (
     DEFAULT_PROFILE,
@@ -30,6 +27,8 @@ from agent.llm.voice_defaults import (
     cosine_similarity,
     tokenize,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class VoiceMemoryStore:

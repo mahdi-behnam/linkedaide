@@ -23,9 +23,7 @@ class PendingAction(BaseModel):
     item_id: str = Field(description="Unique deterministic identifier for the pending item")
     action_type: Literal[
         "approve_comment", "approve_post", "approve_reply", "approve_connection"
-    ] = Field(
-        description="Type of action requiring approval"
-    )
+    ] = Field(description="Type of action requiring approval")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="UTC timestamp when the suggestion was created",

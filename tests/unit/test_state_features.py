@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -144,9 +142,7 @@ class TestCloudflareKVStateStoreFeatures:
         store._list_keys = MagicMock(side_effect=mock_list)  # type: ignore[method-assign]
         return store
 
-    def test_kv_connection_queue_operations(
-        self, mock_kv_store: CloudflareKVStateStore
-    ) -> None:
+    def test_kv_connection_queue_operations(self, mock_kv_store: CloudflareKVStateStore) -> None:
         assert mock_kv_store.load_connection_queue() == []
 
         cand = ConnectionCandidate(
@@ -164,9 +160,7 @@ class TestCloudflareKVStateStoreFeatures:
         assert cand_updated is not None
         assert cand_updated.status == "approved"
 
-    def test_kv_scheduled_posts_operations(
-        self, mock_kv_store: CloudflareKVStateStore
-    ) -> None:
+    def test_kv_scheduled_posts_operations(self, mock_kv_store: CloudflareKVStateStore) -> None:
         assert mock_kv_store.list_scheduled_posts() == []
 
         post = ScheduledPost(
@@ -183,9 +177,7 @@ class TestCloudflareKVStateStoreFeatures:
         assert deleted is True
         assert mock_kv_store.read_scheduled_post("kv_post_1") is None
 
-    def test_kv_active_threads_operations(
-        self, mock_kv_store: CloudflareKVStateStore
-    ) -> None:
+    def test_kv_active_threads_operations(self, mock_kv_store: CloudflareKVStateStore) -> None:
         assert mock_kv_store.list_active_threads() == []
 
         thread = ActiveThreadRecord(

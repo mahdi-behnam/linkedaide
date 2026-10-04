@@ -494,7 +494,9 @@ class CloudflareKVStateStore(BaseStateStore):
         for idx, item in enumerate(threads):
             if item.id == thread.id:
                 threads[idx] = thread
-                self._put_value("active_threads", json.dumps([t.model_dump(mode="json") for t in threads]))
+                self._put_value(
+                    "active_threads", json.dumps([t.model_dump(mode="json") for t in threads])
+                )
                 return
         threads.append(thread)
         self._put_value("active_threads", json.dumps([t.model_dump(mode="json") for t in threads]))
@@ -505,5 +507,7 @@ class CloudflareKVStateStore(BaseStateStore):
         for idx, item in enumerate(threads):
             if item.id == thread_id:
                 threads[idx] = item.model_copy(update={"status": status})
-                self._put_value("active_threads", json.dumps([t.model_dump(mode="json") for t in threads]))
+                self._put_value(
+                    "active_threads", json.dumps([t.model_dump(mode="json") for t in threads])
+                )
                 return

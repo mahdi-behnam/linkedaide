@@ -24,9 +24,11 @@ from agent.orchestration.ideation_flow import main as ideation_main
 from agent.orchestration.ideation_flow import run_ideation_flow
 from agent.orchestration.poll_flow import (
     get_last_offset,
-    main as poll_main,
     run_poll_flow,
     set_last_offset,
+)
+from agent.orchestration.poll_flow import (
+    main as poll_main,
 )
 from agent.orchestration.scout_flow import main as scout_main
 from agent.orchestration.scout_flow import run_scout_flow
@@ -866,9 +868,7 @@ async def test_poll_flow_tracks_and_advances_offset(
 
 
 @pytest.mark.asyncio
-async def test_poll_flow_explicit_offset_override(
-    test_repo: Path, base_settings: Settings
-) -> None:
+async def test_poll_flow_explicit_offset_override(test_repo: Path, base_settings: Settings) -> None:
     set_last_offset(10)
     mock_resp = AsyncMock()
     mock_resp.raise_for_status = lambda: None
@@ -880,7 +880,6 @@ async def test_poll_flow_explicit_offset_override(
         assert call_params["offset"] == 999
 
     set_last_offset(None)
-
 
 
 # ============================================================================

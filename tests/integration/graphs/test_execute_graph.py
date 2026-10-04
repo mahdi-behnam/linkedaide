@@ -320,9 +320,7 @@ async def test_execute_graph_approve_connection_success(mock_context: GraphConte
     }
 
     graph = build_execute_graph()
-    result = await graph.ainvoke(
-        initial_state, config={"configurable": {"context": mock_context}}
-    )
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
 
     assert result["status"] == "completed_success"
     assert mock_context.executor.send_connection_request.called  # type: ignore[union-attr]
@@ -356,12 +354,8 @@ async def test_execute_graph_approve_connection_cap_exceeded(mock_context: Graph
     }
 
     graph = build_execute_graph()
-    result = await graph.ainvoke(
-        initial_state, config={"configurable": {"context": mock_context}}
-    )
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
 
     assert result["status"] == "failed"
     assert "cap" in result["error"].lower()
     assert not mock_context.executor.send_connection_request.called  # type: ignore[union-attr]
-
-

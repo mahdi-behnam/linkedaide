@@ -200,6 +200,7 @@ class BaseStateStore(ABC):
         """Load pending connection request candidates."""
         return []
 
+    @abstractmethod
     def save_connection_queue(self, queue: list[ConnectionRequestAction]) -> None:
         """Save list of connection request candidates."""
         pass
@@ -241,7 +242,9 @@ class BaseStateStore(ABC):
                         "status": status,
                         "approved_at": approved_at
                         or (datetime.now(UTC) if status == "approved" else item.approved_at),
-                        "note_text": effective_note if effective_note is not None else item.note_text,
+                        "note_text": effective_note
+                        if effective_note is not None
+                        else item.note_text,
                     }
                 )
                 queue[idx] = updated
@@ -255,6 +258,7 @@ class BaseStateStore(ABC):
     # Scheduled Posts (Post Composer Studio)
     # -------------------------------------------------------------------------
 
+    @abstractmethod
     def save_scheduled_post(self, post: ScheduledPost) -> None:
         """Persist a scheduled post to the state store."""
         pass
@@ -279,10 +283,12 @@ class BaseStateStore(ABC):
         """List active multi-turn comment threads being monitored."""
         return []
 
+    @abstractmethod
     def save_active_thread(self, thread: ActiveThreadRecord) -> None:
         """Persist an active comment thread record."""
         pass
 
+    @abstractmethod
     def update_thread_status(self, thread_id: str, status: str) -> None:
         """Update lifecycle status of an active comment thread."""
         pass
