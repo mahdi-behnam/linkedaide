@@ -10,7 +10,15 @@ from pathlib import Path
 from typing import Any
 
 from agent.errors import StateStoreError
-from agent.models import DailyCounters, HistoryEntry, PendingAction, PostRecord
+from agent.models import (
+    ActiveThreadRecord,
+    ConnectionRequestAction,
+    DailyCounters,
+    HistoryEntry,
+    PendingAction,
+    PostRecord,
+    ScheduledPost,
+)
 from agent.state.base import BaseStateStore
 
 
@@ -21,17 +29,21 @@ class GitStateStore(BaseStateStore):
         self.repo_root = Path(repo_root).resolve()
         self.state_dir = self.repo_root / "state"
         self.pending_dir = self.state_dir / "pending"
+        self.scheduled_dir = self.state_dir / "scheduled"
         self.seen_posts_path = self.state_dir / "seen_posts.json"
         self.history_path = self.state_dir / "history.jsonl"
         self.daily_counters_path = self.state_dir / "daily_counters.json"
         self.incident_path = self.state_dir / "incident.json"
         self.pause_path = self.state_dir / "paused.json"
+        self.connection_queue_path = self.state_dir / "connection_queue.json"
+        self.active_threads_path = self.state_dir / "active_threads.json"
 
         self._ensure_dirs()
 
     def _ensure_dirs(self) -> None:
         """Ensure state directories exist."""
         self.pending_dir.mkdir(parents=True, exist_ok=True)
+        self.scheduled_dir.mkdir(parents=True, exist_ok=True)
 
     def _atomic_write_json(self, target_path: Path, data: Any, indent: int = 2) -> None:
         """Write JSON data to a target path atomically via a temporary file."""
@@ -541,3 +553,107 @@ class GitStateStore(BaseStateStore):
         if json_path.exists():
             return json_path.read_text(encoding="utf-8")
         return None
+
+    # -------------------------------------------------------------------------
+    # Connection Outreach Queue
+    # -------------------------------------------------------------------------
+
+    def load_connection_queue(self) -> list[ConnectionRequestAction]:
+        """Load pending connection request candidates from state/connection_queue.json."""
+        if not self.connection_queue_path.exists():
+            return []
+        try:
+            raw = json.loads(self.connection_queue_path.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                return [ConnectionRequestAction.model_validate(item) for item in raw]
+            return []
+        except Exception:
+            return []
+
+    def save_connection_queue(self, queue: list[ConnectionRequestAction]) -> None:
+        """Persist list of connection candidates to state/connection_queue.json."""
+        payload = [item.model_dump(mode="json") for item in queue]
+        self._atomic_write_json(self.connection_queue_path, payload)
+
+    # -------------------------------------------------------------------------
+    # Scheduled Posts (Post Composer Studio)
+    # -------------------------------------------------------------------------
+
+    def save_scheduled_post(self, post: ScheduledPost) -> None:
+        """Persist a scheduled post to state/scheduled/{post_id}.json."""
+        target_path = self.scheduled_dir / f"{post.id}.json"
+        self._atomic_write_json(target_path, post.model_dump(mode="json"))
+
+    def read_scheduled_post(self, post_id: str) -> ScheduledPost | None:
+        """Retrieve a scheduled post by ID from state/scheduled/{post_id}.json."""
+        target_path = self.scheduled_dir / f"{post_id}.json"
+        if not target_path.exists():
+            return None
+        try:
+            raw = json.loads(target_path.read_text(encoding="utf-8"))
+            return ScheduledPost.model_validate(raw)
+        except Exception as err:
+            raise StateStoreError(f"Failed to read scheduled post {post_id}: {err}") from err
+
+    def list_scheduled_posts(self) -> list[ScheduledPost]:
+        """List all current scheduled posts sorted by creation time."""
+        results: list[ScheduledPost] = []
+        if not self.scheduled_dir.exists():
+            return results
+        for file_path in self.scheduled_dir.glob("*.json"):
+            if file_path.name.startswith("."):
+                continue
+            try:
+                raw = json.loads(file_path.read_text(encoding="utf-8"))
+                results.append(ScheduledPost.model_validate(raw))
+            except Exception:
+                continue
+        results.sort(key=lambda x: str(x.created_at))
+        return results
+
+    def delete_scheduled_post(self, post_id: str) -> bool:
+        """Delete a scheduled post file. Returns True if deleted."""
+        target_path = self.scheduled_dir / f"{post_id}.json"
+        if target_path.exists():
+            target_path.unlink()
+            return True
+        return False
+
+    # -------------------------------------------------------------------------
+    # Active Threads (Comment Thread Monitoring)
+    # -------------------------------------------------------------------------
+
+    def list_active_threads(self) -> list[ActiveThreadRecord]:
+        """List active comment threads from state/active_threads.json."""
+        if not self.active_threads_path.exists():
+            return []
+        try:
+            raw = json.loads(self.active_threads_path.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                return [ActiveThreadRecord.model_validate(item) for item in raw]
+            return []
+        except Exception:
+            return []
+
+    def save_active_thread(self, thread: ActiveThreadRecord) -> None:
+        """Persist or update an active comment thread record in state/active_threads.json."""
+        threads = self.list_active_threads()
+        for idx, item in enumerate(threads):
+            if item.id == thread.id:
+                threads[idx] = thread
+                payload = [t.model_dump(mode="json") for t in threads]
+                self._atomic_write_json(self.active_threads_path, payload)
+                return
+        threads.append(thread)
+        payload = [t.model_dump(mode="json") for t in threads]
+        self._atomic_write_json(self.active_threads_path, payload)
+
+    def update_thread_status(self, thread_id: str, status: str) -> None:
+        """Update status of an active thread in state/active_threads.json."""
+        threads = self.list_active_threads()
+        for idx, item in enumerate(threads):
+            if item.id == thread_id:
+                threads[idx] = item.model_copy(update={"status": status})
+                payload = [t.model_dump(mode="json") for t in threads]
+                self._atomic_write_json(self.active_threads_path, payload)
+                return

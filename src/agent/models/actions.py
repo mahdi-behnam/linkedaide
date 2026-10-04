@@ -21,7 +21,9 @@ class PendingAction(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     item_id: str = Field(description="Unique deterministic identifier for the pending item")
-    action_type: Literal["approve_comment", "approve_post", "approve_reply"] = Field(
+    action_type: Literal[
+        "approve_comment", "approve_post", "approve_reply", "approve_connection"
+    ] = Field(
         description="Type of action requiring approval"
     )
     created_at: datetime = Field(
@@ -125,3 +127,7 @@ class ConnectionRequestAction(BaseModel):
         default=None,
         description="UTC timestamp when the connection request was approved",
     )
+
+
+# Type alias for backward compatibility and outreach queue terminology
+ConnectionCandidate = ConnectionRequestAction

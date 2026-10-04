@@ -18,6 +18,8 @@ ACTION_CODE_APPROVE_POST = "ap"
 ACTION_CODE_REJECT_POST = "rp"
 ACTION_CODE_APPROVE_REPLY = "ar"
 ACTION_CODE_REJECT_REPLY = "rr"
+ACTION_CODE_APPROVE_CONNECTION = "acon"
+ACTION_CODE_REJECT_CONNECTION = "rcon"
 ACTION_CODE_EDIT = "ed"
 ACTION_CODE_REGENERATE = "reg"
 
@@ -28,6 +30,8 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_REJECT_POST: "reject_post",
     ACTION_CODE_APPROVE_REPLY: "approve_reply",
     ACTION_CODE_REJECT_REPLY: "reject_reply",
+    ACTION_CODE_APPROVE_CONNECTION: "approve_connection",
+    ACTION_CODE_REJECT_CONNECTION: "reject_connection",
     ACTION_CODE_EDIT: "edit",
     ACTION_CODE_REGENERATE: "regenerate",
     "edit": "edit",
@@ -38,8 +42,12 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     "rej": "reject_comment",
     "approve_reply": "approve_reply",
     "reject_reply": "reject_reply",
+    "approve_connection": "approve_connection",
+    "reject_connection": "reject_connection",
     "ar": "approve_reply",
     "rr": "reject_reply",
+    "acon": "approve_connection",
+    "rcon": "reject_connection",
 }
 
 REVERSE_ACTION_MAP: dict[str, str] = {
@@ -49,6 +57,8 @@ REVERSE_ACTION_MAP: dict[str, str] = {
     "reject_post": ACTION_CODE_REJECT_POST,
     "approve_reply": ACTION_CODE_APPROVE_REPLY,
     "reject_reply": ACTION_CODE_REJECT_REPLY,
+    "approve_connection": ACTION_CODE_APPROVE_CONNECTION,
+    "reject_connection": ACTION_CODE_REJECT_CONNECTION,
     "edit": ACTION_CODE_EDIT,
     "ed": ACTION_CODE_EDIT,
     "regenerate": ACTION_CODE_REGENERATE,
@@ -106,11 +116,14 @@ class CallbackDataPayload(BaseModel):
             ACTION_CODE_APPROVE_COMMENT,
             ACTION_CODE_APPROVE_POST,
             ACTION_CODE_APPROVE_REPLY,
+            ACTION_CODE_APPROVE_CONNECTION,
             "approve_comment",
             "approve_post",
             "approve_reply",
+            "approve_connection",
             "apv",
             "ar",
+            "acon",
         )
 
     @property
@@ -120,11 +133,14 @@ class CallbackDataPayload(BaseModel):
             ACTION_CODE_REJECT_COMMENT,
             ACTION_CODE_REJECT_POST,
             ACTION_CODE_REJECT_REPLY,
+            ACTION_CODE_REJECT_CONNECTION,
             "reject_comment",
             "reject_post",
             "reject_reply",
+            "reject_connection",
             "rej",
             "rr",
+            "rcon",
         )
 
     @property

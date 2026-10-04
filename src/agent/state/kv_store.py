@@ -12,7 +12,15 @@ import httpx
 from pydantic import SecretStr
 
 from agent.errors import ConfigError, StateStoreError
-from agent.models import DailyCounters, HistoryEntry, PendingAction, PostRecord
+from agent.models import (
+    ActiveThreadRecord,
+    ConnectionRequestAction,
+    DailyCounters,
+    HistoryEntry,
+    PendingAction,
+    PostRecord,
+    ScheduledPost,
+)
 from agent.state.base import BaseStateStore
 
 logger = logging.getLogger("agent.state.kv_store")
@@ -388,3 +396,114 @@ class CloudflareKVStateStore(BaseStateStore):
     def get_key(self, key: str) -> str | None:
         """Retrieve string value for key from Cloudflare KV."""
         return self._get_value(key)
+
+    # -------------------------------------------------------------------------
+    # Connection Outreach Queue
+    # -------------------------------------------------------------------------
+
+    def load_connection_queue(self) -> list[ConnectionRequestAction]:
+        """Load pending connection request candidates from KV key connection_queue."""
+        raw = self._get_value("connection_queue")
+        if raw is None:
+            return []
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [ConnectionRequestAction.model_validate(item) for item in parsed]
+            return []
+        except Exception:
+            return []
+
+    def save_connection_queue(self, queue: list[ConnectionRequestAction]) -> None:
+        """Persist list of connection candidates to KV key connection_queue."""
+        payload = json.dumps([c.model_dump(mode="json") for c in queue])
+        self._put_value("connection_queue", payload)
+
+    # -------------------------------------------------------------------------
+    # Scheduled Posts (Post Composer Studio)
+    # -------------------------------------------------------------------------
+
+    def save_scheduled_post(self, post: ScheduledPost) -> None:
+        """Persist a scheduled post to KV keys scheduled:{post.id} and scheduled_posts."""
+        payload = json.dumps(post.model_dump(mode="json"))
+        self._put_value(f"scheduled:{post.id}", payload)
+        posts = self.list_scheduled_posts()
+        updated = [p for p in posts if p.id != post.id]
+        updated.append(post)
+        self._put_value("scheduled_posts", json.dumps([p.model_dump(mode="json") for p in updated]))
+
+    def read_scheduled_post(self, post_id: str) -> ScheduledPost | None:
+        """Retrieve a scheduled post by ID from KV key scheduled:{post_id}."""
+        raw = self._get_value(f"scheduled:{post_id}")
+        if raw is None:
+            return None
+        try:
+            return ScheduledPost.model_validate(json.loads(raw))
+        except Exception as err:
+            raise StateStoreError(f"Failed to parse scheduled post {post_id}: {err}") from err
+
+    def list_scheduled_posts(self) -> list[ScheduledPost]:
+        """List all current scheduled posts from KV."""
+        raw = self._get_value("scheduled_posts")
+        if raw:
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    return [ScheduledPost.model_validate(p) for p in parsed]
+            except Exception:
+                pass
+        keys = self._list_keys("scheduled:")
+        posts: list[ScheduledPost] = []
+        for k in keys:
+            val = self._get_value(k)
+            if val:
+                try:
+                    posts.append(ScheduledPost.model_validate(json.loads(val)))
+                except Exception:
+                    continue
+        return posts
+
+    def delete_scheduled_post(self, post_id: str) -> bool:
+        """Delete a scheduled post from KV."""
+        deleted = self._delete_key(f"scheduled:{post_id}")
+        posts = self.list_scheduled_posts()
+        updated = [p for p in posts if p.id != post_id]
+        self._put_value("scheduled_posts", json.dumps([p.model_dump(mode="json") for p in updated]))
+        return deleted
+
+    # -------------------------------------------------------------------------
+    # Active Threads (Comment Thread Monitoring)
+    # -------------------------------------------------------------------------
+
+    def list_active_threads(self) -> list[ActiveThreadRecord]:
+        """List active comment threads from KV key active_threads."""
+        raw = self._get_value("active_threads")
+        if raw is None:
+            return []
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [ActiveThreadRecord.model_validate(item) for item in parsed]
+            return []
+        except Exception:
+            return []
+
+    def save_active_thread(self, thread: ActiveThreadRecord) -> None:
+        """Persist or update an active comment thread in KV key active_threads."""
+        threads = self.list_active_threads()
+        for idx, item in enumerate(threads):
+            if item.id == thread.id:
+                threads[idx] = thread
+                self._put_value("active_threads", json.dumps([t.model_dump(mode="json") for t in threads]))
+                return
+        threads.append(thread)
+        self._put_value("active_threads", json.dumps([t.model_dump(mode="json") for t in threads]))
+
+    def update_thread_status(self, thread_id: str, status: str) -> None:
+        """Update lifecycle status of an active thread in KV key active_threads."""
+        threads = self.list_active_threads()
+        for idx, item in enumerate(threads):
+            if item.id == thread_id:
+                threads[idx] = item.model_copy(update={"status": status})
+                self._put_value("active_threads", json.dumps([t.model_dump(mode="json") for t in threads]))
+                return
