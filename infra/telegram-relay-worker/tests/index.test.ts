@@ -972,6 +972,199 @@ describe("Telegram Relay Worker", () => {
         expect(data.command).toBe("clear_incident");
         expect(kvStore.has("incident")).toBe(false);
       });
+
+      it("handles /help and /start commands returning operator command reference", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const req = makeRequest({
+          update_id: 105,
+          message: {
+            message_id: 204,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/help",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("help");
+
+        const sendCall = fetchMock.mock.calls.find(([url]) => url.includes("/sendMessage"));
+        expect(sendCall).toBeDefined();
+        const payload = JSON.parse(sendCall![1].body);
+        expect(payload.text).toContain("LinkedIn HITL Agent - Operator Commands");
+        expect(payload.text).toContain("/status");
+        expect(payload.text).toContain("/pending");
+        expect(payload.text).toContain("/stats");
+        expect(payload.text).toContain("/tone");
+      });
+
+      it("handles /stats command displaying daily counts and historical success metrics", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "daily_counters",
+          JSON.stringify({
+            date: "2026-10-05",
+            comments_executed: 4,
+            posts_executed: 2,
+            connections_sent: 5,
+            suggestions_sent: 12,
+          })
+        );
+        kvStore.set(
+          "history",
+          JSON.stringify([
+            { item_id: "h1", final_status: "executed_success" },
+            { item_id: "h2", final_status: "executed_success" },
+            { item_id: "h3", final_status: "rejected" },
+            { item_id: "h4", final_status: "expired" },
+          ])
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 106,
+          message: {
+            message_id: 205,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/stats",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("stats");
+
+        const sendCall = fetchMock.mock.calls.find(([url]) => url.includes("/sendMessage"));
+        expect(sendCall).toBeDefined();
+        const payload = JSON.parse(sendCall![1].body);
+        expect(payload.text).toContain("Agent Performance &amp; Execution Stats");
+        expect(payload.text).toContain("Comments Published:</b> 4");
+        expect(payload.text).toContain("Connections Sent:</b> 5");
+        expect(payload.text).toContain("Executed Actions:</b> 2");
+        expect(payload.text).toContain("Operator Rejections:</b> 1");
+        expect(payload.text).toContain("66.7%"); // 2 / (2 + 1)
+      });
+
+      it("handles /pending command when queue is empty", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const mockKv = {
+          list: vi.fn(async () => ({ keys: [] })),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 107,
+          message: {
+            message_id: 206,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/pending",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("pending");
+        expect(data.count).toBe(0);
+
+        const sendCall = fetchMock.mock.calls.find(([url]) => url.includes("/sendMessage"));
+        expect(sendCall).toBeDefined();
+        const payload = JSON.parse(sendCall![1].body);
+        expect(payload.text).toContain("No Pending Actions");
+      });
+
+      it("handles /pending command when items are awaiting review in KV", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_c1",
+          JSON.stringify({
+            item_id: "item_c1",
+            action_type: "comment",
+            author: "Alice Researcher",
+            draft_text: "Deterministic state machines avoid unbounded agent execution loops.",
+          })
+        );
+        kvStore.set(
+          "pending:item_conn1",
+          JSON.stringify({
+            item_id: "item_conn1",
+            action_type: "connect",
+            recipient_name: "Bob Founder",
+            note: "Loved your recent deep dive on LLM safety guardrails.",
+          })
+        );
+
+        const mockKv = {
+          list: vi.fn(async () => ({
+            keys: [{ name: "pending:item_c1" }, { name: "pending:item_conn1" }],
+          })),
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 108,
+          message: {
+            message_id: 207,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/pending",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("command_handled");
+        expect(data.command).toBe("pending");
+        expect(data.count).toBe(2);
+
+        const sendCall = fetchMock.mock.calls.find(([url]) => url.includes("/sendMessage"));
+        expect(sendCall).toBeDefined();
+        const payload = JSON.parse(sendCall![1].body);
+        expect(payload.text).toContain("Pending Approval Queue (2)");
+        expect(payload.text).toContain("Alice Researcher");
+        expect(payload.text).toContain("Bob Founder");
+        expect(payload.text).toContain("item_c1");
+        expect(payload.text).toContain("item_conn1");
+      });
     });
 
     describe("Interactive Draft Edits & Tone Regenerations", () => {

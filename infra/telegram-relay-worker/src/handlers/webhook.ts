@@ -408,6 +408,145 @@ export async function handleTelegramWebhook(
           JSON.stringify({ status: "command_handled", command: "clear_incident" }),
           { headers: { "Content-Type": "application/json" } }
         );
+      } else if (cmdToken === "help" || cmdToken === "start") {
+        const helpMsg =
+          `🤖 <b>LinkedIn HITL Agent - Operator Commands</b>\n\n` +
+          `<b>Control &amp; Monitoring:</b>\n` +
+          `• <code>/status</code> — Current system health, circuit breaker &amp; daily counts\n` +
+          `• <code>/pending</code> — Summary list of actions waiting for approval\n` +
+          `• <code>/stats</code> — Daily activity &amp; all-time execution statistics\n` +
+          `• <code>/pause</code> — Suspend scouting &amp; execution workflows\n` +
+          `• <code>/resume</code> — Unpause and resume normal workflows\n` +
+          `• <code>/clear_incident</code> — Reset tripped circuit breaker\n\n` +
+          `<b>Draft Editing &amp; Tone:</b>\n` +
+          `• <code>/edit &lt;item_id&gt; &lt;text&gt;</code> — Replace draft text for an item\n` +
+          `• <code>/tone &lt;item_id&gt; &lt;tone&gt;</code> — Rewrite draft with AI (${VALID_TONES.join(", ")})\n` +
+          `• <i>Tip: You can also reply directly to any suggestion card with your revised draft or tone name!</i>`;
+
+        await sendTelegramMessage(env, chatId, helpMsg, messageId);
+        return new Response(JSON.stringify({ status: "command_handled", command: "help" }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } else if (cmdToken === "stats") {
+        let commentsExecuted = 0;
+        let postsExecuted = 0;
+        let connectionsSent = 0;
+        let suggestionsSent = 0;
+        let counterDate = "";
+        let historyEntries: Array<Record<string, unknown>> = [];
+
+        if (env.LINKEDIN_AGENT_KV) {
+          const rawCounters = await env.LINKEDIN_AGENT_KV.get("daily_counters");
+          if (rawCounters) {
+            try {
+              const c = JSON.parse(rawCounters);
+              commentsExecuted = c.comments_executed ?? 0;
+              postsExecuted = c.posts_executed ?? 0;
+              connectionsSent = c.connections_sent ?? 0;
+              suggestionsSent = c.suggestions_sent ?? 0;
+              counterDate = c.date ?? "";
+            } catch {}
+          }
+          const rawHistory = await env.LINKEDIN_AGENT_KV.get("history");
+          if (rawHistory) {
+            try {
+              const h = JSON.parse(rawHistory);
+              if (Array.isArray(h)) historyEntries = h;
+            } catch {}
+          }
+        }
+
+        let successCount = 0;
+        let rejectedCount = 0;
+        let failedCount = 0;
+
+        for (const entry of historyEntries) {
+          const status = entry.final_status;
+          if (status === "executed_success") successCount++;
+          else if (status === "rejected") rejectedCount++;
+          else if (status === "expired" || status === "executed_failed" || status === "halted") {
+            failedCount++;
+          }
+        }
+
+        const totalDecided = successCount + rejectedCount;
+        const approvalRate =
+          totalDecided > 0 ? `${((successCount / totalDecided) * 100).toFixed(1)}%` : "N/A";
+
+        const statsMsg =
+          `📊 <b>Agent Performance &amp; Execution Stats</b>\n\n` +
+          `📅 <b>Today's Counters${counterDate ? ` (${counterDate})` : ""}</b>\n` +
+          `• <b>Suggestions Sent:</b> ${suggestionsSent}\n` +
+          `• <b>Comments Published:</b> ${commentsExecuted}\n` +
+          `• <b>Posts Published:</b> ${postsExecuted}\n` +
+          `• <b>Connections Sent:</b> ${connectionsSent}\n\n` +
+          `📈 <b>All-Time History (${historyEntries.length} records)</b>\n` +
+          `• <b>Executed Actions:</b> ${successCount}\n` +
+          `• <b>Operator Rejections:</b> ${rejectedCount}\n` +
+          `• <b>Expired / Failed:</b> ${failedCount}\n` +
+          `• <b>Approval Rate:</b> <b>${approvalRate}</b>`;
+
+        await sendTelegramMessage(env, chatId, statsMsg, messageId);
+        return new Response(JSON.stringify({ status: "command_handled", command: "stats" }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } else if (cmdToken === "pending") {
+        let keys: Array<{ name: string }> = [];
+        if (env.LINKEDIN_AGENT_KV) {
+          const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+          keys = listRes.keys || [];
+        }
+
+        if (keys.length === 0) {
+          await sendTelegramMessage(
+            env,
+            chatId,
+            "📭 <b>No Pending Actions</b>\n\nThere are no actions currently awaiting review.",
+            messageId
+          );
+          return new Response(
+            JSON.stringify({ status: "command_handled", command: "pending", count: 0 }),
+            { headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        const lines: string[] = [`📋 <b>Pending Approval Queue (${keys.length})</b>\n`];
+        const displayKeys = keys.slice(0, 10);
+        for (let i = 0; i < displayKeys.length; i++) {
+          if (!env.LINKEDIN_AGENT_KV) continue;
+          const raw = await env.LINKEDIN_AGENT_KV.get(displayKeys[i].name);
+          if (!raw) continue;
+          try {
+            const item = JSON.parse(raw);
+            const actionType = item.action_type || "comment";
+            let typeIcon = "💬 Comment";
+            if (actionType === "post") typeIcon = "📝 Post";
+            else if (actionType === "reply") typeIcon = "↩️ Reply";
+            else if (actionType === "connect" || actionType === "connection") {
+              typeIcon = "🤝 Connection";
+            }
+
+            const target = item.author || item.recipient_name || item.target_author || "";
+            const draft = item.draft_text || item.note || item.text || "";
+            const shortDraft = draft.length > 80 ? draft.substring(0, 77) + "..." : draft;
+
+            lines.push(
+              `${i + 1}. ${typeIcon} (<code>${escapeHtml(item.item_id)}</code>)` +
+                (target ? `\n   • <i>Target:</i> ${escapeHtml(target)}` : "") +
+                (shortDraft ? `\n   • <i>Draft:</i> "${escapeHtml(shortDraft)}"` : "")
+            );
+          } catch {}
+        }
+        if (keys.length > 10) {
+          lines.push(`\n<i>...and ${keys.length - 10} more pending items.</i>`);
+        }
+        lines.push(`\n<i>Reply to any suggestion card or tap inline buttons to approve/reject.</i>`);
+
+        await sendTelegramMessage(env, chatId, lines.join("\n"), messageId);
+        return new Response(
+          JSON.stringify({ status: "command_handled", command: "pending", count: keys.length }),
+          { headers: { "Content-Type": "application/json" } }
+        );
       }
     }
 
