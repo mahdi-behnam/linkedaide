@@ -12,12 +12,15 @@ from agent.browser.scraper import FeedScraper
 from agent.config import Settings
 from agent.llm.service import LLMService
 from agent.models import (
+    ActiveThreadRecord,
     CommentDraft,
     ConnectionRequestAction,
     HistoryEntry,
     PendingAction,
     PostIdea,
     PostRecord,
+    ReplyTriageResult,
+    ThreadReplyItem,
     TriageResult,
 )
 from agent.safety.rate_limiter import DailyCapEnforcer
@@ -72,6 +75,20 @@ class IdeationState(TypedDict, total=False):
     candidate_ideas: list[PostIdea]
     filtered_ideas: list[PostIdea]
     pending_items: list[PendingAction]
+    errors: list[str]
+    halted_reason: str | None
+    status: str
+
+
+class ThreadMonitorState(TypedDict, total=False):
+    """Workflow state for ThreadMonitorGraph."""
+
+    active_threads: list[ActiveThreadRecord]
+    discovered_replies: list[tuple[ActiveThreadRecord, ThreadReplyItem]]
+    triage_results: list[tuple[ActiveThreadRecord, ThreadReplyItem, ReplyTriageResult]]
+    drafts: list[tuple[ActiveThreadRecord, ThreadReplyItem, ReplyTriageResult, CommentDraft]]
+    pending_items: list[PendingAction]
+    queued_count: int
     errors: list[str]
     halted_reason: str | None
     status: str

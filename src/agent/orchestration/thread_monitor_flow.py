@@ -15,9 +15,13 @@ from agent.browser.executor import ActionExecutor
 from agent.browser.session import ensure_session_file
 from agent.browser.stealth import new_stealth_context, wait_for_login_redirect
 from agent.config import Settings, load_settings
+from agent.graphs import (
+    GraphContext,
+    ThreadMonitorState,
+    build_thread_monitor_graph,
+)
 from agent.llm.service import LLMService
 from agent.logging import setup_logging
-from agent.orchestration.thread_monitor import find_thread_replies
 from agent.safety.circuit_breaker import is_halted
 from agent.state import get_state_store
 from agent.telegram.client import TelegramClient
@@ -83,17 +87,24 @@ async def run_thread_monitor_flow(
             await wait_for_login_redirect(page)
 
             executor = ActionExecutor(page, cfg, state_store=state_store)
-            queued = await find_thread_replies(
-                executor=executor,
+            graph_context = GraphContext(
+                settings=cfg,
                 llm=llm,
                 state_store=state_store,
-                settings=cfg,
                 telegram=telegram,
+                executor=executor,
             )
+            graph = build_thread_monitor_graph()
+            initial_state: ThreadMonitorState = {}
+            result = await graph.ainvoke(
+                initial_state,
+                config={"configurable": {"context": graph_context}},
+            )
+            pending_items = result.get("pending_items", [])
             return {
-                "status": "completed",
-                "queued_count": len(queued),
-                "queued_actions": [action.item_id for action in queued],
+                "status": result.get("status", "completed"),
+                "queued_count": len(pending_items),
+                "queued_actions": [action.item_id for action in pending_items],
             }
         finally:
             await context.close()
