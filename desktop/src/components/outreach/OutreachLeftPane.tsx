@@ -1,5 +1,5 @@
 import React from "react";
-import { UserPlus, ShieldCheck } from "@phosphor-icons/react";
+import { UserPlus, ShieldCheck, ArrowClockwise } from "@phosphor-icons/react";
 import { ConnectionRequestAction } from "../../types";
 import { OutreachCandidateCard } from "./OutreachCandidateCard";
 
@@ -9,6 +9,8 @@ interface OutreachLeftPaneProps {
   onSelectId: (id: string) => void;
   connectionsSent: number;
   connectionsMax: number;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const OutreachLeftPane: React.FC<OutreachLeftPaneProps> = ({
@@ -17,6 +19,8 @@ export const OutreachLeftPane: React.FC<OutreachLeftPaneProps> = ({
   onSelectId,
   connectionsSent,
   connectionsMax,
+  onRefresh,
+  isRefreshing,
 }) => {
   const pendingCount = items.filter((c) => c.status === "pending").length;
   const quotaPercent = Math.min(100, Math.round((connectionsSent / connectionsMax) * 100));
@@ -73,6 +77,17 @@ export const OutreachLeftPane: React.FC<OutreachLeftPaneProps> = ({
         <span className="text-xs font-medium tracking-wider text-on-surface-variant uppercase">
           Connection Candidates ({items.length})
         </span>
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh outreach queue"
+            className="flex items-center gap-1 text-[11px] text-on-surface-variant hover:text-on-surface disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            <ArrowClockwise size={13} className={isRefreshing ? "animate-spin" : ""} />
+            <span>Refresh</span>
+          </button>
+        )}
       </div>
 
       {/* Scrollable List */}

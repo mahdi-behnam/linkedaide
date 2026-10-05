@@ -203,4 +203,29 @@ describe("OutreachQueueView", () => {
     expect(screen.getByText("No connection candidates queued")).toBeTruthy();
     expect(screen.getByText("Select a candidate on the left to inspect details")).toBeTruthy();
   });
+
+  it("synchronizes candidates when initialItems updates dynamically", () => {
+    const { rerender } = renderOutreachQueue([mockCandidates[0]]);
+    expect(screen.getByTestId("pending-count-pill").textContent).toContain("1 Pending");
+
+    rerender(
+      <AppProvider>
+        <OutreachQueueView initialItems={mockCandidates} />
+      </AppProvider>
+    );
+
+    expect(screen.getByTestId("pending-count-pill").textContent).toContain("3 Pending");
+  });
+
+  it("triggers refresh when clicking Refresh button in header", async () => {
+    renderOutreachQueue();
+    const refreshBtn = screen.getByLabelText("Refresh outreach queue");
+    expect(refreshBtn).toBeTruthy();
+
+    fireEvent.click(refreshBtn);
+    await waitFor(() => {
+      expect(window.api.fetchState).toHaveBeenCalled();
+    });
+  });
 });
+

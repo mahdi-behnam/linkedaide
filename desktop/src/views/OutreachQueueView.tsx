@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { ConnectionRequestAction } from "../types";
 import { UserPlus } from "@phosphor-icons/react";
@@ -16,16 +16,37 @@ export const OutreachQueueView: React.FC<OutreachQueueViewProps> = ({ initialIte
     connectionQueue: contextQueue,
     executeConnectionAction,
     quota,
+    refreshState,
   } = useApp();
 
   const [items, setItems] = useState<ConnectionRequestAction[]>(
     () => initialItems || contextQueue || []
   );
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Synchronize internal items whenever initialItems or contextQueue updates
+  useEffect(() => {
+    if (initialItems) {
+      setItems(initialItems);
+    } else if (contextQueue) {
+      setItems(contextQueue);
+    }
+  }, [initialItems, contextQueue]);
+
   const [selectedId, setSelectedId] = useState<string>(() => {
     const list = initialItems || contextQueue || [];
     return list.length > 0 ? list[0].id : "";
   });
+
+  // Ensure selectedId stays aligned when item list changes
+  useEffect(() => {
+    if (!selectedId && items.length > 0) {
+      setSelectedId(items[0].id);
+    } else if (selectedId && !items.some((i) => i.id === selectedId) && items.length > 0) {
+      setSelectedId(items[0].id);
+    }
+  }, [items, selectedId]);
 
   const selectedCandidate = useMemo(() => {
     return items.find((item) => item.id === selectedId) || items[0] || null;
@@ -39,6 +60,29 @@ export const OutreachQueueView: React.FC<OutreachQueueViewProps> = ({ initialIte
     }
     return map;
   });
+
+  // Sync newly added candidate notes
+  useEffect(() => {
+    setNotes((prev) => {
+      const next = { ...prev };
+      for (const item of items) {
+        if (next[item.id] === undefined) {
+          next[item.id] = item.note_text || "";
+        }
+      }
+      return next;
+    });
+  }, [items]);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing || !refreshState) return;
+    setIsRefreshing(true);
+    try {
+      await refreshState();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refreshState]);
 
   const currentNote = selectedCandidate
     ? notes[selectedCandidate.id] ?? selectedCandidate.note_text ?? ""
@@ -132,6 +176,8 @@ export const OutreachQueueView: React.FC<OutreachQueueViewProps> = ({ initialIte
         onSelectId={(id) => setSelectedId(id)}
         connectionsSent={connectionsSent}
         connectionsMax={connectionsMax}
+        onRefresh={refreshState ? handleRefresh : undefined}
+        isRefreshing={isRefreshing}
       />
 
       {/* Right Column: Candidate Inspector & Note Studio */}
