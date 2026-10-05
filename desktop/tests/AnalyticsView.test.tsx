@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { AppProvider } from "../src/context/AppContext";
 import {
   AnalyticsView,
@@ -160,7 +160,7 @@ describe("AnalyticsView", () => {
     expect(screen.getByText("Kelsey Hightower")).toBeTruthy();
   });
 
-  it("allows switching timeframe filters and triggering metric refresh", () => {
+  it("allows switching timeframe filters and triggering metric refresh", async () => {
     render(
       <AppProvider>
         <AnalyticsView />
@@ -185,7 +185,9 @@ describe("AnalyticsView", () => {
 
     // Click Refresh
     const refreshBtn = screen.getByTestId("refresh-analytics-btn");
-    fireEvent.click(refreshBtn);
+    await act(async () => {
+      fireEvent.click(refreshBtn);
+    });
   });
 
   it("dynamically calculates heatmap, topic pillars, and KPIs from auditEntries", () => {
