@@ -7,12 +7,14 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
-from agent.errors import BotDetectionError, SessionExpiredError
+from agent.browser.selectors import LINKEDIN_SELECTORS
+from agent.errors import BotDetectionError, SelectorDriftError, SessionExpiredError
 
 if TYPE_CHECKING:
     from playwright.async_api import Page
 
     from agent.browser.biometrics import BiometricController
+    from agent.browser.selectors import SelfHealingSelectorEngine
     from agent.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,7 @@ class ReactionMixin:
     page: Page
     settings: Settings
     biometrics: BiometricController
+    selector_engine: SelfHealingSelectorEngine
 
     # Methods provided by VerificationMixin
     _capture_screenshot: Any
@@ -51,13 +54,18 @@ class ReactionMixin:
             return True
 
         try:
-            react_btn = self.page.locator(
+            like_selector = (
                 "button[aria-label*='Reaction button state' i], button[aria-label*='React Like'], "
                 "button[aria-label*='Like' i], button.react-button__trigger, button.reactions-react-button, "
                 "button.feed-shared-social-action-bar__action-button:has-text('Like'), button:has-text('Like')"
-            ).first
-
-            if await react_btn.count() == 0:
+            )
+            try:
+                react_btn, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "like_btn",
+                    candidates=[like_selector, *LINKEDIN_SELECTORS.get("like_btn", [])],
+                )
+            except SelectorDriftError:
                 logger.warning("Reaction button not found on %s", self.page.url)
                 return False
 
@@ -85,16 +93,20 @@ class ReactionMixin:
             try:
                 await react_btn.hover()
                 await asyncio.sleep(0.4)
-                reaction_menu_item = self.page.locator(
-                    f"button[aria-label*='{norm_type.capitalize()}' i], "
-                    f"button[data-test-reaction-type='{norm_type}'], "
-                    f"div.reactions-menu button:has-text('{norm_type.capitalize()}')"
-                ).first
-
-                if await reaction_menu_item.count() > 0:
+                reaction_menu_candidates = [
+                    f"button[aria-label*='{norm_type.capitalize()}' i]",
+                    f"button[data-test-reaction-type='{norm_type}']",
+                    f"div.reactions-menu button:has-text('{norm_type.capitalize()}')",
+                ]
+                try:
+                    reaction_menu_item, _ = await self.selector_engine.resolve_locator(
+                        self.page,
+                        f"reaction_{norm_type}",
+                        candidates=reaction_menu_candidates,
+                    )
                     await self.biometrics.click_element(reaction_menu_item)
                     return True
-                else:
+                except SelectorDriftError:
                     logger.warning(
                         "Specific reaction button '%s' not found, falling back to Like", norm_type
                     )

@@ -13,6 +13,7 @@ from agent.browser.actions.reaction_mixin import ReactionMixin
 from agent.browser.actions.thread_mixin import ThreadMixin
 from agent.browser.actions.verification_mixin import VerificationMixin
 from agent.browser.biometrics import BiometricController
+from agent.browser.selectors import SelfHealingSelectorEngine
 from agent.browser.session_keeper import refresh_and_persist_session
 from agent.config import Settings
 
@@ -50,6 +51,7 @@ class ActionExecutor(
         debug_dir: Path | None = None,
         state_store: BaseStateStore | None = None,
         biometrics: BiometricController | None = None,
+        selector_engine: SelfHealingSelectorEngine | None = None,
     ) -> None:
         self.page = page
         self.settings = settings
@@ -57,6 +59,7 @@ class ActionExecutor(
         self.debug_dir.mkdir(parents=True, exist_ok=True)
         self.state_store = state_store
         self.biometrics = biometrics or BiometricController(page)
+        self.selector_engine = selector_engine or SelfHealingSelectorEngine(state_store=state_store)
 
     async def refresh_session(self) -> dict[str, Any] | None:
         """Refresh and persist authenticated session state."""

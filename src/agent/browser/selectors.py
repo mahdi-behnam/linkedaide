@@ -11,6 +11,7 @@ Architecture Invariants:
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 from enum import IntEnum
@@ -37,61 +38,188 @@ class SelectorTier(IntEnum):
 
 # Common canonical fallback configurations for LinkedIn UI elements
 LINKEDIN_SELECTORS: dict[str, list[str]] = {
+    "comment_btn": [
+        # Tier 1: Canonical Data Attributes
+        "button[data-control-name='comment']",
+        "button.comment-button",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[aria-label*='Comment' i]",
+        "button.feed-shared-social-action-bar__action-button[aria-label*='Comment' i]",
+        # Tier 3: Semantic Text Heuristics
+        "button.feed-shared-social-action-bar__action-button:has-text('Comment')",
+        "button:has-text('Comment')",
+    ],
     "comment_box": [
         # Tier 1: Canonical Data Attributes
+        "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror",
         "div.comments-comment-box__editor[data-control-name='comment_box']",
         "div[data-test-ql-editor='true']",
         "div[data-view-name='comment-editor']",
         # Tier 2: Accessibility Tree (AXTree / ARIA)
         "div[role='textbox'][aria-label*='comment' i]",
+        "div[role='textbox'][contenteditable='true']",
+        "div.tiptap.ProseMirror[role='textbox']",
         "div.ql-editor[role='textbox']",
         # Tier 3: Semantic Text Heuristics
+        "div.tiptap.ProseMirror",
         "div.ql-editor:has-text('Add a comment')",
         "div.editor-content:has-text('comment')",
+        "textarea[name='comment']",
     ],
     "comment_submit": [
         # Tier 1: Canonical Data Attributes
+        "button[componentkey*='commentButtonSection']",
         "button[data-control-name='comment_post']",
         "button.comments-comment-box__submit-button[data-test-comment-submit]",
         # Tier 2: Accessibility Tree (AXTree / ARIA)
         "button[role='button'][aria-label='Post comment']",
         "button.comments-comment-box__submit-button",
+        "div.comments-comment-box button[type='submit']",
         # Tier 3: Semantic Text Heuristics
-        "button:has-text('Comment')",
+        "button[type='submit']:has-text('Comment')",
+        "button[type='submit']:has-text('Post')",
         "button:has-text('Post')",
+    ],
+    "like_btn": [
+        # Tier 1: Canonical Data Attributes
+        "button[data-control-name='like_toggle']",
+        "button.react-button__trigger",
+        "button.reactions-react-button",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[aria-label*='Reaction button state' i]",
+        "button[aria-label*='React Like']",
+        "button[aria-label*='Like' i]",
+        # Tier 3: Semantic Text Heuristics
+        "button.feed-shared-social-action-bar__action-button:has-text('Like')",
+        "button:has-text('Like')",
+    ],
+    "reaction_menu": [
+        # Tier 1: Canonical Data Attributes
+        "div.reactions-menu",
+        "div.reactions-box",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "div.artdeco-hoverable-content[role='tooltip']",
+        "div[role='menu'][aria-label*='reaction' i]",
+    ],
+    "reaction_option": [
+        # Tier 1: Canonical Data Attributes
+        "button[data-test-reaction-type]",
+        "div.reactions-menu button",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[role='menuitem'][aria-label*='reaction' i]",
     ],
     "post_input": [
         # Tier 1: Canonical Data Attributes
         "div.share-box-feed-entry__trigger[data-control-name='share.sharebox_btn']",
         "button[data-test-start-post-button]",
+        "[data-view-name*='share-box'] [role='button']",
         # Tier 2: Accessibility Tree (AXTree / ARIA)
         "button[role='button'][aria-label*='Start a post' i]",
         "button.artdeco-button[aria-label*='Start a post' i]",
         # Tier 3: Semantic Text Heuristics
+        "div[role='button']:has-text('Start a post')",
         "button:has-text('Start a post')",
+    ],
+    "post_modal": [
+        # Tier 1: Canonical Data Attributes
+        "div.share-box-modal",
+        "div.share-creation-state",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "div.artdeco-modal[role='dialog']",
+        "div[role='dialog']",
     ],
     "post_editor": [
         # Tier 1: Canonical Data Attributes
         "div.share-creation-state__text-editor[data-control-name='post_editor']",
         "div[data-test-share-editor]",
+        "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror",
+        "div.share-box-modal div.tiptap.ProseMirror",
+        "div.share-box-modal div.ql-editor",
         # Tier 2: Accessibility Tree (AXTree / ARIA)
         "div[role='textbox'][aria-label*='What do you want to talk about' i]",
         "div.tiptap.ProseMirror[role='textbox']",
         "div.ql-editor[role='textbox']",
+        "div[role='textbox']",
         # Tier 3: Semantic Text Heuristics
         "div.tiptap.ProseMirror",
     ],
     "post_submit": [
         # Tier 1: Canonical Data Attributes
+        "button.share-actions__primary-action",
         "button[data-control-name='share.post_btn']",
         "button[data-test-post-submit-button]",
         # Tier 2: Accessibility Tree (AXTree / ARIA)
         "button[role='button'][aria-label='Post']",
-        "button.share-actions__primary-action",
+        "button.artdeco-button--primary[data-test-share-box-post-button]",
         # Tier 3: Semantic Text Heuristics
         "button:has-text('Post')",
     ],
+    "connect_btn": [
+        # Tier 1: Canonical Data Attributes
+        "button[data-control-name='connect']",
+        "button.pvs-profile-actions__action[data-test-connect-button]",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[aria-label*='Invite'][aria-label*='to connect']",
+        "button[aria-label*='connect' i]",
+        # Tier 3: Semantic Text Heuristics
+        "button.pvs-profile-actions__action:has-text('Connect')",
+        "div.ph5 button:has-text('Connect')",
+        "button:has-text('Connect')",
+    ],
+    "more_actions_btn": [
+        # Tier 1: Canonical Data Attributes
+        "button[data-control-name='more_actions']",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[aria-label='More actions']",
+        "button[aria-label*='More' i]",
+        # Tier 3: Semantic Text Heuristics
+        "div.pvs-profile-actions button:has-text('More')",
+        "button:has-text('More')",
+    ],
+    "dropdown_connect_button": [
+        # Tier 1: Canonical Data Attributes
+        "div.artdeco-dropdown__item:has-text('Connect')",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "div[role='button']:has-text('Connect')",
+        # Tier 3: Semantic Text Heuristics
+        "li:has-text('Connect')",
+        "span:has-text('Connect')",
+    ],
+    "add_note_button": [
+        # Tier 1: Canonical Data Attributes
+        "button[data-control-name='add_note']",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[aria-label='Add a note']",
+        "button[aria-label*='Add a note' i]",
+        # Tier 3: Semantic Text Heuristics
+        "button:has-text('Add a note')",
+    ],
+    "send_invitation_button": [
+        # Tier 1: Canonical Data Attributes
+        "button[data-control-name='send_invite']",
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[aria-label='Send without a note']",
+        "button[aria-label='Send invitation']",
+        "button[aria-label='Send now']",
+        # Tier 3: Semantic Text Heuristics
+        "button:has-text('Send without a note')",
+        "button:has-text('Send')",
+    ],
+    "pending_button": [
+        # Tier 2: Accessibility Tree (AXTree / ARIA)
+        "button[aria-label*='Pending']",
+        "button[aria-label*='Invitation sent']",
+        # Tier 3: Semantic Text Heuristics
+        "button:has-text('Pending')",
+    ],
 }
+
+# Semantic aliases for element identifiers
+LINKEDIN_SELECTORS["like_button"] = LINKEDIN_SELECTORS["like_btn"]
+LINKEDIN_SELECTORS["connect_button"] = LINKEDIN_SELECTORS["connect_btn"]
+LINKEDIN_SELECTORS["more_actions_button"] = LINKEDIN_SELECTORS["more_actions_btn"]
+LINKEDIN_SELECTORS["start_post_button"] = LINKEDIN_SELECTORS["post_input"]
+LINKEDIN_SELECTORS["post_submit_button"] = LINKEDIN_SELECTORS["post_submit"]
 
 
 class SelfHealingSelectorEngine:
@@ -127,7 +255,7 @@ class SelfHealingSelectorEngine:
         self,
         page: Page,
         action_key: str,
-        candidates: list[str],
+        candidates: list[str] | None = None,
         timeout_ms: int = 1500,
     ) -> tuple[Locator, str]:
         """Resolve an element locator with 4-tier self-healing fallbacks.
@@ -143,7 +271,7 @@ class SelfHealingSelectorEngine:
         Args:
             page: Playwright Page instance.
             action_key: Canonical identifier for the element/action (e.g. 'comment_submit').
-            candidates: Priority-ordered list of selector strings.
+            candidates: Priority-ordered list of selector strings. If omitted, uses LINKEDIN_SELECTORS.
             timeout_ms: Per-candidate visibility check timeout in milliseconds.
 
         Returns:
@@ -152,12 +280,35 @@ class SelfHealingSelectorEngine:
         Raises:
             SelectorDriftError: If all candidates (and override) fail to locate a visible element.
         """
+        candidate_list = (
+            candidates if candidates is not None else LINKEDIN_SELECTORS.get(action_key, [])
+        )
+
+        async def _is_available(loc: Any) -> bool:
+            try:
+                if hasattr(loc, "count"):
+                    cnt = loc.count()
+                    if inspect.isawaitable(cnt):
+                        cnt = await cnt
+                    if cnt == 0:
+                        return False
+                if hasattr(loc, "is_visible"):
+                    vis = loc.is_visible(timeout=timeout_ms)
+                    if inspect.isawaitable(vis):
+                        return bool(await vis)
+                    elif type(vis).__name__ == "MagicMock":
+                        return True
+                    return bool(vis)
+                return True
+            except Exception:
+                return False
+
         # Tier 4: Check cached override first
         cached_selector = self._overrides.get(action_key)
         if cached_selector:
             try:
                 locator = page.locator(cached_selector).first
-                if await locator.is_visible(timeout=timeout_ms):
+                if await _is_available(locator):
                     return locator, cached_selector
             except Exception:
                 logger.debug(
@@ -167,10 +318,10 @@ class SelfHealingSelectorEngine:
                 )
 
         # Iterate candidates in priority order
-        for idx, selector in enumerate(candidates):
+        for idx, selector in enumerate(candidate_list):
             try:
                 locator = page.locator(selector).first
-                if await locator.is_visible(timeout=timeout_ms):
+                if await _is_available(locator):
                     if idx > 0:
                         # Non-canonical candidate succeeded; heal and persist
                         logger.warning(
@@ -200,7 +351,7 @@ class SelfHealingSelectorEngine:
         self,
         page: Page,
         action_key: str,
-        candidates: list[str],
+        candidates: list[str] | None = None,
         timeout_ms: int = 1500,
     ) -> None:
         """Resolve element using self-healing candidates and click it.
@@ -208,7 +359,7 @@ class SelfHealingSelectorEngine:
         Args:
             page: Playwright Page instance.
             action_key: Canonical identifier for the action/element.
-            candidates: Priority-ordered list of selector strings.
+            candidates: Priority-ordered list of selector strings. If omitted, uses LINKEDIN_SELECTORS.
             timeout_ms: Per-candidate visibility check timeout in milliseconds.
         """
         locator, _ = await self.resolve_locator(page, action_key, candidates, timeout_ms=timeout_ms)

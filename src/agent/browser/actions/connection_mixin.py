@@ -9,9 +9,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
+from agent.browser.selectors import LINKEDIN_SELECTORS
 from agent.errors import (
     BotDetectionError,
     ExecutionError,
+    SelectorDriftError,
     SessionExpiredError,
     SubmissionVerificationError,
 )
@@ -21,6 +23,7 @@ if TYPE_CHECKING:
     from playwright.async_api import Page
 
     from agent.browser.biometrics import BiometricController
+    from agent.browser.selectors import SelfHealingSelectorEngine
     from agent.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,7 @@ class ConnectionMixin:
     page: Page
     settings: Settings
     biometrics: BiometricController
+    selector_engine: SelfHealingSelectorEngine
 
     # Methods provided by VerificationMixin
     _capture_screenshot: Any
@@ -170,19 +174,17 @@ class ConnectionMixin:
                 "button.pvs-profile-actions__action:has-text('Connect'), "
                 "div.ph5 button:has-text('Connect')"
             )
-            connect_btn = self.page.locator(connect_selector).first
-
             found_connect = False
-            if await connect_btn.count() > 0:
-                is_visible = True
-                if hasattr(connect_btn, "is_visible"):
-                    try:
-                        is_visible = await connect_btn.is_visible()
-                    except Exception:
-                        is_visible = True
-                if is_visible:
-                    found_connect = True
-                    await self.biometrics.click_element(connect_btn)
+            try:
+                connect_btn, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "connect_btn",
+                    candidates=[connect_selector, *LINKEDIN_SELECTORS.get("connect_btn", [])],
+                )
+                found_connect = True
+                await self.biometrics.click_element(connect_btn)
+            except SelectorDriftError:
+                found_connect = False
 
             if not found_connect:
                 # Try "More actions" dropdown
@@ -191,8 +193,12 @@ class ConnectionMixin:
                     "button:has-text('More'), "
                     "div.pvs-profile-actions button:has-text('More')"
                 )
-                more_btn = self.page.locator(more_selector).first
-                if await more_btn.count() > 0:
+                try:
+                    more_btn, _ = await self.selector_engine.resolve_locator(
+                        self.page,
+                        "more_actions_btn",
+                        candidates=[more_selector, *LINKEDIN_SELECTORS.get("more_actions_btn", [])],
+                    )
                     await self.biometrics.click_element(more_btn)
                     await asyncio.sleep(0.5)
 
@@ -202,10 +208,18 @@ class ConnectionMixin:
                         "div.artdeco-dropdown__item:has-text('Connect'), "
                         "span:has-text('Connect')"
                     )
-                    dropdown_connect = self.page.locator(dropdown_connect_selector).first
-                    if await dropdown_connect.count() > 0:
-                        found_connect = True
-                        await self.biometrics.click_element(dropdown_connect)
+                    dropdown_connect, _ = await self.selector_engine.resolve_locator(
+                        self.page,
+                        "dropdown_connect_button",
+                        candidates=[
+                            dropdown_connect_selector,
+                            *LINKEDIN_SELECTORS.get("dropdown_connect_button", []),
+                        ],
+                    )
+                    found_connect = True
+                    await self.biometrics.click_element(dropdown_connect)
+                except SelectorDriftError:
+                    pass
 
             if not found_connect:
                 # Check if connection already pending
@@ -214,8 +228,15 @@ class ConnectionMixin:
                     "button[aria-label*='Pending'], "
                     "button[aria-label*='Invitation sent']"
                 )
-                pending_btn = self.page.locator(pending_selector).first
-                if await pending_btn.count() > 0:
+                try:
+                    pending_btn, _ = await self.selector_engine.resolve_locator(
+                        self.page,
+                        "pending_button",
+                        candidates=[
+                            pending_selector,
+                            *LINKEDIN_SELECTORS.get("pending_button", []),
+                        ],
+                    )
                     logger.info("Connection invitation already pending for %s", profile_url)
                     screenshot = await self._capture_screenshot(f"already_pending_{item_id}")
                     screenshot = await self._upload_screenshot_to_r2(
@@ -232,6 +253,8 @@ class ConnectionMixin:
                         error=None,
                         executed_at=now,
                     )
+                except SelectorDriftError:
+                    pass
 
                 await self._capture_telemetry(
                     trigger="connect_button_not_found",
@@ -244,10 +267,19 @@ class ConnectionMixin:
             await asyncio.sleep(0.5)
             if note_text:
                 add_note_selector = "button:has-text('Add a note'), button[aria-label='Add a note']"
-                add_note_btn = self.page.locator(add_note_selector).first
-                if await add_note_btn.count() > 0:
+                try:
+                    add_note_btn, _ = await self.selector_engine.resolve_locator(
+                        self.page,
+                        "add_note_button",
+                        candidates=[
+                            add_note_selector,
+                            *LINKEDIN_SELECTORS.get("add_note_button", []),
+                        ],
+                    )
                     await self.biometrics.click_element(add_note_btn)
                     await asyncio.sleep(0.3)
+                except SelectorDriftError:
+                    pass
 
                 textarea_selector = (
                     "textarea[name='message'], "
@@ -266,11 +298,18 @@ class ConnectionMixin:
                     "button[aria-label='Send invitation'], "
                     "button[aria-label='Send now']"
                 )
-                send_btn = self.page.locator(send_selector).first
-                if await send_btn.count() > 0:
+                try:
+                    send_btn, _ = await self.selector_engine.resolve_locator(
+                        self.page,
+                        "send_invitation_button",
+                        candidates=[
+                            send_selector,
+                            *LINKEDIN_SELECTORS.get("send_invitation_button", []),
+                        ],
+                    )
                     await self.biometrics.click_element(send_btn)
-                else:
-                    raise ExecutionError("Send invitation button not found in modal")
+                except SelectorDriftError as err:
+                    raise ExecutionError("Send invitation button not found in modal") from err
             else:
                 send_selector = (
                     "button:has-text('Send without a note'), "
@@ -279,11 +318,18 @@ class ConnectionMixin:
                     "button[aria-label='Send invitation'], "
                     "button[aria-label='Send now']"
                 )
-                send_btn = self.page.locator(send_selector).first
-                if await send_btn.count() > 0:
+                try:
+                    send_btn, _ = await self.selector_engine.resolve_locator(
+                        self.page,
+                        "send_invitation_button",
+                        candidates=[
+                            send_selector,
+                            *LINKEDIN_SELECTORS.get("send_invitation_button", []),
+                        ],
+                    )
                     await self.biometrics.click_element(send_btn)
-                else:
-                    raise ExecutionError("Send invitation button not found in modal")
+                except SelectorDriftError as err:
+                    raise ExecutionError("Send invitation button not found in modal") from err
 
             # 7. DOM verification of sent invitation
             await self._verify_connection_sent(

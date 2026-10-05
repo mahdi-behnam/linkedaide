@@ -9,10 +9,12 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
+from agent.browser.selectors import LINKEDIN_SELECTORS
 from agent.errors import (
     BotDetectionError,
     ExecutionError,
     PostNoLongerAvailableError,
+    SelectorDriftError,
     SessionExpiredError,
     SubmissionVerificationError,
 )
@@ -22,6 +24,7 @@ if TYPE_CHECKING:
     from playwright.async_api import Locator, Page
 
     from agent.browser.biometrics import BiometricController
+    from agent.browser.selectors import SelfHealingSelectorEngine
     from agent.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -33,6 +36,7 @@ class CommentMixin:
     page: Page
     settings: Settings
     biometrics: BiometricController
+    selector_engine: SelfHealingSelectorEngine
 
     # Methods provided by VerificationMixin & ReactionMixin
     _capture_screenshot: Any
@@ -209,14 +213,21 @@ class CommentMixin:
                     await stealth.humanized_dwell(1.0, 2.5)
 
             # Locate comment button
-            comment_btn = self.page.locator(
-                "button[aria-label*='Comment'], button[aria-label*='comment' i], "
-                "button.comment-button, "
-                "button.feed-shared-social-action-bar__action-button:has-text('Comment'), "
-                "button:has-text('Comment')"
-            ).first
-            if await comment_btn.count() > 0:
+            try:
+                comment_btn, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "comment_btn",
+                )
                 await self.biometrics.click_element(comment_btn)
+            except Exception:
+                comment_btn = self.page.locator(
+                    "button[aria-label*='Comment'], button[aria-label*='comment' i], "
+                    "button.comment-button, "
+                    "button.feed-shared-social-action-bar__action-button:has-text('Comment'), "
+                    "button:has-text('Comment')"
+                ).first
+                if await comment_btn.count() > 0:
+                    await self.biometrics.click_element(comment_btn)
 
             comment_box_selector = (
                 "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror, "
@@ -225,14 +236,19 @@ class CommentMixin:
                 "div[role='textbox'][contenteditable='true'], "
                 "div.ql-editor, textarea[name='comment']"
             )
-            comment_box = self.page.locator(comment_box_selector).first
-            if await comment_box.count() == 0:
+            try:
+                comment_box, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "comment_box",
+                    candidates=[comment_box_selector, *LINKEDIN_SELECTORS.get("comment_box", [])],
+                )
+            except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="comment_box_drift",
                     item_id=item_id,
                     target_selector=comment_box_selector,
                 )
-                raise ExecutionError("Comment input box not found in DOM")
+                raise ExecutionError("Comment input box not found in DOM") from err
 
             await self.biometrics.type_text(comment_box, comment_text)
 
@@ -242,17 +258,21 @@ class CommentMixin:
                 "button.comments-comment-box__submit-button, "
                 "div.comments-comment-box button[type='submit'], "
                 "button[type='submit']:has-text('Comment'), "
-                "button[type='submit']:has-text('Post'), "
-                "button:has-text('Comment')"
+                "button[type='submit']:has-text('Post')"
             )
-            submit_btn = self.page.locator(submit_btn_selector).first
-            if await submit_btn.count() == 0:
+            try:
+                submit_btn, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "comment_submit",
+                    candidates=[submit_btn_selector, *LINKEDIN_SELECTORS.get("comment_submit", [])],
+                )
+            except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="comment_submit_btn_drift",
                     item_id=item_id,
                     target_selector=submit_btn_selector,
                 )
-                raise ExecutionError("Comment submit button not found in DOM")
+                raise ExecutionError("Comment submit button not found in DOM") from err
 
             await self.biometrics.click_element(submit_btn)
 

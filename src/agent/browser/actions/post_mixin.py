@@ -10,9 +10,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
+from agent.browser.selectors import LINKEDIN_SELECTORS
 from agent.errors import (
     BotDetectionError,
     ExecutionError,
+    SelectorDriftError,
     SessionExpiredError,
     SubmissionVerificationError,
 )
@@ -22,6 +24,7 @@ if TYPE_CHECKING:
     from playwright.async_api import Locator, Page
 
     from agent.browser.biometrics import BiometricController
+    from agent.browser.selectors import SelfHealingSelectorEngine
     from agent.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -33,6 +36,7 @@ class PostMixin:
     page: Page
     settings: Settings
     biometrics: BiometricController
+    selector_engine: SelfHealingSelectorEngine
 
     # Methods provided by VerificationMixin
     _capture_screenshot: Any
@@ -167,30 +171,46 @@ class PostMixin:
                 "button.share-box-feed-entry__trigger, "
                 "[data-view-name*='share-box'] [role='button']"
             )
-            start_post_btn = self.page.locator(start_post_selector).first
-            if await start_post_btn.count() == 0:
+            try:
+                start_post_btn, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "post_input",
+                    candidates=[start_post_selector, *LINKEDIN_SELECTORS.get("post_input", [])],
+                )
+            except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="create_post_ui_drift",
                     item_id=item_id,
                     target_selector=start_post_selector,
                 )
-                raise ExecutionError("Start a post button not found in DOM")
+                raise ExecutionError("Start a post button not found in DOM") from err
 
             await self.biometrics.click_element(start_post_btn)
 
-            modal_loc = self.page.locator(
-                "div.share-box-modal, div.artdeco-modal[role='dialog'], div.share-creation-state"
-            ).first
+            try:
+                modal_loc, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "post_modal",
+                )
+            except SelectorDriftError:
+                modal_loc = self.page.locator(
+                    "div.share-box-modal, div.artdeco-modal[role='dialog'], div.share-creation-state"
+                ).first
 
             editor_selector = "div.tiptap.ProseMirror, div.ql-editor, div[role='textbox']"
-            editor = self.page.locator(editor_selector).first
-            if await editor.count() == 0:
+            try:
+                editor, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "post_editor",
+                    candidates=[editor_selector, *LINKEDIN_SELECTORS.get("post_editor", [])],
+                )
+            except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="create_post_ui_drift",
                     item_id=item_id,
                     target_selector=editor_selector,
                 )
-                raise ExecutionError("Post editor textbox not found in DOM")
+                raise ExecutionError("Post editor textbox not found in DOM") from err
 
             await self.biometrics.type_text(editor, post_text)
 
@@ -209,14 +229,19 @@ class PostMixin:
                             await asyncio.sleep(0.5)
 
             post_btn_selector = "button.share-actions__primary-action, button:has-text('Post')"
-            post_btn = self.page.locator(post_btn_selector).first
-            if await post_btn.count() == 0:
+            try:
+                post_btn, _ = await self.selector_engine.resolve_locator(
+                    self.page,
+                    "post_submit",
+                    candidates=[post_btn_selector, *LINKEDIN_SELECTORS.get("post_submit", [])],
+                )
+            except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="create_post_ui_drift",
                     item_id=item_id,
                     target_selector=post_btn_selector,
                 )
-                raise ExecutionError("Publish post button not found in DOM")
+                raise ExecutionError("Publish post button not found in DOM") from err
 
             await self.biometrics.click_element(post_btn)
 

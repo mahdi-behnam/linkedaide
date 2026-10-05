@@ -730,7 +730,13 @@ async def test_post_comment_missing_submit_button_raises_execution_error(
     empty_loc.first = empty_loc
 
     def locator_side_effect(selector: str) -> MagicMock:
-        if "submit" in selector or "submit-button" in selector:
+        if (
+            "submit" in selector
+            or "submit-button" in selector
+            or "commentButtonSection" in selector
+            or "comment_post" in selector
+            or "Post" in selector
+        ):
             return empty_loc
         elif (
             "textbox" in selector
@@ -1297,10 +1303,21 @@ async def test_post_comment_missing_submit_button_captures_telemetry(
 
     def locator_mock(selector: str) -> MagicMock:
         loc = MagicMock()
-        if "comments-comment-box__submit-button" in selector:
+        if (
+            "comments-comment-box__submit-button" in selector
+            or "submit" in selector
+            or "commentButtonSection" in selector
+            or "comment_post" in selector
+            or "Post" in selector
+        ):
             loc.first = submit_btn
             loc.count = AsyncMock(return_value=0)
-        elif "button[aria-label*='Comment']" in selector or "comment-button" in selector:
+        elif (
+            "data-control-name='comment'" in selector
+            or "comment-button" in selector
+            or "Comment" in selector
+            or "comment" in selector
+        ):
             loc.first = comment_btn
             loc.count = AsyncMock(return_value=0)
         else:
