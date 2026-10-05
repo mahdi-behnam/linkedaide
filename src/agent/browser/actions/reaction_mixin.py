@@ -93,9 +93,15 @@ class ReactionMixin:
             try:
                 await react_btn.hover()
                 await asyncio.sleep(0.4)
+                canonical_reaction = (
+                    f"button[data-test-reaction-type='{norm_type}'], "
+                    f"button[aria-label*='{norm_type.capitalize()}' i], "
+                    f"div.reactions-menu button:has-text('{norm_type.capitalize()}')"
+                )
                 reaction_menu_candidates = [
-                    f"button[aria-label*='{norm_type.capitalize()}' i]",
+                    canonical_reaction,
                     f"button[data-test-reaction-type='{norm_type}']",
+                    f"button[aria-label*='{norm_type.capitalize()}' i]",
                     f"div.reactions-menu button:has-text('{norm_type.capitalize()}')",
                 ]
                 try:

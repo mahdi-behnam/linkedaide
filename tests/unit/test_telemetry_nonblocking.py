@@ -558,7 +558,13 @@ async def test_adversarial_executor_submit_button_drift_with_permission_error_te
     empty_loc.first = empty_loc
 
     def locator_side_effect(selector: str) -> MagicMock:
-        if "submit" in selector or "submit-button" in selector:
+        if (
+            "submit" in selector
+            or "submit-button" in selector
+            or "commentButtonSection" in selector
+            or "comment_post" in selector
+            or "post" in selector.lower()
+        ):
             return empty_loc
         elif "button[aria-label*='Comment']" in selector:
             loc = MagicMock()
