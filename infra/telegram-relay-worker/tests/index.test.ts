@@ -973,5 +973,256 @@ describe("Telegram Relay Worker", () => {
         expect(kvStore.has("incident")).toBe(false);
       });
     });
+
+    describe("Interactive Draft Edits & Tone Regenerations", () => {
+      it("handles operator reply to suggestion card with manual draft text", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_msg_101",
+          JSON.stringify({
+            item_id: "item_msg_101",
+            telegram_message_id: 555,
+            telegram_chat_id: 987654321,
+            draft_text: "Original AI draft before manual adjustment.",
+            author_name: "Tech Leader",
+            action_type: "approve_comment",
+          })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          list: vi.fn(async () => ({ keys: [{ name: "pending:item_msg_101" }] })),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 110,
+          message: {
+            message_id: 999,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            reply_to_message: {
+              message_id: 555,
+              text: "Original suggestion message",
+            },
+            text: "Operator polished replacement comment for the thread.",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data).toEqual({
+          status: "draft_updated",
+          item_id: "item_msg_101",
+          mode: "manual_edit",
+          tone: null,
+        });
+
+        // Verify KV was updated with operator draft
+        const updated = JSON.parse(kvStore.get("pending:item_msg_101")!);
+        expect(updated.draft_text).toBe("Operator polished replacement comment for the thread.");
+
+        // Verify editMessageText and confirmation reply
+        const editCall = fetchMock.mock.calls.find(([url]) => url.includes("/editMessageText"));
+        expect(editCall).toBeDefined();
+        const editPayload = JSON.parse(editCall![1].body);
+        expect(editPayload.message_id).toBe(555);
+        expect(editPayload.text).toContain("Operator polished replacement comment");
+
+        const sendCall = fetchMock.mock.calls.find(([url]) => url.includes("/sendMessage"));
+        expect(sendCall).toBeDefined();
+        const sendPayload = JSON.parse(sendCall![1].body);
+        expect(sendPayload.text).toContain("Draft Updated");
+      });
+
+      it("handles operator reply to suggestion card with tone rewrite command", async () => {
+        const mockRewritten = "A concise, punchy distillation of verification guardrails.";
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("/chat/completions")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  choices: [{ message: { content: mockRewritten } }],
+                }),
+                { status: 200 }
+              )
+            );
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_msg_102",
+          JSON.stringify({
+            item_id: "item_msg_102",
+            telegram_message_id: 556,
+            telegram_chat_id: 987654321,
+            draft_text: "A longer conversational paragraph explaining agent pipelines.",
+            author_name: "AI Researcher",
+            action_type: "approve_comment",
+          })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          list: vi.fn(async () => ({ keys: [{ name: "pending:item_msg_102" }] })),
+        };
+        const envWithKv = {
+          ...mockEnv,
+          NVIDIA_NIM_API_KEY: "test-nim-key",
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 111,
+          message: {
+            message_id: 1000,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            reply_to_message: {
+              message_id: 556,
+              text: "Original card text",
+            },
+            text: "/tone concise",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data).toEqual({
+          status: "draft_updated",
+          item_id: "item_msg_102",
+          mode: "regenerate",
+          tone: "concise",
+        });
+
+        // Verify KV was updated with LLM rewritten text
+        const updated = JSON.parse(kvStore.get("pending:item_msg_102")!);
+        expect(updated.draft_text).toBe(mockRewritten);
+      });
+
+      it("handles direct /edit command with item_id and draft text", async () => {
+        const fetchMock = vi.fn().mockImplementation(() => {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_msg_103",
+          JSON.stringify({
+            item_id: "item_msg_103",
+            telegram_message_id: 557,
+            draft_text: "Old text",
+          })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+        };
+        const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+        const req = makeRequest({
+          update_id: 112,
+          message: {
+            message_id: 1001,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/edit item_msg_103 Completely replaced comment draft.",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("draft_updated");
+        expect(data.item_id).toBe("item_msg_103");
+
+        const updated = JSON.parse(kvStore.get("pending:item_msg_103")!);
+        expect(updated.draft_text).toBe("Completely replaced comment draft.");
+      });
+
+      it("handles direct /tone command with item_id and tone", async () => {
+        const mockRewritten = "Technical breakdown of distributed execution guarantees.";
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("/chat/completions")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  choices: [{ message: { content: mockRewritten } }],
+                }),
+                { status: 200 }
+              )
+            );
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_msg_104",
+          JSON.stringify({
+            item_id: "item_msg_104",
+            telegram_message_id: 558,
+            draft_text: "General discussion about architectures.",
+          })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) || null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+        };
+        const envWithKv = {
+          ...mockEnv,
+          NVIDIA_NIM_API_KEY: "test-nim-key",
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 113,
+          message: {
+            message_id: 1002,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/tone item_msg_104 technical",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const data = (await res.json()) as any;
+        expect(data.status).toBe("draft_updated");
+        expect(data.item_id).toBe("item_msg_104");
+        expect(data.tone).toBe("technical");
+
+        const updated = JSON.parse(kvStore.get("pending:item_msg_104")!);
+        expect(updated.draft_text).toBe(mockRewritten);
+      });
+    });
   });
 });

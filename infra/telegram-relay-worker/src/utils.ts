@@ -122,3 +122,77 @@ export function inferContentType(key: string): string {
   if (lower.endsWith(".svg")) return "image/svg+xml";
   return "application/octet-stream";
 }
+
+/** Formats updated pending card HTML for Telegram */
+export function formatPendingCardHtml(item: Record<string, any>, editNote?: string): string {
+  const isPost = item.action_type === "approve_post" || item.action_type === "post";
+  const isReply = item.action_type === "approve_reply" || item.action_type === "reply";
+  const isConn = item.action_type === "approve_connection" || item.action_type === "connection";
+
+  let actionLabel = "💬 Feed Comment";
+  if (isPost) actionLabel = "📝 Original Post";
+  else if (isReply) actionLabel = "💬 Thread Reply";
+  else if (isConn) actionLabel = "🤝 Connection Invitation";
+
+  const lines: string[] = [
+    "<b>🚀 LinkedIn Action Suggestion</b>",
+    `<b>Type:</b> ${actionLabel}`,
+  ];
+
+  if (item.author_name) {
+    const headline = item.author_headline ? ` (<i>${escapeHtml(item.author_headline)}</i>)` : "";
+    lines.push(`<b>Author:</b> ${escapeHtml(item.author_name)}${headline}`);
+  }
+
+  if (item.post_url) {
+    lines.push(`<b>Post URL:</b> <a href="${escapeHtml(item.post_url)}">View on LinkedIn</a>`);
+  }
+
+  if (item.post_excerpt && !isPost) {
+    lines.push(`<b>Context:</b>\n<blockquote>${escapeHtml(item.post_excerpt)}</blockquote>`);
+  }
+
+  const content = item.draft_text || item.note || item.text || "";
+  lines.push(`<b>Drafted Content:</b>\n<blockquote>${escapeHtml(content)}</blockquote>`);
+
+  const charCount = content.length;
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+  lines.push(`<b>Metrics:</b> ${charCount} chars • ${wordCount} words`);
+
+  if (editNote) {
+    lines.push(`<i>✏️ Note: ${escapeHtml(editNote)}</i>`);
+  }
+
+  lines.push(`<i>ID: ${escapeHtml(item.item_id || item.id || "")}</i>`);
+  return lines.join("\n\n");
+}
+
+/** Constructs suggestion inline keyboard markup */
+export function getSuggestionKeyboard(itemId: string, actionType: string = "approve_comment") {
+  const cleanId = itemId.trim();
+  let approveCode = "ac";
+  let rejectCode = "rc";
+  if (actionType === "approve_post" || actionType === "post") {
+    approveCode = "ap";
+    rejectCode = "rp";
+  } else if (actionType === "approve_reply" || actionType === "reply") {
+    approveCode = "ar";
+    rejectCode = "rr";
+  } else if (actionType === "approve_connection" || actionType === "connection") {
+    approveCode = "acon";
+    rejectCode = "rcon";
+  }
+
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Approve", callback_data: `${approveCode}:${cleanId}` },
+        { text: "❌ Reject", callback_data: `${rejectCode}:${cleanId}` },
+      ],
+      [
+        { text: "🔄 Regenerate", callback_data: `reg:${cleanId}` },
+        { text: "✏️ Edit", callback_data: `edit:${cleanId}` },
+      ],
+    ],
+  };
+}

@@ -12,10 +12,13 @@
 import { Env, TelegramUpdate } from "../types";
 import {
   escapeHtml,
+  formatPendingCardHtml,
   formatTelegramErrorMessage,
+  getSuggestionKeyboard,
   notifyTelegramFailure,
   sendTelegramMessage,
 } from "../utils";
+import { rewriteDraftWithLlm, VALID_TONES } from "./llm";
 import { broadcastEvent } from "./ws";
 
 export async function handleTelegramWebhook(
@@ -43,19 +46,276 @@ export async function handleTelegramWebhook(
   if (update.message) {
     const msg = update.message;
     const text = (msg.text || "").trim();
+    const isReply = !!msg.reply_to_message;
+    const isCommand = text.startsWith("/");
 
-    if (text.startsWith("/")) {
-      const senderId = msg.from?.id;
-      const authorizedId = parseInt(env.TELEGRAM_AUTHORIZED_CHAT_ID, 10);
-      if (senderId !== authorizedId) {
-        return new Response("Unauthorized Sender ID", { status: 403 });
+    if (!isReply && !isCommand) {
+      return new Response("Ignored non-callback update", { status: 200 });
+    }
+
+    const senderId = msg.from?.id;
+    const authorizedId = parseInt(env.TELEGRAM_AUTHORIZED_CHAT_ID, 10);
+    if (senderId !== authorizedId) {
+      return new Response("Unauthorized Sender ID", { status: 403 });
+    }
+
+    const chatId = msg.chat?.id ?? authorizedId;
+    const messageId = msg.message_id;
+
+    // Check if operator replied to an existing suggestion message
+    const repliedMsg = msg.reply_to_message as { message_id: number; text?: string } | undefined;
+    if (repliedMsg && env.LINKEDIN_AGENT_KV) {
+      const repliedMessageId = repliedMsg.message_id;
+      const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+      let matchedKey: string | null = null;
+      let matchedPending: any = null;
+
+      for (const k of listRes.keys || []) {
+        const raw = await env.LINKEDIN_AGENT_KV.get(k.name);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (
+              parsed.telegram_message_id === repliedMessageId ||
+              parsed.message_id === repliedMessageId
+            ) {
+              matchedKey = k.name;
+              matchedPending = parsed;
+              break;
+            }
+          } catch {}
+        }
       }
 
-      const chatId = msg.chat?.id ?? authorizedId;
-      const messageId = msg.message_id;
-      const cmdToken = text.split(" ")[0].substring(1).split("@")[0].toLowerCase();
+      if (matchedPending && matchedKey) {
+        let requestedTone: string | null = null;
+        const lowerText = text.toLowerCase().trim();
+        if (lowerText.startsWith("/tone ") || lowerText.startsWith("/rewrite ")) {
+          requestedTone = lowerText.split(" ")[1]?.trim() || null;
+        } else if (lowerText === "/regenerate" || lowerText === "regenerate") {
+          requestedTone = "regenerate";
+        } else if (VALID_TONES.includes(lowerText as any)) {
+          requestedTone = lowerText;
+        }
 
-      if (cmdToken === "status") {
+        let updatedDraft = "";
+        if (requestedTone) {
+          try {
+            updatedDraft = await rewriteDraftWithLlm(
+              env,
+              matchedPending.draft_text || matchedPending.note || "",
+              requestedTone,
+              matchedPending.post_excerpt || matchedPending.target_post_content
+            );
+          } catch (err: any) {
+            await sendTelegramMessage(
+              env,
+              chatId,
+              `⚠️ <b>Rewrite Failed:</b> ${escapeHtml(err.message || "LLM error")}`,
+              messageId
+            );
+            return new Response(JSON.stringify({ status: "rewrite_failed", error: err.message }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+        } else {
+          updatedDraft = text;
+        }
+
+        matchedPending.draft_text = updatedDraft;
+        matchedPending.updated_at = new Date().toISOString();
+        await env.LINKEDIN_AGENT_KV.put(matchedKey, JSON.stringify(matchedPending));
+
+        broadcastEvent({
+          type: "queue_updated",
+          item_id: matchedPending.item_id,
+        });
+
+        // Edit original suggestion message in Telegram
+        ctx.waitUntil(
+          fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: repliedMessageId,
+              text: formatPendingCardHtml(
+                matchedPending,
+                requestedTone ? `Regenerated (${requestedTone})` : "Edited by operator"
+              ),
+              parse_mode: "HTML",
+              link_preview_options: { is_disabled: true },
+              reply_markup: getSuggestionKeyboard(
+                matchedPending.item_id,
+                matchedPending.action_type
+              ),
+            }),
+          }).catch(() => {})
+        );
+
+        const replyConfirmation = requestedTone
+          ? `🔄 <b>Draft Regenerated (${escapeHtml(requestedTone)})</b>\n\nUpdated card above. Tap <b>✅ Approve</b> when ready.`
+          : `✏️ <b>Draft Updated</b>\n\nYour revised text has been saved to the pending card above. Tap <b>✅ Approve</b> when ready.`;
+
+        await sendTelegramMessage(env, chatId, replyConfirmation, messageId);
+
+        return new Response(
+          JSON.stringify({
+            status: "draft_updated",
+            item_id: matchedPending.item_id,
+            mode: requestedTone ? "regenerate" : "manual_edit",
+            tone: requestedTone,
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (text.startsWith("/")) {
+      const parts = text.split(" ");
+      const cmdToken = parts[0].substring(1).split("@")[0].toLowerCase();
+
+      if (cmdToken === "edit") {
+        const targetItemId = parts[1]?.trim();
+        const newDraft = parts.slice(2).join(" ").trim();
+        if (!targetItemId || !newDraft) {
+          await sendTelegramMessage(
+            env,
+            chatId,
+            "ℹ️ <b>Usage:</b> <code>/edit &lt;item_id&gt; &lt;new draft text&gt;</code> or reply directly to a suggestion card.",
+            messageId
+          );
+          return new Response(JSON.stringify({ status: "command_handled", command: "edit" }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (env.LINKEDIN_AGENT_KV) {
+          const raw = await env.LINKEDIN_AGENT_KV.get(`pending:${targetItemId}`);
+          if (!raw) {
+            await sendTelegramMessage(
+              env,
+              chatId,
+              `⚠️ Pending item <code>${escapeHtml(targetItemId)}</code> not found or already executed.`,
+              messageId
+            );
+            return new Response(JSON.stringify({ status: "item_not_found" }), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          const pending = JSON.parse(raw);
+          pending.draft_text = newDraft;
+          pending.updated_at = new Date().toISOString();
+          await env.LINKEDIN_AGENT_KV.put(`pending:${targetItemId}`, JSON.stringify(pending));
+
+          if (pending.telegram_message_id) {
+            ctx.waitUntil(
+              fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: pending.telegram_message_id,
+                  text: formatPendingCardHtml(pending, "Edited by operator"),
+                  parse_mode: "HTML",
+                  link_preview_options: { is_disabled: true },
+                  reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type),
+                }),
+              }).catch(() => {})
+            );
+          }
+
+          broadcastEvent({ type: "queue_updated", item_id: targetItemId });
+          await sendTelegramMessage(
+            env,
+            chatId,
+            `✏️ <b>Draft Updated</b> for <code>${escapeHtml(targetItemId)}</code>.`,
+            messageId
+          );
+          return new Response(JSON.stringify({ status: "draft_updated", item_id: targetItemId }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      } else if (cmdToken === "tone" || cmdToken === "rewrite") {
+        const targetItemId = parts[1]?.trim();
+        const requestedTone = (parts[2] || "").trim().toLowerCase();
+        if (!targetItemId || !requestedTone || !VALID_TONES.includes(requestedTone as any)) {
+          await sendTelegramMessage(
+            env,
+            chatId,
+            `ℹ️ <b>Usage:</b> <code>/tone &lt;item_id&gt; &lt;tone&gt;</code>\n\nAllowed tones: ${VALID_TONES.join(", ")}\nOr reply directly to any suggestion card with the tone name.`,
+            messageId
+          );
+          return new Response(JSON.stringify({ status: "command_handled", command: "tone" }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (env.LINKEDIN_AGENT_KV) {
+          const raw = await env.LINKEDIN_AGENT_KV.get(`pending:${targetItemId}`);
+          if (!raw) {
+            await sendTelegramMessage(
+              env,
+              chatId,
+              `⚠️ Pending item <code>${escapeHtml(targetItemId)}</code> not found or already executed.`,
+              messageId
+            );
+            return new Response(JSON.stringify({ status: "item_not_found" }), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          const pending = JSON.parse(raw);
+          try {
+            const rewritten = await rewriteDraftWithLlm(
+              env,
+              pending.draft_text || "",
+              requestedTone,
+              pending.post_excerpt || pending.target_post_content
+            );
+            pending.draft_text = rewritten;
+            pending.updated_at = new Date().toISOString();
+            await env.LINKEDIN_AGENT_KV.put(`pending:${targetItemId}`, JSON.stringify(pending));
+
+            if (pending.telegram_message_id) {
+              ctx.waitUntil(
+                fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    message_id: pending.telegram_message_id,
+                    text: formatPendingCardHtml(pending, `Regenerated (${requestedTone})`),
+                    parse_mode: "HTML",
+                    link_preview_options: { is_disabled: true },
+                    reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type),
+                  }),
+                }).catch(() => {})
+              );
+            }
+
+            broadcastEvent({ type: "queue_updated", item_id: targetItemId });
+            await sendTelegramMessage(
+              env,
+              chatId,
+              `🔄 <b>Draft Regenerated (${escapeHtml(requestedTone)})</b> for <code>${escapeHtml(targetItemId)}</code>.`,
+              messageId
+            );
+            return new Response(
+              JSON.stringify({ status: "draft_updated", item_id: targetItemId, tone: requestedTone }),
+              { headers: { "Content-Type": "application/json" } }
+            );
+          } catch (err: any) {
+            await sendTelegramMessage(
+              env,
+              chatId,
+              `⚠️ <b>Rewrite Failed:</b> ${escapeHtml(err.message || "LLM error")}`,
+              messageId
+            );
+            return new Response(JSON.stringify({ status: "rewrite_failed", error: err.message }), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+        }
+      } else if (cmdToken === "status") {
         let isPaused = false;
         let hasIncident = false;
         let incidentReason = "";
