@@ -187,9 +187,12 @@ export async function handlePostAction(
       // Continue
     }
 
-    // Delete pending item from KV
+    // Delete pending item and secondary message index from KV
     try {
       await env.LINKEDIN_AGENT_KV.delete(`pending:${itemId}`);
+      if (telegramMessageId && telegramMessageId > 0) {
+        await env.LINKEDIN_AGENT_KV.delete(`msg_id:${telegramMessageId}`);
+      }
     } catch {
       // Continue
     }

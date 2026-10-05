@@ -275,6 +275,7 @@ describe("Authenticated Worker REST API Suite", () => {
             telegram_chat_id: 987654321,
             draft_text: "Interesting perspective!",
           }),
+          "msg_id:8888": "item_reject_1",
           history: JSON.stringify([
             { item_id: "prev_item", final_status: "executed_success" },
           ]),
@@ -298,8 +299,9 @@ describe("Authenticated Worker REST API Suite", () => {
           item_id: "item_reject_1",
         });
 
-        // 1. Pending item deleted from KV
+        // 1. Pending item and secondary message index deleted from KV
         expect(store.has("pending:item_reject_1")).toBe(false);
+        expect(store.has("msg_id:8888")).toBe(false);
 
         // 2. Appended rejection history entry
         const historyJson = JSON.parse(store.get("history")!);
