@@ -54,14 +54,14 @@ async def run_execute_flow(
 
     act = action or os.environ.get("ACTION", "approve")
     iid = item_id or os.environ.get("ITEM_ID", "")
+    raw_chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
     t_chat = telegram_chat_id or (
-        int(os.environ["TELEGRAM_CHAT_ID"])
-        if "TELEGRAM_CHAT_ID" in os.environ
+        int(raw_chat)
+        if raw_chat and raw_chat.lstrip("-").isdigit()
         else cfg.telegram_authorized_chat_id
     )
-    t_msg = telegram_message_id or (
-        int(os.environ["TELEGRAM_MESSAGE_ID"]) if "TELEGRAM_MESSAGE_ID" in os.environ else None
-    )
+    raw_msg = os.environ.get("TELEGRAM_MESSAGE_ID", "").strip()
+    t_msg = telegram_message_id or (int(raw_msg) if raw_msg and raw_msg.isdigit() else None)
     t_cb = telegram_callback_query_id or os.environ.get("TELEGRAM_CALLBACK_QUERY_ID")
 
     setup_logging(cfg.log_level)

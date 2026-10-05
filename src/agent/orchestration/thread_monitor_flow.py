@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Any
 
 from playwright.async_api import async_playwright
@@ -131,4 +131,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

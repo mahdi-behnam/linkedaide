@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import time
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -46,10 +47,18 @@ class GitStateStore(BaseStateStore):
         self.scheduled_dir.mkdir(parents=True, exist_ok=True)
 
     def _atomic_write_json(self, target_path: Path, data: Any, indent: int = 2) -> None:
-        """Write JSON data to a target path atomically via a temporary file."""
+        """Write JSON data to a target path atomically via a unique temporary file."""
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        temp_path = target_path.with_suffix(".tmp")
-        temp_path.write_text(json.dumps(data, indent=indent, default=str), encoding="utf-8")
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            dir=target_path.parent,
+            prefix=f"{target_path.name}.",
+            suffix=".tmp",
+            delete=False,
+            encoding="utf-8",
+        ) as tf:
+            tf.write(json.dumps(data, indent=indent, default=str))
+            temp_path = Path(tf.name)
         temp_path.replace(target_path)
 
     # -------------------------------------------------------------------------

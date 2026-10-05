@@ -357,6 +357,7 @@ async def send_telegram_suggestions(state: ScoutState, config: RunnableConfig) -
 
     pending_items = state.get("pending_items", [])
     updated_items: list[PendingAction] = []
+    errors: list[str] = list(state.get("errors", []))
 
     for item in pending_items:
         try:
@@ -364,13 +365,18 @@ async def send_telegram_suggestions(state: ScoutState, config: RunnableConfig) -
             item_with_msg = item.model_copy(update={"telegram_message_id": msg_id})
             context.state_store.write_pending(item_with_msg)
             updated_items.append(item_with_msg)
-        except Exception:
-            pass
+        except Exception as err:
+            logger.error(
+                "Failed to send Telegram suggestion for pending item %s: %s",
+                item.item_id,
+                err,
+            )
+            errors.append(f"Telegram delivery failed for {item.item_id}: {err}")
 
     if context.state_store and updated_items:
         context.state_store.increment_suggestion_count(count=len(updated_items))
 
-    return {"pending_items": updated_items, "status": "completed"}
+    return {"pending_items": updated_items, "status": "completed", "errors": errors}
 
 
 # Conditional Route Functions
