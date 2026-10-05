@@ -10,6 +10,7 @@ from pydantic import SecretStr
 
 from agent.browser.executor import ActionExecutor
 from agent.config import Settings
+from agent.models.actions import MediaAttachment
 from agent.errors import (
     BotDetectionError,
     ExecutionError,
@@ -1660,3 +1661,127 @@ async def test_post_comment_dry_run_stores_r2_key_when_configured(
         assert result.success is True
         assert result.screenshot_path == "screenshots/dryrun_comment_dry001.png"
         assert mock_put.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_resolve_media_file_paths_remote_download(base_settings: Settings) -> None:
+    page = MagicMock()
+    executor = ActionExecutor(page, base_settings)
+
+    media = [
+        MediaAttachment(
+            media_type="image",
+            file_name="slide1.png",
+            file_url="https://pub-r2.example.com/slide1.png",
+        ),
+        MediaAttachment(
+            media_type="image",
+            file_name="missing.png",
+            file_url="/nonexistent/local/path/missing.png",
+        ),
+    ]
+
+    mock_resp = MagicMock(status_code=200, content=b"fake-image-bytes")
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        resolved, temp_files = await executor._resolve_media_file_paths(media)
+
+        assert len(resolved) == 1
+        assert len(temp_files) == 1
+        temp_path = temp_files[0]
+        assert temp_path.exists()
+        assert temp_path.read_bytes() == b"fake-image-bytes"
+        assert temp_path.suffix == ".png"
+
+        # Cleanup
+        for tf in temp_files:
+            tf.unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_create_post_with_remote_media_upload_and_cleanup(
+    base_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+    page.screenshot = AsyncMock()
+
+    start_post_btn = MagicMock(count=AsyncMock(return_value=1), click=AsyncMock())
+    editor = MagicMock(
+        count=AsyncMock(return_value=1), focus=AsyncMock(), press_sequentially=AsyncMock()
+    )
+    post_btn = MagicMock(count=AsyncMock(return_value=1), click=AsyncMock())
+    file_input = MagicMock(count=AsyncMock(return_value=1), set_input_files=AsyncMock())
+    next_btn = MagicMock(count=AsyncMock(return_value=1), click=AsyncMock())
+
+    modal_loc = MagicMock()
+    modal_loc.count = AsyncMock(return_value=1)
+    modal_loc.is_visible = AsyncMock(return_value=False)
+
+    def locator_side_effect(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "Start a post" in selector or "share-box-feed-entry" in selector:
+            loc.first = start_post_btn
+            loc.count = start_post_btn.count
+        elif "share-box-modal" in selector or "dialog" in selector:
+            loc.first = modal_loc
+            loc.count = modal_loc.count
+            loc.is_visible = modal_loc.is_visible
+        elif "ql-editor" in selector or "textbox" in selector:
+            loc.first = editor
+            loc.count = editor.count
+        elif "input[type='file']" in selector:
+            loc.first = file_input
+            loc.count = file_input.count
+        elif "Next" in selector or "Done" in selector:
+            loc.first = next_btn
+            loc.count = next_btn.count
+        elif "share-actions__primary-action" in selector or "Post" in selector:
+            loc.first = post_btn
+            loc.count = post_btn.count
+        else:
+            loc.first = MagicMock(count=AsyncMock(return_value=0))
+            loc.count = AsyncMock(return_value=0)
+        return loc
+
+    page.locator = MagicMock(side_effect=locator_side_effect)
+
+    executor = ActionExecutor(page, base_settings)
+    media = [
+        MediaAttachment(
+            media_type="image",
+            file_name="asset.jpg",
+            file_url="https://r2.example.com/asset.jpg",
+        )
+    ]
+
+    mock_resp = MagicMock(status_code=200, content=b"downloaded-image-data")
+    mock_resp.raise_for_status = MagicMock()
+
+    created_temp_path: Path | None = None
+
+    async def mock_set_input_files(paths: list[str]) -> None:
+        nonlocal created_temp_path
+        created_temp_path = Path(paths[0])
+        assert created_temp_path.exists()
+        assert created_temp_path.read_bytes() == b"downloaded-image-data"
+
+    file_input.set_input_files = AsyncMock(side_effect=mock_set_input_files)
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        result = await executor.create_post(
+            post_text="Scheduled post with image",
+            item_id="post_media_001",
+            dry_run=False,
+            verification_timeout=1.0,
+            media=media,
+        )
+
+    assert result.success is True
+    assert file_input.set_input_files.called
+    assert next_btn.click.called
+    assert created_temp_path is not None
+    # Verify cleanup in finally block
+    assert not created_temp_path.exists()
+

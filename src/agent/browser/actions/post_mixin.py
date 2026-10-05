@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import httpx
 
 from agent.browser import stealth
 from agent.browser.selectors import LINKEDIN_SELECTORS
@@ -131,6 +134,47 @@ class PostMixin:
             details={"screenshot_path": screenshot, "item_id": item_id},
         )
 
+    async def _resolve_media_file_paths(
+        self, media: list[MediaAttachment]
+    ) -> tuple[list[str], list[Path]]:
+        """Resolve media attachments to local paths, downloading remote URLs if needed.
+
+        Args:
+            media: List of media attachment descriptors.
+
+        Returns:
+            tuple[list[str], list[Path]]: File paths for input upload and temp files to clean up.
+        """
+        file_paths: list[str] = []
+        temp_files: list[Path] = []
+
+        for m in media:
+            if not m.file_url:
+                continue
+            raw_url = m.file_url.strip()
+            if raw_url.startswith(("http://", "https://")):
+                suffix = Path(m.file_name).suffix or Path(raw_url.split("?")[0]).suffix or ".tmp"
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                        temp_path = Path(tmp.name)
+                    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                        resp = await client.get(raw_url)
+                        resp.raise_for_status()
+                        temp_path.write_bytes(resp.content)
+                    temp_files.append(temp_path)
+                    file_paths.append(str(temp_path))
+                    logger.info("Downloaded remote media attachment %s to %s", raw_url, temp_path)
+                except Exception as err:
+                    logger.warning(
+                        "Failed to download remote media attachment %s: %s", raw_url, err
+                    )
+            elif Path(raw_url).exists():
+                file_paths.append(raw_url)
+            else:
+                logger.warning("Media attachment path not found: %s", raw_url)
+
+        return file_paths, temp_files
+
     async def create_post(
         self,
         post_text: str,
@@ -164,6 +208,7 @@ class PostMixin:
                 executed_at=now,
             )
 
+        temp_media_files: list[Path] = []
         try:
             start_post_selector = (
                 "div[role='button']:has-text('Start a post'), "
@@ -215,7 +260,7 @@ class PostMixin:
             await self.biometrics.type_text(editor, post_text)
 
             if media:
-                file_paths = [m.file_url for m in media if m.file_url and Path(m.file_url).exists()]
+                file_paths, temp_media_files = await self._resolve_media_file_paths(media)
                 if file_paths:
                     file_input = self.page.locator("input[type='file']").first
                     if await file_input.count() > 0:
@@ -278,3 +323,10 @@ class PostMixin:
                 f"Failed to publish post: {err}",
                 details={"screenshot_path": screenshot, "item_id": item_id},
             ) from err
+        finally:
+            for tf in temp_media_files:
+                try:
+                    tf.unlink(missing_ok=True)
+                except Exception as cleanup_err:
+                    logger.debug("Failed to remove temp media file %s: %s", tf, cleanup_err)
+
