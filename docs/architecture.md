@@ -49,7 +49,7 @@ flowchart TD
 
 ## 3. Workflow State Machines (LangGraph)
 
-The application defines three compiled LangGraph state machines:
+The application defines five compiled LangGraph state machines:
 
 ### 3.1 ScoutGraph
 Orchestrates feed ingestion, LLM evaluation, and suggestion delivery:
@@ -122,6 +122,23 @@ stateDiagram-v2
     draft_reply --> persist_pending_reply
     persist_pending_reply --> notify_telegram
     notify_telegram --> [*]
+```
+
+### 3.5 IdeationGraph
+Orchestrates brainstorming and drafting original LinkedIn thought leadership posts based on configured focus areas and industry context:
+
+```mermaid
+stateDiagram-v2
+    [*] --> check_halted
+    check_halted --> load_context: System Active
+    check_halted --> [*]: System Paused
+    load_context --> generate_ideas: Focus Areas Loaded
+    generate_ideas --> filter_and_rank: Candidates Generated
+    generate_ideas --> [*]: Generation Failed
+    filter_and_rank --> persist_pending: Ranked & Capped
+    filter_and_rank --> [*]: No Viable Ideas
+    persist_pending --> send_suggestions
+    send_suggestions --> [*]
 ```
 
 ---

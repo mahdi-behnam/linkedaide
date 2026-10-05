@@ -1,6 +1,6 @@
 # Configuration Reference Guide
 
-All runtime settings in the LinkedIn Human-in-the-Loop (HITL) AI Agent are loaded and strictly validated via `pydantic-settings` in [`src/agent/config.py`](../src/agent/config.py).
+All runtime settings in the LinkedIn Human-in-the-Loop (HITL) AI Agent are loaded and strictly validated via `pydantic-settings` in [`src/agent/config/settings.py`](../src/agent/config/settings.py).
 
 Settings can be provided via environment variables, a local `.env` file, or GitHub Actions Secrets / Variables.
 
@@ -44,6 +44,7 @@ Settings can be provided via environment variables, a local `.env` file, or GitH
 | **Safety & Rate Limits** | | | | |
 | `MAX_COMMENTS_PER_DAY` | `int` (`>= 0`) | `5` | No | Hard daily maximum for approved LinkedIn comments. |
 | `MAX_POSTS_PER_DAY` | `int` (`>= 0`) | `1` | No | Hard daily maximum for original LinkedIn posts. |
+| `MAX_CONNECTIONS_PER_DAY` | `int` (`>= 0`) | `10` | No | Hard daily maximum for approved LinkedIn connection requests. |
 | `MAX_SUGGESTIONS_PER_RUN` | `int` (`>= 1`) | `3` | No | Maximum suggestions sent to Telegram per scout run. |
 | `PENDING_ACTION_TTL_HOURS` | `int` (`>= 1`) | `12` | No | Time-to-live in hours before pending approvals expire. |
 | `AGENT_PAUSED` | `bool` | `false` | No | Global kill switch: when `true`, all workflows pause immediately. |

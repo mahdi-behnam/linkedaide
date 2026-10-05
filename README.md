@@ -67,6 +67,9 @@ LinkedIn Feed / Topics
 .
 ├── .github/
 │   └── workflows/             # Scheduled cron & event-driven GitHub Actions workflows
+├── desktop/                   # Cross-platform Electron desktop control panel (React + TypeScript)
+│   ├── electron/              # Electron main process, IPC handlers, tray manager, local runner
+│   └── src/                   # React UI (Approval Queue, Studio, Outreach, Calendar, Analytics)
 ├── infra/
 │   └── telegram-relay-worker/    # Cloudflare Worker relaying Telegram callbacks to GitHub
 ├── scripts/                   # Local operator utilities
@@ -76,18 +79,18 @@ LinkedIn Feed / Topics
 │   └── run_scout_dry.py             # Standalone local dry-run script
 ├── src/
 │   └── agent/
-│       ├── cli/               # Unified CLI tool (setup, doctor, scout, ideate, poll, execute)
+│       ├── cli/               # Unified CLI tool (setup, doctor, scout, ideate, thread-monitor, outreach)
 │       ├── doctor/            # Diagnostic health check suite
 │       ├── config/            # Pydantic Settings configuration & provider defaults
 │       ├── errors.py          # Custom exception hierarchy
 │       ├── models/            # Pydantic domain & persistence schemas
 │       ├── llm/               # LangChain models, prompts, structured output service
-│       ├── graphs/            # LangGraph state machines (Scout, Execute, Ideate, Health)
+│       ├── graphs/            # LangGraph state machines (Scout, Execute, Ideate, Health, Thread)
 │       ├── browser/           # Playwright session management, stealth, scraper, executor
 │       ├── telegram/          # Telegram bot client, review keyboards, draft editor
 │       ├── state/             # StateStore backends (Cloudflare KV & GitStateStore)
 │       ├── safety/            # Daily rate limiters and circuit breaker controls
-│       └── orchestration/     # Flow runners (scout, ideate, poll, execute, health)
+│       └── orchestration/     # Flow runners (scout, ideate, poll, execute, health, thread, outreach)
 ├── state/                     # Local fallback storage (seen posts, history, pending drafts)
 ├── tests/                     # Comprehensive unit and integration test suites
 ├── docs/                      # In-depth architectural and operational guides
@@ -250,6 +253,8 @@ The `agent` CLI provides access to all agent workflows:
 | `uv run agent doctor` | Diagnostic suite testing Python, Chromium, settings, LLM, Telegram, and session. |
 | `uv run agent scout [--dry-run] [--headed]` | Scrapes feed, triages relevance, drafts comments, and sends Telegram cards. |
 | `uv run agent ideate [--dry-run]` | Generates original standalone post ideas based on your focus areas. |
+| `uv run agent thread-monitor [--headed]` | Inspects active comment threads for new replies and drafts follow-up responses. |
+| `uv run agent outreach [--list] [--review]` | Manages 2nd-degree connection outreach queue, reviews candidates, and executes invites. |
 | `uv run agent poll [--timeout SEC] [--once]` | Local listener polling Telegram for approvals, edits, and operator commands. |
 | `uv run agent execute [--action approve\|reject] [--item-id ID]` | Executes an approved or rejected LinkedIn action. |
 | `uv run agent health` | Runs a read-only session validity and challenge check. |
