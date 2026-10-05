@@ -185,8 +185,10 @@ def test_pending_actions_crud(kv_store: CloudflareKVStateStore) -> None:
     assert kv_store.delete_pending("item_001") is False
 
 
-def test_find_pending_by_message_id(kv_store: CloudflareKVStateStore) -> None:
-    """Test lookup of pending actions by Telegram message ID."""
+def test_find_pending_by_message_id(
+    kv_store: CloudflareKVStateStore, mock_kv_handler: MockKVHandler
+) -> None:
+    """Test lookup of pending actions by Telegram message ID with secondary index."""
     item1 = PendingAction(
         item_id="item_a",
         action_type="approve_comment",
@@ -202,11 +204,20 @@ def test_find_pending_by_message_id(kv_store: CloudflareKVStateStore) -> None:
     kv_store.write_pending(item1)
     kv_store.write_pending(item2)
 
+    # Verify secondary index keys are populated
+    assert mock_kv_handler.kv.get("msg_id:111") == "item_a"
+    assert mock_kv_handler.kv.get("msg_id:222") == "item_b"
+
     found = kv_store.find_pending_by_message_id(222)
     assert found is not None
     assert found.item_id == "item_b"
 
     assert kv_store.find_pending_by_message_id(999) is None
+
+    # Delete item2 and verify secondary index key is cleaned up
+    assert kv_store.delete_pending("item_b") is True
+    assert "msg_id:222" not in mock_kv_handler.kv
+    assert kv_store.find_pending_by_message_id(222) is None
 
 
 def test_update_pending_draft(kv_store: CloudflareKVStateStore) -> None:

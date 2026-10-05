@@ -66,24 +66,39 @@ export async function handleTelegramWebhook(
     const repliedMsg = msg.reply_to_message as { message_id: number; text?: string } | undefined;
     if (repliedMsg && env.LINKEDIN_AGENT_KV) {
       const repliedMessageId = repliedMsg.message_id;
-      const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
       let matchedKey: string | null = null;
       let matchedPending: any = null;
 
-      for (const k of listRes.keys || []) {
-        const raw = await env.LINKEDIN_AGENT_KV.get(k.name);
+      // Fast-path: O(1) direct lookup via secondary message index
+      const directItemId = await env.LINKEDIN_AGENT_KV.get(`msg_id:${repliedMessageId}`);
+      if (directItemId) {
+        const raw = await env.LINKEDIN_AGENT_KV.get(`pending:${directItemId}`);
         if (raw) {
           try {
-            const parsed = JSON.parse(raw);
-            if (
-              parsed.telegram_message_id === repliedMessageId ||
-              parsed.message_id === repliedMessageId
-            ) {
-              matchedKey = k.name;
-              matchedPending = parsed;
-              break;
-            }
+            matchedKey = `pending:${directItemId}`;
+            matchedPending = JSON.parse(raw);
           } catch {}
+        }
+      }
+
+      // Fallback: Scan pending items if not found via secondary index
+      if (!matchedPending) {
+        const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+        for (const k of listRes.keys || []) {
+          const raw = await env.LINKEDIN_AGENT_KV.get(k.name);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              if (
+                parsed.telegram_message_id === repliedMessageId ||
+                parsed.message_id === repliedMessageId
+              ) {
+                matchedKey = k.name;
+                matchedPending = parsed;
+                break;
+              }
+            } catch {}
+          }
         }
       }
 
@@ -636,19 +651,26 @@ export async function handleTelegramWebhook(
     } else if (actionCode === "rcon") {
       actionType = "approve_connection";
     }
+    let tgMsgId: number | null = null;
     try {
       const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
       if (rawPending) {
         const pending = JSON.parse(rawPending);
         actionType = pending.action_type || actionType;
+        if (pending.telegram_message_id) {
+          tgMsgId = Number(pending.telegram_message_id);
+        }
       }
     } catch {
       // Fallback actionType already set
     }
 
-    // 2. Delete pending item from KV
+    // 2. Delete pending item and secondary message index from KV
     try {
       await env.LINKEDIN_AGENT_KV.delete(`pending:${itemId}`);
+      if (tgMsgId && tgMsgId > 0) {
+        await env.LINKEDIN_AGENT_KV.delete(`msg_id:${tgMsgId}`);
+      }
     } catch {
       // Continue
     }

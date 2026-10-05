@@ -172,11 +172,23 @@ class CloudflareKVStateStore(BaseStateStore):
     # -------------------------------------------------------------------------
 
     def write_pending(self, item: PendingAction) -> str:
-        """Write a pending action to key pending:{item_id}."""
+        """Write a pending action to key pending:{item_id} and index by telegram_message_id."""
         key = f"pending:{item.item_id}"
         payload = item.model_dump_json(indent=2)
         self._put_value(key, payload)
+        tg_msg_id = getattr(item, "telegram_message_id", None)
+        if tg_msg_id and int(tg_msg_id) > 0:
+            self._put_value(f"msg_id:{tg_msg_id}", item.item_id)
         return key
+
+    def find_pending_by_message_id(self, message_id: int) -> PendingAction | None:
+        """Find a pending action by its telegram_message_id in O(1) via secondary index."""
+        indexed_item_id = self._get_value(f"msg_id:{message_id}")
+        if indexed_item_id:
+            item = self.read_pending(indexed_item_id.strip())
+            if item is not None and item.telegram_message_id == message_id:
+                return item
+        return super().find_pending_by_message_id(message_id)
 
     def read_pending(self, item_id: str) -> PendingAction | None:
         """Read a pending action by item_id. Returns None if not found."""
@@ -190,11 +202,18 @@ class CloudflareKVStateStore(BaseStateStore):
             raise StateStoreError(f"Failed to parse pending action {item_id}: {err}") from err
 
     def delete_pending(self, item_id: str) -> bool:
-        """Delete a pending action key. Returns True if deleted, False if not found."""
+        """Delete a pending action key and its secondary index. Returns True if deleted, False if not found."""
         key = f"pending:{item_id}"
-        # Verify existence first for consistent semantics with GitStateStore
-        if self._get_value(key) is None:
+        raw = self._get_value(key)
+        if raw is None:
             return False
+        try:
+            data = json.loads(raw)
+            tg_msg_id = data.get("telegram_message_id")
+            if tg_msg_id and int(tg_msg_id) > 0:
+                self._delete_key(f"msg_id:{tg_msg_id}")
+        except Exception:
+            pass
         return self._delete_key(key)
 
     def list_pending(self) -> list[PendingAction]:
