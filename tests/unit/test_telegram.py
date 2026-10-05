@@ -88,6 +88,18 @@ class TestKeyboardsAndMessages:
         assert buttons[0]["callback_data"] == "ap:post_123"
         assert buttons[1]["callback_data"] == "rp:post_123"
 
+    def test_build_suggestion_keyboard_reply(self) -> None:
+        keyboard = build_suggestion_keyboard("reply_123", "approve_reply")
+        buttons = keyboard["inline_keyboard"][0]
+        assert buttons[0]["callback_data"] == "ar:reply_123"
+        assert buttons[1]["callback_data"] == "rr:reply_123"
+
+    def test_build_suggestion_keyboard_connection(self) -> None:
+        keyboard = build_suggestion_keyboard("conn_123", "approve_connection")
+        buttons = keyboard["inline_keyboard"][0]
+        assert buttons[0]["callback_data"] == "acon:conn_123"
+        assert buttons[1]["callback_data"] == "rcon:conn_123"
+
     def test_build_suggestion_keyboard_includes_edit_button(self) -> None:
         keyboard = build_suggestion_keyboard("item_edit_test", "approve_comment")
         assert len(keyboard["inline_keyboard"]) == 2
@@ -215,6 +227,60 @@ class TestKeyboardsAndMessages:
         )
         assert "⚠️ Execution Failed" in failed_msg
         assert "Selector not found" in failed_msg
+
+    def test_build_outcome_messages_for_reply_and_connection(self) -> None:
+        reply_action = PendingAction(
+            item_id="reply_out_1",
+            action_type="approve_reply",
+            post_urn="urn:li:comment:111",
+            author_name="Dev Author",
+            draft_text="Reply text here",
+            confidence=0.9,
+            created_at=datetime.now(UTC),
+        )
+        conn_action = PendingAction(
+            item_id="conn_out_1",
+            action_type="approve_connection",
+            author_name="Profile Author",
+            draft_text="Hi, let's connect!",
+            confidence=0.85,
+            created_at=datetime.now(UTC),
+        )
+        reply_msg = build_outcome_message(reply_action, "success")
+        assert "Thread Reply" in reply_msg
+        assert "reply_out_1" in reply_msg
+
+        conn_msg = build_outcome_message(conn_action, "success")
+        assert "Connection Request" in conn_msg
+        assert "conn_out_1" in conn_msg
+
+    def test_format_suggestion_card_reply_and_connection(self) -> None:
+        reply_action = PendingAction(
+            item_id="reply_card_1",
+            action_type="approve_reply",
+            post_urn="urn:li:comment:222",
+            author_name="Thread Participant",
+            post_excerpt="What are the best patterns for resilient workflows?",
+            draft_text="Deterministic state checkpointing is key.",
+            confidence=0.92,
+            created_at=datetime.now(UTC),
+        )
+        conn_action = PendingAction(
+            item_id="conn_card_1",
+            action_type="approve_connection",
+            author_name="Engineering Director",
+            draft_text="Would love to connect regarding agent infrastructure.",
+            confidence=0.88,
+            created_at=datetime.now(UTC),
+        )
+
+        reply_card = format_suggestion_card(reply_action)
+        assert "💬 Thread Reply" in reply_card
+        assert "Parent Comment:" in reply_card
+
+        conn_card = format_suggestion_card(conn_action)
+        assert "🤝 Connection Request" in conn_card
+        assert "Drafted Note:" in conn_card
 
 
 class TestTelegramClient:

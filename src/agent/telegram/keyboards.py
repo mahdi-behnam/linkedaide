@@ -11,9 +11,13 @@ from typing import Any
 
 from agent.models import (
     ACTION_CODE_APPROVE_COMMENT,
+    ACTION_CODE_APPROVE_CONNECTION,
     ACTION_CODE_APPROVE_POST,
+    ACTION_CODE_APPROVE_REPLY,
     ACTION_CODE_REJECT_COMMENT,
+    ACTION_CODE_REJECT_CONNECTION,
     ACTION_CODE_REJECT_POST,
+    ACTION_CODE_REJECT_REPLY,
     PendingAction,
 )
 
@@ -23,7 +27,7 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
 
     Args:
         item_id: Unique identifier for the pending action item.
-        action_type: Either 'approve_comment' or 'approve_post'.
+        action_type: One of 'approve_comment', 'approve_post', 'approve_reply', or 'approve_connection'.
 
     Returns:
         Telegram inline_keyboard reply_markup dictionary.
@@ -35,6 +39,12 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
     if action_type in ("approve_post", "post"):
         approve_code = ACTION_CODE_APPROVE_POST
         reject_code = ACTION_CODE_REJECT_POST
+    elif action_type in ("approve_reply", "reply"):
+        approve_code = ACTION_CODE_APPROVE_REPLY
+        reject_code = ACTION_CODE_REJECT_REPLY
+    elif action_type in ("approve_connection", "connection"):
+        approve_code = ACTION_CODE_APPROVE_CONNECTION
+        reject_code = ACTION_CODE_REJECT_CONNECTION
     else:
         approve_code = ACTION_CODE_APPROVE_COMMENT
         reject_code = ACTION_CODE_REJECT_COMMENT
@@ -78,7 +88,17 @@ def format_suggestion_card(item: PendingAction) -> str:
         HTML formatted message card string.
     """
     is_post = item.action_type in ("approve_post", "post")
-    action_label = "📝 Original Post" if is_post else "💬 Feed Comment"
+    is_reply = item.action_type in ("approve_reply", "reply")
+    is_conn = item.action_type in ("approve_connection", "connection")
+
+    if is_post:
+        action_label = "📝 Original Post"
+    elif is_reply:
+        action_label = "💬 Thread Reply"
+    elif is_conn:
+        action_label = "🤝 Connection Request"
+    else:
+        action_label = "💬 Feed Comment"
 
     lines: list[str] = [
         "<b>🚀 LinkedIn Action Suggestion</b>",
@@ -111,12 +131,14 @@ def format_suggestion_card(item: PendingAction) -> str:
         )
 
     if item.post_excerpt and not is_post:
+        excerpt_label = "Parent Comment" if is_reply else "Post Excerpt"
         lines.append(
-            f"<b>Post Excerpt:</b>\n<blockquote>{html.escape(item.post_excerpt)}</blockquote>"
+            f"<b>{excerpt_label}:</b>\n<blockquote>{html.escape(item.post_excerpt)}</blockquote>"
         )
 
+    content_label = "Drafted Note" if is_conn else "Drafted Content"
     lines.append(
-        f"<b>Drafted Content:</b>\n<blockquote>{html.escape(item.draft_text)}</blockquote>"
+        f"<b>{content_label}:</b>\n<blockquote>{html.escape(item.draft_text)}</blockquote>"
     )
 
     char_count = len(item.draft_text)
@@ -181,7 +203,14 @@ def build_outcome_message(
     lines: list[str] = [header]
 
     if item:
-        item_type = "Post" if item.action_type in ("approve_post", "post") else "Comment"
+        if item.action_type in ("approve_post", "post"):
+            item_type = "Post"
+        elif item.action_type in ("approve_reply", "reply"):
+            item_type = "Thread Reply"
+        elif item.action_type in ("approve_connection", "connection"):
+            item_type = "Connection Request"
+        else:
+            item_type = "Comment"
         lines.append(f"<b>Item:</b> {html.escape(item.item_id)} ({item_type})")
         if item.draft_text:
             lines.append(
