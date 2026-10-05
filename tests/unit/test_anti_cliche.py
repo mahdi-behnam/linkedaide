@@ -13,7 +13,15 @@ from langchain_core.runnables import RunnableLambda
 from agent.config import Settings
 from agent.llm.chains import LLMChains
 from agent.llm.service import LLMService
-from agent.models import CommentDraft, PostRecord, TriageResult
+from agent.models import (
+    CommentDraft,
+    PostIdea,
+    PostIdeationContext,
+    PostRecord,
+    ReplyTriageResult,
+    ThreadReplyItem,
+    TriageResult,
+)
 from agent.safety.anti_cliche import (
     BANNED_BUZZWORDS,
     AntiClicheScanner,
@@ -498,3 +506,64 @@ class TestLLMServiceRepairLoop:
             "Alice Engineer" in draft.draft_comment
             or "architecture trade-offs" in draft.draft_comment
         )
+
+    @pytest.mark.asyncio
+    async def test_draft_post_idea_anti_cliche_sanitized(self, mock_settings: Settings) -> None:
+        chains = LLMChains(
+            triage=RunnableLambda(lambda x: None),
+            comment=RunnableLambda(lambda x: None),
+            post_idea=RunnableLambda(
+                lambda x: PostIdea(
+                    should_post=True,
+                    headline="Distributed queues in production",
+                    draft_post_text="In today's fast-paced world, building distributed queues requires attention to backpressure.",
+                    hashtags=["systems"],
+                    reasoning="Fresh angle",
+                )
+            ),
+        )
+        service = LLMService(mock_settings, chains=chains)
+        context = PostIdeationContext(user_focus_areas=["Distributed Systems"])
+        idea = await service.draft_post_idea(context)
+        assert idea is not None
+        assert "In today's fast-paced world" not in idea.draft_post_text
+        assert "Building distributed queues requires attention to backpressure." in idea.draft_post_text
+        assert service.anti_cliche_scanner.scan(idea.draft_post_text).passed is True
+
+    @pytest.mark.asyncio
+    async def test_draft_thread_reply_anti_cliche_sanitized(
+        self, mock_settings: Settings
+    ) -> None:
+        chains = LLMChains(
+            triage=RunnableLambda(lambda x: None),
+            comment=RunnableLambda(lambda x: None),
+            post_idea=RunnableLambda(lambda x: None),
+            thread_reply=RunnableLambda(
+                lambda x: CommentDraft(
+                    draft_comment="Great read! We benchmarked throughput under zipfian skew.",
+                    topic_tags=["benchmarks"],
+                )
+            ),
+        )
+        service = LLMService(mock_settings, chains=chains)
+        reply = ThreadReplyItem(
+            reply_urn="urn:li:reply:1",
+            parent_comment_urn="urn:li:comment:1",
+            author_name="Alice Vance",
+            reply_text="How did you measure contention?",
+        )
+        triage = ReplyTriageResult(
+            recommendation="reply",
+            confidence=0.95,
+            reasoning="Technical question",
+        )
+        draft = await service.draft_thread_reply(
+            reply=reply,
+            our_comment="Our comment",
+            original_post="Original post",
+            triage=triage,
+        )
+        assert "great read" not in draft.draft_comment.lower()
+        assert "We benchmarked throughput under zipfian skew." in draft.draft_comment
+        assert service.anti_cliche_scanner.scan(draft.draft_comment).passed is True
+

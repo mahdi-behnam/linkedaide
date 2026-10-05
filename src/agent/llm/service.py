@@ -204,7 +204,17 @@ class LLMService:
             "recent_topics": recent_topics_str,
         }
 
-        return await self._resilience.execute("post_idea", input_data, PostIdea)
+        idea = await self._resilience.execute("post_idea", input_data, PostIdea)
+        if idea is not None and idea.draft_post_text:
+            scan_result = self._anti_cliche_scanner.scan(idea.draft_post_text)
+            if not scan_result.passed:
+                logger.info(
+                    "Anti-cliche violations detected in post idea: %s", scan_result.violations
+                )
+                sanitized = self._anti_cliche_scanner.sanitize(idea.draft_post_text)
+                if sanitized:
+                    idea = idea.model_copy(update={"draft_post_text": sanitized})
+        return idea
 
     async def triage_thread_reply(
         self,
