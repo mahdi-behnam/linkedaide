@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
+import asyncio
 import logging
 from pathlib import Path
+import sys
 from typing import Any
 
 from playwright.async_api import async_playwright
@@ -95,3 +98,37 @@ async def run_thread_monitor_flow(
         finally:
             await context.close()
             await browser.close()
+
+
+def main() -> None:
+    """CLI script runner for thread monitor flow."""
+    parser = argparse.ArgumentParser(description="Run LinkedIn Thread Monitor flow")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Execute in dry-run mode (prevents live LinkedIn writes)",
+    )
+    parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Launch visible Chromium browser window for local inspection",
+    )
+    args = parser.parse_args()
+
+    cfg = load_settings()
+    if args.dry_run:
+        cfg = cfg.model_copy(update={"dry_run": True})
+
+    try:
+        result = asyncio.run(run_thread_monitor_flow(settings=cfg, headless=not args.headed))
+        if result.get("status") == "halted":
+            sys.exit(1)
+        sys.exit(0)
+    except Exception as err:
+        print(f"Fatal Thread Monitor error: {err}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+
