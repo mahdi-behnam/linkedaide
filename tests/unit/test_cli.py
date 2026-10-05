@@ -19,9 +19,15 @@ from agent.cli import (
     run_execute,
     run_health,
     run_ideate,
+    run_outreach,
     run_poll,
     run_scout,
     run_setup,
+)
+from agent.cli.outreach import (
+    format_candidate_card,
+    list_outreach_candidates,
+    review_outreach_candidates,
 )
 from agent.cli.setup import (
     parse_dotenv_lines,
@@ -41,6 +47,7 @@ from agent.doctor import (
     format_check_result,
 )
 from agent.errors import ConfigError
+from agent.models.actions import ConnectionRequestAction
 
 # =============================================================================
 # 1. CLI Parser Dispatch Tests
@@ -116,6 +123,32 @@ def test_build_parser_ideate() -> None:
     assert args.command == "ideate"
     assert args.dry_run is True
     assert args.repo_root == "/some/root"
+
+
+def test_build_parser_outreach() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "outreach",
+            "--review",
+            "--approve",
+            "conn_123",
+            "--reject",
+            "conn_456",
+            "--status",
+            "pending",
+            "--dry-run",
+            "--repo-root",
+            "/outreach/root",
+        ]
+    )
+    assert args.command == "outreach"
+    assert args.review is True
+    assert args.approve == "conn_123"
+    assert args.reject == "conn_456"
+    assert args.status == "pending"
+    assert args.dry_run is True
+    assert args.repo_root == "/outreach/root"
 
 
 def test_main_no_args_exits_cleanly(capsys: pytest.CaptureFixture[str]) -> None:
@@ -842,3 +875,177 @@ def test_main_ideate_dispatch() -> None:
         main(["ideate", "--dry-run"])
     assert exc.value.code == 0
     mock_ideate.assert_called_once()
+
+
+# =============================================================================
+# 7. Outreach Command Tests
+# =============================================================================
+
+
+def test_format_candidate_card() -> None:
+    candidate = ConnectionRequestAction(
+        id="conn_abc123",
+        profile_url="https://www.linkedin.com/in/testuser",
+        target_name="Jane Doe",
+        target_headline="Staff Engineer at Cloud Corp",
+        mutual_context="Shared interest in distributed consensus",
+        note_text="Hi Jane, would love to connect!",
+        status="pending",
+    )
+    card = format_candidate_card(candidate)
+    assert "conn_abc123" in card
+    assert "Jane Doe" in card
+    assert "Staff Engineer at Cloud Corp" in card
+    assert "Hi Jane, would love to connect!" in card
+
+
+def test_list_outreach_candidates_empty() -> None:
+    output: list[str] = []
+    list_outreach_candidates([], status_filter="pending", print_fn=output.append)
+    assert any("No connection outreach candidates found" in line for line in output)
+
+
+def test_list_outreach_candidates_filtered() -> None:
+    c1 = ConnectionRequestAction(
+        id="c1",
+        profile_url="https://linkedin.com/in/user1",
+        target_name="User One",
+        status="pending",
+    )
+    c2 = ConnectionRequestAction(
+        id="c2",
+        profile_url="https://linkedin.com/in/user2",
+        target_name="User Two",
+        status="approved",
+    )
+    output: list[str] = []
+    list_outreach_candidates([c1, c2], status_filter="pending", print_fn=output.append)
+    joined = "\n".join(output)
+    assert "User One" in joined
+    assert "User Two" not in joined
+
+
+def test_review_outreach_candidates_empty() -> None:
+    output: list[str] = []
+    code = review_outreach_candidates(
+        [],
+        settings=MagicMock(spec=Settings),
+        print_fn=output.append,
+    )
+    assert code == 0
+    assert any("No pending connection candidates to review" in line for line in output)
+
+
+def test_review_outreach_candidates_interactive() -> None:
+    c1 = ConnectionRequestAction(
+        id="c1",
+        profile_url="https://linkedin.com/in/user1",
+        target_name="User One",
+        status="pending",
+    )
+    c2 = ConnectionRequestAction(
+        id="c2",
+        profile_url="https://linkedin.com/in/user2",
+        target_name="User Two",
+        status="pending",
+    )
+    inputs = ["a", "r"]
+    input_iter = iter(inputs)
+
+    with patch("agent.cli.outreach.run_execute_flow") as mock_exec:
+        mock_exec.return_value = {"status": "success"}
+        output: list[str] = []
+        code = review_outreach_candidates(
+            [c1, c2],
+            settings=MagicMock(spec=Settings),
+            input_fn=lambda _: next(input_iter),
+            print_fn=output.append,
+        )
+        assert code == 0
+        assert mock_exec.call_count == 2
+
+
+def test_run_outreach_approve_success() -> None:
+    c = ConnectionRequestAction(
+        id="c1",
+        profile_url="https://linkedin.com/in/user1",
+        target_name="User One",
+        status="pending",
+    )
+    mock_store = MagicMock()
+    mock_store.load_connection_queue.return_value = [c]
+    mock_store.read_connection_candidate.return_value = c
+
+    args = argparse.Namespace(
+        approve="c1",
+        reject=None,
+        review=False,
+        list=False,
+        dry_run=False,
+        repo_root=None,
+    )
+    with patch("agent.cli.outreach.run_execute_flow") as mock_exec:
+        mock_exec.return_value = {"status": "success"}
+        code = run_outreach(args, settings=MagicMock(spec=Settings), store=mock_store)
+        assert code == 0
+        mock_exec.assert_called_once()
+
+
+def test_run_outreach_approve_not_found() -> None:
+    mock_store = MagicMock()
+    mock_store.load_connection_queue.return_value = []
+    mock_store.read_connection_candidate.return_value = None
+
+    args = argparse.Namespace(
+        approve="missing_id",
+        reject=None,
+        review=False,
+        list=False,
+        dry_run=False,
+        repo_root=None,
+    )
+    output: list[str] = []
+    code = run_outreach(
+        args,
+        settings=MagicMock(spec=Settings),
+        store=mock_store,
+        print_fn=output.append,
+    )
+    assert code == 1
+    assert any("not found" in line for line in output)
+
+
+def test_run_outreach_reject_success() -> None:
+    c = ConnectionRequestAction(
+        id="c1",
+        profile_url="https://linkedin.com/in/user1",
+        target_name="User One",
+        status="pending",
+    )
+    mock_store = MagicMock()
+    mock_store.load_connection_queue.return_value = [c]
+    mock_store.read_connection_candidate.return_value = c
+
+    args = argparse.Namespace(
+        approve=None,
+        reject="c1",
+        review=False,
+        list=False,
+        dry_run=False,
+        repo_root=None,
+    )
+    with patch("agent.cli.outreach.run_execute_flow") as mock_exec:
+        mock_exec.return_value = {"status": "success"}
+        code = run_outreach(args, settings=MagicMock(spec=Settings), store=mock_store)
+        assert code == 0
+        mock_exec.assert_called_once()
+
+
+def test_main_outreach_dispatch() -> None:
+    with (
+        patch("agent.cli.run_outreach", return_value=0) as mock_outreach,
+        pytest.raises(SystemExit) as exc,
+    ):
+        main(["outreach", "--list"])
+    assert exc.value.code == 0
+    mock_outreach.assert_called_once()

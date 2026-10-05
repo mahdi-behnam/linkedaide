@@ -12,6 +12,7 @@ import logging
 import sys
 from pathlib import Path
 
+from agent.cli.outreach import run_outreach
 from agent.cli.setup import run_setup
 from agent.config import load_settings
 from agent.doctor import run_doctor
@@ -228,6 +229,45 @@ def build_parser() -> argparse.ArgumentParser:
     )
     thread_parser.add_argument("--repo-root", default=None, help="Root repository path")
 
+    # outreach
+    outreach_parser = subparsers.add_parser(
+        "outreach", help="Manage LinkedIn connection outreach queue and review candidates"
+    )
+    outreach_parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List queued connection candidates (default behavior)",
+    )
+    outreach_parser.add_argument(
+        "--review",
+        action="store_true",
+        help="Interactively review and triage pending connection candidates",
+    )
+    outreach_parser.add_argument(
+        "--approve",
+        metavar="ITEM_ID",
+        default=None,
+        help="Approve and execute a specific connection request candidate by ID",
+    )
+    outreach_parser.add_argument(
+        "--reject",
+        metavar="ITEM_ID",
+        default=None,
+        help="Reject a specific connection request candidate by ID",
+    )
+    outreach_parser.add_argument(
+        "--status",
+        choices=["pending", "approved", "rejected", "sent", "failed", "all"],
+        default=None,
+        help="Filter listed candidates by lifecycle status",
+    )
+    outreach_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Execute approval in dry-run mode (prevents live LinkedIn writes)",
+    )
+    outreach_parser.add_argument("--repo-root", default=None, help="Root repository path")
+
     return parser
 
 
@@ -258,6 +298,8 @@ def main(argv: list[str] | None = None) -> None:
         exit_code = run_ideate(args)
     elif args.command == "thread-monitor":
         exit_code = run_thread_monitor(args)
+    elif args.command == "outreach":
+        exit_code = run_outreach(args)
     else:
         parser.print_help()
         exit_code = 1
@@ -272,6 +314,7 @@ __all__ = [
     "run_execute",
     "run_health",
     "run_ideate",
+    "run_outreach",
     "run_poll",
     "run_scout",
     "run_setup",
