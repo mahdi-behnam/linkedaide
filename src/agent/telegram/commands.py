@@ -43,7 +43,7 @@ async def execute_status_command(
     Returns:
         str: The rendered HTML status message sent to Telegram.
     """
-    halted, halt_reason = is_halted(repo_root, settings)
+    halted, halt_reason = is_halted(repo_root, settings, state_store=state_store)
     incident = state_store.read_incident()
 
     if incident is not None:

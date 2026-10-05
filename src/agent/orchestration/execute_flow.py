@@ -67,14 +67,16 @@ async def run_execute_flow(
     setup_logging(cfg.log_level)
     logger.info("Executing action flow: %s for item: %s", act, iid)
 
-    # 1. Guard check
-    halted, reason = is_halted(root, cfg)
+    # 1. State Store
+    state_store = get_state_store(settings=cfg, repo_root=root)
+
+    # 2. Guard check
+    halted, reason = is_halted(root, cfg, state_store=state_store)
     if halted:
         logger.warning("Execute flow skipped: %s", reason)
         return {"status": "halted", "halted_reason": reason}
 
-    # 2. Services
-    state_store = get_state_store(settings=cfg, repo_root=root)
+    # 3. Services
     telegram = TelegramClient(cfg)
     enforcer = DailyCapEnforcer(cfg)
 
@@ -108,7 +110,7 @@ async def run_execute_flow(
         try:
             context_pw = await new_stealth_context(browser, storage_state_path=storage_state_path)
             page = await context_pw.new_page()
-            executor = ActionExecutor(page, cfg)
+            executor = ActionExecutor(page, cfg, state_store=state_store)
 
             graph_context = GraphContext(
                 settings=cfg,

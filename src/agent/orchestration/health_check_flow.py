@@ -42,12 +42,13 @@ async def run_health_check_flow(
     setup_logging(cfg.log_level)
     logger.info("Running LinkedIn session health check")
 
-    halted, reason = is_halted(root, cfg)
+    state_store = get_state_store(settings=cfg, repo_root=root)
+
+    halted, reason = is_halted(root, cfg, state_store=state_store)
     if halted:
         logger.warning("Health check skipped: %s", reason)
         return {"status": "halted", "halted_reason": reason, "is_healthy": False}
 
-    state_store = get_state_store(settings=cfg, repo_root=root)
     telegram = TelegramClient(cfg)
     storage_state_path = ensure_session_file(cfg)
 
@@ -64,7 +65,7 @@ async def run_health_check_flow(
             except Exception as err:
                 logger.warning("Feed navigation warning during health check: %s", err)
 
-            executor = ActionExecutor(page, cfg)
+            executor = ActionExecutor(page, cfg, state_store=state_store)
             graph_context = GraphContext(
                 settings=cfg,
                 state_store=state_store,

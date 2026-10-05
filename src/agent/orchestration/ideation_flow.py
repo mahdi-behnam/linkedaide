@@ -41,14 +41,16 @@ async def run_ideation_flow(
     setup_logging(cfg.log_level)
     logger.info("Initializing LinkedIn Ideation flow (dry_run=%s)", cfg.dry_run)
 
-    # 1. Guard check
-    halted, reason = is_halted(root, cfg)
+    # 1. Construct state store
+    state_store = get_state_store(settings=cfg, repo_root=root)
+
+    # 2. Guard check
+    halted, reason = is_halted(root, cfg, state_store=state_store)
     if halted:
         logger.warning("Ideation flow skipped: %s", reason)
         return {"status": "halted", "halted_reason": reason}
 
-    # 2. Construct services
-    state_store = get_state_store(settings=cfg, repo_root=root)
+    # 3. Construct services
     telegram = TelegramClient(cfg)
     llm = LLMService(cfg)
     enforcer = DailyCapEnforcer(cfg)

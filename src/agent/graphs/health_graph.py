@@ -15,7 +15,9 @@ from agent.safety.circuit_breaker import is_halted, trip_breaker
 async def check_halted(state: HealthCheckState, config: RunnableConfig) -> dict[str, Any]:
     """Check if the system is already halted."""
     context = get_graph_context(config)
-    halted, reason = is_halted(context.settings.state_dir.parent, context.settings)
+    halted, reason = is_halted(
+        context.settings.state_dir.parent, context.settings, state_store=context.state_store
+    )
     if halted:
         return {"halted_reason": reason, "status": "halted"}
     return {"halted_reason": None, "status": "active"}
@@ -32,7 +34,9 @@ async def verify_session(state: HealthCheckState, config: RunnableConfig) -> dic
         return {"is_healthy": logged_in, "status": "healthy" if logged_in else "unauthenticated"}
     except BotDetectionError as err:
         if context.state_store:
-            trip_breaker(context.settings.state_dir.parent, str(err))
+            trip_breaker(
+                context.settings.state_dir.parent, str(err), state_store=context.state_store
+            )
         if context.telegram:
             await context.telegram.send_notification(
                 f"🚨 Bot challenge detected during health check: {err}"

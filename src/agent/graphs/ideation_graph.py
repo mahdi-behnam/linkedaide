@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 async def check_halted(state: IdeationState, config: RunnableConfig) -> dict[str, Any]:
     """Verify circuit breaker and pause switch before proceeding."""
     context = get_graph_context(config)
-    halted, reason = is_halted(context.settings.state_dir.parent, context.settings)
+    halted, reason = is_halted(
+        context.settings.state_dir.parent,
+        context.settings,
+        state_store=context.state_store,
+    )
     if halted:
         logger.warning("Ideation graph check_halted: halted (%s)", reason)
         return {"halted_reason": reason, "status": "halted"}

@@ -50,14 +50,15 @@ async def run_thread_monitor_flow(
     setup_logging(cfg.log_level)
     logger.info("Initializing Thread Monitor flow (headless=%s)", headless)
 
-    # 1. Guard check
-    halted, reason = is_halted(root, cfg)
+    # 1. State store
+    state_store = get_state_store(cfg, root)
+
+    # 2. Guard check
+    halted, reason = is_halted(root, cfg, state_store=state_store)
     if halted:
         logger.warning("Thread monitor flow skipped: %s", reason)
         return {"status": "halted", "halted_reason": reason, "queued_count": 0}
 
-    # 2. State store check
-    state_store = get_state_store(cfg, root)
     active_threads = state_store.list_active_threads()
     active_threads = [t for t in active_threads if t.status == "active"]
     if not active_threads:

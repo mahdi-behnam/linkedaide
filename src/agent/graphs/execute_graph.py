@@ -17,7 +17,9 @@ from agent.safety.circuit_breaker import is_halted, trip_breaker
 async def check_halted(state: ExecuteState, config: RunnableConfig) -> dict[str, Any]:
     """Check if the system is currently halted."""
     context = get_graph_context(config)
-    halted, reason = is_halted(context.settings.state_dir.parent, context.settings)
+    halted, reason = is_halted(
+        context.settings.state_dir.parent, context.settings, state_store=context.state_store
+    )
     if halted:
         return {"halted_reason": reason, "status": "halted"}
     return {"halted_reason": None, "status": "active"}
@@ -188,7 +190,9 @@ async def verify_target(state: ExecuteState, config: RunnableConfig) -> dict[str
         return {"status": "target_verified"}
     except BotDetectionError as err:
         if context.state_store:
-            trip_breaker(context.settings.state_dir.parent, str(err))
+            trip_breaker(
+                context.settings.state_dir.parent, str(err), state_store=context.state_store
+            )
         return {"halted_reason": str(err), "status": "halted_challenge"}
     except SessionExpiredError as err:
         return {"error": str(err), "status": "session_expired"}
@@ -243,7 +247,9 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
         return {"outcome": entry, "status": "execution_success"}
     except BotDetectionError as err:
         if context.state_store:
-            trip_breaker(context.settings.state_dir.parent, str(err))
+            trip_breaker(
+                context.settings.state_dir.parent, str(err), state_store=context.state_store
+            )
         return {"halted_reason": str(err), "status": "halted_challenge"}
     except Exception as err:
         now = datetime.now(UTC)

@@ -64,7 +64,9 @@ def get_scout_target_sources(settings: Settings) -> list[str | None]:
 async def check_halted(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
     """Verify circuit breaker and pause switch before proceeding."""
     context = get_graph_context(config)
-    halted, reason = is_halted(context.settings.state_dir.parent, context.settings)
+    halted, reason = is_halted(
+        context.settings.state_dir.parent, context.settings, state_store=context.state_store
+    )
     if halted:
         logger.warning("Scout graph check_halted: halted (%s)", reason)
         return {"halted_reason": reason, "status": "halted"}
@@ -164,7 +166,11 @@ async def scrape_feed(state: ScoutState, config: RunnableConfig) -> dict[str, An
         except BotDetectionError as err:
             logger.error("Bot challenge encountered during feed scrape: %s", err)
             if context.state_store:
-                trip_breaker(context.settings.state_dir.parent, reason=str(err))
+                trip_breaker(
+                    context.settings.state_dir.parent,
+                    reason=str(err),
+                    state_store=context.state_store,
+                )
             if context.telegram:
                 await context.telegram.send_notification(f"⚠️ Circuit breaker tripped: {err}")
             return {"halted_reason": str(err), "status": "halted_bot_detection", "posts": []}
