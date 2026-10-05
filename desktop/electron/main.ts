@@ -293,7 +293,11 @@ function registerIpcHandlers(): void {
     if (settings.executionMode === "local") {
       return new Promise<boolean>((resolve) => {
         const repoRoot = path.resolve(__dirname, "../..");
-        const child = spawn("uv", ["run", "agent", "scout"], {
+        const scoutArgs = ["run", "agent", "scout"];
+        if (settings.headless === false) {
+          scoutArgs.push("--headed");
+        }
+        const child = spawn("uv", scoutArgs, {
           cwd: repoRoot,
           env: {
             ...process.env,
