@@ -29,6 +29,10 @@ jobs:
           - os: ubuntu-latest
             artifact-pattern: desktop/release/*.AppImage
 
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

@@ -98,3 +98,6 @@ jobs:
 
       - name: Build Desktop Frontend
         run: npm run build
+
+      - name: Build Desktop Electron Bundle
+        run: npm run build:electron
