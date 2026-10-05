@@ -160,11 +160,23 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(
     "api:executeAction",
-    async (_event, action: "approve" | "reject", itemId: string) => {
+    async (_event, action: "approve" | "reject", itemId: string, draftText?: string) => {
       const settings = loadSettings();
       if (settings.executionMode === "local") {
+        const repoRoot = path.resolve(__dirname, "../..");
+        if (action === "approve" && draftText) {
+          try {
+            const pendingFilePath = path.join(repoRoot, "state/pending", `${itemId}.json`);
+            if (fs.existsSync(pendingFilePath)) {
+              const pendingData = JSON.parse(fs.readFileSync(pendingFilePath, "utf-8"));
+              pendingData.draft_text = draftText;
+              fs.writeFileSync(pendingFilePath, JSON.stringify(pendingData, null, 2), "utf-8");
+            }
+          } catch (err) {
+            console.warn("Failed updating local pending draft file:", err);
+          }
+        }
         return new Promise<ActionResult>((resolve) => {
-          const repoRoot = path.resolve(__dirname, "../..");
           const child = spawn("uv", ["run", "agent", "execute", "--action", action, "--item-id", itemId], {
             cwd: repoRoot,
             env: {
@@ -192,11 +204,17 @@ function registerIpcHandlers(): void {
           });
         });
       }
-      return await workerClient.executeAction(action, itemId, {
-        repo_owner: settings.githubRepoOwner,
-        repo_name: settings.githubRepoName,
-        github_pat: settings.githubDispatchPat,
-      });
+      return await workerClient.executeAction(
+        action,
+        itemId,
+        {
+          repo_owner: settings.githubRepoOwner,
+          repo_name: settings.githubRepoName,
+          github_pat: settings.githubDispatchPat,
+        },
+        undefined,
+        draftText
+      );
     }
   );
 
@@ -205,8 +223,31 @@ function registerIpcHandlers(): void {
     async (_event, action: "approve" | "reject", id: string, note?: string) => {
       const settings = loadSettings();
       if (settings.executionMode === "local") {
+        const repoRoot = path.resolve(__dirname, "../..");
+        if (note) {
+          try {
+            const queuePath = path.join(repoRoot, "state/connection_queue.json");
+            if (fs.existsSync(queuePath)) {
+              const queue = JSON.parse(fs.readFileSync(queuePath, "utf-8"));
+              if (Array.isArray(queue)) {
+                const idx = queue.findIndex((c: any) => c.id === id);
+                if (idx >= 0) {
+                  queue[idx].note_text = note;
+                  if (action === "approve") {
+                    queue[idx].status = "approved";
+                    queue[idx].approved_at = new Date().toISOString();
+                  } else {
+                    queue[idx].status = "rejected";
+                  }
+                  fs.writeFileSync(queuePath, JSON.stringify(queue, null, 2), "utf-8");
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("Failed updating local connection queue file:", err);
+          }
+        }
         return new Promise<ActionResult>((resolve) => {
-          const repoRoot = path.resolve(__dirname, "../..");
           const child = spawn("uv", ["run", "agent", "execute", "--action", action, "--item-id", id], {
             cwd: repoRoot,
             env: {

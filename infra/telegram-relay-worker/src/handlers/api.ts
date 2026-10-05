@@ -289,6 +289,11 @@ export async function handlePostAction(
         if (typeof pending.telegram_chat_id === "number") {
           telegramChatId = pending.telegram_chat_id;
         }
+        const draftText = (body as any).draft_text || (body as any).draftText;
+        if (draftText && typeof draftText === "string") {
+          pending.draft_text = draftText;
+          await env.LINKEDIN_AGENT_KV.put(`pending:${itemId}`, JSON.stringify(pending));
+        }
       }
     } catch {
       // Continue with defaults

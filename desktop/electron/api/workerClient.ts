@@ -311,7 +311,8 @@ export class WorkerClient {
     action: "approve" | "reject",
     itemId: string,
     cloudDispatchConfig?: CloudDispatchConfig,
-    note?: string
+    note?: string,
+    draftText?: string
   ): Promise<ActionResult> {
     if (!itemId || !itemId.trim()) {
       return {
@@ -328,6 +329,10 @@ export class WorkerClient {
         itemId: itemId.trim(),
         item_id: itemId.trim(),
       };
+      if (draftText) {
+        body.draft_text = draftText;
+        body.draftText = draftText;
+      }
       if (note) {
         body.note = note;
         body.note_text = note;

@@ -197,7 +197,8 @@ describe("ApprovalQueueView", () => {
     await waitFor(() => {
       expect(window.api.executeAction).toHaveBeenCalledWith(
         "approve",
-        "act-8f4b1e"
+        "act-8f4b1e",
+        expect.stringContaining("The compounding returns on autonomous verification pipelines")
       );
     });
 
@@ -211,6 +212,26 @@ describe("ApprovalQueueView", () => {
       "Stateful agent workflows in production"
     );
     expect(screen.getByTestId("pending-count-pill").textContent).toContain("2 Pending");
+  });
+
+  it("forwards manually edited draft text when clicking Approve", async () => {
+    renderApprovalQueue();
+
+    const textarea = screen.getByTestId("draft-editor-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, {
+      target: { value: "Manually edited comment draft with custom architectural nuances." },
+    });
+
+    const approveBtn = screen.getByTestId("approve-action-btn");
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      expect(window.api.executeAction).toHaveBeenCalledWith(
+        "approve",
+        "act-8f4b1e",
+        "Manually edited comment draft with custom architectural nuances."
+      );
+    });
   });
 
   it("clicking Reject calls executeAction('reject', ...) and removes item", async () => {

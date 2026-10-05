@@ -130,7 +130,11 @@ export interface DesktopSettings {
 export interface ElectronAPI {
   fetchState: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<AgentState>;
   testConnection?: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<{ success: boolean; latencyMs?: number; error?: string }>;
-  executeAction: (action: "approve" | "reject", itemId: string) => Promise<ActionResult>;
+  executeAction: (
+    action: "approve" | "reject",
+    itemId: string,
+    draftText?: string
+  ) => Promise<ActionResult>;
   executeConnectionAction?: (
     action: "approve" | "reject",
     id: string,

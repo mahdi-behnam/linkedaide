@@ -197,7 +197,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
     try {
       let result: { success: boolean; error?: string; message?: string };
       if (typeof window !== "undefined" && window.api?.executeAction) {
-        result = await window.api.executeAction("approve", current.id);
+        result = await window.api.executeAction("approve", current.id, current.draftText);
       } else {
         result = { success: true, message: `Approved ${current.id}` };
       }

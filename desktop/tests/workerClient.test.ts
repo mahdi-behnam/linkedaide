@@ -290,6 +290,38 @@ describe("WorkerClient", () => {
       expect(result.success).toBe(true);
     });
 
+    it("includes draft_text in request body when draftText is provided", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ success: true, status: "dispatched" }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await client.executeAction(
+        "approve",
+        "act-123",
+        undefined,
+        undefined,
+        "Custom revised comment text for publication."
+      );
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/action",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            action: "approve",
+            itemId: "act-123",
+            item_id: "act-123",
+            draft_text: "Custom revised comment text for publication.",
+            draftText: "Custom revised comment text for publication.",
+          }),
+        })
+      );
+      expect(result.success).toBe(true);
+    });
+
     it("returns failure result when API responds with error", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: false,

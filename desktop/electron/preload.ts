@@ -27,9 +27,10 @@ const api: ElectronAPI = {
 
   executeAction: (
     action: "approve" | "reject",
-    itemId: string
+    itemId: string,
+    draftText?: string
   ): Promise<ActionResult> =>
-    ipcRenderer.invoke("api:executeAction", action, itemId),
+    ipcRenderer.invoke("api:executeAction", action, itemId, draftText),
 
   executeConnectionAction: (
     action: "approve" | "reject",

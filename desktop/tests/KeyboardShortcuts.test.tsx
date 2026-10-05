@@ -164,7 +164,8 @@ const fixturePendingItems = [
     await waitFor(() => {
       expect(window.api.executeAction).toHaveBeenCalledWith(
         "approve",
-        "act-8f4b1e"
+        "act-8f4b1e",
+        expect.any(String)
       );
     });
 
@@ -242,7 +243,8 @@ const fixturePendingItems = [
     await waitFor(() => {
       expect(window.api.executeAction).toHaveBeenCalledWith(
         "approve",
-        "act-8f4b1e"
+        "act-8f4b1e",
+        expect.any(String)
       );
     });
   });
@@ -261,7 +263,8 @@ const fixturePendingItems = [
     await waitFor(() => {
       expect(window.api.executeAction).toHaveBeenCalledWith(
         "approve",
-        "act-8f4b1e"
+        "act-8f4b1e",
+        expect.any(String)
       );
     });
   });

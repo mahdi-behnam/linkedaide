@@ -387,6 +387,48 @@ describe("Authenticated Worker REST API Suite", () => {
         });
       });
 
+      it("updates pending item draft_text in KV when provided on approval", async () => {
+        const fetchMock = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("api.github.com")) {
+            return Promise.resolve(new Response(null, { status: 204 }));
+          }
+          return Promise.resolve(new Response("{}", { status: 200 }));
+        });
+        globalThis.fetch = fetchMock;
+
+        const initialKv = {
+          "pending:item_with_draft": JSON.stringify({
+            item_id: "item_with_draft",
+            action_type: "approve_comment",
+            draft_text: "Old unedited draft.",
+            telegram_chat_id: 1111,
+            telegram_message_id: 2222,
+          }),
+        };
+
+        const { kv, store } = createMockKv(initialKv);
+        const envWithKv: Env = { ...mockEnv, LINKEDIN_AGENT_KV: kv as any };
+
+        const req = makeApiRequest("/api/action", {
+          method: "POST",
+          body: {
+            action: "approve",
+            item_id: "item_with_draft",
+            draft_text: "New improved operator revised comment draft.",
+          },
+        });
+        const ctx = createMockContext();
+
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+        expect(res.status).toBe(200);
+
+        // Verify KV was updated with new draft_text
+        const updatedRaw = store.get("pending:item_with_draft");
+        expect(updatedRaw).toBeTruthy();
+        const updated = JSON.parse(updatedRaw!);
+        expect(updated.draft_text).toBe("New improved operator revised comment draft.");
+      });
+
       it("returns 502 when GitHub Actions dispatch fails", async () => {
         const fetchMock = vi.fn().mockImplementation((url: string) => {
           if (url.includes("api.github.com")) {
