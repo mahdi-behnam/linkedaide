@@ -105,15 +105,34 @@ stateDiagram-v2
     verify_session --> [*]: Health Checked (Alerts & Trips Breaker if Expired/Challenge)
 ```
 
+### 3.4 ThreadMonitorGraph
+Monitors comment threads on previously engaged posts to detect replies, triage discussion context, draft conversational follow-ups, and deliver Telegram cards for approval:
+
+```mermaid
+stateDiagram-v2
+    [*] --> check_halted
+    check_halted --> load_history: System Active
+    check_halted --> [*]: System Paused
+    load_history --> inspect_threads: Past Comments Found
+    load_history --> [*]: No Active Threads
+    inspect_threads --> triage_replies: New Replies Detected
+    inspect_threads --> [*]: No New Replies
+    triage_replies --> draft_reply: Worth Responding
+    triage_replies --> [*]: Ignore Fluff
+    draft_reply --> persist_pending_reply
+    persist_pending_reply --> notify_telegram
+    notify_telegram --> [*]
+```
+
 ---
 
 ## 4. LLM Service & Structured Output
 
 LLM integration is managed by `LLMService` in `src/agent/llm/service.py`:
 
-- **Provider**: NVIDIA NIM via LangChain (`ChatNVIDIA`).
+- **Provider**: NVIDIA NIM via LangChain (`ChatNVIDIA`), with multi-provider fallbacks (OpenAI, Anthropic, Gemini, Groq, Ollama).
 - **Two-Stage Evaluation**:
-  1. **Triage**: High-speed, cost-effective evaluation of scraped posts against configured `USER_FOCUS_AREAS` and `USER_PERSONA`. Produces a structured `TriageResult` (`recommendation: "comment" | "ignore"`, `confidence`, `reasoning`, `risk_flags`).
+  1. **Triage**: High-speed, cost-effective evaluation of scraped posts against configured `USER_FOCUS_AREAS`, `SCOUT_TARGET_URLS`, `TARGET_HASHTAGS`, and `USER_PERSONA`. Produces a structured `TriageResult` (`recommendation: "comment" | "ignore"`, `confidence`, `reasoning`, `risk_flags`).
   2. **Drafting**: Deep generation producing `CommentDraft` with strict anti-generic constraints, specific professional insights, and character length bounds.
 - **Resilience & Fallback**:
   - Primary model: `nvidia/nemotron-3-super-120b-a12b`
@@ -153,6 +172,11 @@ Used for local offline development and testing (`STATE_BACKEND=git`):
 
 The local `state/` directory is in `.gitignore` to prevent committing operational state when working locally.
 
+### 5.3 Cloudflare R2 Media Vault
+For durable storage of visual post assets and audit artifacts:
+- **Post Assets**: Images and multi-slide Carousel PDFs drafted in the Post Composer Studio are uploaded via `/api/media/:key` directly to Cloudflare R2 and referenced with secure bearer tokens.
+- **Audit Screenshots**: Post-execution screenshots captured by Playwright in GitHub Actions are uploaded directly to the R2 media vault, providing durable visual proof of every published comment and post.
+
 ---
 
 ## 6. Browser Automation & Stealth
@@ -175,3 +199,34 @@ Safety rules are enforced by independent modules (`src/agent/safety/`):
 3. **Idempotency & Duplicate Protection**: Each pending item has an 8-character hex hash. Once executed or rejected, the pending file is consumed and deleted; duplicate `repository_dispatch` events are safely ignored.
 4. **Circuit Breaker (`CircuitBreaker`)**: Tripped immediately upon detection of bot challenges, session invalidation, or consecutive failure thresholds. When active, all subsequent runs abort immediately until manually reset.
 5. **Dry-Run Mode**: Setting `DRY_RUN=true` executes full scraping, triage, drafting, and Telegram suggestion delivery, but mocks out DOM submission.
+
+---
+
+## 8. Telegram Interactive Webhook & C2 Engine
+
+The Cloudflare Worker relay (`infra/telegram-relay-worker`) serves as the edge authorization and command-and-control gateway:
+
+- **Interactive Message Replies**: Operators can reply directly to any suggestion card with revised draft text or tone keywords (`contrarian`, `data_driven`, `concise`, `inquisitive`, `supportive`). The worker leverages LLM capabilities to regenerate drafts on the fly and updates the Telegram card live.
+- **Dedicated Callback Codes**: Compact callback codes (`ac`/`rc` for comments, `ap`/`rp` for posts, `ar`/`rr` for thread replies, `acon`/`rcon` for connection requests).
+- **Command & Control (C2) Suite**:
+  - `/status` — Realtime system health, circuit breaker state, and daily quota counts.
+  - `/pending` — Interactive summary list of actions currently awaiting operator review.
+  - `/stats` — Daily activity counters and all-time execution vs rejection approval metrics.
+  - `/pause` / `/resume` — Remote kill-switch for automated operations.
+  - `/clear_incident` — Remote reset for tripped circuit breakers.
+  - `/help` — Operator command and syntax reference.
+
+---
+
+## 9. Desktop HITL Cockpit Architecture
+
+The desktop application (`desktop/`) is built on Electron, React, and Tailwind CSS:
+
+- **Dual Execution Engine**:
+  - **Cloud Mode**: Synchronizes with Cloudflare Workers KV and triggers GitHub Actions cloud runners for execution.
+  - **Local Mode**: Executes Playwright automation and CLI flows directly on the operator's machine via local Python runners.
+- **Post Composer Studio**: Above-the-fold cutoff indicators, hook archetype generator, multi-slide carousel PDF previewer, and durable R2 media upload bridge.
+- **Interactive Command Palette (⌘K)**: Spotlight-style search modal with real-time fuzzy filtering across all views and instant action triggers.
+- **Tab Navigation History**: Browser-style history stack with functional back and forward buttons in the top control bar.
+- **Embedded Diagnostic Runner**: Direct IPC bridge to execute `uv run agent doctor`, streaming live terminal output and check statuses into the UI.
+

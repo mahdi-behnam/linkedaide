@@ -199,13 +199,17 @@ The `agent poll` command long-polls Telegram for your approval button clicks, dr
 
 When suggestions arrive in Telegram, you have full control right from your chat:
 
-* **Approve**: Immediately queues or executes the drafted comment/post.
-* **Edit Draft**: Tap **Edit**, send your revised comment text back to the bot, and approve your edited version.
-* **Reject**: Dismisses the suggestion and logs it to prevent re-evaluation.
-* **Remote Commands**:
-  * `/status`: Displays daily quota usage, active counters, and circuit breaker status.
-  * `/pause`: Temporarily pauses all automated execution.
-  * `/resume`: Resumes automated execution.
+* **Approve / Reject**: Dedicated buttons for comments, standalone posts, discussion replies, and connection requests.
+* **Interactive Draft Edits**: Reply directly to any card with revised text to instantly update the draft in Cloudflare KV.
+* **AI Tone Regeneration**: Reply with a tone name (or `/tone <name>`) to regenerate comments on the fly using edge LLM inference (`contrarian`, `data_driven`, `concise`, `inquisitive`, `supportive`).
+* **Operator C2 Commands**:
+  * `/status`: Real-time system operational state, circuit breaker health, and daily quota counts.
+  * `/pending`: Summary list of all items currently awaiting review with excerpt previews.
+  * `/stats`: Daily execution counters and all-time approval rate metrics.
+  * `/pause`: Temporarily suspends automated feed scouting and action dispatching.
+  * `/resume`: Unpauses and resumes scheduled workflows.
+  * `/clear_incident`: Manually resets a tripped circuit breaker.
+  * `/help`: Complete operator command and syntax guide.
 
 ---
 
@@ -214,9 +218,12 @@ When suggestions arrive in Telegram, you have full control right from your chat:
 The repository includes a modern Electron desktop application in [`desktop/`](desktop/) that acts as your local command center:
 
 * ⚡ **Real-Time Approval Queue**: Review drafted comments with live character countdowns, tone quick-pills (*Technical*, *Inquisitive*, *Contrarian*, *Concise*), and instant approval.
+* 🔍 **⌘K Spotlight Command Palette**: Instant keyboard-driven navigation across all views and quick actions (pause/resume agent, toggle theme) with real-time fuzzy search.
+* 🧭 **Tab Navigation History**: Browser-style history stack with functional back and forward buttons in the top control bar.
+* 🩺 **Diagnostic Doctor Runner**: Direct execution of the full Python CLI `agent doctor` diagnostic suite from the desktop app with an embedded terminal output log viewer.
 * ⌨️ **Power-User Keyboard Shortcuts**: Blazing fast triage with `[A]` (Approve), `[R]` (Reject), `[E]` (Edit), `[T]` (Cycle Tone), and `Cmd+Enter` (Submit).
 * 🎙️ **Voice Audio Dictation**: Dictate custom revisions directly into comment and post drafts with native speech-to-text.
-* ✍️ **Post Composer Studio & Visual Calendar**: Draft original LinkedIn thought leadership posts with above-the-fold cutoff indicators, rich tone rewriting, and scheduled publishing calendar synchronized across Cloudflare Workers KV and local storage.
+* ✍️ **Post Composer Studio & Visual Calendar**: Draft original LinkedIn thought leadership posts with above-the-fold cutoff indicators, rich tone rewriting, durable Cloudflare R2 media uploads (images and carousel PDFs), and scheduled publishing calendar synchronized across Cloudflare Workers KV and local storage.
 * 🤝 **Connection Outreach Studio**: Automatically discover 2nd-degree connection candidates from qualifying feed posts, personalize 300-character invitation notes with tone assistance, and approve invitations subject to daily safety caps.
 * 💬 **Multi-Turn Thread Reply Monitoring**: Automatically inspect active discussion threads where you commented, triage incoming replies with LLM intelligence, draft high-value follow-ups, and deliver Telegram cards for human sign-off.
 * 🔔 **System Tray & WebSocket Sync**: Live <50ms push updates via Cloudflare Worker WebSockets with native OS desktop notifications and background polling fallback.

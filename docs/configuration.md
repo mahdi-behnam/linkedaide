@@ -37,6 +37,8 @@ Settings can be provided via environment variables, a local `.env` file, or GitH
 | `LINKEDIN_STORAGE_STATE_PATH` | `Path` | `storage_state.json` | No | Path to runner-local decrypted storage state. |
 | **Persona & Content Customization** | | | | |
 | `USER_FOCUS_AREAS` | `list[str]` | `[]` | No | Comma-separated list or JSON array of domain topics to evaluate. |
+| `SCOUT_TARGET_URLS` | `list[str]` | `[]` | No | Explicit LinkedIn feed URLs to scout (e.g. hashtag feeds, creator activity URLs). |
+| `TARGET_HASHTAGS` | `list[str]` | `[]` | No | Specific LinkedIn hashtags to scout (e.g. `['python', 'ai', '#agentic']`). |
 | `USER_PERSONA` | `string` | `""` | No | Professional background and tone guidelines for drafting. |
 | `MAX_COMMENT_WORDS` | `int` (`10`-`200`) | `80` | No | Target maximum word count for drafted comments. |
 | **Safety & Rate Limits** | | | | |
@@ -49,17 +51,18 @@ Settings can be provided via environment variables, a local `.env` file, or GitH
 | **Logging & Storage** | | | | |
 | `LOG_LEVEL` | `string` | `INFO` | No | Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 | `STATE_DIR` | `Path` | `state` | No | Path to directory containing version-controlled JSON state (used by `STATE_BACKEND=git`). |
-| **State Persistence & Cloudflare KV** | | | | |
+| **State Persistence & Cloudflare KV / R2** | | | | |
 | `STATE_BACKEND` | `string` | `git` *(Local)* / `kv` *(CI)* | No | Durable state backend: `kv` (Cloudflare Workers KV) or `git` (Git-as-database). |
 | `CLOUDFLARE_ACCOUNT_ID` | `string` | `None` | **Yes** | 32-character Cloudflare Account ID (Required when `STATE_BACKEND=kv`). |
 | `CLOUDFLARE_KV_NAMESPACE_ID` | `string` | `None` | **Yes** | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (Required when `STATE_BACKEND=kv`). |
 | `CLOUDFLARE_API_TOKEN` | `string` | `None` | **Yes** | Cloudflare API Token with `Account.Workers KV Storage: Edit` permission (Required when `STATE_BACKEND=kv`). |
+| `WORKER_URL` | `string` | `None` | No | Base URL of deployed Cloudflare Worker relay (e.g. `https://relay.your-subdomain.workers.dev`). |
+| `DESKTOP_API_SECRET` | `string` | `None` | **Yes** | API secret authenticating desktop client requests and R2 screenshot uploads. |
 | **Cloudflare Relay Worker (infra/telegram-relay-worker)** | | | | |
 | `TELEGRAM_WEBHOOK_SECRET` | `string` | *(Required)* | **Yes** | Shared secret token verified via `X-Telegram-Bot-Api-Secret-Token`. Generate with `uv run python scripts/generate_secrets.py --type webhook`. |
 | `GITHUB_DISPATCH_PAT` | `string` | *(Required)* | **Yes** | GitHub PAT with `repo` / `Contents: Read and write` permissions to trigger `repository_dispatch`. |
 | `GITHUB_REPO_OWNER` | `string` | *(Required)* | No | GitHub username or organization name. |
 | `GITHUB_REPO_NAME` | `string` | *(Required)* | No | GitHub repository name (e.g. `linkedin-hitl-agent`). |
-| `DESKTOP_API_SECRET` | `string` | *(Required)* | **Yes** | High-entropy secret authenticating Desktop app calls to Worker REST/WebSocket API. |
 | `NVIDIA_NIM_API_KEY` | `string` | *(Required for Desktop App)* | **Yes** | NVIDIA NIM API key (`nvapi-...`) allowing the worker's `/api/rewrite` endpoint to rewrite drafts into different tones. |
 | `LLM_BASE_URL` | `string` | `https://integrate.api.nvidia.com/v1` | No | Custom base URL if using a custom endpoint or proxy for Worker LLM calls. |
 
@@ -156,3 +159,25 @@ LLM_MODEL_FALLBACK=meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo
 ### 4. Adjusting Safety Caps
 - For cautious account growth, keep `MAX_COMMENTS_PER_DAY=3` to `5`.
 - Set `PENDING_ACTION_TTL_HOURS=12` to ensure comments are posted while discussions are still fresh.
+
+### 5. Telegram Webhook C2 & Interactive Editing
+
+The Cloudflare Worker relay supports direct operator commands and interactive draft revision:
+
+| Command | Syntax / Usage | Description |
+|---|---|---|
+| `/status` | `/status` | View system state, circuit breaker health, and daily quota counts. |
+| `/pending` | `/pending` | List actions currently awaiting review with preview snippets. |
+| `/stats` | `/stats` | View today's counts and historical execution vs rejection stats. |
+| `/pause` | `/pause` | Temporarily halt automated feed scouting and action dispatching. |
+| `/resume` | `/resume` | Resume automated operations and scouting schedules. |
+| `/clear_incident` | `/clear_incident` | Reset tripped circuit breaker and restore operations. |
+| `/help` | `/help` | Display command syntax and interactive editing guidance. |
+| `/edit` | `/edit <item_id> <new text>` | Replace draft text for a pending suggestion card. |
+| `/tone` | `/tone <item_id> <tone>` | Rewrite draft using AI (`contrarian`, `data_driven`, `concise`, `inquisitive`, `supportive`). |
+
+**Interactive Card Replies:**
+Operators can reply directly to any Telegram suggestion card:
+- Reply with plain text to overwrite the draft text with your custom edit.
+- Reply with a tone name (or `/tone <name>`) to invoke edge LLM rewriting and update the card live.
+
