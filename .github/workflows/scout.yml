@@ -67,6 +67,9 @@ jobs:
           TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
           LINKEDIN_STORAGE_STATE_PATH: /tmp/runner_storage_state.json
           USER_FOCUS_AREAS: ${{ vars.USER_FOCUS_AREAS || '["AI Agents", "Python", "Distributed Systems"]' }}
+          SCOUT_TARGET_URLS: ${{ vars.SCOUT_TARGET_URLS || '' }}
+          TARGET_HASHTAGS: ${{ vars.TARGET_HASHTAGS || '' }}
+          USER_PERSONA: ${{ vars.USER_PERSONA || '' }}
           MAX_SUGGESTIONS_PER_RUN: ${{ vars.MAX_SUGGESTIONS_PER_RUN || 3 }}
           MAX_CONNECTIONS_PER_DAY: ${{ vars.MAX_CONNECTIONS_PER_DAY || 10 }}
           DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || false }}
