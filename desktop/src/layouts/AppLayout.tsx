@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import { StatusPill } from "../components/StatusPill";
@@ -24,6 +24,7 @@ import {
   Moon,
   IconProps,
 } from "../components/icons";
+import { CommandPalette } from "../components/CommandPalette";
 import roundActiveIcon from "../assets/icons/round-active.png";
 import roundStandbyIcon from "../assets/icons/round-standby.png";
 import roundAttentionIcon from "../assets/icons/round-attention.png";
@@ -58,6 +59,45 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { resolvedTheme, toggleTheme } = useTheme();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [navHistory, setNavHistory] = useState<NavigationTab[]>([currentTab]);
+  const [historyIndex, setHistoryIndex] = useState<number>(0);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  const navigateToTab = (tab: NavigationTab) => {
+    if (tab === currentTab) return;
+    const newHistory = navHistory.slice(0, historyIndex + 1);
+    newHistory.push(tab);
+    setNavHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    setCurrentTab(tab);
+  };
+
+  const handleBack = () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      setHistoryIndex(prevIndex);
+      setCurrentTab(navHistory[prevIndex]);
+    }
+  };
+
+  const handleForward = () => {
+    if (historyIndex < navHistory.length - 1) {
+      const nextIndex = historyIndex + 1;
+      setHistoryIndex(nextIndex);
+      setCurrentTab(navHistory[nextIndex]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const pendingOutreachCount = connectionQueue
     ? connectionQueue.filter((c) => c.status === "pending").length
@@ -149,7 +189,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 key={item.id}
                 data-testid={`nav-${item.id}`}
                 type="button"
-                onClick={() => setCurrentTab(item.id)}
+                onClick={() => navigateToTab(item.id)}
                 title={isCollapsed ? item.label : undefined}
                 className={`group relative flex w-full items-center text-xs transition-colors duration-100 active:scale-[0.99] ${
                   isCollapsed ? "justify-center p-2 rounded-md" : "gap-2.5 px-2.5 py-1.5 rounded-md"
@@ -213,25 +253,47 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             <div className="flex items-center gap-0.5 text-on-surface-variant">
               <button
                 type="button"
+                data-testid="nav-back-btn"
                 aria-label="Back"
-                className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-on-surface"
+                disabled={historyIndex <= 0}
+                onClick={handleBack}
+                className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
+                  historyIndex > 0
+                    ? "hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface cursor-pointer"
+                    : "opacity-30 cursor-not-allowed text-on-surface-variant"
+                }`}
               >
                 <CaretLeft size={13} weight="bold" />
               </button>
               <button
                 type="button"
+                data-testid="nav-forward-btn"
                 aria-label="Forward"
-                className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-on-surface"
+                disabled={historyIndex >= navHistory.length - 1}
+                onClick={handleForward}
+                className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
+                  historyIndex < navHistory.length - 1
+                    ? "hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface cursor-pointer"
+                    : "opacity-30 cursor-not-allowed text-on-surface-variant"
+                }`}
               >
                 <CaretRight size={13} weight="bold" />
               </button>
             </div>
 
             {/* ⌘K Search Bar */}
-            <div className="flex items-center gap-2 rounded-md border border-outline bg-surface-container-lowest px-2.5 py-1 text-xs text-on-surface-variant shadow-2xs transition-colors hover:border-outline-variant w-64">
+            <button
+              type="button"
+              data-testid="search-bar-trigger"
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="flex items-center gap-2 rounded-md border border-outline bg-surface-container-lowest px-2.5 py-1 text-xs text-on-surface-variant shadow-2xs transition-colors hover:border-outline-variant w-64 text-left cursor-pointer"
+            >
               <MagnifyingGlass size={13} className="text-on-surface-variant shrink-0" />
-              <span className="truncate text-[11px]">Search metrics, logs... (⌘K)</span>
-            </div>
+              <span className="truncate text-[11px] flex-1">Search views, actions...</span>
+              <kbd className="hidden sm:inline-block rounded border border-outline/50 px-1 text-[10px] font-mono text-on-surface-variant bg-surface-container-low">
+                ⌘K
+              </kbd>
+            </button>
 
             {/* Worker Endpoint */}
             <div className="hidden lg:flex items-center gap-1.5 text-xs text-on-surface-variant font-mono">
@@ -321,6 +383,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             <span>{lastTriggerMessage}</span>
           </div>
         )}
+
+        {/* ⌘K Command Palette Modal */}
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onSelectTab={navigateToTab}
+          onTogglePause={togglePause}
+          isPaused={isPaused}
+          onToggleTheme={toggleTheme}
+          currentTheme={resolvedTheme}
+        />
       </div>
     </div>
   );
