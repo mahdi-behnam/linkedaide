@@ -14,6 +14,8 @@ export interface Env {
   DESKTOP_API_SECRET?: string;
   NVIDIA_NIM_API_KEY?: string;
   LLM_BASE_URL?: string;
+  NIM_MODEL_PRIMARY?: string;
+  LLM_MODEL?: string;
 }
 
 export interface TelegramCallbackQuery {

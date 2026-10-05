@@ -56,6 +56,9 @@ export async function rewriteDraftWithLlm(
     ? `Context Post:\n"${postExcerpt}"\n\nOriginal Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`
     : `Original Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`;
 
+  const modelName =
+    env.NIM_MODEL_PRIMARY || env.LLM_MODEL || "nvidia/nemotron-3-super-120b-a12b";
+
   const llmResp = await fetch(llmUrl, {
     method: "POST",
     headers: {
@@ -63,7 +66,7 @@ export async function rewriteDraftWithLlm(
       Authorization: `Bearer ${env.NVIDIA_NIM_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "nvidia/nemotron-3-super-120b-a12b",
+      model: modelName,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

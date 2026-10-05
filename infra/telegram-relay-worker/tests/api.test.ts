@@ -901,5 +901,39 @@ describe("Authenticated Worker REST API Suite", () => {
       const data = (await res.json()) as any;
       expect(data.error).toBe("LLM rewrite request failed");
     });
+
+    it("uses NIM_MODEL_PRIMARY or LLM_MODEL when configured in environment", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "Custom model rewritten draft" } }],
+          }),
+          { status: 200 }
+        )
+      );
+      globalThis.fetch = fetchMock;
+
+      const customEnv: Env = {
+        ...mockEnv,
+        NIM_MODEL_PRIMARY: "meta/llama-3.1-70b-instruct",
+      };
+
+      const req = makeApiRequest("/api/rewrite", {
+        method: "POST",
+        body: { draft_text: "Original draft", tone: "technical" },
+      });
+      const ctx = createMockContext();
+
+      const res = await worker.fetch(req, customEnv, ctx as any);
+      expect(res.status).toBe(200);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/chat/completions"),
+        expect.objectContaining({
+          body: expect.stringContaining('"model":"meta/llama-3.1-70b-instruct"'),
+        })
+      );
+    });
   });
 });
+
