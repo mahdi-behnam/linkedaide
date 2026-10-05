@@ -10,7 +10,8 @@ from pydantic import SecretStr
 
 from agent.config import Settings
 from agent.models import ActiveThreadRecord, PendingAction
-from agent.orchestration.thread_monitor_flow import main as thread_monitor_main, run_thread_monitor_flow
+from agent.orchestration.thread_monitor_flow import main as thread_monitor_main
+from agent.orchestration.thread_monitor_flow import run_thread_monitor_flow
 
 
 @pytest.fixture

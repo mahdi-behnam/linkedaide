@@ -10,7 +10,6 @@ from pydantic import SecretStr
 
 from agent.browser.executor import ActionExecutor
 from agent.config import Settings
-from agent.models.actions import MediaAttachment
 from agent.errors import (
     BotDetectionError,
     ExecutionError,
@@ -18,6 +17,7 @@ from agent.errors import (
     SessionExpiredError,
     SubmissionVerificationError,
 )
+from agent.models.actions import MediaAttachment
 
 
 @pytest.fixture
