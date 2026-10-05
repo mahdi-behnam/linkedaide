@@ -42,7 +42,7 @@ function loadSettings(): DesktopSettings {
     workerUrl: process.env.WORKER_URL || "",
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
-    nimModel: process.env.NIM_MODEL_PRIMARY || "meta/llama-3.1-70b-instruct",
+    nimModel: process.env.NIM_MODEL_PRIMARY || "nvidia/nemotron-3-super-120b-a12b",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
     githubRepoOwner: process.env.GITHUB_REPO_OWNER || "mahdi-behnam",
     githubRepoName: process.env.GITHUB_REPO_NAME || "linkedin-hitl-agent",
@@ -54,8 +54,8 @@ function loadSettings(): DesktopSettings {
     notificationsEnabled: true,
     maxCommentsPerDay: 15,
     maxPostsPerDay: 3,
-    maxSuggestionsPerRun: 10,
-    actionTtlHours: 24,
+    maxSuggestionsPerRun: 3,
+    actionTtlHours: 12,
   };
 
   try {

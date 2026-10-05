@@ -52,4 +52,9 @@ jobs:
         working-directory: desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --publish always
+        run: |
+          if [ "${{ inputs.draft }}" = "true" ]; then
+            npx electron-builder --publish always -c.publish.provider=github -c.publish.releaseType=draft
+          else
+            npx electron-builder --publish always
+          fi

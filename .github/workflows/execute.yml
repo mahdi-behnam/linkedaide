@@ -112,4 +112,4 @@ jobs:
           path: |
             debug/screenshots/**
             debug/traces/**
-          retention-days: 14
+          retention-days: 3
