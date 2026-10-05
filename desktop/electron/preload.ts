@@ -107,6 +107,9 @@ const api: ElectronAPI = {
     contentType?: string
   ): Promise<{ success: boolean; key?: string; url?: string; error?: string }> =>
     ipcRenderer.invoke("api:uploadMedia", fileName, fileBuffer, contentType),
+
+  runCliDoctor: (): Promise<{ success: boolean; exitCode: number; output: string }> =>
+    ipcRenderer.invoke("doctor:runCliDoctor"),
 };
 
 contextBridge.exposeInMainWorld("api", api);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { StatusPill } from "../components/StatusPill";
-import { ArrowClockwise, CheckCircle } from "../components/icons";
+import { ArrowClockwise, CheckCircle, Cpu } from "../components/icons";
 import { DiagnosticCard } from "./doctor/DiagnosticCard";
 import { EnvSecretsAudit } from "./doctor/EnvSecretsAudit";
 import type { DesktopSettings } from "../types/api";
@@ -9,6 +9,9 @@ import type { DesktopSettings } from "../types/api";
 export const DoctorView: React.FC = () => {
   const { doctorChecks, isCheckingDoctor, runDoctorCheck, telemetry } = useApp();
   const [settings, setSettings] = useState<DesktopSettings | null>(null);
+  const [cliOutput, setCliOutput] = useState<string | null>(null);
+  const [isCliRunning, setIsCliRunning] = useState<boolean>(false);
+  const [cliExitCode, setCliExitCode] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -90,10 +93,48 @@ export const DoctorView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
+        <div className="flex items-center gap-3 self-start md:self-auto shrink-0 flex-wrap">
           <span className="font-label-sm text-[12px] text-on-surface-variant hidden sm:inline">
             Last run: {totalCount > 0 ? "Just now" : "Pending"}
           </span>
+          <button
+            type="button"
+            data-testid="run-cli-doctor-btn"
+            disabled={isCliRunning}
+            onClick={async () => {
+              setIsCliRunning(true);
+              try {
+                if (typeof window !== "undefined" && window.api?.runCliDoctor) {
+                  const res = await window.api.runCliDoctor();
+                  setCliOutput(
+                    res.output ||
+                      (res.success
+                        ? "All checks passed successfully."
+                        : "Checks finished with errors.")
+                  );
+                  setCliExitCode(res.exitCode);
+                } else {
+                  setCliOutput(
+                    "CLI runner interface is available in the desktop electron environment."
+                  );
+                  setCliExitCode(0);
+                }
+              } catch (err: unknown) {
+                const error = err instanceof Error ? err.message : String(err);
+                setCliOutput(`Error running CLI doctor: ${error}`);
+                setCliExitCode(1);
+              } finally {
+                setIsCliRunning(false);
+              }
+            }}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high transition-colors font-medium text-[13px] cursor-pointer shrink-0 disabled:opacity-50"
+          >
+            <Cpu
+              size={14}
+              className={isCliRunning ? "animate-spin text-primary" : "text-on-surface-variant"}
+            />
+            <span>{isCliRunning ? "Running CLI Doctor..." : "Run CLI Doctor"}</span>
+          </button>
           <button
             type="button"
             data-testid="run-doctor-btn"
@@ -145,6 +186,42 @@ export const DoctorView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* CLI Doctor Terminal Log Card */}
+      {cliOutput && (
+        <div
+          data-testid="cli-doctor-output"
+          className="flex flex-col gap-2 p-4 rounded-lg bg-surface-container-lowest border border-outline-variant/30"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-label-md text-[12px] font-semibold text-on-surface">
+                CLI Diagnostic Terminal Output (agent doctor)
+              </span>
+              <span
+                className={`text-[11px] px-2 py-0.5 rounded font-mono ${
+                  cliExitCode === 0
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                Exit Code: {cliExitCode ?? 0}
+              </span>
+            </div>
+            <button
+              type="button"
+              data-testid="clear-cli-output-btn"
+              onClick={() => setCliOutput(null)}
+              className="text-[12px] text-on-surface-variant hover:text-on-surface cursor-pointer font-medium"
+            >
+              Clear
+            </button>
+          </div>
+          <pre className="font-code-sm text-code-sm text-[12px] text-on-surface-variant bg-surface-container-low p-3 rounded-md overflow-x-auto whitespace-pre-wrap font-mono select-text border border-outline-variant/20 max-h-80">
+            {cliOutput}
+          </pre>
+        </div>
+      )}
 
       {/* Diagnostic Subsystems Grid */}
       <div className="flex flex-col gap-2.5">

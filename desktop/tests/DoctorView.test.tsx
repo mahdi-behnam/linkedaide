@@ -155,4 +155,35 @@ describe("DoctorView", () => {
       expect(screen.queryByText("GitHub Actions Dispatch (Cloud Runner)")).toBeNull();
     });
   });
+
+  it("executes CLI doctor via IPC and renders diagnostic terminal output card", async () => {
+    const runCliDoctorMock = vi.fn().mockResolvedValue({
+      success: true,
+      exitCode: 0,
+      output: "[PASS] Python 3.12 verified\n[PASS] Playwright browser installed\n[PASS] State store directory writable",
+    });
+    window.api.runCliDoctor = runCliDoctorMock;
+
+    renderDoctor();
+
+    const cliBtn = screen.getByTestId("run-cli-doctor-btn");
+    expect(cliBtn).toBeTruthy();
+
+    fireEvent.click(cliBtn);
+
+    await waitFor(() => {
+      expect(runCliDoctorMock).toHaveBeenCalled();
+      const outputCard = screen.getByTestId("cli-doctor-output");
+      expect(outputCard).toBeTruthy();
+      expect(screen.getByText(/CLI Diagnostic Terminal Output/i)).toBeTruthy();
+      expect(screen.getByText(/Exit Code: 0/i)).toBeTruthy();
+      expect(screen.getByText(/Playwright browser installed/i)).toBeTruthy();
+    });
+
+    // Test clear output
+    const clearBtn = screen.getByTestId("clear-cli-output-btn");
+    fireEvent.click(clearBtn);
+    expect(screen.queryByTestId("cli-doctor-output")).toBeNull();
+  });
 });
+

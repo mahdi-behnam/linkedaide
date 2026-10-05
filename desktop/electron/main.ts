@@ -506,6 +506,55 @@ function registerIpcHandlers(): void {
       }
     }
   );
+
+  // CLI Doctor Execution Handler (uv run agent doctor)
+  ipcMain.handle("doctor:runCliDoctor", async () => {
+    return new Promise<{ success: boolean; exitCode: number; output: string }>((resolve) => {
+      try {
+        const repoRoot = path.resolve(__dirname, "../..");
+        const settings = loadSettings();
+        const child = spawn("uv", ["run", "agent", "doctor", "--repo-root", repoRoot], {
+          cwd: repoRoot,
+          env: {
+            ...process.env,
+            ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
+            ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+          },
+        });
+
+        let output = "";
+        child.stdout?.on("data", (data) => {
+          output += data.toString();
+        });
+        child.stderr?.on("data", (data) => {
+          output += data.toString();
+        });
+
+        child.on("close", (code) => {
+          resolve({
+            success: code === 0,
+            exitCode: code ?? 0,
+            output: output.trim(),
+          });
+        });
+
+        child.on("error", (err) => {
+          resolve({
+            success: false,
+            exitCode: 1,
+            output: `Failed to spawn CLI doctor: ${err.message}`,
+          });
+        });
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err.message : String(err);
+        resolve({
+          success: false,
+          exitCode: 1,
+          output: `Error executing doctor check: ${error}`,
+        });
+      }
+    });
+  });
 }
 
 function getAppIconPath(): string | undefined {

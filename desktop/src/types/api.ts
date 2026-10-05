@@ -134,6 +134,13 @@ export interface ElectronAPI {
     fileBuffer: ArrayBuffer,
     contentType?: string
   ) => Promise<{ success: boolean; key?: string; url?: string; error?: string }>;
+  runCliDoctor?: () => Promise<CliDoctorResult>;
+}
+
+export interface CliDoctorResult {
+  success: boolean;
+  exitCode: number;
+  output: string;
 }
 
 declare global {
