@@ -54,6 +54,7 @@ function loadSettings(): DesktopSettings {
     notificationsEnabled: true,
     maxCommentsPerDay: 15,
     maxPostsPerDay: 3,
+    maxConnectionsPerDay: 10,
     maxSuggestionsPerRun: 3,
     actionTtlHours: 12,
   };

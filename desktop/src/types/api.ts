@@ -89,6 +89,7 @@ export interface DesktopSettings {
   notificationsEnabled?: boolean;
   maxCommentsPerDay?: number;
   maxPostsPerDay?: number;
+  maxConnectionsPerDay?: number;
   maxSuggestionsPerRun?: number;
   actionTtlHours?: number;
   nimModel?: string;

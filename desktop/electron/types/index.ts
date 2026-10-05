@@ -24,6 +24,7 @@ export interface DailyCounters {
   comments_executed: number;
   posts_executed: number;
   suggestions_sent: number;
+  connections_sent?: number;
 }
 
 export interface HistoryEntry {
@@ -124,6 +125,7 @@ export interface DesktopSettings {
   notificationsEnabled?: boolean;
   maxCommentsPerDay?: number;
   maxPostsPerDay?: number;
+  maxConnectionsPerDay?: number;
   maxSuggestionsPerRun?: number;
   actionTtlHours?: number;
 }

@@ -26,6 +26,7 @@ const defaultSettings: DesktopSettings = {
   notificationsEnabled: true,
   maxCommentsPerDay: 15,
   maxPostsPerDay: 3,
+  maxConnectionsPerDay: 10,
   maxSuggestionsPerRun: 3,
   actionTtlHours: 12,
 };
@@ -357,12 +358,14 @@ export const SettingsView: React.FC = () => {
         <SafetyGuardrailsCard
           maxCommentsPerDay={settings.maxCommentsPerDay ?? quota.commentsMax}
           maxPostsPerDay={settings.maxPostsPerDay ?? quota.postsMax}
+          maxConnectionsPerDay={settings.maxConnectionsPerDay ?? quota.connectionsMax ?? 10}
           maxSuggestionsPerRun={settings.maxSuggestionsPerRun ?? 10}
           actionTtlHours={settings.actionTtlHours ?? 24}
           autoRefreshInterval={settings.autoRefreshInterval ?? 300}
           headless={settings.headless ?? true}
           onCommentsChange={(val) => handleChange("maxCommentsPerDay", val)}
           onPostsChange={(val) => handleChange("maxPostsPerDay", val)}
+          onConnectionsChange={(val) => handleChange("maxConnectionsPerDay", val)}
           onSuggestionsChange={(val) => handleChange("maxSuggestionsPerRun", val)}
           onTtlChange={(val) => handleChange("actionTtlHours", val)}
           onIntervalChange={(val) => handleChange("autoRefreshInterval", val)}

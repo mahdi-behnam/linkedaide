@@ -331,4 +331,27 @@ describe("SettingsView", () => {
       );
     });
   });
+
+  it("allows configuring and saving maxConnectionsPerDay", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const connInput = screen.getByLabelText("Max Connections / Day") as HTMLInputElement;
+    fireEvent.change(connInput, { target: { value: "18" } });
+
+    const saveBtn = screen.getByRole("button", {
+      name: /Save & Apply Settings/i,
+    });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxConnectionsPerDay: 18,
+        })
+      );
+    });
+  });
 });

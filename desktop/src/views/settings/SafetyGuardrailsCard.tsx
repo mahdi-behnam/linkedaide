@@ -4,12 +4,14 @@ import { ShieldCheck, LockKey } from "../../components/icons";
 interface SafetyGuardrailsCardProps {
   maxCommentsPerDay: number;
   maxPostsPerDay: number;
+  maxConnectionsPerDay: number;
   maxSuggestionsPerRun: number;
   actionTtlHours: number;
   autoRefreshInterval: number;
   headless: boolean;
   onCommentsChange: (val: number) => void;
   onPostsChange: (val: number) => void;
+  onConnectionsChange: (val: number) => void;
   onSuggestionsChange: (val: number) => void;
   onTtlChange: (val: number) => void;
   onIntervalChange: (val: number) => void;
@@ -19,12 +21,14 @@ interface SafetyGuardrailsCardProps {
 export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
   maxCommentsPerDay,
   maxPostsPerDay,
+  maxConnectionsPerDay,
   maxSuggestionsPerRun,
   actionTtlHours,
   autoRefreshInterval,
   headless,
   onCommentsChange,
   onPostsChange,
+  onConnectionsChange,
   onSuggestionsChange,
   onTtlChange,
   onIntervalChange,
@@ -113,6 +117,34 @@ export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
           </div>
           <span className="font-label-sm text-[11px] text-on-surface-variant">
             Recommended cadence for technical thought leadership
+          </span>
+        </div>
+
+        {/* Max Connections / Day */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="max-connections-input"
+            className="font-body-strong text-body-strong text-on-surface text-[12px]"
+          >
+            Max Connections / Day
+          </label>
+          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus-within:border-amber-500">
+            <input
+              id="max-connections-input"
+              aria-label="Max Connections / Day"
+              type="number"
+              min={1}
+              max={30}
+              value={maxConnectionsPerDay}
+              onChange={(e) => onConnectionsChange(Number(e.target.value))}
+              className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface text-[13px] p-0 focus:ring-0"
+            />
+            <span className="font-code-sm text-code-sm text-on-surface-variant ml-2 shrink-0 text-[11px]">
+              max/24h
+            </span>
+          </div>
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
+            Daily connection outreach ceiling
           </span>
         </div>
 
