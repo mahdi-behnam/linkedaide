@@ -96,6 +96,8 @@ jobs:
           CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID || vars.CLOUDFLARE_KV_NAMESPACE_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           STATE_BACKEND: ${{ vars.STATE_BACKEND || 'kv' }}
+          WORKER_URL: ${{ vars.WORKER_URL || secrets.WORKER_URL }}
+          DESKTOP_API_SECRET: ${{ secrets.DESKTOP_API_SECRET }}
         run: uv run python -m agent.orchestration.execute_flow
 
       - name: Wipe Decrypted Storage State
