@@ -100,6 +100,13 @@ const api: ElectronAPI = {
 
   fetchConnectionQueue: (): Promise<ConnectionRequestAction[]> =>
     ipcRenderer.invoke("api:fetchConnectionQueue"),
+
+  uploadMedia: (
+    fileName: string,
+    fileBuffer: ArrayBuffer,
+    contentType?: string
+  ): Promise<{ success: boolean; key?: string; url?: string; error?: string }> =>
+    ipcRenderer.invoke("api:uploadMedia", fileName, fileBuffer, contentType),
 };
 
 contextBridge.exposeInMainWorld("api", api);

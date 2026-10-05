@@ -129,6 +129,11 @@ export interface ElectronAPI {
   saveScheduledPost?: (post: ScheduledPost) => Promise<ScheduledPost>;
   deleteScheduledPost?: (id: string) => Promise<boolean>;
   fetchConnectionQueue?: () => Promise<ConnectionRequestAction[]>;
+  uploadMedia?: (
+    fileName: string,
+    fileBuffer: ArrayBuffer,
+    contentType?: string
+  ) => Promise<{ success: boolean; key?: string; url?: string; error?: string }>;
 }
 
 declare global {

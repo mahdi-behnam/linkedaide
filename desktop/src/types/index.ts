@@ -37,6 +37,7 @@ export interface MediaAttachment {
   media_type: "image" | "carousel_pdf";
   file_name: string;
   file_url: string;
+  media_key?: string;
   slide_count: number;
 }
 

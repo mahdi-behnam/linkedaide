@@ -491,4 +491,50 @@ describe("WorkerClient", () => {
       expect(result).toBe(true);
     });
   });
+
+  describe("uploadMedia", () => {
+    it("sends binary payload to /api/media/:key with Bearer auth and Content-Type", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, key: "posts/carousel-1.pdf" }),
+        text: async () => JSON.stringify({ success: true, key: "posts/carousel-1.pdf" }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const buffer = new Uint8Array([37, 80, 68, 70]); // %PDF
+      const result = await client.uploadMedia(
+        "posts/carousel-1.pdf",
+        buffer,
+        "application/pdf"
+      );
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/media/posts/carousel-1.pdf",
+        expect.objectContaining({
+          method: "PUT",
+          headers: expect.objectContaining({
+            Authorization: "Bearer super-secret-key-12345",
+            "Content-Type": "application/pdf",
+          }),
+        })
+      );
+      expect(result.success).toBe(true);
+      expect(result.key).toBe("posts/carousel-1.pdf");
+      expect(result.url).toContain("token=super-secret-key-12345");
+    });
+
+    it("throws an error when Worker returns non-200 status", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => "R2 bucket write failure",
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(
+        client.uploadMedia("posts/img.png", new Uint8Array([1, 2]))
+      ).rejects.toThrow("Media upload failed (500): R2 bucket write failure");
+    });
+  });
 });

@@ -474,6 +474,38 @@ function registerIpcHandlers(): void {
       };
     }
   });
+
+  // Media Upload Handler (Cloudflare R2 Media Vault / Local Storage)
+  ipcMain.handle(
+    "api:uploadMedia",
+    async (_event, fileName: string, fileBuffer: ArrayBuffer, contentType?: string) => {
+      try {
+        const settings = loadSettings();
+        const ext = path.extname(fileName) || (contentType?.includes("pdf") ? ".pdf" : ".png");
+        const uniqueKey = `posts/${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}${ext}`;
+
+        if (workerClient && settings.workerUrl && settings.apiSecret) {
+          return await workerClient.uploadMedia(uniqueKey, fileBuffer, contentType);
+        }
+
+        // Local storage fallback under userData/media
+        const mediaDir = path.join(app.getPath("userData"), "media");
+        if (!fs.existsSync(mediaDir)) {
+          fs.mkdirSync(mediaDir, { recursive: true });
+        }
+        const localFilePath = path.join(mediaDir, path.basename(uniqueKey));
+        fs.writeFileSync(localFilePath, Buffer.from(fileBuffer));
+        return {
+          success: true,
+          key: uniqueKey,
+          url: `file://${localFilePath}`,
+        };
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err.message : String(err);
+        return { success: false, error };
+      }
+    }
+  );
 }
 
 function getAppIconPath(): string | undefined {

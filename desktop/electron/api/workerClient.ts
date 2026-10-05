@@ -579,4 +579,44 @@ export class WorkerClient {
     );
     return res?.success !== false;
   }
+
+  /**
+   * Uploads binary media to Cloudflare R2 media vault via Worker API.
+   */
+  public async uploadMedia(
+    key: string,
+    data: ArrayBuffer | Uint8Array,
+    contentType?: string
+  ): Promise<{ success: boolean; key: string; url: string }> {
+    const cleanKey = key.replace(/^\/+/, "");
+    const targetUrl = `${this.baseUrl}/api/media/${cleanKey}`;
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiSecret}`,
+    };
+    if (contentType) {
+      headers["Content-Type"] = contentType;
+    }
+
+    const response = await fetch(targetUrl, {
+      method: "PUT",
+      headers,
+      body: data as any,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Media upload failed (${response.status}): ${errText}`);
+    }
+
+    const res = (await response.json()) as { success?: boolean; key?: string };
+    const durableKey = res.key || cleanKey;
+    const mediaUrl = `${this.baseUrl}/api/media/${durableKey}?token=${this.apiSecret}`;
+
+    return {
+      success: true,
+      key: durableKey,
+      url: mediaUrl,
+    };
+  }
 }

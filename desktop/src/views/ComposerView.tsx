@@ -104,27 +104,46 @@ export const ComposerView: React.FC = () => {
   };
 
   // Upload user file from device
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const isPdf =
       file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    const fileUrl =
+    const previewUrl =
       typeof window !== "undefined" &&
       window.URL &&
       typeof window.URL.createObjectURL === "function"
         ? window.URL.createObjectURL(file)
         : "";
+
+    let finalUrl = previewUrl;
+    let durableKey: string | undefined = undefined;
+
+    if (typeof window !== "undefined" && window.api?.uploadMedia) {
+      try {
+        setFeedbackMessage(`Uploading ${file.name} to media vault...`);
+        const arrayBuf = await file.arrayBuffer();
+        const res = await window.api.uploadMedia(file.name, arrayBuf, file.type);
+        if (res.success && res.url) {
+          finalUrl = res.url;
+          durableKey = res.key;
+        }
+      } catch (err) {
+        console.warn("Media upload failed, using local preview URL:", err);
+      }
+    }
+
     const attachment: MediaAttachment = {
       media_type: isPdf ? "carousel_pdf" : "image",
       file_name: file.name,
-      file_url: fileUrl,
+      file_url: finalUrl,
+      media_key: durableKey,
       slide_count: isPdf ? 5 : 1,
     };
     setMediaList([attachment]);
     setCurrentSlideIndex(0);
     setFeedbackMessage(
-      `Attached ${isPdf ? "PDF document" : "image"}: ${file.name}`
+      `Attached ${isPdf ? "PDF document" : "image"}: ${file.name}${durableKey ? " (stored in R2 vault)" : ""}`
     );
     setTimeout(() => setFeedbackMessage(null), 3000);
   };

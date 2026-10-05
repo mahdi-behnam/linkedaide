@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AppProvider } from "../src/context/AppContext";
 import { ComposerView } from "../src/views/ComposerView";
 
@@ -155,5 +155,32 @@ describe("ComposerView", () => {
     fireEvent.change(dateInput, { target: { value: "2026-10-05" } });
     fireEvent.click(scheduleBtn);
     expect(screen.getByTestId("composer-feedback").textContent).toContain("Post scheduled successfully.");
+  });
+
+  it("invokes uploadMedia IPC bridge when uploading media to vault", async () => {
+    const uploadMediaMock = vi.fn().mockResolvedValue({
+      success: true,
+      key: "posts/doc-123.pdf",
+      url: "https://worker.dev/api/media/posts/doc-123.pdf?token=abc",
+    });
+    window.api = {
+      ...(window.api || {}),
+      uploadMedia: uploadMediaMock,
+    } as any;
+
+    renderComposer();
+    const fileInput = screen.getByTestId("media-file-input");
+    const testFile = new File(["pdf contents"], "strategy.pdf", { type: "application/pdf" });
+    testFile.arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(12));
+
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    await waitFor(() => {
+      expect(uploadMediaMock).toHaveBeenCalledWith(
+        "strategy.pdf",
+        expect.any(ArrayBuffer),
+        "application/pdf"
+      );
+    });
   });
 });
