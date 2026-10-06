@@ -136,6 +136,7 @@ export interface ElectronAPI {
     contentType?: string
   ) => Promise<{ success: boolean; key?: string; url?: string; error?: string }>;
   runCliDoctor?: () => Promise<CliDoctorResult>;
+  onMenuAction?: (callback: (action: string, data?: unknown) => void) => () => void;
 }
 
 export interface CliDoctorResult {

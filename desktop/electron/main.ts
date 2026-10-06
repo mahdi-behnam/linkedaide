@@ -19,6 +19,7 @@ import {
 } from "./crypto/fernet";
 import { TrayManager } from "./tray/trayManager";
 import { PollingEngine } from "./tray/pollingEngine";
+import { setupAppMenu } from "./menu";
 import type { ActionResult, DesktopSettings } from "./types";
 
 interface QuittableApp extends Electron.App {
@@ -598,8 +599,6 @@ function createWindow(): BrowserWindow {
     },
   });
 
-  win.removeMenu();
-
   win.once("ready-to-show", () => {
     win.show();
   });
@@ -638,11 +637,16 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(null);
   const settings = loadSettings();
   workerClient = new WorkerClient({
     baseUrl: settings.workerUrl,
     apiSecret: settings.apiSecret,
+  });
+
+  setupAppMenu({
+    getMainWindow: () => mainWindow,
+    workerClient,
+    workerUrl: settings.workerUrl,
   });
 
   registerIpcHandlers();

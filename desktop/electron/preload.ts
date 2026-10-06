@@ -89,6 +89,16 @@ const api: ElectronAPI = {
     };
   },
 
+  onMenuAction: (callback: (action: string, data?: any) => void): (() => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, action: string, data?: any) => {
+      callback(action, data);
+    };
+    ipcRenderer.on("menu:action", subscription);
+    return () => {
+      ipcRenderer.removeListener("menu:action", subscription);
+    };
+  },
+
   fetchScheduledPosts: (): Promise<ScheduledPost[]> =>
     ipcRenderer.invoke("api:fetchScheduledPosts"),
 

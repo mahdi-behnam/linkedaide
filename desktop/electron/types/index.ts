@@ -2,6 +2,18 @@
  * Shared TypeScript interfaces for Electron main process and IPC.
  */
 
+export type NavigationTab =
+  | "dashboard"
+  | "queue"
+  | "outreach"
+  | "composer"
+  | "calendar"
+  | "analytics"
+  | "vault"
+  | "history"
+  | "doctor"
+  | "settings";
+
 export interface PendingAction {
   item_id: string;
   action_type: "approve_comment" | "approve_post" | string;
@@ -167,6 +179,7 @@ export interface ElectronAPI {
     contentType?: string
   ) => Promise<{ success: boolean; key?: string; url?: string; error?: string }>;
   runCliDoctor?: () => Promise<CliDoctorResult>;
+  onMenuAction?: (callback: (action: string, data?: any) => void) => () => void;
 }
 
 export interface CliDoctorResult {

@@ -360,6 +360,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [refreshState]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.api?.onMenuAction) {
+      return;
+    }
+    const unsubscribe = window.api.onMenuAction((action: string, data?: unknown) => {
+      if (action === "navigate" && typeof data === "string") {
+        setCurrentTab(data as NavigationTab);
+      } else if (action === "trigger-scout") {
+        triggerScout();
+      } else if (action === "toggle-pause") {
+        togglePause();
+      } else if (action === "refresh-state" && refreshState) {
+        refreshState();
+      } else if (action === "clear-incident" && clearIncident) {
+        clearIncident();
+      } else if (action === "run-doctor") {
+        runDoctorCheck();
+      }
+    });
+    return unsubscribe;
+  }, [setCurrentTab, triggerScout, togglePause, refreshState, clearIncident, runDoctorCheck]);
+
   const value = useMemo(
     () => ({
       currentTab,
