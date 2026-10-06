@@ -1737,5 +1737,85 @@ describe("Telegram Relay Worker", () => {
         expect(editedBody.reply_markup.inline_keyboard[0][0].callback_data).toBe("ac:item_tone_cb_1");
       });
     });
+
+    describe("Phase 2 Persistent Docked Reply Keyboard Navigation", () => {
+      it("routes '📊 Status' docked button tap to status command", async () => {
+        let sentPayload: any = null;
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("sendMessage")) {
+            sentPayload = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+
+        const req = makeRequest({
+          update_id: 130,
+          message: {
+            message_id: 801,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "📊 Status",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("command_handled");
+        expect(json.command).toBe("status");
+
+        expect(sentPayload).not.toBeNull();
+        expect(sentPayload.text).toContain("Agent Status Report");
+        expect(sentPayload.reply_markup).toBeDefined();
+        expect(sentPayload.reply_markup.keyboard[0][0].text).toBe("📊 Status");
+      });
+
+      it("routes '⏸️ Pause' docked button tap to pause command", async () => {
+        const kvStore = new Map<string, string>();
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        let sentPayload: any = null;
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("sendMessage")) {
+            sentPayload = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+
+        const req = makeRequest({
+          update_id: 131,
+          message: {
+            message_id: 802,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "⏸️ Pause",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("command_handled");
+        expect(json.command).toBe("pause");
+
+        expect(sentPayload.text).toContain("Agent Paused");
+        expect(sentPayload.reply_markup.keyboard[1][0].text).toBe("▶️ Resume");
+      });
+    });
   });
 });

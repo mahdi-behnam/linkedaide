@@ -615,6 +615,61 @@ class TestCommandHandlerRouting:
         res = await cmd_handler.handle_message(msg)
         assert res is False
 
+    @pytest.mark.asyncio
+    async def test_handle_message_docked_buttons(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 111}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=telegram,
+            )
+
+            # Test 1: Docked Status button
+            msg_status = {
+                "text": "📊 Status",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+            }
+            res_status = await cmd_handler.handle_message(msg_status)
+            assert res_status is True
+            assert "Agent Status Report" in sent_payloads[0]["text"]
+            assert sent_payloads[0]["reply_markup"]["is_persistent"] is True
+
+            # Test 2: Docked Pause button
+            msg_pause = {
+                "text": "⏸️ Pause",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+            }
+            res_pause = await cmd_handler.handle_message(msg_pause)
+            assert res_pause is True
+            assert test_state_store.is_paused() is True
+            assert "Agent Paused" in sent_payloads[1]["text"]
+
+            # Test 3: Docked Resume button
+            msg_resume = {
+                "text": "▶️ Resume",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+            }
+            res_resume = await cmd_handler.handle_message(msg_resume)
+            assert res_resume is True
+            assert test_state_store.is_paused() is False
+            assert "Agent Resumed" in sent_payloads[2]["text"]
+
 
 class TestPollFlowCommandIntegration:
     """Tests verifying poll_flow integration with operator commands."""

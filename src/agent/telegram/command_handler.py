@@ -33,6 +33,7 @@ from agent.telegram.commands import (
     execute_unknown_command,
 )
 from agent.telegram.draft_editor import handle_draft_edit
+from agent.telegram.reply_keyboards import DOCK_BUTTON_COMMAND_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,12 @@ class CommandHandler:
             )
             return False
 
-        if raw_text.startswith("/"):
+        if (
+            raw_text.startswith("/")
+            or raw_text in DOCK_BUTTON_COMMAND_MAP
+            or raw_text.startswith("⏸️ Pause")
+            or raw_text.startswith("▶️ Resume")
+        ):
             return await self.handle_command(
                 text=raw_text,
                 chat_id=chat_id,
@@ -132,12 +138,19 @@ class CommandHandler:
             logger.warning("Cannot route command without valid chat_id.")
             return False
 
-        parts = text.strip().split()
-        if not parts:
-            return False
-
-        cmd_token = parts[0].lower().lstrip("/")
-        command_name = cmd_token.split("@")[0]
+        stripped = text.strip()
+        if stripped in DOCK_BUTTON_COMMAND_MAP:
+            command_name = DOCK_BUTTON_COMMAND_MAP[stripped]
+        elif stripped.startswith("⏸️ Pause"):
+            command_name = "pause"
+        elif stripped.startswith("▶️ Resume"):
+            command_name = "resume"
+        else:
+            parts = stripped.split()
+            if not parts:
+                return False
+            cmd_token = parts[0].lower().lstrip("/")
+            command_name = cmd_token.split("@")[0]
 
         if command_name == "status":
             await self.handle_status(chat_id=chat_id, message_id=message_id)

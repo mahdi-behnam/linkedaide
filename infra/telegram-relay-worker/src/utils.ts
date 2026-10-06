@@ -90,7 +90,8 @@ export async function sendTelegramMessage(
   env: Env,
   chatId: number,
   text: string,
-  replyToMessageId?: number | null
+  replyToMessageId?: number | null,
+  replyMarkup?: Record<string, unknown> | null
 ): Promise<void> {
   const payload: Record<string, unknown> = {
     chat_id: chatId,
@@ -100,6 +101,9 @@ export async function sendTelegramMessage(
   };
   if (typeof replyToMessageId === "number") {
     payload.reply_to_message_id = replyToMessageId;
+  }
+  if (replyMarkup) {
+    payload.reply_markup = replyMarkup;
   }
   try {
     await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -259,5 +263,17 @@ export function getTonePickerKeyboard(itemId: string, actionType: string = "appr
         { text: "🔙 Back to Review", callback_data: `back:${cleanId}` },
       ],
     ],
+  };
+}
+
+/** Constructs persistent 2x2 reply keyboard dock for mobile navigation */
+export function getDockedReplyKeyboard(isPaused: boolean = false) {
+  return {
+    keyboard: [
+      [{ text: "📊 Status" }, { text: "📋 Pending Queue" }],
+      [{ text: isPaused ? "▶️ Resume" : "⏸️ Pause" }, { text: "📈 Stats" }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
   };
 }

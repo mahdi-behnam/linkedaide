@@ -9,10 +9,16 @@ from agent.telegram.keyboards import (
     build_suggestion_message,
     format_suggestion_card,
 )
+from agent.telegram.reply_keyboards import (
+    DOCK_BUTTON_COMMAND_MAP,
+    build_docked_reply_keyboard,
+)
 
 __all__ = [
     "CommandHandler",
+    "DOCK_BUTTON_COMMAND_MAP",
     "TelegramClient",
+    "build_docked_reply_keyboard",
     "build_outcome_message",
     "build_suggestion_keyboard",
     "build_suggestion_message",

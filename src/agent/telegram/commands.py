@@ -18,6 +18,7 @@ from agent.config import Settings
 from agent.safety.circuit_breaker import is_halted
 from agent.state.base import BaseStateStore
 from agent.telegram.client import TelegramClient
+from agent.telegram.reply_keyboards import build_docked_reply_keyboard
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +86,11 @@ async def execute_status_command(
         f"• <b>Focus Areas:</b> {focus_areas_esc}"
     )
 
+    is_paused_now = bool(halted or settings.agent_paused or state_store.is_paused())
     await telegram.send_message(
         chat_id=chat_id,
         text=report,
+        reply_markup=build_docked_reply_keyboard(is_paused=is_paused_now),
         reply_to_message_id=message_id,
     )
     return report
@@ -261,6 +264,7 @@ async def execute_pause_command(
     await telegram.send_message(
         chat_id=chat_id,
         text=msg,
+        reply_markup=build_docked_reply_keyboard(is_paused=True),
         reply_to_message_id=message_id,
     )
     return msg
@@ -295,6 +299,7 @@ async def execute_resume_command(
     await telegram.send_message(
         chat_id=chat_id,
         text=msg,
+        reply_markup=build_docked_reply_keyboard(is_paused=False),
         reply_to_message_id=message_id,
     )
     return msg
@@ -367,6 +372,7 @@ async def execute_help_command(
     await telegram.send_message(
         chat_id=chat_id,
         text=msg,
+        reply_markup=build_docked_reply_keyboard(is_paused=False),
         reply_to_message_id=message_id,
     )
     return msg

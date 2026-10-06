@@ -63,6 +63,42 @@ def delete_webhook(bot_token: str | None = None) -> bool:
         return False
 
 
+DEFAULT_BOT_COMMANDS = [
+    {"command": "status", "description": "Check system health, breaker, and daily counters"},
+    {"command": "pending", "description": "List all actions awaiting operator approval"},
+    {"command": "stats", "description": "Performance metrics, counters, and approval rate"},
+    {"command": "pause", "description": "Suspend automated scouting and execution workflows"},
+    {"command": "resume", "description": "Resume automated agent operations"},
+    {"command": "clear_incident", "description": "Safely reset tripped circuit breaker"},
+    {"command": "post", "description": "Draft an original LinkedIn post from a quick note"},
+    {"command": "scout", "description": "Triage and draft a comment for a specific LinkedIn URL"},
+    {"command": "help", "description": "View operator command manual and usage guide"},
+]
+
+
+def register_bot_commands(
+    bot_token: str | None = None,
+    commands: list[dict[str, str]] | None = None,
+) -> bool:
+    """Register official Telegram bot commands menu (setMyCommands)."""
+    token = bot_token or os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        raise ValueError("TELEGRAM_BOT_TOKEN is required.")
+
+    api_url = f"https://api.telegram.org/bot{token}/setMyCommands"
+    bot_commands = commands or DEFAULT_BOT_COMMANDS
+    resp = httpx.post(api_url, json={"commands": bot_commands}, timeout=15.0)
+    resp.raise_for_status()
+    data = resp.json()
+
+    if data.get("ok"):
+        print("Bot commands registered successfully via setMyCommands.")
+        return True
+    else:
+        print(f"Bot commands registration failed: {data.get('description')}")
+        return False
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Manage Telegram webhook for Relay Worker")
     parser.add_argument("--worker-url", type=str, help="Cloudflare Worker HTTPS URL")
@@ -71,10 +107,13 @@ def main() -> None:
         "--bot-token", type=str, default=None, help="Telegram bot token (or via env)"
     )
     parser.add_argument("--delete", action="store_true", help="Delete existing webhook")
+    parser.add_argument("--set-commands", action="store_true", help="Register Telegram bot commands menu only")
     args = parser.parse_args()
 
     try:
-        if args.delete:
+        if args.set_commands:
+            success = register_bot_commands(args.bot_token)
+        elif args.delete:
             success = delete_webhook(args.bot_token)
         else:
             if not args.worker_url or not args.secret_token:
@@ -84,6 +123,11 @@ def main() -> None:
                 )
                 sys.exit(1)
             success = register_webhook(args.worker_url, args.secret_token, args.bot_token)
+            if success:
+                try:
+                    register_bot_commands(args.bot_token)
+                except Exception as cmd_err:
+                    print(f"Warning: Failed to set bot commands: {cmd_err}")
 
         sys.exit(0 if success else 1)
     except Exception as err:

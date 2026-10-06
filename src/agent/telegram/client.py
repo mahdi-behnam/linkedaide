@@ -322,6 +322,35 @@ class TelegramClient:
             )
         return message_id
 
+    async def set_my_commands(
+        self,
+        commands: list[dict[str, str]] | None = None,
+    ) -> bool:
+        """Register Telegram Bot command menu descriptions via setMyCommands.
+
+        Args:
+            commands: Optional list of command dicts with 'command' and 'description'.
+
+        Returns:
+            bool: True if registration was successful.
+
+        Raises:
+            TelegramAPIError: If the API call fails.
+        """
+        bot_commands = commands or [
+            {"command": "status", "description": "Check system health, breaker, and daily counters"},
+            {"command": "pending", "description": "List all actions awaiting operator approval"},
+            {"command": "stats", "description": "Performance metrics, counters, and approval rate"},
+            {"command": "pause", "description": "Suspend automated scouting and execution workflows"},
+            {"command": "resume", "description": "Resume automated agent operations"},
+            {"command": "clear_incident", "description": "Safely reset tripped circuit breaker"},
+            {"command": "post", "description": "Draft an original LinkedIn post from a quick note"},
+            {"command": "scout", "description": "Triage and draft a comment for a specific LinkedIn URL"},
+            {"command": "help", "description": "View operator command manual and usage guide"},
+        ]
+        data = await self._post("setMyCommands", {"commands": bot_commands})
+        return bool(data.get("ok", False))
+
     async def _post(self, method: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Execute a POST request against the Telegram Bot API."""
         url = f"{self._base_url}/{method}"

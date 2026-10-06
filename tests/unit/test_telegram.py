@@ -31,6 +31,7 @@ from agent.telegram.keyboards import (
     build_tone_keyboard,
     format_suggestion_card,
 )
+from agent.telegram.reply_keyboards import build_docked_reply_keyboard
 
 
 @pytest.fixture
@@ -246,6 +247,20 @@ class TestKeyboardsAndMessages:
         for row in kb["inline_keyboard"]:
             for btn in row:
                 assert len(btn["callback_data"].encode("utf-8")) < 64
+
+    def test_build_docked_reply_keyboard(self) -> None:
+        kb_active = build_docked_reply_keyboard(is_paused=False)
+        assert kb_active["resize_keyboard"] is True
+        assert kb_active["is_persistent"] is True
+        rows = kb_active["keyboard"]
+        assert rows[0][0]["text"] == "📊 Status"
+        assert rows[0][1]["text"] == "📋 Pending Queue"
+        assert rows[1][0]["text"] == "⏸️ Pause"
+        assert rows[1][1]["text"] == "📈 Stats"
+
+        kb_paused = build_docked_reply_keyboard(is_paused=True)
+        rows_paused = kb_paused["keyboard"]
+        assert rows_paused[1][0]["text"] == "▶️ Resume"
 
     def test_build_suggestion_message_escaping(self, sample_pending_action: PendingAction) -> None:
         msg = build_suggestion_message(sample_pending_action)
@@ -502,6 +517,29 @@ class TestTelegramClient:
             assert not client._http_client.is_closed
 
         assert client._http_client.is_closed
+
+    @pytest.mark.asyncio
+    async def test_set_my_commands_success(self, mock_settings: Settings) -> None:
+        captured_payload: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal captured_payload
+            assert request.url.path.endswith("/setMyCommands")
+            captured_payload = json.loads(request.content.decode("utf-8"))
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = TelegramClient(mock_settings, http_client=http_client)
+            res = await client.set_my_commands()
+            assert res is True
+            assert "commands" in captured_payload
+            cmd_names = [c["command"] for c in captured_payload["commands"]]
+            assert "status" in cmd_names
+            assert "pending" in cmd_names
+            assert "pause" in cmd_names
+            assert "resume" in cmd_names
+            assert "post" in cmd_names
 
     @pytest.mark.asyncio
     async def test_edit_message_text_success(self, mock_settings: Settings) -> None:

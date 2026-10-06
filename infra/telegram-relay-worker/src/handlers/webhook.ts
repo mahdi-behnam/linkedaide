@@ -18,6 +18,7 @@ import {
   getRejectionFeedbackKeyboard,
   getSuggestionKeyboard,
   getTonePickerKeyboard,
+  getDockedReplyKeyboard,
   notifyTelegramFailure,
   sendTelegramMessage,
 } from "../utils";
@@ -50,7 +51,16 @@ export async function handleTelegramWebhook(
     const msg = update.message;
     const text = (msg.text || "").trim();
     const isReply = !!msg.reply_to_message;
-    const isCommand = text.startsWith("/");
+    const DOCK_MAP: Record<string, string> = {
+      "📊 Status": "status",
+      "📋 Pending Queue": "pending",
+      "📈 Stats": "stats",
+      "⏸️ Pause": "pause",
+      "▶️ Resume": "resume",
+      "⏸️ Pause / Resume": "pause",
+    };
+    const isDockButton = Boolean(DOCK_MAP[text]);
+    const isCommand = text.startsWith("/") || isDockButton;
 
     if (!isReply && !isCommand) {
       return new Response("Ignored non-callback update", { status: 200 });
@@ -190,9 +200,16 @@ export async function handleTelegramWebhook(
       }
     }
 
-    if (text.startsWith("/")) {
-      const parts = text.split(" ");
-      const cmdToken = parts[0].substring(1).split("@")[0].toLowerCase();
+    if (isCommand) {
+      let parts: string[] = [];
+      let cmdToken = "";
+      if (DOCK_MAP[text]) {
+        cmdToken = DOCK_MAP[text];
+        parts = [cmdToken];
+      } else {
+        parts = text.split(" ");
+        cmdToken = parts[0].substring(1).split("@")[0].toLowerCase();
+      }
 
       if (cmdToken === "edit") {
         const targetItemId = parts[1]?.trim();
@@ -384,7 +401,7 @@ export async function handleTelegramWebhook(
           `• <b>Comments Executed:</b> ${commentsCount}\n` +
           `• <b>Posts Executed:</b> ${postsCount}`;
 
-        await sendTelegramMessage(env, chatId, report, messageId);
+        await sendTelegramMessage(env, chatId, report, messageId, getDockedReplyKeyboard(isPaused));
         return new Response(JSON.stringify({ status: "command_handled", command: "status" }), {
           headers: { "Content-Type": "application/json" },
         });
@@ -399,7 +416,7 @@ export async function handleTelegramWebhook(
           "⏸️ <b>Agent Paused</b>\n\n" +
           "All automated scouting, triage, and execution workflows are now suspended.\n" +
           "Use /resume to restart operations.";
-        await sendTelegramMessage(env, chatId, reply, messageId);
+        await sendTelegramMessage(env, chatId, reply, messageId, getDockedReplyKeyboard(true));
         return new Response(JSON.stringify({ status: "command_handled", command: "pause" }), {
           headers: { "Content-Type": "application/json" },
         });
@@ -410,7 +427,7 @@ export async function handleTelegramWebhook(
         const reply =
           "▶️ <b>Agent Resumed</b>\n\n" +
           "Automated workflows are now active and ready to scout and execute according to schedule.";
-        await sendTelegramMessage(env, chatId, reply, messageId);
+        await sendTelegramMessage(env, chatId, reply, messageId, getDockedReplyKeyboard(false));
         return new Response(JSON.stringify({ status: "command_handled", command: "resume" }), {
           headers: { "Content-Type": "application/json" },
         });
@@ -441,7 +458,7 @@ export async function handleTelegramWebhook(
           `• <code>/tone &lt;item_id&gt; &lt;tone&gt;</code> — Rewrite draft with AI (${VALID_TONES.join(", ")})\n` +
           `• <i>Tip: You can also reply directly to any suggestion card with your revised draft or tone name!</i>`;
 
-        await sendTelegramMessage(env, chatId, helpMsg, messageId);
+        await sendTelegramMessage(env, chatId, helpMsg, messageId, getDockedReplyKeyboard(false));
         return new Response(JSON.stringify({ status: "command_handled", command: "help" }), {
           headers: { "Content-Type": "application/json" },
         });
