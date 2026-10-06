@@ -57,6 +57,7 @@ class ExecuteState(TypedDict, total=False):
     halted_reason: str | None
     status: str
     error: str | None
+    verification_url: str | None
 
 
 class HealthCheckState(TypedDict, total=False):

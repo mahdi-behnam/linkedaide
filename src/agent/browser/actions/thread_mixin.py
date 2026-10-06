@@ -314,11 +314,14 @@ class ThreadMixin:
 
             screenshot = await self._capture_screenshot(f"dryrun_reply_{item_id}")
             screenshot = await self._upload_screenshot_to_r2(screenshot, f"dryrun_reply_{item_id}")
+            sep = "&" if "?" in post_url else "?"
+            reply_link = f"{post_url}{sep}commentUrn={comment_urn}" if comment_urn else post_url
             return ExecutionResult(
                 success=True,
                 action_type="approve_reply",
                 item_id=item_id,
                 post_url=post_url,
+                comment_url=reply_link,
                 comment_text=reply_text,
                 post_text=None,
                 screenshot_path=screenshot,
@@ -380,6 +383,9 @@ class ThreadMixin:
                 timeout=verification_timeout,
             )
 
+            sep = "&" if "?" in post_url else "?"
+            reply_url = f"{post_url}{sep}commentUrn={comment_urn}" if comment_urn else post_url
+
             await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_reply_{item_id}")
             screenshot = await self._upload_screenshot_to_r2(screenshot, f"success_reply_{item_id}")
@@ -388,6 +394,7 @@ class ThreadMixin:
                 action_type="approve_reply",
                 item_id=item_id,
                 post_url=post_url,
+                comment_url=reply_url,
                 comment_text=reply_text,
                 post_text=None,
                 screenshot_path=screenshot,

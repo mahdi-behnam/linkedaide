@@ -1784,3 +1784,45 @@ async def test_create_post_with_remote_media_upload_and_cleanup(
     assert created_temp_path is not None
     # Verify cleanup in finally block
     assert not created_temp_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_post_comment_returns_comment_url(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:789/"
+    page.screenshot = AsyncMock()
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)
+
+    result = await executor.post_comment(
+        post_url=page.url,
+        comment_text="Direct link test comment",
+        item_id="link_001",
+        dry_run=True,
+    )
+    assert result.success is True
+    assert result.comment_url == "https://www.linkedin.com/feed/update/urn:li:activity:789/"
+
+
+@pytest.mark.asyncio
+async def test_post_thread_reply_returns_comment_url_with_anchor(base_settings: Settings) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/update/urn:li:activity:789/"
+    page.screenshot = AsyncMock()
+
+    executor = ActionExecutor(page, base_settings)
+    executor.verify_post_exists = AsyncMock(return_value=True)
+
+    result = await executor.post_thread_reply(
+        post_url=page.url,
+        comment_urn="urn:li:comment:555",
+        reply_text="Direct reply test",
+        item_id="reply_link_001",
+        dry_run=True,
+    )
+    assert result.success is True
+    assert (
+        result.comment_url
+        == "https://www.linkedin.com/feed/update/urn:li:activity:789/?commentUrn=urn:li:comment:555"
+    )

@@ -191,6 +191,7 @@ class CommentMixin:
                 action_type="approve_comment",
                 item_id=item_id,
                 post_url=post_url,
+                comment_url=post_url,
                 comment_text=comment_text,
                 post_text=None,
                 screenshot_path=screenshot,
@@ -285,6 +286,32 @@ class CommentMixin:
                 timeout=verification_timeout,
             )
 
+            # Resolve direct comment verification URL
+            comment_url = post_url
+            try:
+                snippet = comment_text[:80].strip()
+                comment_items = self.page.locator(
+                    "article.comments-comment-item, div.comments-comment-item, div.comments-comments-list__comment-item"
+                )
+                count = await comment_items.count()
+                for i in range(min(count, 5)):
+                    card = comment_items.nth(i)
+                    card_text = await card.inner_text()
+                    if snippet and snippet in card_text:
+                        urn = (
+                            await card.get_attribute("data-id")
+                            or await card.get_attribute("id")
+                            or await card.get_attribute("data-urn")
+                            or ""
+                        )
+                        if urn:
+                            clean_urn = urn.replace("comments-comment-item-", "")
+                            sep = "&" if "?" in post_url else "?"
+                            comment_url = f"{post_url}{sep}commentUrn={clean_urn}"
+                        break
+            except Exception as e:
+                logger.debug("Could not resolve comment URN anchor: %s", e)
+
             await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_comment_{item_id}")
             screenshot = await self._upload_screenshot_to_r2(
@@ -295,6 +322,7 @@ class CommentMixin:
                 action_type="approve_comment",
                 item_id=item_id,
                 post_url=post_url,
+                comment_url=comment_url,
                 comment_text=comment_text,
                 post_text=None,
                 screenshot_path=screenshot,

@@ -276,10 +276,11 @@ async def test_execute_graph_approve_reply_success(mock_context: GraphContext) -
 
     counters = mock_context.state_store.load_daily_counters()  # type: ignore[union-attr]
     assert counters.comments_executed == 1
-
-    mock_context.telegram.edit_to_outcome.assert_called_with(  # type: ignore[union-attr]
-        12345, 504, "✅ Successfully replied to comment thread on LinkedIn!"
-    )
+    call_args = mock_context.telegram.edit_to_outcome.call_args[0]
+    assert call_args[0] == 12345
+    assert call_args[1] == 504
+    assert "<b>✅ Successfully Replied on LinkedIn!</b>" in call_args[2]
+    assert "View Your Comment on LinkedIn ↗" in call_args[2]
 
 
 @pytest.mark.asyncio
@@ -343,9 +344,11 @@ async def test_execute_graph_approve_connection_success(mock_context: GraphConte
     assert mock_context.executor.send_connection_request.called  # type: ignore[union-attr]
     counters = mock_context.state_store.load_daily_counters()
     assert counters.connections_sent == 1
-    mock_context.telegram.edit_to_outcome.assert_called_with(  # type: ignore[union-attr]
-        12345, 506, "✅ Sent connection invitation to Bob Engineer!"
-    )
+    call_args = mock_context.telegram.edit_to_outcome.call_args[0]
+    assert call_args[0] == 12345
+    assert call_args[1] == 506
+    assert "<b>✅ Sent Connection Invitation to Bob Engineer!</b>" in call_args[2]
+    assert "View Profile on LinkedIn ↗" in call_args[2]
 
 
 @pytest.mark.asyncio

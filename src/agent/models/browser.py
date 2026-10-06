@@ -92,6 +92,12 @@ class ExecutionResult(BaseModel):
     post_url: str | None = Field(default=None, description="Target post URL if commenting")
     comment_text: str | None = Field(default=None, description="Submitted comment text")
     post_text: str | None = Field(default=None, description="Submitted original post text")
+    comment_url: str | None = Field(
+        default=None, description="Direct URL to newly posted comment with anchor/URN if available"
+    )
+    published_post_url: str | None = Field(
+        default=None, description="Direct URL to newly published post if available"
+    )
     screenshot_path: str | None = Field(
         default=None, description="Path to execution verification screenshot"
     )

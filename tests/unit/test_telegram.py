@@ -286,8 +286,17 @@ class TestKeyboardsAndMessages:
     def test_build_outcome_messages(self, sample_pending_action: PendingAction) -> None:
         # Success
         success_msg = build_outcome_message(sample_pending_action, "executed_success")
-        assert "✅ Executed Successfully" in success_msg
+        assert "✅ Successfully Commented on LinkedIn!" in success_msg
         assert "item_test_12345" in success_msg
+
+        # Success with verification link
+        proof_msg = build_outcome_message(
+            sample_pending_action,
+            "executed_success",
+            verification_url="https://linkedin.com/feed/update/123/?commentUrn=456",
+        )
+        assert "View Your Comment on LinkedIn ↗" in proof_msg
+        assert "commentUrn=456" in proof_msg
 
         # Rejected
         rejected_msg = build_outcome_message(sample_pending_action, "rejected")

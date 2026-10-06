@@ -13,6 +13,7 @@ from agent.graphs.state import ExecuteState, get_graph_context
 from agent.llm.voice_memory import VoiceMemoryStore
 from agent.models import ActiveThreadRecord, HistoryEntry, PendingAction
 from agent.safety.circuit_breaker import is_halted, trip_breaker
+from agent.telegram.keyboards import build_outcome_message
 
 
 async def check_halted(state: ExecuteState, config: RunnableConfig) -> dict[str, Any]:
@@ -201,6 +202,21 @@ async def verify_target(state: ExecuteState, config: RunnableConfig) -> dict[str
     if not pending or not context.executor:
         return {"status": "target_verified"}
 
+    item_id = state.get("item_id", "")
+    chat_id = state.get("telegram_chat_id") or (
+        pending.telegram_chat_id if pending else context.settings.telegram_authorized_chat_id
+    )
+    msg_id = state.get("telegram_message_id") or (pending.telegram_message_id if pending else None)
+    if context.telegram and msg_id and chat_id is not None:
+        try:
+            await context.telegram.edit_to_outcome(
+                chat_id=chat_id,
+                message_id=msg_id,
+                outcome_text=f"🧭 <b>[2/3] Verifying Target & Session...</b>\n\n<b>Item:</b> <code>{item_id}</code>",
+            )
+        except Exception:
+            pass
+
     try:
         logged_in = await context.executor.verify_login()
         if not logged_in:
@@ -231,12 +247,31 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
     if not pending or not context.executor:
         return {"status": "executed_mock"}
 
+    item_id = state.get("item_id", "")
+    chat_id = state.get("telegram_chat_id") or (
+        pending.telegram_chat_id if pending else context.settings.telegram_authorized_chat_id
+    )
+    msg_id = state.get("telegram_message_id") or (pending.telegram_message_id if pending else None)
+    if context.telegram and msg_id and chat_id is not None:
+        try:
+            await context.telegram.edit_to_outcome(
+                chat_id=chat_id,
+                message_id=msg_id,
+                outcome_text=f"✍️ <b>[3/3] Submitting to LinkedIn...</b>\n\n<b>Item:</b> <code>{item_id}</code>",
+            )
+        except Exception:
+            pass
+
     try:
+        verification_url = None
         if pending.action_type == "approve_comment":
             result = await context.executor.post_comment(
                 post_url=pending.post_url,
                 comment_text=pending.draft_text,
                 item_id=pending.item_id,
+            )
+            verification_url = (
+                getattr(result, "comment_url", None) or result.post_url or pending.post_url
             )
         elif pending.action_type == "approve_reply":
             result = await context.executor.post_thread_reply(
@@ -245,17 +280,26 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
                 reply_text=pending.draft_text,
                 item_id=pending.item_id,
             )
+            verification_url = (
+                getattr(result, "comment_url", None) or result.post_url or pending.post_url
+            )
         elif pending.action_type == "approve_connection":
             result = await context.executor.send_connection_request(
                 profile_url=pending.post_url,
                 note_text=pending.draft_text or None,
                 item_id=pending.item_id,
             )
+            verification_url = getattr(result, "post_url", None) or pending.post_url
         else:
             result = await context.executor.create_post(
                 post_text=pending.draft_text,
                 item_id=pending.item_id,
                 media=getattr(pending, "media_attachments", None) or None,
+            )
+            verification_url = (
+                getattr(result, "published_post_url", None)
+                or getattr(result, "post_url", None)
+                or None
             )
 
         now = datetime.now(UTC)
@@ -274,7 +318,11 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
                 "error": result.error or "Action execution failed",
                 "status": "execution_failed",
             }
-        return {"outcome": entry, "status": "execution_success"}
+        return {
+            "outcome": entry,
+            "status": "execution_success",
+            "verification_url": verification_url,
+        }
     except BotDetectionError as err:
         if context.state_store:
             trip_breaker(
@@ -362,16 +410,14 @@ async def notify_success(state: ExecuteState, config: RunnableConfig) -> dict[st
         pending.telegram_chat_id if pending else context.settings.telegram_authorized_chat_id
     )
     msg_id = state.get("telegram_message_id") or (pending.telegram_message_id if pending else None)
+    verification_url = state.get("verification_url")
 
     if context.telegram and msg_id and chat_id is not None:
-        if pending and pending.action_type == "approve_post":
-            outcome_text = "✅ Successfully posted to LinkedIn!"
-        elif pending and pending.action_type == "approve_reply":
-            outcome_text = "✅ Successfully replied to comment thread on LinkedIn!"
-        elif pending and pending.action_type == "approve_connection":
-            outcome_text = f"✅ Sent connection invitation to {pending.author_name}!"
-        else:
-            outcome_text = "✅ Successfully commented on LinkedIn post!"
+        outcome_text = build_outcome_message(
+            item=pending,
+            final_status="executed_success",
+            verification_url=verification_url,
+        )
         await context.telegram.edit_to_outcome(chat_id, msg_id, outcome_text)
 
     return {"status": "completed_success"}

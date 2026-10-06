@@ -298,6 +298,21 @@ class PostMixin:
                 timeout=verification_timeout,
             )
 
+            # Resolve published post verification URL
+            published_url = None
+            try:
+                view_link = self.page.locator(
+                    "div.artdeco-toast a[href*='/feed/update/'], a:has-text('View post'), a:has-text('View update')"
+                )
+                if await view_link.count() > 0:
+                    href = await view_link.first.get_attribute("href")
+                    if href:
+                        published_url = href if href.startswith("http") else f"https://www.linkedin.com{href}"
+                elif "/feed/update/" in (self.page.url or ""):
+                    published_url = self.page.url
+            except Exception as e:
+                logger.debug("Could not resolve published post URL: %s", e)
+
             await self._refresh_and_persist_session()
             screenshot = await self._capture_screenshot(f"success_post_{item_id}")
             screenshot = await self._upload_screenshot_to_r2(screenshot, f"success_post_{item_id}")
@@ -305,7 +320,8 @@ class PostMixin:
                 success=True,
                 action_type="approve_post",
                 item_id=item_id,
-                post_url=None,
+                post_url=published_url,
+                published_post_url=published_url,
                 comment_text=None,
                 post_text=post_text,
                 screenshot_path=screenshot,

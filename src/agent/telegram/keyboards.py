@@ -312,6 +312,7 @@ def build_outcome_message(
     item: PendingAction | None,
     final_status: str,
     error: str | None = None,
+    verification_url: str | None = None,
 ) -> str:
     """Format the final outcome status message replacing the interactive suggestion.
 
@@ -319,6 +320,7 @@ def build_outcome_message(
         item: Optional PendingAction for context summary.
         final_status: Terminal status (executed_success, rejected, expired, executed_failed, halted).
         error: Optional error details if execution failed or halted.
+        verification_url: Optional direct LinkedIn verification URL for the executed action.
 
     Returns:
         HTML formatted terminal outcome string.
@@ -326,7 +328,14 @@ def build_outcome_message(
     status_lower = final_status.lower()
 
     if status_lower in ("executed_success", "success"):
-        header = "<b>✅ Executed Successfully</b>\nAction published to LinkedIn."
+        if item and item.action_type in ("approve_post", "post"):
+            header = "<b>✅ Successfully Published to LinkedIn!</b>"
+        elif item and item.action_type in ("approve_reply", "reply"):
+            header = "<b>✅ Successfully Replied on LinkedIn!</b>"
+        elif item and item.action_type in ("approve_connection", "connection"):
+            header = f"<b>✅ Sent Connection Invitation to {html.escape(item.author_name or 'target')}!</b>"
+        else:
+            header = "<b>✅ Successfully Commented on LinkedIn!</b>"
     elif status_lower in ("rejected", "reject"):
         header = "<b>❌ Suggestion Rejected</b>\nDeclined by operator."
     elif status_lower in ("expired", "expire"):
@@ -349,10 +358,27 @@ def build_outcome_message(
             item_type = "Connection Request"
         else:
             item_type = "Comment"
-        lines.append(f"<b>Item:</b> {html.escape(item.item_id)} ({item_type})")
-        if item.draft_text:
+        lines.append(f"<b>Item:</b> <code>{html.escape(item.item_id)}</code> ({item_type})")
+        if item.author_name and item.action_type not in ("approve_post", "post"):
+            lines.append(f"<b>Author:</b> {html.escape(item.author_name)}")
+        if item.post_url:
+            lines.append(f'<b>Target:</b> <a href="{html.escape(item.post_url)}">Original Post</a>')
+        if verification_url:
+            if item.action_type in ("approve_connection", "connection"):
+                lines.append(
+                    f'<b>Proof:</b> <a href="{html.escape(verification_url)}">View Profile on LinkedIn ↗</a>'
+                )
+            elif item.action_type in ("approve_post", "post"):
+                lines.append(
+                    f'<b>Proof:</b> <a href="{html.escape(verification_url)}">View Your Post on LinkedIn ↗</a>'
+                )
+            else:
+                lines.append(
+                    f'<b>Proof:</b> <a href="{html.escape(verification_url)}">View Your Comment on LinkedIn ↗</a>'
+                )
+        elif item.draft_text and status_lower not in ("executed_success", "success"):
             lines.append(
-                f"<b>Draft:</b> <blockquote>{html.escape(item.draft_text[:200])}</blockquote>"
+                f"<b>Draft:</b> <blockquote expandable>{html.escape(item.draft_text[:200])}</blockquote>"
             )
 
     if error:

@@ -1135,6 +1135,43 @@ export async function handleTelegramWebhook(
     }).catch(() => {})
   );
 
+  // Progressive lifecycle step 1/3: Update card text to Queued for Execution and strip keyboard
+  if (isApproval && targetMessageId) {
+    let queuedMsg = `⏳ <b>[1/3] Queued for Execution</b> (GitHub Actions / Runner)\n\n<b>Item:</b> <code>${escapeHtml(itemId)}</code>`;
+    if (env.LINKEDIN_AGENT_KV) {
+      try {
+        const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+        if (rawPending) {
+          const parsed = JSON.parse(rawPending);
+          if (parsed.author_name) {
+            queuedMsg += `\n<b>Author:</b> ${escapeHtml(parsed.author_name)}`;
+          }
+          if (parsed.draft_text) {
+            const preview =
+              parsed.draft_text.length > 120
+                ? parsed.draft_text.slice(0, 120) + "..."
+                : parsed.draft_text;
+            queuedMsg += `\n<b>Draft:</b> <i>${escapeHtml(preview)}</i>`;
+          }
+        }
+      } catch {}
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: targetChatId,
+          message_id: targetMessageId,
+          text: queuedMsg,
+          parse_mode: "HTML",
+          reply_markup: { inline_keyboard: [] },
+        }),
+      }).catch(() => {})
+    );
+  }
+
   // 5. Dispatch GitHub Actions repository_dispatch event
   const dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
 
