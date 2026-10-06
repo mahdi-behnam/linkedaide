@@ -17,6 +17,7 @@ from agent.browser.stealth import new_stealth_context
 from agent.config import Settings, load_settings
 from agent.graphs.execute_graph import build_execute_graph
 from agent.graphs.state import ExecuteState, GraphContext
+from agent.llm.voice_memory import VoiceMemoryStore
 from agent.logging import setup_logging
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
@@ -112,9 +113,12 @@ async def run_execute_flow(
             page = await context_pw.new_page()
             executor = ActionExecutor(page, cfg, state_store=state_store)
 
+            voice_memory = VoiceMemoryStore(state_store=state_store)
+
             graph_context = GraphContext(
                 settings=cfg,
                 state_store=state_store,
+                voice_memory=voice_memory,
                 telegram=telegram,
                 executor=executor,
                 enforcer=enforcer,

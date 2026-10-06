@@ -9,7 +9,7 @@ Architecture Invariants:
 from __future__ import annotations
 
 import logging
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import BaseModel
@@ -22,6 +22,10 @@ from agent.llm.multimodal import MultimodalAnalyzer
 from agent.llm.prompts import build_repair_prompt
 from agent.llm.resilience import ResilienceRunner
 from agent.llm.voice_memory import VoiceMemoryStore
+
+if TYPE_CHECKING:
+    from agent.state.base import BaseStateStore
+
 from agent.models import (
     CommentDraft,
     EngagementStyle,
@@ -53,13 +57,14 @@ class LLMService:
         repair_model: BaseChatModel | Any | None = None,
         anti_cliche_scanner: AntiClicheScanner | None = None,
         voice_memory: VoiceMemoryStore | None = None,
+        state_store: BaseStateStore | None = None,
         multimodal_analyzer: MultimodalAnalyzer | None = None,
         backoff_base: float = 1.5,
         max_attempts: int = 3,
     ) -> None:
         self._settings = settings
         self._anti_cliche_scanner = anti_cliche_scanner or AntiClicheScanner()
-        self._voice_memory = voice_memory or VoiceMemoryStore()
+        self._voice_memory = voice_memory or VoiceMemoryStore(state_store=state_store)
         self._multimodal_analyzer = (
             multimodal_analyzer if multimodal_analyzer is not None else MultimodalAnalyzer(settings)
         )

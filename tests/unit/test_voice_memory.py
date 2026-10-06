@@ -359,3 +359,33 @@ class TestPromptAndServiceIntegration:
         assert len(service.voice_memory.writing_samples) == initial_len + 1
         ctx = service.voice_memory.get_voice_context("orchestrator state checkpoints")
         assert "decouple state checkpoints" in ctx["few_shot_examples"]
+
+    def test_voice_memory_store_durable_state_loading_and_saving(self) -> None:
+        mock_state = MagicMock()
+        mock_state.load_dynamic_voice_samples.return_value = [
+            {
+                "id": "executed-existing-1",
+                "topic": "Microservices failure domains",
+                "tags": ["executed-history", "approved"],
+                "context": "Context on distributed microservices",
+                "sample": "Partition tolerances must be designed at the network interface boundary.",
+                "source": "history",
+            }
+        ]
+
+        # 1. Initialize store with state_store and verify sample was loaded
+        store = VoiceMemoryStore(state_store=mock_state)
+        mock_state.load_dynamic_voice_samples.assert_called_once()
+        samples = store.writing_samples
+        assert any(s.get("id") == "executed-existing-1" for s in samples)
+
+        # 2. Index a new executed comment and verify state_store.save_dynamic_voice_samples was called
+        store.index_executed_comment(
+            item_id="exec-999",
+            comment_text="Consensus leases avoid split brain scenarios under network jitter.",
+            post_excerpt="High availability consensus",
+        )
+        mock_state.save_dynamic_voice_samples.assert_called_once()
+        saved_samples = mock_state.save_dynamic_voice_samples.call_args[0][0]
+        assert len(saved_samples) == 2
+        assert any(s.get("id") == "executed-exec-999" for s in saved_samples)

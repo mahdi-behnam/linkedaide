@@ -10,6 +10,7 @@ from langgraph.graph import END, START, StateGraph
 
 from agent.errors import BotDetectionError, SessionExpiredError
 from agent.graphs.state import ExecuteState, get_graph_context
+from agent.llm.voice_memory import VoiceMemoryStore
 from agent.models import ActiveThreadRecord, HistoryEntry, PendingAction
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 
@@ -310,6 +311,20 @@ async def persist_success(state: ExecuteState, config: RunnableConfig) -> dict[s
         context.state_store.delete_pending(pending.item_id)
         if pending.action_type in ("approve_comment", "approve_reply"):
             context.state_store.increment_comment_count()
+            # If comment/reply was successfully executed, index into VoiceMemory for continuous learning
+            if outcome and outcome.final_status == "executed_success":
+                voice_mem = context.voice_memory or (
+                    context.llm.voice_memory if context.llm else None
+                )
+                if not voice_mem and context.state_store:
+                    voice_mem = VoiceMemoryStore(state_store=context.state_store)
+                if voice_mem:
+                    voice_mem.index_executed_comment(
+                        item_id=pending.item_id,
+                        comment_text=pending.draft_text,
+                        post_excerpt=pending.post_excerpt or pending.reasoning or "",
+                    )
+
             # If a top-level comment was successfully posted, save ActiveThreadRecord for thread monitoring
             if (
                 pending.action_type == "approve_comment"

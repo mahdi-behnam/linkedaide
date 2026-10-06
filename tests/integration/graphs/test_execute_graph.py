@@ -558,3 +558,43 @@ async def test_execute_graph_connection_failure_transitions_to_failed(
     updated = mock_context.state_store.read_connection_candidate("conn_fail_1")
     assert updated is not None
     assert updated.status == "failed"
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_approve_comment_indexes_voice_memory(
+    mock_context: GraphContext,
+) -> None:
+    assert mock_context.state_store is not None
+    pending = PendingAction(
+        item_id="item_voice_1",
+        action_type="approve_comment",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:9999",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:9999/",
+        author_name="Dave Distributed",
+        post_excerpt="Discussion on raft log replication and leader elections.",
+        draft_text="Leader election timeouts must be randomized to prevent split votes.",
+        confidence=0.92,
+        reasoning="Technical depth on distributed consensus",
+        telegram_chat_id=12345,
+        telegram_message_id=513,
+    )
+    mock_context.state_store.write_pending(pending)
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "item_voice_1",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 513,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "completed_success"
+    assert mock_context.executor.post_comment.called  # type: ignore[union-attr]
+
+    # Verify voice samples were durably persisted in state store
+    samples = mock_context.state_store.load_dynamic_voice_samples()
+    assert len(samples) >= 1
+    assert any("split votes" in s.get("sample", "") for s in samples)

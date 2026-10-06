@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from datetime import UTC, date, datetime
 from typing import Any
@@ -360,3 +361,22 @@ class BaseStateStore(ABC):
     def get_key(self, key: str) -> str | None:
         """Retrieve an arbitrary string value for a key, or None if not found."""
         return None
+
+    # -------------------------------------------------------------------------
+    # Dynamic Voice Memory Samples
+    # -------------------------------------------------------------------------
+
+    def load_dynamic_voice_samples(self) -> list[dict[str, Any]]:
+        """Load dynamically indexed operator voice samples from durable storage."""
+        raw = self.get_key("voice_samples")
+        if not raw:
+            return []
+        try:
+            data = json.loads(raw)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
+
+    def save_dynamic_voice_samples(self, samples: list[dict[str, Any]]) -> None:
+        """Persist dynamically indexed operator voice samples to durable storage."""
+        self.put_key("voice_samples", samples)

@@ -226,3 +226,4 @@ local/
 
 .worktrees/
 /state/
+persona/dynamic_samples.json

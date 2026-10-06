@@ -14,7 +14,7 @@ import json
 import logging
 import math
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from langchain_core.embeddings import Embeddings
@@ -28,6 +28,9 @@ from agent.llm.voice_defaults import (
     tokenize,
 )
 
+if TYPE_CHECKING:
+    from agent.state.base import BaseStateStore
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +42,7 @@ class VoiceMemoryStore:
         persona_dir: Path | str | None = None,
         *,
         embeddings: Embeddings | None = None,
+        state_store: BaseStateStore | None = None,
     ) -> None:
         """Initialize VoiceMemoryStore.
 
@@ -46,9 +50,11 @@ class VoiceMemoryStore:
             persona_dir: Path to the persona directory containing profile.yaml,
                 style_guide.md, and writing_samples.json.
             embeddings: Optional LangChain Embeddings provider for dense semantic similarity.
+            state_store: Optional durable agent state store for persisting dynamic writing samples.
         """
         self._persona_dir = self._resolve_persona_dir(persona_dir)
         self._embeddings = embeddings
+        self._state_store = state_store
 
         self._profile: dict[str, Any] = DEFAULT_PROFILE.copy()
         self._style_guide: str = DEFAULT_STYLE_GUIDE
@@ -151,6 +157,25 @@ class VoiceMemoryStore:
                     samples_path,
                     e,
                 )
+
+        # 4. Load durable dynamic samples from state store or filesystem fallback
+        if self._state_store is not None:
+            loaded_dynamic = self._state_store.load_dynamic_voice_samples()
+            if loaded_dynamic:
+                self._dynamic_samples = loaded_dynamic
+                logger.debug(
+                    "Loaded %d dynamic writing samples from state store", len(loaded_dynamic)
+                )
+        elif self._persona_dir is not None:
+            dyn_path = self._persona_dir / "dynamic_samples.json"
+            if dyn_path.is_file():
+                try:
+                    with dyn_path.open("r", encoding="utf-8") as f:
+                        dyn_loaded = json.load(f)
+                        if isinstance(dyn_loaded, list) and dyn_loaded:
+                            self._dynamic_samples = dyn_loaded
+                except Exception as e:
+                    logger.debug("Could not read dynamic_samples.json from %s: %s", dyn_path, e)
 
         self._init_embeddings_cache()
 
@@ -361,6 +386,19 @@ class VoiceMemoryStore:
                 self._sample_embeddings.append(emb)
             except Exception as e:
                 logger.warning("Failed to embed newly indexed executed comment: %s", e)
+
+        # Durably persist newly indexed sample to state store or fallback
+        if self._state_store is not None:
+            try:
+                self._state_store.save_dynamic_voice_samples(self._dynamic_samples)
+            except Exception as e:
+                logger.warning("Failed to persist dynamic voice samples to state store: %s", e)
+        elif self._persona_dir is not None:
+            try:
+                dyn_path = self._persona_dir / "dynamic_samples.json"
+                dyn_path.write_text(json.dumps(self._dynamic_samples, indent=2), encoding="utf-8")
+            except Exception as e:
+                logger.debug("Failed to write dynamic samples to %s: %s", self._persona_dir, e)
 
 
 __all__ = [

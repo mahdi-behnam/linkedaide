@@ -11,6 +11,7 @@ from agent.browser.executor import ActionExecutor
 from agent.browser.scraper import FeedScraper
 from agent.config import Settings
 from agent.llm.service import LLMService
+from agent.llm.voice_memory import VoiceMemoryStore
 from agent.models import (
     ActiveThreadRecord,
     CommentDraft,
@@ -100,6 +101,7 @@ class GraphContext:
 
     settings: Settings
     llm: LLMService | None = None
+    voice_memory: VoiceMemoryStore | None = None
     state_store: BaseStateStore | None = None
     telegram: TelegramClient | None = None
     scraper: FeedScraper | None = None
