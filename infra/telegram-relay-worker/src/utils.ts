@@ -92,7 +92,7 @@ export async function sendTelegramMessage(
   text: string,
   replyToMessageId?: number | null,
   replyMarkup?: Record<string, unknown> | null
-): Promise<void> {
+): Promise<number | null> {
   const payload: Record<string, unknown> = {
     chat_id: chatId,
     text,
@@ -106,14 +106,19 @@ export async function sendTelegramMessage(
     payload.reply_markup = replyMarkup;
   }
   try {
-    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      return typeof data?.result?.message_id === "number" ? data.result.message_id : null;
+    }
   } catch {
     // Ignore notification errors
   }
+  return null;
 }
 
 export function inferContentType(key: string): string {

@@ -10,11 +10,15 @@ Architecture Invariants:
 
 from __future__ import annotations
 
+import hashlib
 import html
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from agent.config import Settings
+from agent.models import PendingAction, PostIdeationContext
 from agent.safety.circuit_breaker import is_halted
 from agent.state.base import BaseStateStore
 from agent.telegram.client import TelegramClient
@@ -367,6 +371,8 @@ async def execute_help_command(
         "• /pause — Remotely suspend all automated scouting and execution\n"
         "• /resume — Resume automated workflows\n"
         "• /clear_incident — Safely reset a tripped circuit breaker\n"
+        "• /post &lt;idea&gt; — Draft an original LinkedIn post from a concept note\n"
+        "• /scout &lt;url&gt; — Triage and draft a comment for a specific LinkedIn post\n"
         "• /help — Show this command reference"
     )
     await telegram.send_message(
@@ -376,6 +382,127 @@ async def execute_help_command(
         reply_to_message_id=message_id,
     )
     return msg
+
+
+async def execute_post_command(
+    settings: Settings,
+    state_store: BaseStateStore,
+    telegram: TelegramClient,
+    chat_id: int,
+    idea_text: str,
+    llm_service: Any | None = None,
+    message_id: int | None = None,
+) -> str:
+    """Draft an original LinkedIn post from an on-demand idea prompt.
+
+    Args:
+        settings: Application runtime settings.
+        state_store: Durable state store instance.
+        telegram: Telegram client for sending cards.
+        chat_id: Target chat ID.
+        idea_text: User provided concept or topic.
+        llm_service: Optional LLM service for post synthesis.
+        message_id: Optional reply-to message ID.
+
+    Returns:
+        str: Response message text sent to operator.
+    """
+    clean_idea = idea_text.strip()
+    if not clean_idea:
+        prompt_msg = (
+            "💡 <b>Draft an Original Post:</b>\n\n"
+            "Provide an idea, concept, or topic note after <code>/post</code>.\n\n"
+            "<i>Example:</i> <code>/post 3 subtle pitfalls when building production agentic loops</code>"
+        )
+        await telegram.send_message(
+            chat_id=chat_id,
+            text=prompt_msg,
+            reply_to_message_id=message_id,
+        )
+        return prompt_msg
+
+    now = datetime.now(UTC)
+    draft_content = clean_idea
+    reasoning = f"On-demand draft from operator note: {clean_idea[:100]}"
+
+    if llm_service and hasattr(llm_service, "draft_post_idea"):
+        try:
+            ctx = PostIdeationContext(user_focus_areas=[clean_idea], recent_topics=[])
+            idea_obj = await llm_service.draft_post_idea(ctx)
+            if idea_obj and idea_obj.draft_post_text:
+                draft_content = idea_obj.draft_post_text
+                reasoning = getattr(idea_obj, "headline", "") or getattr(idea_obj, "reasoning", "") or reasoning
+        except Exception as err:
+            logger.warning("LLM drafting failed for /post, using raw note: %s", err)
+
+    item_id = hashlib.sha256(f"post:{clean_idea}:{now.isoformat()}".encode()).hexdigest()[:8]
+    pending = PendingAction(
+        item_id=item_id,
+        action_type="approve_post",
+        created_at=now,
+        post_url="",
+        author_name="You",
+        author_headline="Operator Draft",
+        post_excerpt="",
+        draft_text=draft_content,
+        confidence=1.0,
+        reasoning=reasoning,
+        telegram_chat_id=chat_id,
+        telegram_message_id=0,
+    )
+    state_store.write_pending(pending)
+    sent_msg_id = await telegram.send_suggestion(pending)
+    pending.telegram_message_id = sent_msg_id
+    state_store.write_pending(pending)
+
+    return f"Created post draft {item_id}"
+
+
+async def execute_scout_command(
+    settings: Settings,
+    telegram: TelegramClient,
+    chat_id: int,
+    target_url: str,
+    message_id: int | None = None,
+) -> str:
+    """Queue or evaluate a specific LinkedIn post target on demand.
+
+    Args:
+        settings: Application runtime settings.
+        telegram: Telegram client for sending response.
+        chat_id: Target chat ID.
+        target_url: URL to LinkedIn post.
+        message_id: Optional reply-to message ID.
+
+    Returns:
+        str: Response message text sent to operator.
+    """
+    clean_url = target_url.strip()
+    if not clean_url:
+        prompt_msg = (
+            "🧭 <b>On-Demand Target Scouting:</b>\n\n"
+            "Provide a target LinkedIn post URL after <code>/scout</code>.\n\n"
+            "<i>Example:</i> <code>/scout https://www.linkedin.com/feed/update/urn:li:activity:123456789/</code>"
+        )
+        await telegram.send_message(
+            chat_id=chat_id,
+            text=prompt_msg,
+            reply_to_message_id=message_id,
+        )
+        return prompt_msg
+
+    url_esc = html.escape(clean_url, quote=True)
+    confirm_msg = (
+        "🧭 <b>Target Received:</b>\n\n"
+        f"Queued for on-demand scouting:\n<a href=\"{url_esc}\">{url_esc}</a>\n\n"
+        "<i>The agent will evaluate this target against your focus areas and deliver a draft comment card for your review.</i>"
+    )
+    await telegram.send_message(
+        chat_id=chat_id,
+        text=confirm_msg,
+        reply_to_message_id=message_id,
+    )
+    return confirm_msg
 
 
 async def execute_unknown_command(

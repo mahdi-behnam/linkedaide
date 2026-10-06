@@ -1817,5 +1817,201 @@ describe("Telegram Relay Worker", () => {
         expect(sentPayload.reply_markup.keyboard[1][0].text).toBe("▶️ Resume");
       });
     });
+
+    describe("Phase 5 On-Demand Mobile Creation & Voice Notes", () => {
+      it("handles /post with idea: generates draft, saves to KV, and delivers approval card", async () => {
+        const kvStore = new Map<string, string>();
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        let sentPayload: any = null;
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("sendMessage")) {
+            sentPayload = JSON.parse(init?.body as string);
+            return Promise.resolve(
+              new Response(JSON.stringify({ ok: true, result: { message_id: 888 } }), { status: 200 })
+            );
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+
+        const req = makeRequest({
+          update_id: 140,
+          message: {
+            message_id: 810,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/post 3 subtle pitfalls when building production agentic loops",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = (await res.json()) as any;
+        expect(json.status).toBe("command_handled");
+        expect(json.command).toBe("post");
+        expect(json.item_id).toBeDefined();
+
+        expect(sentPayload).not.toBeNull();
+        expect(sentPayload.text).toContain("Original Post");
+        expect(sentPayload.reply_markup.inline_keyboard[0][0].text).toBe("✅ Approve");
+        expect(sentPayload.reply_markup.inline_keyboard[0][0].callback_data).toBe(`ap:${json.item_id}`);
+
+        const savedPending = JSON.parse(kvStore.get(`pending:${json.item_id}`)!);
+        expect(savedPending.action_type).toBe("approve_post");
+        expect(savedPending.telegram_message_id).toBe(888);
+      });
+
+      it("handles /post with empty prompt: sends guidance message", async () => {
+        let sentPayload: any = null;
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("sendMessage")) {
+            sentPayload = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+
+        const req = makeRequest({
+          update_id: 141,
+          message: {
+            message_id: 811,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/post",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = (await res.json()) as any;
+        expect(json.status).toBe("command_handled");
+        expect(json.command).toBe("post");
+        expect(json.prompt).toBe(true);
+
+        expect(sentPayload.text).toContain("Draft an Original Post");
+        expect(sentPayload.text).toContain("Provide an idea or topic");
+      });
+
+      it("handles /scout with target url: confirms and triggers GitHub repository_dispatch", async () => {
+        let sentPayload: any = null;
+        let dispatchCalled = false;
+        let dispatchBody: any = null;
+
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("sendMessage")) {
+            sentPayload = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          if (url.includes("dispatches")) {
+            dispatchCalled = true;
+            dispatchBody = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 204 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+
+        const envWithGh: Env = {
+          ...mockEnv,
+          GITHUB_DISPATCH_PAT: "ghp_mock_token_123",
+          GITHUB_REPO_OWNER: "test-owner",
+          GITHUB_REPO_NAME: "test-repo",
+        };
+
+        const targetUrl = "https://www.linkedin.com/feed/update/urn:li:activity:9988776655/";
+        const req = makeRequest({
+          update_id: 142,
+          message: {
+            message_id: 812,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: `/scout ${targetUrl}`,
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithGh, ctx as any);
+        expect(res.status).toBe(200);
+        const json = (await res.json()) as any;
+        expect(json.status).toBe("command_handled");
+        expect(json.command).toBe("scout");
+        expect(json.target_url).toBe(targetUrl);
+
+        expect(sentPayload.text).toContain("Target Received");
+        expect(sentPayload.text).toContain(targetUrl);
+
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+        expect(dispatchCalled).toBe(true);
+        expect(dispatchBody.event_type).toBe("scout-target");
+        expect(dispatchBody.client_payload.target_url).toBe(targetUrl);
+      });
+
+      it("handles /scout with empty prompt: sends guidance message", async () => {
+        let sentPayload: any = null;
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("sendMessage")) {
+            sentPayload = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+
+        const req = makeRequest({
+          update_id: 143,
+          message: {
+            message_id: 813,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            text: "/scout",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = (await res.json()) as any;
+        expect(json.status).toBe("command_handled");
+        expect(json.command).toBe("scout");
+        expect(json.prompt).toBe(true);
+
+        expect(sentPayload.text).toContain("On-Demand Target Scouting");
+      });
+
+      it("acknowledges incoming voice note update", async () => {
+        let sentPayload: any = null;
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("sendMessage")) {
+            sentPayload = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        });
+
+        const req = makeRequest({
+          update_id: 144,
+          message: {
+            message_id: 814,
+            from: { id: 987654321 },
+            chat: { id: 987654321 },
+            voice: { file_id: "voice_file_abc", duration: 15 },
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = (await res.json()) as any;
+        expect(json.status).toBe("voice_acknowledged");
+
+        expect(sentPayload.text).toContain("Voice Note Received");
+        expect(sentPayload.text).toContain("/post");
+      });
+    });
   });
 });

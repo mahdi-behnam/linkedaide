@@ -27,7 +27,9 @@ from agent.telegram.commands import (
     execute_help_command,
     execute_pause_command,
     execute_pending_command,
+    execute_post_command,
     execute_resume_command,
+    execute_scout_command,
     execute_stats_command,
     execute_status_command,
     execute_unknown_command,
@@ -106,6 +108,15 @@ class CommandHandler:
         if message.get("reply_to_message"):
             return await self.handle_reply_edit(message)
 
+        if message.get("voice"):
+            if chat_id:
+                await self.telegram.send_message(
+                    chat_id=chat_id,
+                    text="🎙️ <b>Voice Note Received:</b>\nVoice-to-post transcription hook ready. Please type <code>/post &lt;idea&gt;</code> to draft an original post.",
+                    reply_to_message_id=message_id,
+                )
+            return True
+
         return False
 
     async def handle_command(
@@ -139,6 +150,7 @@ class CommandHandler:
             return False
 
         stripped = text.strip()
+        parts: list[str] = []
         if stripped in DOCK_BUTTON_COMMAND_MAP:
             command_name = DOCK_BUTTON_COMMAND_MAP[stripped]
         elif stripped.startswith("⏸️ Pause"):
@@ -169,6 +181,14 @@ class CommandHandler:
             return True
         elif command_name == "clear_incident":
             await self.handle_clear_incident(chat_id=chat_id, message_id=message_id)
+            return True
+        elif command_name == "post":
+            idea_text = stripped[len(parts[0]):].strip() if parts else ""
+            await self.handle_post(chat_id=chat_id, idea_text=idea_text, message_id=message_id)
+            return True
+        elif command_name == "scout":
+            target_url = stripped[len(parts[0]):].strip() if parts else ""
+            await self.handle_scout(chat_id=chat_id, target_url=target_url, message_id=message_id)
             return True
         elif command_name in ("help", "start"):
             await self.handle_help(chat_id=chat_id, message_id=message_id)
@@ -232,6 +252,32 @@ class CommandHandler:
             state_store=self.state_store,
             telegram=self.telegram,
             chat_id=chat_id,
+            message_id=message_id,
+        )
+
+    async def handle_post(
+        self, chat_id: int, idea_text: str, message_id: int | None = None
+    ) -> str:
+        """Handle /post command: drafts an original LinkedIn post from concept note."""
+        return await execute_post_command(
+            settings=self.settings,
+            state_store=self.state_store,
+            telegram=self.telegram,
+            chat_id=chat_id,
+            idea_text=idea_text,
+            llm_service=self.llm_service,
+            message_id=message_id,
+        )
+
+    async def handle_scout(
+        self, chat_id: int, target_url: str, message_id: int | None = None
+    ) -> str:
+        """Handle /scout command: queues specific LinkedIn URL for scouting."""
+        return await execute_scout_command(
+            settings=self.settings,
+            telegram=self.telegram,
+            chat_id=chat_id,
+            target_url=target_url,
             message_id=message_id,
         )
 

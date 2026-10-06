@@ -19,6 +19,7 @@ from agent.models import (
     EngagementStyle,
     HistoryEntry,
     PendingAction,
+    PostIdea,
 )
 from agent.orchestration.poll_flow import run_poll_flow
 from agent.state.store import GitStateStore
@@ -669,6 +670,270 @@ class TestCommandHandlerRouting:
             assert res_resume is True
             assert test_state_store.is_paused() is False
             assert "Agent Resumed" in sent_payloads[2]["text"]
+
+
+class TestCommandHandlerOnDemandPostAndScout:
+    """Tests for on-demand mobile content creation: /post, /scout, and voice notes."""
+
+    @pytest.mark.asyncio
+    async def test_post_command_with_idea_and_llm(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9901}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            mock_llm = AsyncMock()
+            mock_llm.draft_post_idea.return_value = PostIdea(
+                should_post=True,
+                headline="Pitfalls of Production Agent Loops",
+                draft_post_text="Here are 3 subtle pitfalls when building production agentic loops...",
+                reasoning="Strong technical perspective",
+                hashtags=["#AI", "#Python"],
+            )
+
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+                llm_service=mock_llm,
+            )
+
+            msg = {
+                "text": "/post 3 subtle pitfalls in agentic loops",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+                "message_id": 501,
+            }
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+            mock_llm.draft_post_idea.assert_awaited_once()
+
+            # Verify pending action persisted
+            pending_list = test_state_store.list_pending()
+            assert len(pending_list) == 1
+            pending = pending_list[0]
+            assert pending.action_type == "approve_post"
+            assert "Here are 3 subtle pitfalls" in pending.draft_text
+            assert pending.telegram_message_id == 9901
+
+            # Verify Telegram suggestion card delivered
+            assert len(sent_payloads) == 1
+            assert "📝 Original Post" in sent_payloads[0]["text"]
+            assert "Here are 3 subtle pitfalls" in sent_payloads[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_post_command_without_llm_service(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9902}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+                llm_service=None,
+            )
+
+            msg = {
+                "text": "/post Quick raw insight on LLM caching.",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+                "message_id": 502,
+            }
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+
+            pending_list = test_state_store.list_pending()
+            assert len(pending_list) == 1
+            assert pending_list[0].action_type == "approve_post"
+            assert pending_list[0].draft_text == "Quick raw insight on LLM caching."
+
+    @pytest.mark.asyncio
+    async def test_post_command_empty_prompt_shows_guidance(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9903}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "text": "/post",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+                "message_id": 503,
+            }
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+            assert len(sent_payloads) == 1
+            assert "Draft an Original Post" in sent_payloads[0]["text"]
+            assert "/post 3 subtle pitfalls" in sent_payloads[0]["text"]
+            assert len(test_state_store.list_pending()) == 0
+
+    @pytest.mark.asyncio
+    async def test_scout_command_with_url(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9904}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "text": "/scout https://www.linkedin.com/feed/update/urn:li:activity:123456789/",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+                "message_id": 504,
+            }
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+            assert len(sent_payloads) == 1
+            assert "Target Received" in sent_payloads[0]["text"]
+            assert "urn:li:activity:123456789" in sent_payloads[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_scout_command_empty_url_shows_guidance(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9905}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "text": "/scout",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+                "message_id": 505,
+            }
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+            assert len(sent_payloads) == 1
+            assert "On-Demand Target Scouting" in sent_payloads[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_voice_note_received_acknowledgment(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9906}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "voice": {"file_id": "voice_file_abc123", "duration": 12},
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+                "message_id": 506,
+            }
+            res = await cmd_handler.handle_message(msg)
+            assert res is True
+            assert len(sent_payloads) == 1
+            assert "Voice Note Received" in sent_payloads[0]["text"]
+            assert "/post" in sent_payloads[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_voice_note_unauthorized_dropped(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9907}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            msg = {
+                "voice": {"file_id": "voice_file_abc123"},
+                "chat": {"id": 111222333},
+                "from": {"id": 111222333},
+                "message_id": 507,
+            }
+            res = await cmd_handler.handle_message(msg)
+            assert res is False
+            assert len(sent_payloads) == 0
 
 
 class TestPollFlowCommandIntegration:

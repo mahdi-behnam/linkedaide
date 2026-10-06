@@ -60,9 +60,10 @@ export async function handleTelegramWebhook(
       "⏸️ Pause / Resume": "pause",
     };
     const isDockButton = Boolean(DOCK_MAP[text]);
+    const isVoice = Boolean(msg.voice);
     const isCommand = text.startsWith("/") || isDockButton;
 
-    if (!isReply && !isCommand) {
+    if (!isReply && !isCommand && !isVoice) {
       return new Response("Ignored non-callback update", { status: 200 });
     }
 
@@ -74,6 +75,18 @@ export async function handleTelegramWebhook(
 
     const chatId = msg.chat?.id ?? authorizedId;
     const messageId = msg.message_id;
+
+    if (isVoice) {
+      await sendTelegramMessage(
+        env,
+        chatId,
+        "🎙️ <b>Voice Note Received:</b>\nVoice-to-post transcription hook ready. Please type <code>/post &lt;idea&gt;</code> to draft an original post.",
+        messageId
+      );
+      return new Response(JSON.stringify({ status: "voice_acknowledged" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Check if operator replied to an existing suggestion message
     const repliedMsg = msg.reply_to_message as { message_id: number; text?: string } | undefined;
@@ -453,6 +466,9 @@ export async function handleTelegramWebhook(
           `• <code>/pause</code> — Suspend scouting &amp; execution workflows\n` +
           `• <code>/resume</code> — Unpause and resume normal workflows\n` +
           `• <code>/clear_incident</code> — Reset tripped circuit breaker\n\n` +
+          `<b>On-Demand Creation:</b>\n` +
+          `• <code>/post &lt;idea&gt;</code> — Draft an original LinkedIn post from a concept note\n` +
+          `• <code>/scout &lt;url&gt;</code> — Triage and draft a comment for a specific LinkedIn post\n\n` +
           `<b>Draft Editing &amp; Tone:</b>\n` +
           `• <code>/edit &lt;item_id&gt; &lt;text&gt;</code> — Replace draft text for an item\n` +
           `• <code>/tone &lt;item_id&gt; &lt;tone&gt;</code> — Rewrite draft with AI (${VALID_TONES.join(", ")})\n` +
@@ -580,6 +596,103 @@ export async function handleTelegramWebhook(
         await sendTelegramMessage(env, chatId, lines.join("\n"), messageId);
         return new Response(
           JSON.stringify({ status: "command_handled", command: "pending", count: keys.length }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      } else if (cmdToken === "post") {
+        const idea = parts.slice(1).join(" ").trim();
+        if (!idea) {
+          await sendTelegramMessage(
+            env,
+            chatId,
+            `💡 <b>Draft an Original Post:</b>\n\nProvide an idea or topic after <code>/post</code>.\n\n<i>Example:</i> <code>/post 3 subtle pitfalls when building production agentic loops</code>`,
+            messageId
+          );
+          return new Response(JSON.stringify({ status: "command_handled", command: "post", prompt: true }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        let draftText = idea;
+        try {
+          draftText = await rewriteDraftWithLlm(
+            env,
+            idea,
+            "Create an insightful, high-value LinkedIn post based on this concept or note. Punchy opening hook, concise structured body, no generic buzzwords.",
+            ""
+          );
+        } catch {}
+
+        const itemId = `post_${Date.now().toString(36).slice(-6)}`;
+        const pendingObj: any = {
+          item_id: itemId,
+          action_type: "approve_post",
+          author_name: "You",
+          draft_text: draftText,
+          reasoning: `On-demand draft from note: ${idea.slice(0, 80)}`,
+          created_at: new Date().toISOString(),
+          telegram_chat_id: chatId,
+        };
+
+        if (env.LINKEDIN_AGENT_KV) {
+          await env.LINKEDIN_AGENT_KV.put(`pending:${itemId}`, JSON.stringify(pendingObj));
+        }
+
+        const cardHtml = formatPendingCardHtml(pendingObj);
+        const keyboard = getSuggestionKeyboard(itemId, "approve_post");
+        const sentId = await sendTelegramMessage(env, chatId, cardHtml, undefined, keyboard);
+
+        if (sentId && env.LINKEDIN_AGENT_KV) {
+          pendingObj.telegram_message_id = sentId;
+          await env.LINKEDIN_AGENT_KV.put(`pending:${itemId}`, JSON.stringify(pendingObj));
+        }
+
+        return new Response(
+          JSON.stringify({ status: "command_handled", command: "post", item_id: itemId }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      } else if (cmdToken === "scout") {
+        const targetUrl = parts.slice(1).join(" ").trim();
+        if (!targetUrl) {
+          await sendTelegramMessage(
+            env,
+            chatId,
+            `🧭 <b>On-Demand Target Scouting:</b>\n\nProvide a LinkedIn post URL after <code>/scout</code>.\n\n<i>Example:</i> <code>/scout https://www.linkedin.com/feed/update/urn:li:activity:123456789/</code>`,
+            messageId
+          );
+          return new Response(JSON.stringify({ status: "command_handled", command: "scout", prompt: true }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const confirmMsg =
+          `🧭 <b>Target Received:</b>\n\n` +
+          `Queued for on-demand scouting:\n<a href="${escapeHtml(targetUrl)}">${escapeHtml(targetUrl)}</a>\n\n` +
+          `<i>The agent will evaluate this target against your focus areas and deliver a draft comment card for your review.</i>`;
+        await sendTelegramMessage(env, chatId, confirmMsg, messageId);
+
+        if (env.GITHUB_DISPATCH_PAT && env.GITHUB_REPO_OWNER && env.GITHUB_REPO_NAME) {
+          try {
+            const dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
+            ctx.waitUntil(
+              fetch(dispatchUrl, {
+                method: "POST",
+                headers: {
+                  Accept: "application/vnd.github+json",
+                  Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
+                  "User-Agent": "Telegram-Relay-Worker",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                },
+                body: JSON.stringify({
+                  event_type: "scout-target",
+                  client_payload: { target_url: targetUrl, telegram_chat_id: chatId },
+                }),
+              }).catch(() => {})
+            );
+          } catch {}
+        }
+
+        return new Response(
+          JSON.stringify({ status: "command_handled", command: "scout", target_url: targetUrl }),
           { headers: { "Content-Type": "application/json" } }
         );
       }
