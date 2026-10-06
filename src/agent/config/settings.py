@@ -185,6 +185,12 @@ class Settings(BaseSettings):
         description="Path to decrypted Playwright storage_state.json",
         validation_alias=AliasChoices("LINKEDIN_STORAGE_STATE_PATH", "linkedin_storage_state_path"),
     )
+    session_expiry_warning_days: int = Field(
+        default=3,
+        ge=1,
+        description="Threshold days before session expiration to send proactive Telegram warning alert",
+        validation_alias=AliasChoices("SESSION_EXPIRY_WARNING_DAYS", "session_expiry_warning_days"),
+    )
 
     # Persona & Focus Areas
     user_focus_areas: list[str] = Field(

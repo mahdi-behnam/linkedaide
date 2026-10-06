@@ -7,6 +7,7 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
+from agent.browser.session import check_session_expiry
 from agent.errors import BotDetectionError, SessionExpiredError
 from agent.graphs.state import HealthCheckState, get_graph_context
 from agent.safety.circuit_breaker import is_halted, trip_breaker
@@ -31,7 +32,32 @@ async def verify_session(state: HealthCheckState, config: RunnableConfig) -> dic
 
     try:
         logged_in = await context.executor.verify_login()
-        return {"is_healthy": logged_in, "status": "healthy" if logged_in else "unauthenticated"}
+        if not logged_in:
+            return {"is_healthy": False, "status": "unauthenticated"}
+
+        # Inspect session expiry for proactive warning
+        expiry_info = check_session_expiry(
+            context.settings.linkedin_storage_state_path,
+            warning_days=getattr(context.settings, "session_expiry_warning_days", 3),
+        )
+        days_rem = expiry_info.get("days_remaining")
+        is_expiring = expiry_info.get("is_expiring_soon", False)
+
+        if is_expiring and context.telegram:
+            days_str = f"{days_rem:.1f}" if days_rem is not None else "few"
+            await context.telegram.send_notification(
+                f"⚠️ <b>LinkedIn Session Expiring Soon</b>\n\n"
+                f"Your session cookie (<code>li_at</code>) expires in <b>{days_str} days</b>.\n"
+                f"Please capture a fresh session via Desktop Cockpit or run:\n"
+                f"<code>uv run python scripts/extract_linkedin_session.py</code>"
+            )
+
+        return {
+            "is_healthy": True,
+            "status": "healthy",
+            "days_remaining": days_rem,
+            "is_expiring_soon": is_expiring,
+        }
     except BotDetectionError as err:
         if context.state_store:
             trip_breaker(

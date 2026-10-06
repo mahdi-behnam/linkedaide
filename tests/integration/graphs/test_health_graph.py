@@ -92,3 +92,41 @@ async def test_health_graph_bot_challenge_trips_breaker(mock_context: GraphConte
 
     incident_file = mock_context.settings.state_dir / "incident.json"
     assert incident_file.exists()
+
+
+@pytest.mark.asyncio
+async def test_health_graph_healthy_with_expiring_soon_sends_telegram_warning(
+    mock_context: GraphContext,
+    tmp_path: Path,
+) -> None:
+    import json
+    import time
+
+    now = time.time()
+    two_days_later = now + (2 * 86400)
+    session_file = tmp_path / "storage_state.json"
+    session_file.write_text(
+        json.dumps({"cookies": [{"name": "li_at", "value": "xyz", "expires": two_days_later}]}),
+        encoding="utf-8",
+    )
+
+    # Point settings to our session file with 3-day warning window
+    mock_context.settings.linkedin_storage_state_path = session_file
+    mock_context.settings.session_expiry_warning_days = 3
+
+    executor_mock: Any = mock_context.executor
+    executor_mock.verify_login = AsyncMock(return_value=True)
+
+    graph = build_health_graph()
+    result = await graph.ainvoke({}, config={"configurable": {"context": mock_context}})
+
+    assert result["is_healthy"] is True
+    assert result["is_expiring_soon"] is True
+    assert 1.9 <= result["days_remaining"] <= 2.1
+
+    # Verify Telegram notification was sent warning operator
+    telegram_mock: Any = mock_context.telegram
+    telegram_mock.send_notification.assert_awaited_once()
+    sent_msg = telegram_mock.send_notification.await_args[0][0]
+    assert "LinkedIn Session Expiring Soon" in sent_msg
+    assert "li_at" in sent_msg

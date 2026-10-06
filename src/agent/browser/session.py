@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlsplit
@@ -126,6 +128,88 @@ def ensure_session_file(settings: Settings | Any) -> Path:
         "LINKEDIN_SESSION_STATE_ENC / SESSION_ENCRYPTION_KEY are not configured. "
         "Please run 'uv run python scripts/extract_linkedin_session.py' to extract and save your session."
     )
+
+
+def check_session_expiry(
+    storage_state_or_path: Path | str | dict[str, Any],
+    warning_days: int = 3,
+) -> dict[str, Any]:
+    """Inspect Playwright storage state for LinkedIn authentication cookie expiry.
+
+    Args:
+        storage_state_or_path: Path to decrypted storage_state.json or parsed dictionary.
+        warning_days: Days remaining threshold to flag as expiring soon.
+
+    Returns:
+        dict[str, Any]: {
+            "has_cookie": bool,
+            "expires_at": float | None,
+            "days_remaining": float | None,
+            "is_expiring_soon": bool,
+        }
+    """
+    default_result: dict[str, Any] = {
+        "has_cookie": False,
+        "expires_at": None,
+        "days_remaining": None,
+        "is_expiring_soon": False,
+    }
+
+    data: dict[str, Any]
+    if isinstance(storage_state_or_path, dict):
+        data = storage_state_or_path
+    else:
+        path = Path(storage_state_or_path).resolve()
+        if not path.exists():
+            return default_result
+        try:
+            content = path.read_text(encoding="utf-8")
+            data = json.loads(content)
+        except Exception:
+            return default_result
+
+    cookies = data.get("cookies", [])
+    if not isinstance(cookies, list):
+        return default_result
+
+    li_at_cookie = next(
+        (c for c in cookies if isinstance(c, dict) and c.get("name") == "li_at"),
+        None,
+    )
+    if not li_at_cookie:
+        return default_result
+
+    expires = li_at_cookie.get("expires")
+    if expires is None:
+        return {
+            "has_cookie": True,
+            "expires_at": None,
+            "days_remaining": None,
+            "is_expiring_soon": False,
+        }
+
+    try:
+        exp_float = float(expires)
+        if exp_float > 1e11:  # Milliseconds timestamp
+            exp_float = exp_float / 1000.0
+        now = time.time()
+        seconds_left = exp_float - now
+        days_remaining = max(0.0, seconds_left / 86400.0)
+        is_expiring_soon = 0.0 < days_remaining <= float(warning_days)
+
+        return {
+            "has_cookie": True,
+            "expires_at": exp_float,
+            "days_remaining": round(days_remaining, 2),
+            "is_expiring_soon": is_expiring_soon,
+        }
+    except (ValueError, TypeError):
+        return {
+            "has_cookie": True,
+            "expires_at": None,
+            "days_remaining": None,
+            "is_expiring_soon": False,
+        }
 
 
 def build_proxy_config(settings: Settings | Any) -> dict[str, str] | None:

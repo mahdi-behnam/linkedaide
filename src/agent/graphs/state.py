@@ -66,6 +66,8 @@ class HealthCheckState(TypedDict, total=False):
     halted_reason: str | None
     error: str | None
     status: str
+    days_remaining: float | None
+    is_expiring_soon: bool
 
 
 class IdeationState(TypedDict, total=False):

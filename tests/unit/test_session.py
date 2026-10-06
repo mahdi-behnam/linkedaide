@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 import pytest
 from pydantic import SecretStr
 
 from agent.browser.session import (
+    check_session_expiry,
     decrypt_storage_state,
     encrypt_storage_state,
     ensure_session_file,
@@ -107,3 +109,57 @@ def test_ensure_session_file_missing_raises(tmp_path: Path) -> None:
     )
     with pytest.raises(SessionError, match="LinkedIn session state not found"):
         ensure_session_file(settings)
+
+
+def test_check_session_expiry_missing_or_invalid(tmp_path: Path) -> None:
+    # Non-existent file
+    res = check_session_expiry(tmp_path / "nonexistent.json")
+    assert res["has_cookie"] is False
+    assert res["is_expiring_soon"] is False
+
+    # Corrupted JSON
+    corrupt = tmp_path / "corrupt.json"
+    corrupt.write_text("not-json", encoding="utf-8")
+    assert check_session_expiry(corrupt)["has_cookie"] is False
+
+    # Missing li_at cookie
+    no_li_at = tmp_path / "no_li_at.json"
+    no_li_at.write_text(
+        '{"cookies": [{"name": "other_cookie", "expires": 12345}]}', encoding="utf-8"
+    )
+    assert check_session_expiry(no_li_at)["has_cookie"] is False
+
+
+def test_check_session_expiry_valid_and_expiring_soon(tmp_path: Path) -> None:
+    now = time.time()
+    # Expiring in 2 days (<= 3 days threshold)
+    two_days_later = now + (2 * 86400)
+    data = {"cookies": [{"name": "li_at", "value": "auth-val", "expires": two_days_later}]}
+    file_path = tmp_path / "expiring.json"
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+
+    res = check_session_expiry(file_path, warning_days=3)
+    assert res["has_cookie"] is True
+    assert res["is_expiring_soon"] is True
+    assert 1.9 <= res["days_remaining"] <= 2.1
+
+    # Safe future (10 days later)
+    ten_days_later = now + (10 * 86400)
+    data_safe = {"cookies": [{"name": "li_at", "value": "auth-val", "expires": ten_days_later}]}
+    file_safe = tmp_path / "safe.json"
+    file_safe.write_text(json.dumps(data_safe), encoding="utf-8")
+
+    res_safe = check_session_expiry(file_safe, warning_days=3)
+    assert res_safe["has_cookie"] is True
+    assert res_safe["is_expiring_soon"] is False
+    assert 9.9 <= res_safe["days_remaining"] <= 10.1
+
+
+def test_check_session_expiry_milliseconds_timestamp() -> None:
+    now_ms = time.time() * 1000
+    one_day_ms = now_ms + (1 * 86400 * 1000)
+    data = {"cookies": [{"name": "li_at", "value": "auth-val", "expires": one_day_ms}]}
+    res = check_session_expiry(data, warning_days=3)
+    assert res["has_cookie"] is True
+    assert res["is_expiring_soon"] is True
+    assert 0.9 <= res["days_remaining"] <= 1.1
