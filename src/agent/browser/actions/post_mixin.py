@@ -329,4 +329,3 @@ class PostMixin:
                     tf.unlink(missing_ok=True)
                 except Exception as cleanup_err:
                     logger.debug("Failed to remove temp media file %s: %s", tf, cleanup_err)
-

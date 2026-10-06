@@ -527,13 +527,14 @@ class TestLLMServiceRepairLoop:
         idea = await service.draft_post_idea(context)
         assert idea is not None
         assert "In today's fast-paced world" not in idea.draft_post_text
-        assert "Building distributed queues requires attention to backpressure." in idea.draft_post_text
+        assert (
+            "Building distributed queues requires attention to backpressure."
+            in idea.draft_post_text
+        )
         assert service.anti_cliche_scanner.scan(idea.draft_post_text).passed is True
 
     @pytest.mark.asyncio
-    async def test_draft_thread_reply_anti_cliche_sanitized(
-        self, mock_settings: Settings
-    ) -> None:
+    async def test_draft_thread_reply_anti_cliche_sanitized(self, mock_settings: Settings) -> None:
         chains = LLMChains(
             triage=RunnableLambda(lambda x: None),
             comment=RunnableLambda(lambda x: None),
@@ -566,4 +567,3 @@ class TestLLMServiceRepairLoop:
         assert "great read" not in draft.draft_comment.lower()
         assert "We benchmarked throughput under zipfian skew." in draft.draft_comment
         assert service.anti_cliche_scanner.scan(draft.draft_comment).passed is True
-

@@ -98,13 +98,27 @@ async def test_run_thread_monitor_flow_success_execution(
     with (
         patch("agent.orchestration.thread_monitor_flow.is_halted", return_value=(False, None)),
         patch("agent.orchestration.thread_monitor_flow.get_state_store", return_value=mock_store),
-        patch("agent.orchestration.thread_monitor_flow.ensure_session_file", return_value=tmp_path / "session.json"),
-        patch("agent.orchestration.thread_monitor_flow.async_playwright", return_value=mock_playwright_cm),
-        patch("agent.orchestration.thread_monitor_flow.new_stealth_context", AsyncMock(return_value=mock_context)),
+        patch(
+            "agent.orchestration.thread_monitor_flow.ensure_session_file",
+            return_value=tmp_path / "session.json",
+        ),
+        patch(
+            "agent.orchestration.thread_monitor_flow.async_playwright",
+            return_value=mock_playwright_cm,
+        ),
+        patch(
+            "agent.orchestration.thread_monitor_flow.new_stealth_context",
+            AsyncMock(return_value=mock_context),
+        ),
         patch("agent.orchestration.thread_monitor_flow.wait_for_login_redirect", AsyncMock()),
-        patch("agent.orchestration.thread_monitor_flow.build_thread_monitor_graph", return_value=mock_graph),
+        patch(
+            "agent.orchestration.thread_monitor_flow.build_thread_monitor_graph",
+            return_value=mock_graph,
+        ),
     ):
-        result = await run_thread_monitor_flow(settings=mock_settings, repo_root=tmp_path, headless=True)
+        result = await run_thread_monitor_flow(
+            settings=mock_settings, repo_root=tmp_path, headless=True
+        )
         assert result["status"] == "completed"
         assert result["queued_count"] == 1
         assert result["queued_actions"] == ["pending_reply_001"]
@@ -163,4 +177,3 @@ def test_cli_run_thread_monitor_exit_code() -> None:
         }
         code = run_thread_monitor(args)
         assert code == 0
-

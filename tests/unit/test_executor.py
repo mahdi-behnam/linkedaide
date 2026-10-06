@@ -1784,4 +1784,3 @@ async def test_create_post_with_remote_media_upload_and_cleanup(
     assert created_temp_path is not None
     # Verify cleanup in finally block
     assert not created_temp_path.exists()
-
