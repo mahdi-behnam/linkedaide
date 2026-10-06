@@ -40,7 +40,7 @@ async def load_pending(state: ExecuteState, config: RunnableConfig) -> dict[str,
             pending = PendingAction(
                 item_id=conn_candidate.id,
                 action_type="approve_connection",
-                created_at=conn_candidate.created_at,
+                created_at=conn_candidate.approved_at or datetime.now(UTC),
                 post_url=conn_candidate.profile_url,
                 author_name=conn_candidate.target_name,
                 author_headline=conn_candidate.target_headline,
@@ -52,10 +52,23 @@ async def load_pending(state: ExecuteState, config: RunnableConfig) -> dict[str,
             # Check if item_id matches a scheduled post
             sched_post = context.state_store.read_scheduled_post(item_id)
             if sched_post is not None:
+                sched_created_at: datetime
+                if isinstance(sched_post.scheduled_time, str):
+                    try:
+                        sched_created_at = datetime.fromisoformat(sched_post.scheduled_time)
+                    except ValueError:
+                        sched_created_at = sched_post.created_at
+                elif isinstance(sched_post.scheduled_time, datetime):
+                    sched_created_at = sched_post.scheduled_time
+                elif sched_post.approved_at is not None:
+                    sched_created_at = sched_post.approved_at
+                else:
+                    sched_created_at = datetime.now(UTC)
+
                 pending = PendingAction(
                     item_id=sched_post.id,
                     action_type="approve_post",
-                    created_at=sched_post.created_at,
+                    created_at=sched_created_at,
                     post_url="",
                     author_name="You",
                     author_headline="",
@@ -137,7 +150,17 @@ async def validate_request(state: ExecuteState, config: RunnableConfig) -> dict[
         return {"error": "Pending action not found", "status": "validation_failed"}
 
     if context.enforcer:
-        if not context.enforcer.is_within_ttl(pending):
+        # Pre-scheduled posts originating from the scheduling calendar and queued connections
+        # have their own scheduling lifecycle; Telegram pending suggestion TTL only applies to
+        # ephemeral feed comment/reply approvals or items in the pending store.
+        is_prescheduled = pending.action_type in ("approve_post", "approve_connection") and (
+            context.state_store is not None
+            and (
+                context.state_store.read_scheduled_post(pending.item_id) is not None
+                or context.state_store.read_connection_candidate(pending.item_id) is not None
+            )
+        )
+        if not is_prescheduled and not context.enforcer.is_within_ttl(pending):
             return {
                 "error": "Pending approval expired (exceeded TTL)",
                 "status": "validation_failed_expired",
@@ -244,6 +267,12 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
             screenshot_path=result.screenshot_path,
             error=result.error,
         )
+        if not result.success:
+            return {
+                "outcome": entry,
+                "error": result.error or "Action execution failed",
+                "status": "execution_failed",
+            }
         return {"outcome": entry, "status": "execution_success"}
     except BotDetectionError as err:
         if context.state_store:
@@ -359,6 +388,14 @@ async def handle_failure(state: ExecuteState, config: RunnableConfig) -> dict[st
         context.state_store.append_history(entry)
         if pending:
             context.state_store.delete_pending(pending.item_id)
+            if pending.action_type == "approve_connection":
+                context.state_store.update_connection_status(pending.item_id, status="failed")
+            elif pending.action_type == "approve_post":
+                sched_post = context.state_store.read_scheduled_post(pending.item_id)
+                if sched_post:
+                    context.state_store.save_scheduled_post(
+                        sched_post.model_copy(update={"status": "failed"})
+                    )
 
     chat_id = state.get("telegram_chat_id") or (
         pending.telegram_chat_id if pending else context.settings.telegram_authorized_chat_id

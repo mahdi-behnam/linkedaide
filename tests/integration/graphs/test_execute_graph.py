@@ -436,3 +436,125 @@ async def test_execute_graph_reject_scheduled_post(
     updated = mock_context.state_store.read_scheduled_post("sched_2")
     assert updated is not None
     assert updated.status == "rejected"
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_prescheduled_post_created_days_ago_executes_successfully(
+    mock_context: GraphContext,
+) -> None:
+    assert mock_context.state_store is not None
+    now = datetime.now(UTC)
+    # Post created 3 days ago, scheduled for now
+    sched_post = ScheduledPost(
+        id="sched_old_1",
+        post_text="Architectural update scheduled days ago.",
+        status="scheduled",
+        created_at=now - timedelta(days=3),
+        scheduled_time=now,
+    )
+    mock_context.state_store.save_scheduled_post(sched_post)
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "sched_old_1",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 510,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "completed_success"
+    assert mock_context.executor.create_post.called  # type: ignore[union-attr]
+
+    updated = mock_context.state_store.read_scheduled_post("sched_old_1")
+    assert updated is not None
+    assert updated.status == "published"
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_scheduled_post_failure_transitions_to_failed(
+    mock_context: GraphContext,
+) -> None:
+    assert mock_context.state_store is not None
+    sched_post = ScheduledPost(
+        id="sched_fail_1",
+        post_text="This post will encounter a browser error.",
+        status="scheduled",
+    )
+    mock_context.state_store.save_scheduled_post(sched_post)
+
+    # Force executor.create_post to fail
+    mock_context.executor.create_post = AsyncMock(  # type: ignore[union-attr,method-assign]
+        return_value=ExecutionResult(
+            success=False,
+            action_type="approve_post",
+            item_id="sched_fail_1",
+            comment_text=None,
+            post_text="This post will encounter a browser error.",
+            screenshot_path=None,
+            error="Browser DOM submission timed out",
+            executed_at=datetime.now(UTC),
+        )
+    )
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "sched_fail_1",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 511,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "failed"
+
+    updated = mock_context.state_store.read_scheduled_post("sched_fail_1")
+    assert updated is not None
+    assert updated.status == "failed"
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_connection_failure_transitions_to_failed(
+    mock_context: GraphContext,
+) -> None:
+    assert mock_context.state_store is not None
+    conn_candidate = ConnectionRequestAction(
+        id="conn_fail_1",
+        profile_url="https://linkedin.com/in/failed-target",
+        target_name="Bob Builder",
+        note_text="Hi Bob",
+        status="approved",
+    )
+    mock_context.state_store.add_connection_candidate(conn_candidate)
+
+    # Force executor.send_connection_request to fail
+    mock_context.executor.send_connection_request = AsyncMock(  # type: ignore[union-attr,method-assign]
+        return_value=ExecutionResult(
+            success=False,
+            action_type="approve_connection",
+            item_id="conn_fail_1",
+            comment_text="Hi Bob",
+            post_text=None,
+            screenshot_path=None,
+            error="Target profile not found",
+            executed_at=datetime.now(UTC),
+        )
+    )
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "conn_fail_1",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 512,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "failed"
+
+    updated = mock_context.state_store.read_connection_candidate("conn_fail_1")
+    assert updated is not None
+    assert updated.status == "failed"
