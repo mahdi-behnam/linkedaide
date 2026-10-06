@@ -216,6 +216,44 @@ class TelegramClient:
                 return
             raise
 
+    async def edit_message_reply_markup(
+        self,
+        chat_id: int,
+        message_id: int,
+        reply_markup: dict[str, Any] | None = None,
+    ) -> None:
+        """Edit only the inline reply markup of an existing message.
+
+        Args:
+            chat_id: Target Telegram chat ID.
+            message_id: ID of the message to edit.
+            reply_markup: Optional inline keyboard markup.
+
+        Raises:
+            TelegramAPIError: If editing fails (except for harmless 'message is not modified').
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+        }
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+        else:
+            payload["reply_markup"] = {"inline_keyboard": []}
+
+        try:
+            await self._post("editMessageReplyMarkup", payload)
+            logger.info("Edited Telegram message %s reply markup in chat %s.", message_id, chat_id)
+        except TelegramAPIError as e:
+            err_msg = str(e).lower()
+            if "message is not modified" in err_msg:
+                logger.debug(
+                    "Telegram message %s markup was not modified. Treating as graceful no-op.",
+                    message_id,
+                )
+                return
+            raise
+
     async def answer_callback_query(
         self,
         callback_query_id: str,

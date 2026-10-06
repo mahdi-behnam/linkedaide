@@ -14,10 +14,14 @@ from agent.models import (
     ACTION_CODE_APPROVE_CONNECTION,
     ACTION_CODE_APPROVE_POST,
     ACTION_CODE_APPROVE_REPLY,
-    ACTION_CODE_REJECT_COMMENT,
-    ACTION_CODE_REJECT_CONNECTION,
-    ACTION_CODE_REJECT_POST,
-    ACTION_CODE_REJECT_REPLY,
+    ACTION_CODE_ASK_REJECT,
+    ACTION_CODE_BACK,
+    ACTION_CODE_CANCEL_REJECT,
+    ACTION_CODE_CONFIRM_REJECT,
+    ACTION_CODE_EDIT,
+    ACTION_CODE_FEEDBACK,
+    ACTION_CODE_REGENERATE,
+    ACTION_CODE_TONE,
     PendingAction,
 )
 
@@ -38,21 +42,17 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
     clean_id = item_id.strip()
     if action_type in ("approve_post", "post"):
         approve_code = ACTION_CODE_APPROVE_POST
-        reject_code = ACTION_CODE_REJECT_POST
     elif action_type in ("approve_reply", "reply"):
         approve_code = ACTION_CODE_APPROVE_REPLY
-        reject_code = ACTION_CODE_REJECT_REPLY
     elif action_type in ("approve_connection", "connection"):
         approve_code = ACTION_CODE_APPROVE_CONNECTION
-        reject_code = ACTION_CODE_REJECT_CONNECTION
     else:
         approve_code = ACTION_CODE_APPROVE_COMMENT
-        reject_code = ACTION_CODE_REJECT_COMMENT
 
     approve_cb = f"{approve_code}:{clean_id}"
-    reject_cb = f"{reject_code}:{clean_id}"
-    reg_cb = f"reg:{clean_id}"
-    edit_cb = f"edit:{clean_id}"
+    reject_cb = f"{ACTION_CODE_ASK_REJECT}:{clean_id}"
+    reg_cb = f"{ACTION_CODE_REGENERATE}:{clean_id}"
+    edit_cb = f"{ACTION_CODE_EDIT}:{clean_id}"
 
     for cb in (approve_cb, reject_cb, reg_cb, edit_cb):
         byte_len = len(cb.encode("utf-8"))
@@ -73,6 +73,144 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
             ],
         ]
     }
+
+
+def build_reject_confirm_keyboard(
+    item_id: str, action_type: str = "approve_comment"
+) -> dict[str, Any]:
+    """Construct rejection confirmation inline keyboard with Confirm and Cancel buttons.
+
+    Args:
+        item_id: Unique identifier for the pending action item.
+        action_type: Action type identifier.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+
+    Raises:
+        ValueError: If callback_data exceeds Telegram's 64-byte limit.
+    """
+    clean_id = item_id.strip()
+    confirm_cb = f"{ACTION_CODE_CONFIRM_REJECT}:{clean_id}"
+    cancel_cb = f"{ACTION_CODE_CANCEL_REJECT}:{clean_id}"
+
+    for cb in (confirm_cb, cancel_cb):
+        byte_len = len(cb.encode("utf-8"))
+        if byte_len > 64:
+            raise ValueError(
+                f"Telegram callback_data exceeds 64 bytes limit ({byte_len} bytes): '{cb}'"
+            )
+
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "❌ Yes, Reject", "callback_data": confirm_cb},
+                {"text": "🔙 Cancel / Keep", "callback_data": cancel_cb},
+            ],
+        ]
+    }
+
+
+def build_rejection_feedback_keyboard(item_id: str) -> dict[str, Any]:
+    """Construct post-rejection feedback tags inline keyboard.
+
+    Args:
+        item_id: Unique identifier for the rejected action item.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+
+    Raises:
+        ValueError: If callback_data exceeds Telegram's 64-byte limit.
+    """
+    clean_id = item_id.strip()
+    callbacks = [
+        f"{ACTION_CODE_FEEDBACK}:generic:{clean_id}",
+        f"{ACTION_CODE_FEEDBACK}:boring:{clean_id}",
+        f"{ACTION_CODE_FEEDBACK}:risky:{clean_id}",
+        f"{ACTION_CODE_FEEDBACK}:offtopic:{clean_id}",
+        f"{ACTION_CODE_FEEDBACK}:skip:{clean_id}",
+    ]
+
+    for cb in callbacks:
+        byte_len = len(cb.encode("utf-8"))
+        if byte_len > 64:
+            raise ValueError(
+                f"Telegram callback_data exceeds 64 bytes limit ({byte_len} bytes): '{cb}'"
+            )
+
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🤖 Too Generic", "callback_data": callbacks[0]},
+                {"text": "🥱 Boring", "callback_data": callbacks[1]},
+            ],
+            [
+                {"text": "⚠️ Too Risky", "callback_data": callbacks[2]},
+                {"text": "🚫 Off-Topic", "callback_data": callbacks[3]},
+            ],
+            [
+                {"text": "⏩ Done / Skip", "callback_data": callbacks[4]},
+            ],
+        ]
+    }
+
+
+def build_tone_keyboard(
+    item_id: str, action_type: str = "approve_comment"
+) -> dict[str, Any]:
+    """Construct dynamic inline tone picker keyboard aligned with desktop app.
+
+    Args:
+        item_id: Unique identifier for the pending action item.
+        action_type: Action type identifier ('approve_connection' vs other actions).
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+
+    Raises:
+        ValueError: If callback_data exceeds Telegram's 64-byte limit.
+    """
+    clean_id = item_id.strip()
+    is_conn = action_type in ("approve_connection", "connection")
+    back_cb = f"{ACTION_CODE_BACK}:{clean_id}"
+
+    if is_conn:
+        buttons = [
+            [
+                {"text": "☕ Casual", "callback_data": f"{ACTION_CODE_TONE}:casual:{clean_id}"},
+                {"text": "🔬 Technical", "callback_data": f"{ACTION_CODE_TONE}:technical:{clean_id}"},
+            ],
+            [
+                {"text": "✂️ Concise", "callback_data": f"{ACTION_CODE_TONE}:concise:{clean_id}"},
+                {"text": "🔙 Back to Review", "callback_data": back_cb},
+            ],
+        ]
+    else:
+        buttons = [
+            [
+                {"text": "🔬 Technical", "callback_data": f"{ACTION_CODE_TONE}:technical:{clean_id}"},
+                {"text": "❓ Inquisitive", "callback_data": f"{ACTION_CODE_TONE}:inquisitive:{clean_id}"},
+            ],
+            [
+                {"text": "⚡ Contrarian", "callback_data": f"{ACTION_CODE_TONE}:contrarian:{clean_id}"},
+                {"text": "✂️ Shorter", "callback_data": f"{ACTION_CODE_TONE}:shorter:{clean_id}"},
+            ],
+            [
+                {"text": "🔙 Back to Review", "callback_data": back_cb},
+            ],
+        ]
+
+    for row in buttons:
+        for btn in row:
+            cb = btn["callback_data"]
+            byte_len = len(cb.encode("utf-8"))
+            if byte_len > 64:
+                raise ValueError(
+                    f"Telegram callback_data exceeds 64 bytes limit ({byte_len} bytes): '{cb}'"
+                )
+
+    return {"inline_keyboard": buttons}
 
 
 def format_suggestion_card(item: PendingAction) -> str:
@@ -133,12 +271,12 @@ def format_suggestion_card(item: PendingAction) -> str:
     if item.post_excerpt and not is_post:
         excerpt_label = "Parent Comment" if is_reply else "Post Excerpt"
         lines.append(
-            f"<b>{excerpt_label}:</b>\n<blockquote>{html.escape(item.post_excerpt)}</blockquote>"
+            f"<b>{excerpt_label}:</b>\n<blockquote expandable>{html.escape(item.post_excerpt)}</blockquote>"
         )
 
     content_label = "Drafted Note" if is_conn else "Drafted Content"
     lines.append(
-        f"<b>{content_label}:</b>\n<blockquote>{html.escape(item.draft_text)}</blockquote>"
+        f"<b>{content_label}:</b>\n<blockquote expandable>{html.escape(item.draft_text)}</blockquote>"
     )
 
     char_count = len(item.draft_text)

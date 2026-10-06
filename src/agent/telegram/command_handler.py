@@ -15,9 +15,9 @@ from pathlib import Path
 from typing import Any
 
 from agent.config import Settings
-from agent.models import CallbackDataPayload
 from agent.state.base import BaseStateStore
 from agent.telegram.callbacks import (
+    execute_callback_query,
     execute_edit_callback,
     execute_regenerate_callback,
 )
@@ -259,45 +259,13 @@ class CommandHandler:
         Returns:
             bool: True if callback query was handled, False otherwise.
         """
-        callback_query_id = callback_query.get("id", "")
-        sender_id = callback_query.get("from", {}).get("id")
-        data = callback_query.get("data", "")
-        msg = callback_query.get("message", {})
-        chat_id = msg.get("chat", {}).get("id") or sender_id
-        message_id = msg.get("message_id")
-
-        if not TelegramClient.is_authorized(sender_id, self.settings):
-            logger.warning(
-                "Unauthorized callback query attempt from sender %s. Dropping.",
-                sender_id,
-            )
-            return False
-
-        if not data or ":" not in data:
-            return False
-
-        try:
-            payload = CallbackDataPayload.from_callback_data(data)
-        except Exception:
-            logger.warning("Failed to parse callback data: '%s'", data)
-            return False
-
-        if payload.is_edit:
-            return await self.handle_edit_callback(
-                item_id=payload.item_id,
-                callback_query_id=callback_query_id,
-                chat_id=chat_id,
-                message_id=message_id,
-            )
-        elif payload.is_regenerate:
-            return await self.handle_regenerate_callback(
-                item_id=payload.item_id,
-                callback_query_id=callback_query_id,
-                chat_id=chat_id,
-                message_id=message_id,
-            )
-
-        return False
+        return await execute_callback_query(
+            settings=self.settings,
+            state_store=self.state_store,
+            telegram=self.telegram,
+            callback_query=callback_query,
+            llm_service=self.llm_service,
+        )
 
     async def handle_edit_callback(
         self,

@@ -10,12 +10,25 @@ from agent.config import Settings
 from agent.errors import TelegramAPIError
 from agent.models import PendingAction
 from agent.state.store import GitStateStore
+from agent.telegram.callbacks import (
+    execute_back_callback,
+    execute_callback_query,
+    execute_feedback_callback,
+    execute_reject_cancel_callback,
+    execute_reject_confirm_callback,
+    execute_reject_prompt_callback,
+    execute_tone_menu_callback,
+    execute_tone_select_callback,
+)
 from agent.telegram.client import TelegramClient
 from agent.telegram.draft_editor import handle_draft_edit, handle_edit_callback
 from agent.telegram.keyboards import (
     build_outcome_message,
+    build_reject_confirm_keyboard,
+    build_rejection_feedback_keyboard,
     build_suggestion_keyboard,
     build_suggestion_message,
+    build_tone_keyboard,
     format_suggestion_card,
 )
 
@@ -80,25 +93,25 @@ class TestKeyboardsAndMessages:
         assert buttons[0]["text"] == "✅ Approve"
         assert buttons[0]["callback_data"] == "ac:item_abc"
         assert buttons[1]["text"] == "❌ Reject"
-        assert buttons[1]["callback_data"] == "rc:item_abc"
+        assert buttons[1]["callback_data"] == "ask_rej:item_abc"
 
     def test_build_suggestion_keyboard_post(self) -> None:
         keyboard = build_suggestion_keyboard("post_123", "approve_post")
         buttons = keyboard["inline_keyboard"][0]
         assert buttons[0]["callback_data"] == "ap:post_123"
-        assert buttons[1]["callback_data"] == "rp:post_123"
+        assert buttons[1]["callback_data"] == "ask_rej:post_123"
 
     def test_build_suggestion_keyboard_reply(self) -> None:
         keyboard = build_suggestion_keyboard("reply_123", "approve_reply")
         buttons = keyboard["inline_keyboard"][0]
         assert buttons[0]["callback_data"] == "ar:reply_123"
-        assert buttons[1]["callback_data"] == "rr:reply_123"
+        assert buttons[1]["callback_data"] == "ask_rej:reply_123"
 
     def test_build_suggestion_keyboard_connection(self) -> None:
         keyboard = build_suggestion_keyboard("conn_123", "approve_connection")
         buttons = keyboard["inline_keyboard"][0]
         assert buttons[0]["callback_data"] == "acon:conn_123"
-        assert buttons[1]["callback_data"] == "rcon:conn_123"
+        assert buttons[1]["callback_data"] == "ask_rej:conn_123"
 
     def test_build_suggestion_keyboard_includes_edit_button(self) -> None:
         keyboard = build_suggestion_keyboard("item_edit_test", "approve_comment")
@@ -109,14 +122,14 @@ class TestKeyboardsAndMessages:
         assert row1[0]["text"] == "✅ Approve"
         assert row1[0]["callback_data"] == "ac:item_edit_test"
         assert row1[1]["text"] == "❌ Reject"
-        assert row1[1]["callback_data"] == "rc:item_edit_test"
+        assert row1[1]["callback_data"] == "ask_rej:item_edit_test"
         assert len(row2) == 2
         assert row2[0]["text"] == "🔄 Regenerate"
         assert row2[0]["callback_data"] == "reg:item_edit_test"
         assert row2[1]["text"] == "✏️ Edit"
-        assert row2[1]["callback_data"] == "edit:item_edit_test"
+        assert row2[1]["callback_data"] == "ed:item_edit_test"
         assert len(b"reg:item_edit_test") < 64
-        assert len(b"edit:item_edit_test") < 64
+        assert len(b"ed:item_edit_test") < 64
 
     def test_format_suggestion_card_comprehensive(self) -> None:
         item = PendingAction(
@@ -142,14 +155,14 @@ class TestKeyboardsAndMessages:
             in card
         )
 
-        # Clean excerpt blockquote
+        # Clean excerpt blockquote with expandable attribute
         assert (
-            "<b>Post Excerpt:</b>\n<blockquote>Exploring scalable microservices with Rust &amp; Go.</blockquote>"
+            "<b>Post Excerpt:</b>\n<blockquote expandable>Exploring scalable microservices with Rust &amp; Go.</blockquote>"
             in card
         )
-        # Draft blockquote
+        # Draft blockquote with expandable attribute
         assert (
-            "<b>Drafted Content:</b>\n<blockquote>Fascinating architecture! How do you handle distributed transaction rollback in this setup?</blockquote>"
+            "<b>Drafted Content:</b>\n<blockquote expandable>Fascinating architecture! How do you handle distributed transaction rollback in this setup?</blockquote>"
             in card
         )
 
@@ -178,6 +191,61 @@ class TestKeyboardsAndMessages:
         long_id = "x" * 63
         with pytest.raises(ValueError, match="exceeds 64 bytes limit"):
             build_suggestion_keyboard(long_id)
+
+    def test_build_reject_confirm_keyboard(self) -> None:
+        kb = build_reject_confirm_keyboard("item_999", "approve_comment")
+        assert len(kb["inline_keyboard"]) == 1
+        row = kb["inline_keyboard"][0]
+        assert len(row) == 2
+        assert row[0]["text"] == "❌ Yes, Reject"
+        assert row[0]["callback_data"] == "cf_rej:item_999"
+        assert row[1]["text"] == "🔙 Cancel / Keep"
+        assert row[1]["callback_data"] == "cx_rej:item_999"
+        assert len(b"cf_rej:item_999") < 64
+        assert len(b"cx_rej:item_999") < 64
+
+    def test_build_rejection_feedback_keyboard(self) -> None:
+        kb = build_rejection_feedback_keyboard("item_999")
+        assert len(kb["inline_keyboard"]) == 3
+        row1 = kb["inline_keyboard"][0]
+        row2 = kb["inline_keyboard"][1]
+        row3 = kb["inline_keyboard"][2]
+        assert row1[0]["callback_data"] == "fb:generic:item_999"
+        assert row1[1]["callback_data"] == "fb:boring:item_999"
+        assert row2[0]["callback_data"] == "fb:risky:item_999"
+        assert row2[1]["callback_data"] == "fb:offtopic:item_999"
+        assert row3[0]["callback_data"] == "fb:skip:item_999"
+        for row in kb["inline_keyboard"]:
+            for btn in row:
+                assert len(btn["callback_data"].encode("utf-8")) < 64
+
+    def test_build_tone_keyboard_comment(self) -> None:
+        kb = build_tone_keyboard("item_999", "approve_comment")
+        assert len(kb["inline_keyboard"]) == 3
+        row1 = kb["inline_keyboard"][0]
+        row2 = kb["inline_keyboard"][1]
+        row3 = kb["inline_keyboard"][2]
+        assert row1[0]["callback_data"] == "tone:technical:item_999"
+        assert row1[1]["callback_data"] == "tone:inquisitive:item_999"
+        assert row2[0]["callback_data"] == "tone:contrarian:item_999"
+        assert row2[1]["callback_data"] == "tone:shorter:item_999"
+        assert row3[0]["callback_data"] == "back:item_999"
+        for row in kb["inline_keyboard"]:
+            for btn in row:
+                assert len(btn["callback_data"].encode("utf-8")) < 64
+
+    def test_build_tone_keyboard_connection(self) -> None:
+        kb = build_tone_keyboard("conn_999", "approve_connection")
+        assert len(kb["inline_keyboard"]) == 2
+        row1 = kb["inline_keyboard"][0]
+        row2 = kb["inline_keyboard"][1]
+        assert row1[0]["callback_data"] == "tone:casual:conn_999"
+        assert row1[1]["callback_data"] == "tone:technical:conn_999"
+        assert row2[0]["callback_data"] == "tone:concise:conn_999"
+        assert row2[1]["callback_data"] == "back:conn_999"
+        for row in kb["inline_keyboard"]:
+            for btn in row:
+                assert len(btn["callback_data"].encode("utf-8")) < 64
 
     def test_build_suggestion_message_escaping(self, sample_pending_action: PendingAction) -> None:
         msg = build_suggestion_message(sample_pending_action)
@@ -1193,3 +1261,369 @@ class TestHandleEditCallback:
             assert result is False
             assert len(recorded_requests) == 1
             assert recorded_requests[0]["payload"]["show_alert"] is True
+
+
+class TestTelegramCallbacks:
+    """Test suite for interactive Telegram callback handlers and router."""
+
+    @pytest.mark.asyncio
+    async def test_execute_reject_prompt_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_reject_prompt_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                callback_query_id="query_rej_prompt",
+                chat_id=987654321,
+                message_id=42,
+            )
+
+            assert handled is True
+            # Pending item must still exist in state store
+            assert test_state_store.read_pending(sample_pending_action.item_id) is not None
+
+            # Must have answered query and edited reply markup
+            assert len(recorded_requests) == 2
+            answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
+            assert answer_req["payload"]["callback_query_id"] == "query_rej_prompt"
+            assert "Confirm rejection" in answer_req["payload"]["text"]
+
+            edit_req = next(r for r in recorded_requests if "editMessageReplyMarkup" in r["path"])
+            assert edit_req["payload"]["chat_id"] == 987654321
+            assert edit_req["payload"]["message_id"] == 42
+            buttons = edit_req["payload"]["reply_markup"]["inline_keyboard"][0]
+            assert buttons[0]["callback_data"] == f"cf_rej:{sample_pending_action.item_id}"
+            assert buttons[1]["callback_data"] == f"cx_rej:{sample_pending_action.item_id}"
+
+    @pytest.mark.asyncio
+    async def test_execute_reject_cancel_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_reject_cancel_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                callback_query_id="query_rej_cx",
+                chat_id=987654321,
+                message_id=42,
+            )
+
+            assert handled is True
+            # Pending item must remain intact
+            assert test_state_store.read_pending(sample_pending_action.item_id) is not None
+
+            assert len(recorded_requests) == 2
+            answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
+            assert "Rejection cancelled" in answer_req["payload"]["text"]
+
+            edit_req = next(r for r in recorded_requests if "editMessageReplyMarkup" in r["path"])
+            assert edit_req["payload"]["chat_id"] == 987654321
+            row1 = edit_req["payload"]["reply_markup"]["inline_keyboard"][0]
+            assert row1[0]["callback_data"] == f"ac:{sample_pending_action.item_id}"
+            assert row1[1]["callback_data"] == f"ask_rej:{sample_pending_action.item_id}"
+
+    @pytest.mark.asyncio
+    async def test_execute_reject_confirm_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_reject_confirm_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                callback_query_id="query_rej_cf",
+                chat_id=987654321,
+                message_id=42,
+            )
+
+            assert handled is True
+            # Pending item must be deleted
+            assert test_state_store.read_pending(sample_pending_action.item_id) is None
+
+            # History entry must be appended with final_status="rejected"
+            history = test_state_store.read_history()
+            assert any(
+                h.item_id == sample_pending_action.item_id and h.final_status == "rejected"
+                for h in history
+            )
+
+            assert len(recorded_requests) == 2
+            answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
+            assert "rejected" in answer_req["payload"]["text"].lower()
+
+            edit_req = next(r for r in recorded_requests if "editMessageText" in r["path"])
+            assert edit_req["payload"]["chat_id"] == 987654321
+            assert edit_req["payload"]["message_id"] == 42
+            assert "Optional feedback" in edit_req["payload"]["text"]
+            # Feedback keyboard buttons present
+            kb = edit_req["payload"]["reply_markup"]["inline_keyboard"]
+            assert kb[0][0]["callback_data"] == f"fb:generic:{sample_pending_action.item_id}"
+
+    @pytest.mark.asyncio
+    async def test_execute_feedback_callback_with_reason(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_feedback_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id="item_fb_01",
+                reason="boring",
+                callback_query_id="query_fb_01",
+                chat_id=987654321,
+                message_id=42,
+            )
+
+            assert handled is True
+            feedbacks = test_state_store.load_rejection_feedbacks()
+            assert any(f.get("item_id") == "item_fb_01" and f.get("reason") == "boring" for f in feedbacks)
+
+            assert len(recorded_requests) == 2
+            answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
+            assert "Feedback saved" in answer_req["payload"]["text"]
+
+            edit_req = next(r for r in recorded_requests if "editMessageText" in r["path"])
+            assert "Suggestion rejected by operator" in edit_req["payload"]["text"]
+            assert "Feedback: boring" in edit_req["payload"]["text"]
+            assert edit_req["payload"]["reply_markup"]["inline_keyboard"] == []
+
+    @pytest.mark.asyncio
+    async def test_execute_feedback_callback_skip(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_feedback_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id="item_fb_skip",
+                reason="skip",
+                callback_query_id="query_fb_skip",
+                chat_id=987654321,
+                message_id=42,
+            )
+
+            assert handled is True
+            feedbacks = test_state_store.load_rejection_feedbacks()
+            assert not any(f.get("item_id") == "item_fb_skip" for f in feedbacks)
+
+            assert len(recorded_requests) == 2
+            answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
+            assert "dismissed" in answer_req["payload"]["text"].lower()
+
+            edit_req = next(r for r in recorded_requests if "editMessageText" in r["path"])
+            assert "Suggestion rejected by operator" in edit_req["payload"]["text"]
+            assert "Feedback:" not in edit_req["payload"]["text"]
+            assert edit_req["payload"]["reply_markup"]["inline_keyboard"] == []
+
+    @pytest.mark.asyncio
+    async def test_execute_tone_menu_and_back_callbacks(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+
+            # 1. Tap tone menu (reg)
+            handled_menu = await execute_tone_menu_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                callback_query_id="query_menu",
+                chat_id=987654321,
+                message_id=42,
+            )
+            assert handled_menu is True
+            edit_req = next(r for r in recorded_requests if "editMessageReplyMarkup" in r["path"])
+            kb = edit_req["payload"]["reply_markup"]["inline_keyboard"]
+            assert kb[0][0]["callback_data"] == f"tone:technical:{sample_pending_action.item_id}"
+            assert kb[2][0]["callback_data"] == f"back:{sample_pending_action.item_id}"
+
+            recorded_requests.clear()
+
+            # 2. Tap back to review
+            handled_back = await execute_back_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                callback_query_id="query_back",
+                chat_id=987654321,
+                message_id=42,
+            )
+            assert handled_back is True
+            edit_req2 = next(r for r in recorded_requests if "editMessageReplyMarkup" in r["path"])
+            kb2 = edit_req2["payload"]["reply_markup"]["inline_keyboard"]
+            assert kb2[0][0]["callback_data"] == f"ac:{sample_pending_action.item_id}"
+            assert kb2[0][1]["callback_data"] == f"ask_rej:{sample_pending_action.item_id}"
+
+    @pytest.mark.asyncio
+    async def test_execute_tone_select_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        class MockLLMService:
+            async def rewrite_draft(self, draft_text: str, tone: str, post_excerpt: str = "") -> str:
+                return f"Rewritten in {tone} style: {draft_text[:30]}"
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_tone_select_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                tone="contrarian",
+                callback_query_id="query_tone_sel",
+                chat_id=987654321,
+                message_id=42,
+                llm_service=MockLLMService(),
+            )
+
+            assert handled is True
+            # Check draft was updated in state store
+            updated = test_state_store.read_pending(sample_pending_action.item_id)
+            assert updated is not None
+            assert updated.draft_text.startswith("Rewritten in contrarian style:")
+
+            # Check message was edited
+            edit_req = next(r for r in recorded_requests if "editMessageText" in r["path"])
+            assert "Rewritten in contrarian style:" in edit_req["payload"]["text"]
+            # Review buttons restored
+            kb = edit_req["payload"]["reply_markup"]["inline_keyboard"]
+            assert kb[0][0]["callback_data"] == f"ac:{sample_pending_action.item_id}"
+
+    @pytest.mark.asyncio
+    async def test_execute_callback_query_router(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+
+            # Unauthorized sender -> dropped
+            unauth_cb = {
+                "id": "q_unauth",
+                "from": {"id": 111222333},
+                "data": f"ask_rej:{sample_pending_action.item_id}",
+                "message": {"chat": {"id": 111222333}, "message_id": 10},
+            }
+            res_unauth = await execute_callback_query(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=telegram,
+                callback_query=unauth_cb,
+            )
+            assert res_unauth is False
+            assert len(recorded_requests) == 0
+
+            # Valid sender routes ask_rej
+            valid_cb = {
+                "id": "q_auth",
+                "from": {"id": 987654321},
+                "data": f"ask_rej:{sample_pending_action.item_id}",
+                "message": {"chat": {"id": 987654321}, "message_id": 10},
+            }
+            res_valid = await execute_callback_query(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=telegram,
+                callback_query=valid_cb,
+            )
+            assert res_valid is True
+            assert len(recorded_requests) == 2
+

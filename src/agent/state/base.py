@@ -380,3 +380,38 @@ class BaseStateStore(ABC):
     def save_dynamic_voice_samples(self, samples: list[dict[str, Any]]) -> None:
         """Persist dynamically indexed operator voice samples to durable storage."""
         self.put_key("voice_samples", samples)
+
+    # -------------------------------------------------------------------------
+    # Rejection Feedback Tags
+    # -------------------------------------------------------------------------
+
+    def append_rejection_feedback(self, item_id: str, reason: str) -> None:
+        """Record operator rejection feedback tag."""
+        raw = self.get_key("rejection_feedback")
+        feedbacks: list[dict[str, Any]] = []
+        if raw:
+            try:
+                feedbacks = json.loads(raw) if isinstance(raw, str) else raw
+                if not isinstance(feedbacks, list):
+                    feedbacks = []
+            except Exception:
+                feedbacks = []
+        feedbacks.append({
+            "item_id": item_id,
+            "reason": reason,
+            "created_at": datetime.now(UTC).isoformat(),
+        })
+        if len(feedbacks) > 200:
+            feedbacks = feedbacks[-200:]
+        self.put_key("rejection_feedback", json.dumps(feedbacks))
+
+    def load_rejection_feedbacks(self) -> list[dict[str, Any]]:
+        """Load recent operator rejection feedback tags."""
+        raw = self.get_key("rejection_feedback")
+        if not raw:
+            return []
+        try:
+            feedbacks = json.loads(raw) if isinstance(raw, str) else raw
+            return feedbacks if isinstance(feedbacks, list) else []
+        except Exception:
+            return []

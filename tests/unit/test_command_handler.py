@@ -1254,11 +1254,13 @@ class TestCommandHandlerCallbackQueries:
             ans = [r for r in recorded if r["path"].endswith("/answerCallbackQuery")]
             assert len(ans) == 1
             assert ans[0]["payload"]["callback_query_id"] == "cb_reg_test"
+            assert "tone style" in ans[0]["payload"]["text"].lower()
 
-            sends = [r for r in recorded if r["path"].endswith("/sendMessage")]
-            assert len(sends) == 1
-            assert "Draft Regeneration & Tone Guidance" in sends[0]["payload"]["text"]
-            assert "Contrarian Perspective" in sends[0]["payload"]["text"]
+            edits = [r for r in recorded if r["path"].endswith("/editMessageReplyMarkup")]
+            assert len(edits) == 1
+            kb = edits[0]["payload"]["reply_markup"]["inline_keyboard"]
+            assert kb[0][0]["callback_data"] == f"tone:technical:{sample_pending_action.item_id}"
+            assert kb[2][0]["callback_data"] == f"back:{sample_pending_action.item_id}"
 
     @pytest.mark.asyncio
     async def test_callback_reg_with_llm_service(
@@ -1302,7 +1304,7 @@ class TestCommandHandlerCallbackQueries:
             cb = {
                 "id": "cb_reg_llm",
                 "from": {"id": mock_settings.telegram_authorized_chat_id},
-                "data": f"reg:{action.item_id}",
+                "data": f"tone:contrarian:{action.item_id}",
                 "message": {
                     "message_id": 5001,
                     "chat": {"id": mock_settings.telegram_authorized_chat_id},
@@ -1324,7 +1326,7 @@ class TestCommandHandlerCallbackQueries:
 
             ans = [r for r in recorded if r["path"].endswith("/answerCallbackQuery")]
             assert len(ans) == 1
-            assert "Regenerated draft" in ans[0]["payload"]["text"]
+            assert "Regenerating (contrarian)" in ans[0]["payload"]["text"]
 
     @pytest.mark.asyncio
     async def test_callback_unauthorized_sender(
