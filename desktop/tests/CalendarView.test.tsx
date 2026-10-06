@@ -186,4 +186,17 @@ describe("CalendarView", () => {
     fireEvent.click(prevBtn);
     expect(rangeLabel.textContent).toBe(initialText);
   });
+
+  it("renders default automated comment windows when initialCommentWindows is omitted", () => {
+    render(
+      <AppProvider>
+        <CalendarView />
+      </AppProvider>
+    );
+
+    // Scout schedule card and week grid should display default active comment windows
+    expect(screen.getAllByText("Morning Feed Scout Window").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Midday Feed Scout Window").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Evening Feed Scout Window").length).toBeGreaterThanOrEqual(1);
+  });
 });

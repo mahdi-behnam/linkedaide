@@ -36,6 +36,7 @@ export interface AppContextType {
   saveScheduledPost: (post: ScheduledPost) => void;
   deleteScheduledPost: (id: string) => void;
   commentWindows: AutomatedCommentWindow[];
+  setCommentWindows: React.Dispatch<React.SetStateAction<AutomatedCommentWindow[]>>;
   activePostForEditing: ScheduledPost | null;
   setActivePostForEditing: (post: ScheduledPost | null) => void;
   connectionQueue: ConnectionRequestAction[];
@@ -48,6 +49,36 @@ export interface AppContextType {
   clearIncident?: () => Promise<void>;
   refreshState?: () => Promise<void>;
 }
+
+export const defaultCommentWindows: AutomatedCommentWindow[] = [
+  {
+    id: "scout-win-morning",
+    title: "Morning Feed Scout Window",
+    start_time: "08:00",
+    end_time: "09:30",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    status: "active",
+    topic_filter: "Engineering Leadership & AI Systems",
+  },
+  {
+    id: "scout-win-midday",
+    title: "Midday Feed Scout Window",
+    start_time: "13:00",
+    end_time: "14:30",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    status: "active",
+    topic_filter: "Distributed Systems & Cloud Architecture",
+  },
+  {
+    id: "scout-win-evening",
+    title: "Evening Feed Scout Window",
+    start_time: "18:00",
+    end_time: "19:30",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    status: "active",
+    topic_filter: "Technical Architecture & High Impact Engineering",
+  },
+];
 
 const initialTelemetry: SystemTelemetry = {
   workerUrl: "https://relay.hitl-agent.workers.dev",
@@ -83,7 +114,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isScouting, setIsScouting] = useState<boolean>(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [lastTriggerMessage, setLastTriggerMessage] = useState<string | null>(null);
-  const [commentWindows] = useState<AutomatedCommentWindow[]>([]);
+  const [commentWindows, setCommentWindows] = useState<AutomatedCommentWindow[]>(defaultCommentWindows);
+
+  const activeCommentWindows = useMemo(() => {
+    return commentWindows.map((w) => ({
+      ...w,
+      status: isPaused ? ("paused" as const) : w.status,
+    }));
+  }, [commentWindows, isPaused]);
 
   // Modular custom hooks
   const {
@@ -344,7 +382,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       scheduledPosts,
       saveScheduledPost,
       deleteScheduledPost,
-      commentWindows,
+      commentWindows: activeCommentWindows,
+      setCommentWindows,
       activePostForEditing,
       setActivePostForEditing,
       connectionQueue,
@@ -371,7 +410,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       scheduledPosts,
       saveScheduledPost,
       deleteScheduledPost,
-      commentWindows,
+      activeCommentWindows,
+      setCommentWindows,
       activePostForEditing,
       setActivePostForEditing,
       connectionQueue,
