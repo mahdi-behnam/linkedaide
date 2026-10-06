@@ -14,7 +14,10 @@ import {
   escapeHtml,
   formatPendingCardHtml,
   formatTelegramErrorMessage,
+  getRejectConfirmKeyboard,
+  getRejectionFeedbackKeyboard,
   getSuggestionKeyboard,
+  getTonePickerKeyboard,
   notifyTelegramFailure,
   sendTelegramMessage,
 } from "../utils";
@@ -580,32 +583,28 @@ export async function handleTelegramWebhook(
     return new Response("Unauthorized Sender ID", { status: 403 });
   }
 
-  // 3. Parse compact callback data (e.g. "ac:1234abcd", "rej:1234abcd")
-  const parts = cb.data.split(":", 2);
-  if (parts.length !== 2) {
+  // 3. Parse compact callback data (e.g. "ac:1234abcd", "tone:technical:1234abcd")
+  const parts = cb.data.split(":");
+  if (parts.length < 2) {
     return new Response("Invalid callback_data format", { status: 400 });
   }
 
-  const [actionCode, itemId] = parts;
-  const isApproval =
-    actionCode === "ac" ||
-    actionCode === "ap" ||
-    actionCode === "ar" ||
-    actionCode === "apv" ||
-    actionCode === "acon";
-  const isRejection =
-    actionCode === "rc" ||
-    actionCode === "rp" ||
-    actionCode === "rr" ||
-    actionCode === "rej" ||
-    actionCode === "rcon";
-  const isEdit = actionCode === "ed" || actionCode === "edit";
-  const isRegenerate = actionCode === "reg";
+  const actionCode = parts[0];
+  const itemId = parts.length === 2 ? parts[1] : parts[parts.length - 1];
+  const targetChatId = cb.message?.chat.id ?? authorizedId;
+  const targetMessageId = cb.message?.message_id ?? null;
 
-  if (isEdit || isRegenerate) {
-    const promptText = isEdit
-      ? "✏️ Reply to this suggestion with your revised draft text."
-      : "🔄 Reply to this suggestion with your preferred tone or new draft.";
+  if (actionCode === "reg") {
+    let actionType = "approve_comment";
+    if (env.LINKEDIN_AGENT_KV) {
+      try {
+        const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+        if (rawPending) {
+          const parsed = JSON.parse(rawPending);
+          actionType = parsed.action_type || actionType;
+        }
+      } catch {}
+    }
 
     ctx.waitUntil(
       fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
@@ -613,23 +612,355 @@ export async function handleTelegramWebhook(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           callback_query_id: cb.id,
-          text: promptText,
+          text: "Choose draft tone style:",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            reply_markup: getTonePickerKeyboard(itemId, actionType),
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "tone_menu_displayed", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "back") {
+    let actionType = "approve_comment";
+    if (env.LINKEDIN_AGENT_KV) {
+      try {
+        const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+        if (rawPending) {
+          const parsed = JSON.parse(rawPending);
+          actionType = parsed.action_type || actionType;
+        }
+      } catch {}
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "Back to suggestion review",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            reply_markup: getSuggestionKeyboard(itemId, actionType),
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "back_to_review", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "tone") {
+    const toneSlug = parts[1];
+    const targetItemId = parts[2];
+    if (!toneSlug || !targetItemId || !VALID_TONES.includes(toneSlug as any)) {
+      return new Response("Invalid tone parameters", { status: 400 });
+    }
+
+    if (!env.LINKEDIN_AGENT_KV) {
+      return new Response("KV not configured", { status: 500 });
+    }
+
+    const raw = await env.LINKEDIN_AGENT_KV.get(`pending:${targetItemId}`);
+    if (!raw) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: "⚠️ Suggestion is no longer pending or already processed.",
+            show_alert: true,
+          }),
+        }).catch(() => {})
+      );
+      return new Response(JSON.stringify({ status: "item_not_found" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const pending = JSON.parse(raw);
+    try {
+      const rewritten = await rewriteDraftWithLlm(
+        env,
+        pending.draft_text || pending.note || "",
+        toneSlug,
+        pending.post_excerpt || pending.target_post_content
+      );
+      pending.draft_text = rewritten;
+      pending.updated_at = new Date().toISOString();
+      await env.LINKEDIN_AGENT_KV.put(`pending:${targetItemId}`, JSON.stringify(pending));
+
+      if (targetMessageId) {
+        ctx.waitUntil(
+          fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              message_id: targetMessageId,
+              text: formatPendingCardHtml(pending, `Regenerated (${toneSlug})`),
+              parse_mode: "HTML",
+              link_preview_options: { is_disabled: true },
+              reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type),
+            }),
+          }).catch(() => {})
+        );
+      }
+
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: `🔄 Draft updated (${toneSlug})`,
+            show_alert: false,
+          }),
+        }).catch(() => {})
+      );
+
+      broadcastEvent({ type: "queue_updated", item_id: targetItemId });
+      return new Response(
+        JSON.stringify({ status: "draft_updated", item_id: targetItemId, tone: toneSlug }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (err: any) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: `⚠️ Rewrite failed: ${err.message || "LLM error"}`,
+            show_alert: true,
+          }),
+        }).catch(() => {})
+      );
+      return new Response(JSON.stringify({ status: "rewrite_failed", error: err.message }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  if (actionCode === "ed" || actionCode === "edit") {
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "✏️ Reply to this suggestion with your revised draft text.",
           show_alert: false,
         }),
       }).catch(() => {})
     );
 
     return new Response(
-      JSON.stringify({
-        status: isEdit ? "edit_prompted" : "regenerate_prompted",
-        item_id: itemId,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
+      JSON.stringify({ status: "edit_prompted", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
     );
   }
+
+  if (actionCode === "ask_rej") {
+    let actionType = "approve_comment";
+    if (env.LINKEDIN_AGENT_KV) {
+      try {
+        const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+        if (rawPending) {
+          const parsed = JSON.parse(rawPending);
+          actionType = parsed.action_type || actionType;
+        }
+      } catch {}
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "⚠️ Confirm rejection",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            reply_markup: getRejectConfirmKeyboard(itemId, actionType),
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "reject_confirmation_prompted", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "cx_rej") {
+    let actionType = "approve_comment";
+    if (env.LINKEDIN_AGENT_KV) {
+      try {
+        const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+        if (rawPending) {
+          const parsed = JSON.parse(rawPending);
+          actionType = parsed.action_type || actionType;
+        }
+      } catch {}
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "Rejection cancelled. Suggestion kept.",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            reply_markup: getSuggestionKeyboard(itemId, actionType),
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "reject_cancelled", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "fb") {
+    const feedbackReason = parts[1];
+    const targetItemId = parts[2];
+
+    if (feedbackReason !== "skip" && env.LINKEDIN_AGENT_KV) {
+      try {
+        const rawFb = await env.LINKEDIN_AGENT_KV.get("rejection_feedback");
+        let fbList: Array<any> = [];
+        if (rawFb) {
+          try {
+            fbList = JSON.parse(rawFb);
+            if (!Array.isArray(fbList)) fbList = [];
+          } catch {}
+        }
+        fbList.push({
+          item_id: targetItemId,
+          reason: feedbackReason,
+          created_at: new Date().toISOString(),
+        });
+        if (fbList.length > 200) fbList = fbList.slice(-200);
+        await env.LINKEDIN_AGENT_KV.put("rejection_feedback", JSON.stringify(fbList));
+      } catch {}
+    }
+
+    const toastMsg =
+      feedbackReason === "skip" ? "Feedback dismissed." : `Feedback saved (${feedbackReason}). Thank you!`;
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: toastMsg,
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      const finalText =
+        feedbackReason !== "skip"
+          ? `❌ <b>Suggestion rejected by operator</b>\n<i>Feedback: ${escapeHtml(feedbackReason)}</i>`
+          : `❌ <b>Suggestion rejected by operator</b>`;
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            text: finalText,
+            parse_mode: "HTML",
+            reply_markup: { inline_keyboard: [] },
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "feedback_recorded", reason: feedbackReason, item_id: targetItemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const isApproval =
+    actionCode === "ac" ||
+    actionCode === "ap" ||
+    actionCode === "ar" ||
+    actionCode === "apv" ||
+    actionCode === "acon";
+  const isRejection =
+    actionCode === "cf_rej" ||
+    actionCode === "rc" ||
+    actionCode === "rp" ||
+    actionCode === "rr" ||
+    actionCode === "rej" ||
+    actionCode === "rcon";
 
   if (!isApproval && !isRejection) {
     return new Response("Unknown action code", { status: 400 });
@@ -639,9 +970,6 @@ export async function handleTelegramWebhook(
 
   // Fast-path: Handle rejections directly inside Cloudflare Worker via KV without GitHub Actions
   if (isRejection && env.LINKEDIN_AGENT_KV) {
-    const targetChatId = cb.message?.chat.id ?? authorizedId;
-    const targetMessageId = cb.message?.message_id ?? null;
-
     // 1. Determine action_type from pending item if present
     let actionType = "approve_comment";
     if (actionCode === "rp") {
@@ -739,8 +1067,12 @@ export async function handleTelegramWebhook(
       }).catch(() => {})
     );
 
-    // 5. Edit Telegram message to "❌ Suggestion rejected" and remove inline keyboard
+    // 6. Edit Telegram message to show rejection and offer optional feedback tags
     if (targetMessageId) {
+      const rejectionPromptHtml =
+        `<b>${escapeHtml(rejectionLabel)}</b>\n\n` +
+        `<i>Why was this suggestion rejected? (Optional feedback):</i>`;
+
       ctx.waitUntil(
         fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: "POST",
@@ -748,8 +1080,9 @@ export async function handleTelegramWebhook(
           body: JSON.stringify({
             chat_id: targetChatId,
             message_id: targetMessageId,
-            text: rejectionLabel,
-            reply_markup: { inline_keyboard: [] },
+            text: rejectionPromptHtml,
+            parse_mode: "HTML",
+            reply_markup: getRejectionFeedbackKeyboard(itemId),
           }),
         }).catch(() => {})
       );
@@ -787,8 +1120,6 @@ export async function handleTelegramWebhook(
 
   // 5. Dispatch GitHub Actions repository_dispatch event
   const dispatchUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
-  const targetChatId = cb.message?.chat.id ?? authorizedId;
-  const targetMessageId = cb.message?.message_id ?? null;
 
   const clientPayload = {
     action,

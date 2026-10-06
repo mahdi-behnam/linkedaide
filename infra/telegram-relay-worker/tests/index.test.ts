@@ -389,7 +389,7 @@ describe("Telegram Relay Worker", () => {
       });
 
       it.each([
-        ["reg", "regenerate_prompted", "preferred tone or new draft"],
+        ["reg", "tone_menu_displayed", "draft tone style"],
         ["ed", "edit_prompted", "revised draft text"],
         ["edit", "edit_prompted", "revised draft text"],
       ])("handles '%s' callback by answering callback query with guidance", async (code, expectedStatus, expectedTextMatch) => {
@@ -1415,6 +1415,326 @@ describe("Telegram Relay Worker", () => {
 
         const updated = JSON.parse(kvStore.get("pending:item_msg_104")!);
         expect(updated.draft_text).toBe(mockRewritten);
+      });
+    });
+
+    describe("Phase 1 Interactive Rejection Confirmation & Dynamic Tone Menus", () => {
+      it("handles 'ask_rej' by prompting for rejection confirmation without deleting state", async () => {
+        let editedMarkup: any = null;
+        let answeredText = "";
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("answerCallbackQuery")) {
+            answeredText = JSON.parse(opts.body).text;
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("editMessageReplyMarkup")) {
+            editedMarkup = JSON.parse(opts.body).reply_markup;
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("{}", { status: 200 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_confirm_1",
+          JSON.stringify({ item_id: "item_confirm_1", action_type: "approve_comment" })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 120,
+          callback_query: {
+            id: "cb_ask_rej_1",
+            from: { id: 987654321 },
+            message: { message_id: 777, chat: { id: 987654321 } },
+            data: "ask_rej:item_confirm_1",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("reject_confirmation_prompted");
+        expect(json.item_id).toBe("item_confirm_1");
+
+        // Pending item is NOT deleted
+        expect(kvStore.has("pending:item_confirm_1")).toBe(true);
+
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+        expect(answeredText).toContain("Confirm rejection");
+        expect(editedMarkup).toBeDefined();
+        expect(editedMarkup.inline_keyboard[0][0].callback_data).toBe("cf_rej:item_confirm_1");
+        expect(editedMarkup.inline_keyboard[0][1].callback_data).toBe("cx_rej:item_confirm_1");
+      });
+
+      it("handles 'cx_rej' by cancelling rejection and restoring suggestion keyboard", async () => {
+        let editedMarkup: any = null;
+        let answeredText = "";
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("answerCallbackQuery")) {
+            answeredText = JSON.parse(opts.body).text;
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("editMessageReplyMarkup")) {
+            editedMarkup = JSON.parse(opts.body).reply_markup;
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("{}", { status: 200 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_cancel_1",
+          JSON.stringify({ item_id: "item_cancel_1", action_type: "approve_comment" })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 121,
+          callback_query: {
+            id: "cb_cx_rej_1",
+            from: { id: 987654321 },
+            message: { message_id: 778, chat: { id: 987654321 } },
+            data: "cx_rej:item_cancel_1",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("reject_cancelled");
+
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+        expect(answeredText).toContain("Rejection cancelled");
+        expect(editedMarkup).toBeDefined();
+        expect(editedMarkup.inline_keyboard[0][0].callback_data).toBe("ac:item_cancel_1");
+        expect(editedMarkup.inline_keyboard[0][1].callback_data).toBe("ask_rej:item_cancel_1");
+      });
+
+      it("handles 'cf_rej' by deleting KV item and presenting feedback buttons", async () => {
+        let editedBody: any = null;
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("editMessageText")) {
+            editedBody = JSON.parse(opts.body);
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("{}", { status: 200 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_cf_1",
+          JSON.stringify({ item_id: "item_cf_1", action_type: "approve_comment" })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 122,
+          callback_query: {
+            id: "cb_cf_rej_1",
+            from: { id: 987654321 },
+            message: { message_id: 779, chat: { id: 987654321 } },
+            data: "cf_rej:item_cf_1",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("rejected_via_kv");
+        expect(kvStore.has("pending:item_cf_1")).toBe(false);
+
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+        expect(editedBody).toBeDefined();
+        expect(editedBody.text).toContain("Why was this suggestion rejected?");
+        expect(editedBody.reply_markup.inline_keyboard[0][0].callback_data).toBe("fb:generic:item_cf_1");
+        expect(editedBody.reply_markup.inline_keyboard[2][0].callback_data).toBe("fb:skip:item_cf_1");
+      });
+
+      it("handles 'fb:generic' by saving feedback in KV and clearing keyboard", async () => {
+        let editedBody: any = null;
+        let answeredText = "";
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("answerCallbackQuery")) {
+            answeredText = JSON.parse(opts.body).text;
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("editMessageText")) {
+            editedBody = JSON.parse(opts.body);
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("{}", { status: 200 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 123,
+          callback_query: {
+            id: "cb_fb_1",
+            from: { id: 987654321 },
+            message: { message_id: 780, chat: { id: 987654321 } },
+            data: "fb:generic:item_fb_1",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("feedback_recorded");
+        expect(json.reason).toBe("generic");
+
+        // Verify stored in KV
+        const savedFb = JSON.parse(kvStore.get("rejection_feedback")!);
+        expect(savedFb).toHaveLength(1);
+        expect(savedFb[0].reason).toBe("generic");
+
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+        expect(answeredText).toContain("Feedback saved (generic)");
+        expect(editedBody.reply_markup.inline_keyboard).toEqual([]);
+      });
+
+      it("handles 'tone:contrarian' callback by rewriting draft with LLM and updating card", async () => {
+        let editedBody: any = null;
+        let answeredText = "";
+        const mockRewritten = "Actually, multi-agent frameworks introduce unbounded token loops unless constrained.";
+
+        const fetchMock = vi.fn().mockImplementation(async (url: string, opts: any) => {
+          if (url.includes("/chat/completions")) {
+            return new Response(
+              JSON.stringify({
+                choices: [{ message: { content: mockRewritten } }],
+              }),
+              { status: 200 }
+            );
+          }
+          if (url.includes("answerCallbackQuery")) {
+            answeredText = JSON.parse(opts.body).text;
+            return new Response("{}", { status: 200 });
+          }
+          if (url.includes("editMessageText")) {
+            editedBody = JSON.parse(opts.body);
+            return new Response("{}", { status: 200 });
+          }
+          return new Response("{}", { status: 200 });
+        });
+        globalThis.fetch = fetchMock;
+
+        const kvStore = new Map<string, string>();
+        kvStore.set(
+          "pending:item_tone_cb_1",
+          JSON.stringify({
+            item_id: "item_tone_cb_1",
+            action_type: "approve_comment",
+            draft_text: "Original draft",
+            author_name: "Tech Leader",
+          })
+        );
+
+        const mockKv = {
+          get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+          put: vi.fn(async (key: string, val: string) => {
+            kvStore.set(key, val);
+          }),
+          delete: vi.fn(async (key: string) => {
+            kvStore.delete(key);
+          }),
+        };
+
+        const envWithKv: Env = {
+          ...mockEnv,
+          NVIDIA_NIM_API_KEY: "test-nim-key",
+          LINKEDIN_AGENT_KV: mockKv as any,
+        };
+
+        const req = makeRequest({
+          update_id: 124,
+          callback_query: {
+            id: "cb_tone_sel_1",
+            from: { id: 987654321 },
+            message: { message_id: 781, chat: { id: 987654321 } },
+            data: "tone:contrarian:item_tone_cb_1",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("draft_updated");
+        expect(json.tone).toBe("contrarian");
+
+        const updatedPending = JSON.parse(kvStore.get("pending:item_tone_cb_1")!);
+        expect(updatedPending.draft_text).toBe(mockRewritten);
+
+        await Promise.all(ctx.waitUntil.mock.calls.map(([p]) => p));
+        expect(answeredText).toContain("contrarian");
+        expect(editedBody.text).toContain(mockRewritten);
+        expect(editedBody.reply_markup.inline_keyboard[0][0].callback_data).toBe("ac:item_tone_cb_1");
       });
     });
   });

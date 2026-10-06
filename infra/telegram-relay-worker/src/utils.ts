@@ -149,11 +149,11 @@ export function formatPendingCardHtml(item: Record<string, any>, editNote?: stri
   }
 
   if (item.post_excerpt && !isPost) {
-    lines.push(`<b>Context:</b>\n<blockquote>${escapeHtml(item.post_excerpt)}</blockquote>`);
+    lines.push(`<b>Context:</b>\n<blockquote expandable>${escapeHtml(item.post_excerpt)}</blockquote>`);
   }
 
   const content = item.draft_text || item.note || item.text || "";
-  lines.push(`<b>Drafted Content:</b>\n<blockquote>${escapeHtml(content)}</blockquote>`);
+  lines.push(`<b>Drafted Content:</b>\n<blockquote expandable>${escapeHtml(content)}</blockquote>`);
 
   const charCount = content.length;
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
@@ -171,27 +171,92 @@ export function formatPendingCardHtml(item: Record<string, any>, editNote?: stri
 export function getSuggestionKeyboard(itemId: string, actionType: string = "approve_comment") {
   const cleanId = itemId.trim();
   let approveCode = "ac";
-  let rejectCode = "rc";
   if (actionType === "approve_post" || actionType === "post") {
     approveCode = "ap";
-    rejectCode = "rp";
   } else if (actionType === "approve_reply" || actionType === "reply") {
     approveCode = "ar";
-    rejectCode = "rr";
   } else if (actionType === "approve_connection" || actionType === "connection") {
     approveCode = "acon";
-    rejectCode = "rcon";
   }
 
   return {
     inline_keyboard: [
       [
         { text: "✅ Approve", callback_data: `${approveCode}:${cleanId}` },
-        { text: "❌ Reject", callback_data: `${rejectCode}:${cleanId}` },
+        { text: "❌ Reject", callback_data: `ask_rej:${cleanId}` },
       ],
       [
         { text: "🔄 Regenerate", callback_data: `reg:${cleanId}` },
         { text: "✏️ Edit", callback_data: `edit:${cleanId}` },
+      ],
+    ],
+  };
+}
+
+/** Constructs rejection confirmation inline keyboard markup */
+export function getRejectConfirmKeyboard(itemId: string, actionType: string = "approve_comment") {
+  const cleanId = itemId.trim();
+  return {
+    inline_keyboard: [
+      [
+        { text: "❌ Yes, Reject", callback_data: `cf_rej:${cleanId}` },
+        { text: "🔙 Cancel / Keep", callback_data: `cx_rej:${cleanId}` },
+      ],
+    ],
+  };
+}
+
+/** Constructs post-rejection feedback tags inline keyboard markup */
+export function getRejectionFeedbackKeyboard(itemId: string) {
+  const cleanId = itemId.trim();
+  return {
+    inline_keyboard: [
+      [
+        { text: "🤖 Too Generic", callback_data: `fb:generic:${cleanId}` },
+        { text: "🥱 Boring", callback_data: `fb:boring:${cleanId}` },
+      ],
+      [
+        { text: "⚠️ Too Risky", callback_data: `fb:risky:${cleanId}` },
+        { text: "🚫 Off-Topic", callback_data: `fb:offtopic:${cleanId}` },
+      ],
+      [
+        { text: "⏩ Done / Skip", callback_data: `fb:skip:${cleanId}` },
+      ],
+    ],
+  };
+}
+
+/** Constructs dynamic inline tone picker keyboard aligned with desktop app */
+export function getTonePickerKeyboard(itemId: string, actionType: string = "approve_comment") {
+  const cleanId = itemId.trim();
+  const isConn = actionType === "approve_connection" || actionType === "connection";
+  if (isConn) {
+    return {
+      inline_keyboard: [
+        [
+          { text: "☕ Casual", callback_data: `tone:casual:${cleanId}` },
+          { text: "🔬 Technical", callback_data: `tone:technical:${cleanId}` },
+        ],
+        [
+          { text: "✂️ Concise", callback_data: `tone:concise:${cleanId}` },
+          { text: "🔙 Back to Review", callback_data: `back:${cleanId}` },
+        ],
+      ],
+    };
+  }
+
+  return {
+    inline_keyboard: [
+      [
+        { text: "🔬 Technical", callback_data: `tone:technical:${cleanId}` },
+        { text: "❓ Inquisitive", callback_data: `tone:inquisitive:${cleanId}` },
+      ],
+      [
+        { text: "⚡ Contrarian", callback_data: `tone:contrarian:${cleanId}` },
+        { text: "✂️ Shorter", callback_data: `tone:shorter:${cleanId}` },
+      ],
+      [
+        { text: "🔙 Back to Review", callback_data: `back:${cleanId}` },
       ],
     ],
   };

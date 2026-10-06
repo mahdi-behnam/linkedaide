@@ -757,7 +757,7 @@ export async function handlePostEvent(request: Request, _env: Env): Promise<Resp
     return jsonResponse({ error: "Field 'type' is required and must be a non-empty string" }, 400);
   }
 
-  broadcastEvent(body);
+  broadcastEvent(body as { type: string; [key: string]: any });
 
   return jsonResponse({
     success: true,
