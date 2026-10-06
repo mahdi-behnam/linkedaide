@@ -211,7 +211,36 @@ def run_outreach(
             print_fn=print_fn,
         )
 
-    # 4. Default: List candidates
+    # 4. Scout targeted connection candidates
+    if (
+        getattr(args, "scout", False)
+        or getattr(args, "role", None)
+        or getattr(args, "profile", None)
+    ):
+        from agent.orchestration.connection_scout_flow import run_connection_scout_flow
+
+        res = asyncio.run(
+            run_connection_scout_flow(
+                role=getattr(args, "role", None),
+                keyword=getattr(args, "keyword", None),
+                profile_url=getattr(args, "profile", None),
+                target_name=getattr(args, "name", None),
+                custom_note=getattr(args, "note", None),
+                limit=getattr(args, "limit", 5),
+                dry_run=getattr(args, "dry_run", False),
+                settings=cfg,
+                repo_root=root,
+                store=state_store,
+            )
+        )
+        count = res.get("count", 0)
+        print_fn(
+            f"Connection scout completed: {count} new candidate(s) ingested into queue "
+            f"(status: {res.get('status')})."
+        )
+        return 0
+
+    # 5. Default: List candidates
     status_filter = getattr(args, "status", None)
     list_outreach_candidates(queue=queue, status_filter=status_filter, print_fn=print_fn)
     return 0

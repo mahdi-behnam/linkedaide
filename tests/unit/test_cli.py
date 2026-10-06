@@ -1049,3 +1049,60 @@ def test_main_outreach_dispatch() -> None:
         main(["outreach", "--list"])
     assert exc.value.code == 0
     mock_outreach.assert_called_once()
+
+
+def test_build_parser_scout_connections() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "scout-connections",
+            "--role",
+            "Staff Engineer",
+            "--keyword",
+            "Distributed Systems",
+            "--limit",
+            "4",
+            "--dry-run",
+        ]
+    )
+    assert args.command == "scout-connections"
+    assert args.role == "Staff Engineer"
+    assert args.keyword == "Distributed Systems"
+    assert args.limit == 4
+    assert args.dry_run is True
+
+
+def test_run_scout_connections_success() -> None:
+    from agent.cli import run_scout_connections
+
+    args = argparse.Namespace(
+        role="Principal AI Architect",
+        keyword="LangGraph",
+        profile=None,
+        name=None,
+        note="Hi, let's connect!",
+        limit=2,
+        dry_run=True,
+        repo_root=None,
+    )
+
+    with patch("agent.orchestration.connection_scout_flow.run_connection_scout_flow") as mock_scout:
+        mock_scout.return_value = {
+            "status": "success",
+            "count": 2,
+            "candidates": [],
+            "dry_run": True,
+        }
+        code = run_scout_connections(args)
+        assert code == 0
+        mock_scout.assert_called_once()
+
+
+def test_main_scout_connections_dispatch() -> None:
+    with (
+        patch("agent.cli.run_scout_connections", return_value=0) as mock_dispatch,
+        pytest.raises(SystemExit) as exc,
+    ):
+        main(["scout-connections", "--role", "Engineering Director"])
+    assert exc.value.code == 0
+    mock_dispatch.assert_called_once()

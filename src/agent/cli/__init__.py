@@ -142,6 +142,38 @@ def run_thread_monitor(args: argparse.Namespace) -> int:
         return 1
 
 
+def run_scout_connections(args: argparse.Namespace) -> int:
+    """Execute targeted LinkedIn connection scouting."""
+    from agent.orchestration.connection_scout_flow import run_connection_scout_flow
+
+    cfg = load_settings()
+    repo_root = Path(args.repo_root) if getattr(args, "repo_root", None) else None
+    dry_run = getattr(args, "dry_run", False)
+
+    try:
+        res = asyncio.run(
+            run_connection_scout_flow(
+                role=getattr(args, "role", None),
+                keyword=getattr(args, "keyword", None),
+                profile_url=getattr(args, "profile", None),
+                target_name=getattr(args, "name", None),
+                custom_note=getattr(args, "note", None),
+                limit=getattr(args, "limit", 5),
+                dry_run=dry_run,
+                settings=cfg,
+                repo_root=repo_root,
+            )
+        )
+        print(
+            f"✅ Ingested {res.get('count', 0)} connection candidate(s) into queue "
+            f"(status: {res.get('status')}, dry_run: {res.get('dry_run')})"
+        )
+        return 0
+    except Exception as err:
+        print(f"Fatal Scout Connections error: {err}", file=sys.stderr)
+        return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the top-level CLI parser."""
     parser = argparse.ArgumentParser(
@@ -262,11 +294,52 @@ def build_parser() -> argparse.ArgumentParser:
         help="Filter listed candidates by lifecycle status",
     )
     outreach_parser.add_argument(
+        "--scout",
+        action="store_true",
+        help="Scout and ingest targeted connection candidates",
+    )
+    outreach_parser.add_argument("--role", default=None, help="Target professional role")
+    outreach_parser.add_argument("--keyword", default=None, help="Focus keyword")
+    outreach_parser.add_argument("--profile", default=None, help="Direct profile URL to ingest")
+    outreach_parser.add_argument("--name", default=None, help="Target person name")
+    outreach_parser.add_argument("--note", default=None, help="Custom connection note template")
+    outreach_parser.add_argument(
+        "--limit", type=int, default=5, help="Candidate ingestion limit (default: 5)"
+    )
+    outreach_parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Execute approval in dry-run mode (prevents live LinkedIn writes)",
     )
     outreach_parser.add_argument("--repo-root", default=None, help="Root repository path")
+
+    # scout-connections
+    scout_conn_parser = subparsers.add_parser(
+        "scout-connections",
+        help="Scout and ingest targeted connection outreach candidates into HITL queue",
+    )
+    scout_conn_parser.add_argument(
+        "--role", default=None, help="Target professional role (e.g. 'Staff Engineer')"
+    )
+    scout_conn_parser.add_argument(
+        "--keyword", default=None, help="Domain or technology focus keyword (e.g. 'LangGraph')"
+    )
+    scout_conn_parser.add_argument(
+        "--profile", default=None, help="Direct LinkedIn profile URL to ingest"
+    )
+    scout_conn_parser.add_argument("--name", default=None, help="Target person name")
+    scout_conn_parser.add_argument(
+        "--note", default=None, help="Custom connection request note template"
+    )
+    scout_conn_parser.add_argument(
+        "--limit", type=int, default=5, help="Candidate ingestion limit (default: 5)"
+    )
+    scout_conn_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview candidate generation without persisting to state",
+    )
+    scout_conn_parser.add_argument("--repo-root", default=None, help="Root repository path")
 
     return parser
 
@@ -300,6 +373,8 @@ def main(argv: list[str] | None = None) -> None:
         exit_code = run_thread_monitor(args)
     elif args.command == "outreach":
         exit_code = run_outreach(args)
+    elif args.command == "scout-connections":
+        exit_code = run_scout_connections(args)
     else:
         parser.print_help()
         exit_code = 1
@@ -317,6 +392,7 @@ __all__ = [
     "run_outreach",
     "run_poll",
     "run_scout",
+    "run_scout_connections",
     "run_setup",
     "run_thread_monitor",
 ]

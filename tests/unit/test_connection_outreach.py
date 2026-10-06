@@ -371,3 +371,103 @@ class TestActionExecutorConnectionInvitation:
                 item_id="item1", timeout=0.05, poll_interval=0.01
             )
         assert "could not be verified" in str(exc_info.value)
+
+
+class TestConnectionScoutFlow:
+    """Tests for run_connection_scout_flow ingestion and deduplication."""
+
+    @pytest.mark.asyncio
+    async def test_scout_flow_direct_profile(self, test_settings: Settings) -> None:
+        from agent.orchestration.connection_scout_flow import run_connection_scout_flow
+
+        mock_store = MagicMock()
+        mock_store.load_connection_queue.return_value = []
+        live_settings = test_settings.model_copy(update={"dry_run": False})
+
+        result = await run_connection_scout_flow(
+            profile_url="https://www.linkedin.com/in/alex-smith/",
+            target_name="Alex Smith",
+            role="Principal Engineer",
+            keyword="Kubernetes",
+            custom_note="Hello Alex, would love to connect!",
+            settings=live_settings,
+            store=mock_store,
+        )
+
+        assert result["status"] == "success"
+        assert result["count"] == 1
+        cand = result["candidates"][0]
+        assert cand.target_name == "Alex Smith"
+        assert cand.profile_url == "https://www.linkedin.com/in/alex-smith/"
+        assert cand.note_text == "Hello Alex, would love to connect!"
+        assert cand.status == "pending"
+        mock_store.add_connection_candidate.assert_called_once_with(cand)
+
+    @pytest.mark.asyncio
+    async def test_scout_flow_role_and_keyword(self, test_settings: Settings) -> None:
+        from agent.orchestration.connection_scout_flow import run_connection_scout_flow
+
+        mock_store = MagicMock()
+        mock_store.load_connection_queue.return_value = []
+        live_settings = test_settings.model_copy(update={"dry_run": False})
+
+        result = await run_connection_scout_flow(
+            role="Staff Engineer",
+            keyword="Distributed Systems",
+            limit=3,
+            settings=live_settings,
+            store=mock_store,
+        )
+
+        assert result["status"] == "success"
+        assert result["count"] == 3
+        assert len(result["candidates"]) == 3
+        assert mock_store.add_connection_candidate.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_scout_flow_deduplication(self, test_settings: Settings) -> None:
+        from agent.orchestration.connection_scout_flow import (
+            build_candidate_id,
+            run_connection_scout_flow,
+        )
+
+        existing_url = "https://www.linkedin.com/in/already-queued/"
+        existing_cand = ConnectionRequestAction(
+            id=build_candidate_id(existing_url),
+            profile_url=existing_url,
+            target_name="Existing Candidate",
+            status="pending",
+        )
+        mock_store = MagicMock()
+        mock_store.load_connection_queue.return_value = [existing_cand]
+
+        result = await run_connection_scout_flow(
+            profile_url=existing_url,
+            settings=test_settings,
+            store=mock_store,
+        )
+
+        assert result["status"] == "already_queued"
+        assert result["count"] == 0
+        mock_store.add_connection_candidate.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_scout_flow_dry_run_does_not_persist(self, test_settings: Settings) -> None:
+        from agent.orchestration.connection_scout_flow import run_connection_scout_flow
+
+        mock_store = MagicMock()
+        mock_store.load_connection_queue.return_value = []
+
+        result = await run_connection_scout_flow(
+            role="ML Researcher",
+            keyword="Transformers",
+            limit=2,
+            dry_run=True,
+            settings=test_settings,
+            store=mock_store,
+        )
+
+        assert result["status"] == "success"
+        assert result["count"] == 2
+        assert result["dry_run"] is True
+        mock_store.add_connection_candidate.assert_not_called()
