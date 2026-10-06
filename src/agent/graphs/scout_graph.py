@@ -306,6 +306,7 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
             confidence=triage.confidence,
             reasoning=triage.reasoning,
             engagement_style=draft.engagement_style or triage.engagement_style,
+            post_image_url=post.image_url,
             telegram_chat_id=context.settings.telegram_authorized_chat_id,
             telegram_message_id=0,
         )

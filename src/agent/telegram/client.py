@@ -77,8 +77,51 @@ class TelegramClient:
         """Format an action suggestion card with rich HTML styling."""
         return format_suggestion_card(item)
 
+    async def send_photo(
+        self,
+        chat_id: int,
+        photo_url: str,
+        caption: str = "",
+        reply_markup: dict[str, Any] | None = None,
+    ) -> int:
+        """Send a photo with caption and optional reply markup to Telegram.
+
+        Args:
+            chat_id: Target Telegram chat ID.
+            photo_url: HTTPS URL or file_id of the photo.
+            caption: HTML formatted caption (max 1024 characters).
+            reply_markup: Optional inline or reply keyboard markup.
+
+        Returns:
+            Telegram message_id of the sent photo message.
+
+        Raises:
+            TelegramAPIError: If the API call fails or returns an error.
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "photo": photo_url,
+            "caption": caption[:1024],
+            "parse_mode": "HTML",
+        }
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+
+        data = await self._post("sendPhoto", payload)
+        result = data.get("result")
+        message_id = result.get("message_id") if isinstance(result, dict) else None
+        if not message_id or not isinstance(message_id, int):
+            raise TelegramAPIError(
+                f"Telegram sendPhoto response missing integer message_id: {data}"
+            )
+        return message_id
+
     async def send_suggestion(self, item: PendingAction) -> int:
         """Send an action approval suggestion to the authorized Telegram chat.
+
+        If the item includes a post image and the formatted card fits Telegram's
+        1024-character caption limit, delivers as a photo preview with automatic
+        HTML fallback.
 
         Args:
             item: PendingAction record with context, draft text, and item ID.
@@ -91,6 +134,30 @@ class TelegramClient:
         """
         message_text = build_suggestion_message(item)
         keyboard = build_suggestion_keyboard(item.item_id, item.action_type)
+
+        image_url = getattr(item, "post_image_url", None)
+        if not image_url and item.media_attachments:
+            for m in item.media_attachments:
+                if m.media_type == "image" and m.file_url and m.file_url.startswith("http"):
+                    image_url = m.file_url
+                    break
+
+        if image_url and image_url.startswith("http") and len(message_text) <= 1024:
+            try:
+                msg_id = await self.send_photo(
+                    chat_id=self._settings.telegram_authorized_chat_id,
+                    photo_url=image_url,
+                    caption=message_text,
+                    reply_markup=keyboard,
+                )
+                logger.info(
+                    f"Sent Telegram photo suggestion for item '{item.item_id}' (message_id={msg_id})"
+                )
+                return msg_id
+            except Exception as err:
+                logger.warning(
+                    f"sendPhoto failed for item '{item.item_id}', falling back to sendMessage: {err}"
+                )
 
         payload: dict[str, Any] = {
             "chat_id": self._settings.telegram_authorized_chat_id,

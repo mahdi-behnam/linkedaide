@@ -55,6 +55,10 @@ class PendingAction(BaseModel):
         default_factory=list,
         description="Optional media attachments for original posts",
     )
+    post_image_url: str | None = Field(
+        default=None,
+        description="Direct URL of image attached to target post",
+    )
 
 
 class MediaAttachment(BaseModel):

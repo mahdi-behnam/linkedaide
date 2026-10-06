@@ -1674,3 +1674,81 @@ class TestTelegramCallbacks:
             assert res_valid is True
             assert len(recorded_requests) == 2
 
+
+class TestTelegramPhotoSuggestions:
+    """Tests for post media photo previews and fallback behavior."""
+
+    @pytest.mark.asyncio
+    async def test_send_photo_success(self, mock_settings: Settings) -> None:
+        sent_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9991}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = TelegramClient(mock_settings, http_client=http_client)
+            msg_id = await client.send_photo(
+                chat_id=987654321,
+                photo_url="https://media.licdn.com/image.jpg",
+                caption="<b>Photo caption</b>",
+            )
+            assert msg_id == 9991
+            assert len(sent_requests) == 1
+            assert "sendPhoto" in sent_requests[0]["path"]
+            assert sent_requests[0]["payload"]["photo"] == "https://media.licdn.com/image.jpg"
+            assert sent_requests[0]["payload"]["caption"] == "<b>Photo caption</b>"
+
+    @pytest.mark.asyncio
+    async def test_send_suggestion_with_post_image_calls_send_photo(
+        self, mock_settings: Settings, sample_pending_action: PendingAction
+    ) -> None:
+        action_with_image = sample_pending_action.model_copy(
+            update={"post_image_url": "https://media.licdn.com/infographic.png"}
+        )
+        sent_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9992}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = TelegramClient(mock_settings, http_client=http_client)
+            msg_id = await client.send_suggestion(action_with_image)
+            assert msg_id == 9992
+            assert len(sent_requests) == 1
+            assert "sendPhoto" in sent_requests[0]["path"]
+            assert (
+                sent_requests[0]["payload"]["photo"]
+                == "https://media.licdn.com/infographic.png"
+            )
+
+    @pytest.mark.asyncio
+    async def test_send_suggestion_with_post_image_fallback_to_send_message(
+        self, mock_settings: Settings, sample_pending_action: PendingAction
+    ) -> None:
+        action_with_image = sample_pending_action.model_copy(
+            update={"post_image_url": "https://media.licdn.com/broken.png"}
+        )
+        sent_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_requests.append({"path": request.url.path, "payload": data})
+            if "sendPhoto" in request.url.path:
+                return httpx.Response(400, json={"ok": False, "description": "PHOTO_INVALID"})
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 9993}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = TelegramClient(mock_settings, http_client=http_client)
+            msg_id = await client.send_suggestion(action_with_image)
+            assert msg_id == 9993
+            assert len(sent_requests) == 2
+            assert "sendPhoto" in sent_requests[0]["path"]
+            assert "sendMessage" in sent_requests[1]["path"]
+
