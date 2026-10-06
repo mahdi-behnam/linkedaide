@@ -935,5 +935,57 @@ describe("Authenticated Worker REST API Suite", () => {
       );
     });
   });
+
+  describe("POST /api/event - Runner Event Webhook", () => {
+    it("rejects unauthorized requests with 401", async () => {
+      const req = new Request("https://worker.test/api/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "action_executed" }),
+      });
+      const ctx = createMockContext();
+      const res = await worker.fetch(req, mockEnv, ctx as any);
+      expect(res.status).toBe(401);
+    });
+
+    it("rejects non-POST method with 405", async () => {
+      const req = makeApiRequest("/api/event", { method: "GET" });
+      const ctx = createMockContext();
+      const res = await worker.fetch(req, mockEnv, ctx as any);
+      expect(res.status).toBe(405);
+    });
+
+    it("rejects missing or empty type field with 400", async () => {
+      const req = makeApiRequest("/api/event", {
+        method: "POST",
+        body: { item_id: "123" },
+      });
+      const ctx = createMockContext();
+      const res = await worker.fetch(req, mockEnv, ctx as any);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data).toHaveProperty("error");
+    });
+
+    it("successfully broadcasts valid event payload and returns 200", async () => {
+      const eventPayload = {
+        type: "action_executed",
+        item_id: "act-456",
+        status: "executed_success",
+        action: "approve_comment",
+      };
+      const req = makeApiRequest("/api/event", {
+        method: "POST",
+        body: eventPayload,
+      });
+      const ctx = createMockContext();
+      const res = await worker.fetch(req, mockEnv, ctx as any);
+      expect(res.status).toBe(200);
+      const data: any = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.broadcasted).toBe(true);
+      expect(data.event).toEqual(eventPayload);
+    });
+  });
 });
 

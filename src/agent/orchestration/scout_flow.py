@@ -23,6 +23,7 @@ from agent.graphs.scout_graph import build_scout_graph
 from agent.graphs.state import GraphContext, ScoutState
 from agent.llm.service import LLMService
 from agent.logging import setup_logging
+from agent.orchestration.worker_notifier import notify_worker_event
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state import get_state_store
@@ -129,13 +130,22 @@ async def run_scout_flow(
                 except Exception:
                     pass
 
+            dict_result = cast(dict[str, Any], result)
             logger.info(
                 "Scout flow finished with status: %s (suggestions: %d, errors: %d)",
-                result.get("status"),
-                len(result.get("pending_items", [])),
-                len(result.get("errors", [])),
+                dict_result.get("status"),
+                len(dict_result.get("pending_items", [])),
+                len(dict_result.get("errors", [])),
             )
-            return cast(dict[str, Any], result)
+            await notify_worker_event(
+                cfg,
+                "queue_updated",
+                {
+                    "status": dict_result.get("status"),
+                    "suggestions_count": len(dict_result.get("pending_items", [])),
+                },
+            )
+            return dict_result
         finally:
             await browser.close()
 

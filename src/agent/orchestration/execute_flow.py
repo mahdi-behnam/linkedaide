@@ -19,6 +19,7 @@ from agent.graphs.execute_graph import build_execute_graph
 from agent.graphs.state import ExecuteState, GraphContext
 from agent.llm.voice_memory import VoiceMemoryStore
 from agent.logging import setup_logging
+from agent.orchestration.worker_notifier import notify_worker_event
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state import get_state_store
@@ -101,7 +102,17 @@ async def run_execute_flow(
         result = await graph.ainvoke(
             initial_state, config={"configurable": {"context": graph_context}}
         )
-        return cast(dict[str, Any], result)
+        dict_result = cast(dict[str, Any], result)
+        await notify_worker_event(
+            cfg,
+            "action_executed",
+            {
+                "item_id": iid,
+                "action": "reject",
+                "status": dict_result.get("status"),
+            },
+        )
+        return dict_result
 
     # Live or Dry-run browser execution
     storage_state_path = ensure_session_file(cfg)
@@ -128,8 +139,18 @@ async def run_execute_flow(
             result = await graph.ainvoke(
                 initial_state, config={"configurable": {"context": graph_context}}
             )
-            logger.info("Execute flow completed with status: %s", result.get("status"))
-            return cast(dict[str, Any], result)
+            dict_result = cast(dict[str, Any], result)
+            logger.info("Execute flow completed with status: %s", dict_result.get("status"))
+            await notify_worker_event(
+                cfg,
+                "action_executed",
+                {
+                    "item_id": iid,
+                    "action": act,
+                    "status": dict_result.get("status"),
+                },
+            )
+            return dict_result
         finally:
             await browser.close()
 

@@ -741,6 +741,31 @@ export async function handleGetMedia(
   });
 }
 
+export async function handlePostEvent(request: Request, _env: Env): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method Not Allowed" }, 405);
+  }
+
+  let body: { type?: string; [key: string]: unknown };
+  try {
+    body = (await request.json()) as { type?: string; [key: string]: unknown };
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (!body || typeof body.type !== "string" || !body.type.trim()) {
+    return jsonResponse({ error: "Field 'type' is required and must be a non-empty string" }, 400);
+  }
+
+  broadcastEvent(body);
+
+  return jsonResponse({
+    success: true,
+    broadcasted: true,
+    event: body,
+  });
+}
+
 export async function handleApiRequest(
   request: Request,
   env: Env,
@@ -772,6 +797,9 @@ export async function handleApiRequest(
 
   if (pathname === "/api/state") {
     return handleGetState(request, env);
+  }
+  if (pathname === "/api/event") {
+    return handlePostEvent(request, env);
   }
   if (pathname === "/api/action") {
     return handlePostAction(request, env, ctx);
