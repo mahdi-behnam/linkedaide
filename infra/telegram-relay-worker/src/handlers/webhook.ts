@@ -451,7 +451,7 @@ export async function handleTelegramWebhook(
         const reply =
           "✅ <b>Circuit Breaker Reset</b>\n\n" +
           "The active incident record has been cleared and the circuit breaker reset to normal.";
-        await sendTelegramMessage(env, chatId, reply, messageId);
+        await sendTelegramMessage(env, chatId, reply, messageId, getDockedReplyKeyboard(false));
         return new Response(
           JSON.stringify({ status: "command_handled", command: "clear_incident" }),
           { headers: { "Content-Type": "application/json" } }
@@ -537,7 +537,7 @@ export async function handleTelegramWebhook(
           `• <b>Expired / Failed:</b> ${failedCount}\n` +
           `• <b>Approval Rate:</b> <b>${approvalRate}</b>`;
 
-        await sendTelegramMessage(env, chatId, statsMsg, messageId);
+        await sendTelegramMessage(env, chatId, statsMsg, messageId, getDockedReplyKeyboard(false));
         return new Response(JSON.stringify({ status: "command_handled", command: "stats" }), {
           headers: { "Content-Type": "application/json" },
         });
@@ -553,7 +553,8 @@ export async function handleTelegramWebhook(
             env,
             chatId,
             "📭 <b>No Pending Actions</b>\n\nThere are no actions currently awaiting review.",
-            messageId
+            messageId,
+            getDockedReplyKeyboard(false)
           );
           return new Response(
             JSON.stringify({ status: "command_handled", command: "pending", count: 0 }),
@@ -593,7 +594,7 @@ export async function handleTelegramWebhook(
         }
         lines.push(`\n<i>Reply to any suggestion card or tap inline buttons to approve/reject.</i>`);
 
-        await sendTelegramMessage(env, chatId, lines.join("\n"), messageId);
+        await sendTelegramMessage(env, chatId, lines.join("\n"), messageId, getDockedReplyKeyboard(false));
         return new Response(
           JSON.stringify({ status: "command_handled", command: "pending", count: keys.length }),
           { headers: { "Content-Type": "application/json" } }
@@ -605,7 +606,8 @@ export async function handleTelegramWebhook(
             env,
             chatId,
             `💡 <b>Draft an Original Post:</b>\n\nProvide an idea or topic after <code>/post</code>.\n\n<i>Example:</i> <code>/post 3 subtle pitfalls when building production agentic loops</code>`,
-            messageId
+            messageId,
+            getDockedReplyKeyboard(false)
           );
           return new Response(JSON.stringify({ status: "command_handled", command: "post", prompt: true }), {
             headers: { "Content-Type": "application/json" },
@@ -657,7 +659,8 @@ export async function handleTelegramWebhook(
             env,
             chatId,
             `🧭 <b>On-Demand Target Scouting:</b>\n\nProvide a LinkedIn post URL after <code>/scout</code>.\n\n<i>Example:</i> <code>/scout https://www.linkedin.com/feed/update/urn:li:activity:123456789/</code>`,
-            messageId
+            messageId,
+            getDockedReplyKeyboard(false)
           );
           return new Response(JSON.stringify({ status: "command_handled", command: "scout", prompt: true }), {
             headers: { "Content-Type": "application/json" },
@@ -668,7 +671,7 @@ export async function handleTelegramWebhook(
           `🧭 <b>Target Received:</b>\n\n` +
           `Queued for on-demand scouting:\n<a href="${escapeHtml(targetUrl)}">${escapeHtml(targetUrl)}</a>\n\n` +
           `<i>The agent will evaluate this target against your focus areas and deliver a draft comment card for your review.</i>`;
-        await sendTelegramMessage(env, chatId, confirmMsg, messageId);
+        await sendTelegramMessage(env, chatId, confirmMsg, messageId, getDockedReplyKeyboard(false));
 
         if (env.GITHUB_DISPATCH_PAT && env.GITHUB_REPO_OWNER && env.GITHUB_REPO_NAME) {
           try {
@@ -695,6 +698,12 @@ export async function handleTelegramWebhook(
           JSON.stringify({ status: "command_handled", command: "scout", target_url: targetUrl }),
           { headers: { "Content-Type": "application/json" } }
         );
+      } else {
+        const unknownMsg = `❓ <b>Unknown Command:</b> <code>/${escapeHtml(cmdToken)}</code>\n\nUse the buttons below or send <code>/help</code> for available commands.`;
+        await sendTelegramMessage(env, chatId, unknownMsg, messageId, getDockedReplyKeyboard(false));
+        return new Response(JSON.stringify({ status: "command_handled", command: "unknown" }), {
+          headers: { "Content-Type": "application/json" },
+        });
       }
     }
 

@@ -10,8 +10,29 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 
 import httpx
+
+
+def _get_bot_token(provided_token: str | None = None) -> str:
+    """Retrieve bot token from arg, env, or project Settings."""
+    if provided_token:
+        return provided_token
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if token:
+        return token
+    try:
+        from agent.config import Settings
+
+        repo_root = Path(__file__).resolve().parent.parent
+        env_path = repo_root / ".env"
+        s = Settings(_env_file=env_path) if env_path.exists() else Settings()
+        if s.telegram_bot_token:
+            return s.telegram_bot_token.get_secret_value()
+    except Exception:
+        pass
+    raise ValueError("TELEGRAM_BOT_TOKEN is required.")
 
 
 def register_webhook(
@@ -20,9 +41,7 @@ def register_webhook(
     bot_token: str | None = None,
 ) -> bool:
     """Register Telegram webhook with X-Telegram-Bot-Api-Secret-Token."""
-    token = bot_token or os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not token:
-        raise ValueError("TELEGRAM_BOT_TOKEN is required.")
+    token = _get_bot_token(bot_token)
 
     api_url = f"https://api.telegram.org/bot{token}/setWebhook"
     payload = {
@@ -46,9 +65,7 @@ def register_webhook(
 
 def delete_webhook(bot_token: str | None = None) -> bool:
     """Remove configured Telegram webhook to enable long-polling mode."""
-    token = bot_token or os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not token:
-        raise ValueError("TELEGRAM_BOT_TOKEN is required.")
+    token = _get_bot_token(bot_token)
 
     api_url = f"https://api.telegram.org/bot{token}/deleteWebhook"
     resp = httpx.post(api_url, params={"drop_pending_updates": False}, timeout=15.0)
@@ -81,9 +98,7 @@ def register_bot_commands(
     commands: list[dict[str, str]] | None = None,
 ) -> bool:
     """Register official Telegram bot commands menu (setMyCommands)."""
-    token = bot_token or os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not token:
-        raise ValueError("TELEGRAM_BOT_TOKEN is required.")
+    token = _get_bot_token(bot_token)
 
     api_url = f"https://api.telegram.org/bot{token}/setMyCommands"
     bot_commands = commands or DEFAULT_BOT_COMMANDS

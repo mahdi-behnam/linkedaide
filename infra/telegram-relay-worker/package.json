@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy && uv run python ../../scripts/register_telegram_webhook.py --set-commands",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
