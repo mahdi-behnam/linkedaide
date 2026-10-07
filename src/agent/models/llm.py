@@ -32,10 +32,22 @@ class RiskFlag(StrEnum):
     CONTROVERSIAL = "controversial"
 
 
+class ReactionType(StrEnum):
+    """Supported LinkedIn reaction types."""
+
+    LIKE = "like"
+    INSIGHTFUL = "insightful"
+    CELEBRATE = "celebrate"
+    SUPPORT = "support"
+    FUNNY = "funny"
+    LOVE = "love"
+
+
 class TriageRecommendation(StrEnum):
     """Recommendation decision produced by LLM triage."""
 
     COMMENT = "comment"
+    REACT = "react"
     IGNORE = "ignore"
 
 
@@ -44,8 +56,8 @@ class TriageResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    recommendation: Literal["comment", "ignore"] = Field(
-        description="Whether to generate a comment or ignore the post"
+    recommendation: Literal["comment", "react", "ignore"] = Field(
+        description="Whether to generate a comment, leave an endorsement/reaction, or ignore the post"
     )
     confidence: float = Field(
         ge=0.0,
@@ -63,6 +75,10 @@ class TriageResult(BaseModel):
     engagement_style: EngagementStyle | None = Field(
         default=None,
         description="Recommended engagement style if commenting (technical_deep_dive, inquisitive_question, contrarian_perspective, supportive_synthesis)",
+    )
+    reaction_type: ReactionType | str | None = Field(
+        default=None,
+        description="Recommended reaction type if reacting (like, insightful, celebrate, support, funny, love)",
     )
 
 

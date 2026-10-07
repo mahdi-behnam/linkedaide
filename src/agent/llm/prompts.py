@@ -32,7 +32,18 @@ Evaluation Guidelines:
    - "low_signal": trivial, meme, or content-free posts
    - "controversial": volatile or polarizing arguments
 4. Output Requirements:
-   - recommendation: "comment" if the post is substantive and relevant to focus areas; "ignore" otherwise.
+   - recommendation:
+     * "comment" if the post is substantive, relevant, and warrants a written technical comment.
+     * "react" if the post is noteworthy, relevant, or positive (e.g. key industry news, achievement, useful benchmark, or solid tip) but does NOT warrant a written comment.
+     * "ignore" otherwise.
+   - reaction_type: when recommendation is "react", select the most appropriate reaction:
+     * "like": general agreement or acknowledgement
+     * "insightful": technical discovery, deep architectural analysis, or educational learning
+     * "celebrate": major milestone, product release, or promotion/achievement
+     * "support": community help, resilience, open-source contribution
+     * "funny": lighthearted technical humor
+     * "love": exceptional community achievement or milestone
+     When recommendation is not "react", set reaction_type to null.
    - confidence: float between 0.0 and 1.0 reflecting your confidence in this decision.
    - reasoning: concise explanation of your decision (maximum 240 characters).
    - risk_flags: list of any applicable risk flags detected.
@@ -41,7 +52,7 @@ Evaluation Guidelines:
      * "inquisitive_question": pose an incisive, thought-provoking technical question that advances architectural debate.
      * "contrarian_perspective": respectfully challenge an assumption, present alternative architectural paradigms, or highlight hidden failure modes.
      * "supportive_synthesis": reinforce the author's point by connecting it to broader industry patterns, complementary tools, or real-world scaling experience.
-     When recommendation is "ignore", set engagement_style to null.
+     When recommendation is not "comment", set engagement_style to null.
 """
 
 TRIAGE_HUMAN_PROMPT = """Evaluate this LinkedIn post:

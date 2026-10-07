@@ -8,9 +8,11 @@ from pydantic import ValidationError
 from agent.models import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_POST,
+    ACTION_CODE_APPROVE_REACTION,
     ACTION_CODE_EDIT,
     ACTION_CODE_REJECT_COMMENT,
     ACTION_CODE_REJECT_POST,
+    ACTION_CODE_REJECT_REACTION,
     CallbackDataPayload,
     CommentDraft,
     DailyCounters,
@@ -23,6 +25,7 @@ from agent.models import (
     PostIdea,
     PostIdeationContext,
     PostRecord,
+    ReactionType,
     RepositoryDispatchPayload,
     RiskFlag,
     ScheduledPost,
@@ -47,6 +50,23 @@ class TestEngagementStyle:
             "supportive_synthesis",
         }
         actual = {style.value for style in EngagementStyle}
+        assert actual == expected
+
+
+class TestReactionType:
+    """Test suite for ReactionType enum."""
+
+    def test_enum_values(self) -> None:
+        assert ReactionType.LIKE.value == "like"
+        assert ReactionType.INSIGHTFUL.value == "insightful"
+        assert ReactionType.CELEBRATE.value == "celebrate"
+        assert ReactionType.SUPPORT.value == "support"
+        assert ReactionType.FUNNY.value == "funny"
+        assert ReactionType.LOVE.value == "love"
+
+    def test_all_expected_reactions_present(self) -> None:
+        expected = {"like", "insightful", "celebrate", "support", "funny", "love"}
+        actual = {r.value for r in ReactionType}
         assert actual == expected
 
 
@@ -82,6 +102,17 @@ class TestTriageResult:
             engagement_style="inquisitive_question",  # type: ignore[arg-type]
         )
         assert triage_str.engagement_style == EngagementStyle.INQUISITIVE_QUESTION
+
+    def test_valid_triage_result_with_reaction(self) -> None:
+        triage = TriageResult(
+            recommendation="react",
+            confidence=0.88,
+            reasoning="Important milestone release in AI infrastructure",
+            reaction_type=ReactionType.CELEBRATE,
+        )
+        assert triage.recommendation == "react"
+        assert triage.reaction_type == "celebrate"
+        assert triage.engagement_style is None
 
     def test_triage_result_invalid_engagement_style(self) -> None:
         with pytest.raises(ValidationError):
@@ -253,6 +284,22 @@ class TestPendingAction:
         assert restored.draft_text == action.draft_text
         assert restored.engagement_style == "supportive_synthesis"
 
+    def test_valid_pending_reaction_action(self) -> None:
+        action = PendingAction(
+            item_id="pending_react_123",
+            action_type="approve_reaction",
+            reaction_type="insightful",
+            post_urn="urn:li:activity:999888",
+            post_url="https://linkedin.com/feed/update/999888",
+            author_name="Bob Architect",
+            post_excerpt="Deep dive on memory barriers",
+            draft_text="Reaction: Insightful",
+            confidence=0.91,
+            reasoning="Outstanding technical explanation",
+        )
+        assert action.action_type == "approve_reaction"
+        assert action.reaction_type == "insightful"
+
 
 class TestHistoryEntry:
     """Test suite for HistoryEntry schema."""
@@ -396,6 +443,20 @@ class TestCallbackDataPayload:
         assert approve_post.canonical_action_type == "approve_post"
         assert reject_post.is_rejection is True
         assert reject_post.canonical_action_type == "reject_post"
+
+    def test_reaction_actions(self) -> None:
+        approve_rx = CallbackDataPayload(
+            action_code=ACTION_CODE_APPROVE_REACTION,
+            item_id="react_1",
+        )
+        reject_rx = CallbackDataPayload(
+            action_code=ACTION_CODE_REJECT_REACTION,
+            item_id="react_1",
+        )
+        assert approve_rx.is_approval is True
+        assert approve_rx.canonical_action_type == "approve_reaction"
+        assert reject_rx.is_rejection is True
+        assert reject_rx.canonical_action_type == "reject_reaction"
 
     def test_edit_properties(self) -> None:
         payload = CallbackDataPayload(

@@ -20,6 +20,8 @@ ACTION_CODE_APPROVE_REPLY = "ar"
 ACTION_CODE_REJECT_REPLY = "rr"
 ACTION_CODE_APPROVE_CONNECTION = "acon"
 ACTION_CODE_REJECT_CONNECTION = "rcon"
+ACTION_CODE_APPROVE_REACTION = "areact"
+ACTION_CODE_REJECT_REACTION = "rreact"
 ACTION_CODE_EDIT = "ed"
 ACTION_CODE_REGENERATE = "reg"
 ACTION_CODE_ASK_REJECT = "ask_rej"
@@ -45,6 +47,8 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_REJECT_REPLY: "reject_reply",
     ACTION_CODE_APPROVE_CONNECTION: "approve_connection",
     ACTION_CODE_REJECT_CONNECTION: "reject_connection",
+    ACTION_CODE_APPROVE_REACTION: "approve_reaction",
+    ACTION_CODE_REJECT_REACTION: "reject_reaction",
     ACTION_CODE_EDIT: "edit",
     ACTION_CODE_REGENERATE: "regenerate",
     ACTION_CODE_ASK_REJECT: "ask_reject",
@@ -73,10 +77,14 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     "reject_reply": "reject_reply",
     "approve_connection": "approve_connection",
     "reject_connection": "reject_connection",
+    "approve_reaction": "approve_reaction",
+    "reject_reaction": "reject_reaction",
     "ar": "approve_reply",
     "rr": "reject_reply",
     "acon": "approve_connection",
     "rcon": "reject_connection",
+    "areact": "approve_reaction",
+    "rreact": "reject_reaction",
 }
 
 REVERSE_ACTION_MAP: dict[str, str] = {
@@ -88,6 +96,8 @@ REVERSE_ACTION_MAP: dict[str, str] = {
     "reject_reply": ACTION_CODE_REJECT_REPLY,
     "approve_connection": ACTION_CODE_APPROVE_CONNECTION,
     "reject_connection": ACTION_CODE_REJECT_CONNECTION,
+    "approve_reaction": ACTION_CODE_APPROVE_REACTION,
+    "reject_reaction": ACTION_CODE_REJECT_REACTION,
     "edit": ACTION_CODE_EDIT,
     "ed": ACTION_CODE_EDIT,
     "regenerate": ACTION_CODE_REGENERATE,
@@ -168,13 +178,16 @@ class CallbackDataPayload(BaseModel):
             ACTION_CODE_APPROVE_POST,
             ACTION_CODE_APPROVE_REPLY,
             ACTION_CODE_APPROVE_CONNECTION,
+            ACTION_CODE_APPROVE_REACTION,
             "approve_comment",
             "approve_post",
             "approve_reply",
             "approve_connection",
+            "approve_reaction",
             "apv",
             "ar",
             "acon",
+            "areact",
         )
 
     @property
@@ -186,13 +199,16 @@ class CallbackDataPayload(BaseModel):
             ACTION_CODE_REJECT_POST,
             ACTION_CODE_REJECT_REPLY,
             ACTION_CODE_REJECT_CONNECTION,
+            ACTION_CODE_REJECT_REACTION,
             "reject_comment",
             "reject_post",
             "reject_reply",
             "reject_connection",
+            "reject_reaction",
             "rej",
             "rr",
             "rcon",
+            "rreact",
             "cf_rej",
         )
 
