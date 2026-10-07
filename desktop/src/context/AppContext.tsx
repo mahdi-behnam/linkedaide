@@ -87,6 +87,8 @@ export interface AppContextType {
   setDiscardSettingsHandler: (fn: (() => void) | null) => void;
   clearIncident?: () => Promise<void>;
   refreshState?: () => Promise<void>;
+  autoRefreshInterval: number;
+  setAutoRefreshInterval: (interval: number) => void;
 }
 
 export const defaultCommentWindows: AutomatedCommentWindow[] = [
@@ -155,6 +157,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lastTriggerMessage, setLastTriggerMessage] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
   const [commentWindows, setCommentWindows] = useState<AutomatedCommentWindow[]>(defaultCommentWindows);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(600);
   const [timezone, setTimezoneState] = useState<string>(() => {
     if (typeof window !== "undefined" && window.localStorage) {
       const saved = window.localStorage.getItem("linkedaide_timezone");
@@ -414,6 +417,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (s?.timezone && isValidTimezone(s.timezone)) {
               setTimezoneState(s.timezone);
             }
+            if (typeof s?.autoRefreshInterval === "number") {
+              setAutoRefreshInterval(s.autoRefreshInterval);
+            }
           }
         } catch {
           // ignore
@@ -649,6 +655,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       discardSettingsHandler,
       setDiscardSettingsHandler,
       refreshState,
+      autoRefreshInterval,
+      setAutoRefreshInterval,
     }),
     [
       currentTab,
@@ -694,6 +702,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       discardSettingsHandler,
       setDiscardSettingsHandler,
       refreshState,
+      autoRefreshInterval,
+      setAutoRefreshInterval,
     ]
   );
 

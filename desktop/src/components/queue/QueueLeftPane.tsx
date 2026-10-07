@@ -1,4 +1,4 @@
-import React, { RefObject } from "react";
+import React, { RefObject, useMemo } from "react";
 import {
   MagnifyingGlass,
   ArrowClockwise,
@@ -23,6 +23,7 @@ interface QueueLeftPaneProps {
   onRefresh: () => void;
   onOpenShortcuts: () => void;
   queueListRef: RefObject<HTMLDivElement | null>;
+  autoRefreshInterval?: number;
 }
 
 export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
@@ -38,9 +39,19 @@ export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
   onRefresh,
   onOpenShortcuts,
   queueListRef,
+  autoRefreshInterval = 600,
 }) => {
   const commentCount = items.filter((i) => i.actionType === "comment").length;
   const postCount = items.filter((i) => i.actionType === "post").length;
+
+  const formattedInterval = useMemo(() => {
+    const sec = autoRefreshInterval;
+    if (sec >= 60) {
+      const mins = Math.round(sec / 60);
+      return `Every ${mins}m`;
+    }
+    return `Every ${sec}s`;
+  }, [autoRefreshInterval]);
 
   return (
     <section className="w-[360px] lg:w-[390px] shrink-0 flex flex-col bg-surface-container-low border-r border-outline select-none h-full">
@@ -191,7 +202,7 @@ export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
           <Lightning size={14} weight="fill" className="text-tertiary" />
           <span className="text-[11px] font-medium text-on-surface">Auto-polling</span>
         </div>
-        <span className="text-[10px] text-on-surface-variant">Every 5m</span>
+        <span className="text-[10px] text-on-surface-variant">{formattedInterval}</span>
       </div>
     </section>
   );

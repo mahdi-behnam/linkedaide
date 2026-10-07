@@ -27,7 +27,7 @@ export interface ApprovalQueueViewProps {
 export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
   initialItems,
 }) => {
-  const { setPendingCount, quota, nextScoutTime } = useApp();
+  const { setPendingCount, quota, nextScoutTime, autoRefreshInterval } = useApp();
   const [items, setItems] = useState<PendingItem[]>(() => initialItems ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(
     () => (initialItems ?? [])[0]?.id ?? null
@@ -425,6 +425,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
         onRefresh={() => loadQueue()}
         onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
         queueListRef={queueListRef}
+        autoRefreshInterval={autoRefreshInterval}
       />
 
       {/* RIGHT PANE: Reading & Approval Workspace (Detail Canvas) */}

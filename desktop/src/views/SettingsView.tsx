@@ -60,6 +60,7 @@ export const SettingsView: React.FC = () => {
   const {
     quota,
     setTimezone: setAppTimezone,
+    setAutoRefreshInterval: setAppInterval,
     setHasUnsavedSettings,
     setSaveSettingsHandler,
     setDiscardSettingsHandler,
@@ -97,9 +98,12 @@ export const SettingsView: React.FC = () => {
     if (savedSettings.timezone) {
       setAppTimezone(savedSettings.timezone);
     }
+    if (typeof savedSettings.autoRefreshInterval === "number") {
+      setAppInterval(savedSettings.autoRefreshInterval);
+    }
     setSaveSuccess(false);
     setSaveError(null);
-  }, [savedSettings, setAppTimezone]);
+  }, [savedSettings, setAppTimezone, setAppInterval]);
 
   const handleSave = useCallback(
     async (e?: React.FormEvent): Promise<boolean> => {
@@ -110,6 +114,9 @@ export const SettingsView: React.FC = () => {
 
       if (settings.timezone) {
         setAppTimezone(settings.timezone);
+      }
+      if (typeof settings.autoRefreshInterval === "number") {
+        setAppInterval(settings.autoRefreshInterval);
       }
 
       try {
@@ -137,7 +144,7 @@ export const SettingsView: React.FC = () => {
         setIsSaving(false);
       }
     },
-    [settings, setAppTimezone]
+    [settings, setAppTimezone, setAppInterval]
   );
 
   const handleChange = <K extends keyof DesktopSettings>(
