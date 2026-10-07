@@ -3,6 +3,17 @@ import worker, {
   escapeHtml,
   formatTelegramErrorMessage,
   notifyTelegramFailure,
+  getSuggestionKeyboard,
+  getEditingKeyboard,
+  getRegeneratingKeyboard,
+  getPendingListKeyboard,
+  getStatusKeyboard,
+  getHomeKeyboard,
+  getStatsKeyboard,
+  getHelpKeyboard,
+  formatHomeHub,
+  formatRejectionCard,
+  getDockedReplyKeyboard,
   Env,
 } from "../src/index";
 
@@ -2011,6 +2022,477 @@ describe("Telegram Relay Worker", () => {
 
         expect(sentPayload.text).toContain("Voice Note Received");
         expect(sentPayload.text).toContain("/post");
+      });
+    });
+
+    describe("Keyboard UX & Callback Enhancements", () => {
+      it("constructs suggestion keyboard with one-tap LinkedIn URL button", () => {
+        const kbWithUrl = getSuggestionKeyboard(
+          "item_123",
+          "approve_comment",
+          "https://linkedin.com/feed/update/urn:li:activity:123"
+        );
+        expect(kbWithUrl.inline_keyboard[0][0]).toEqual({
+          text: "🔗 View Post on LinkedIn",
+          url: "https://linkedin.com/feed/update/urn:li:activity:123",
+        });
+        expect(kbWithUrl.inline_keyboard[1][0].text).toBe("✅ Approve");
+
+        const kbWithoutUrl = getSuggestionKeyboard("item_123", "approve_comment");
+        expect(kbWithoutUrl.inline_keyboard[0][0].text).toBe("✅ Approve");
+      });
+
+      it("constructs editing keyboard with cancel edit and home buttons", () => {
+        const kb = getEditingKeyboard("item_123");
+        expect(kb.inline_keyboard).toEqual([
+          [
+            { text: "❌ Cancel Edit", callback_data: "cx_ed:item_123" },
+            { text: "🏠 Home Menu", callback_data: "home:menu" },
+          ],
+        ]);
+      });
+
+      it("constructs regenerating keyboard with loading indicator", () => {
+        const kb = getRegeneratingKeyboard("item_123");
+        expect(kb.inline_keyboard).toEqual([
+          [{ text: "⏳ Generating with AI...", callback_data: "noop:item_123" }],
+        ]);
+      });
+
+      it("constructs pending list keyboard with review buttons up to limit and nav footer", () => {
+        const items = [
+          { item_id: "act_111", action_type: "approve_comment" },
+          { item_id: "act_222", action_type: "approve_post" },
+        ];
+        const kb = getPendingListKeyboard(items);
+        expect(kb.inline_keyboard).toHaveLength(3);
+        expect(kb.inline_keyboard[0][0].text).toContain("💬 Review #1 (act_11)");
+        expect(kb.inline_keyboard[0][0].callback_data).toBe("rev:act_111");
+        expect(kb.inline_keyboard[1][0].text).toContain("📝 Review #2 (act_22)");
+        expect(kb.inline_keyboard[1][0].callback_data).toBe("rev:act_222");
+        expect(kb.inline_keyboard[2][0].callback_data).toBe("refresh:pending");
+        expect(kb.inline_keyboard[2][1].callback_data).toBe("home:menu");
+
+        const kbWithoutNav = getPendingListKeyboard(items, 5, false);
+        expect(kbWithoutNav.inline_keyboard).toHaveLength(2);
+      });
+
+      it("constructs status keyboard with reset cb, pending count, and nav footer", () => {
+        const trippedKb = getStatusKeyboard(true, 3);
+        expect(trippedKb.inline_keyboard).toHaveLength(3);
+        expect(trippedKb.inline_keyboard[0][0].callback_data).toBe("reset_cb:global");
+        expect(trippedKb.inline_keyboard[1][0].text).toContain("Review Pending (3)");
+        expect(trippedKb.inline_keyboard[2][0].callback_data).toBe("refresh:status");
+        expect(trippedKb.inline_keyboard[2][1].callback_data).toBe("home:menu");
+
+        const normalKb = getStatusKeyboard(false, 0, false);
+        expect(normalKb.inline_keyboard).toHaveLength(0);
+
+        const normalKbWithNav = getStatusKeyboard(false, 0, true);
+        expect(normalKbWithNav.inline_keyboard).toHaveLength(1);
+        expect(normalKbWithNav.inline_keyboard[0][1].callback_data).toBe("home:menu");
+      });
+
+      it("includes input_field_placeholder on docked reply keyboard", () => {
+        const kb = getDockedReplyKeyboard(false);
+        expect(kb.input_field_placeholder).toBe("Tap a button or type /help...");
+      });
+
+      it("formats rejection card preserving post context and author", () => {
+        const card = formatRejectionCard(
+          {
+            item_id: "item_999",
+            action_type: "approve_comment",
+            author_name: "Alice Engineer",
+            post_url: "https://linkedin.com/posts/alice",
+            draft_text: "Insightful perspectives on scalable systems.",
+          },
+          "Too generic"
+        );
+        expect(card).toContain("❌ Suggestion rejected by operator");
+        expect(card).toContain("Alice Engineer");
+        expect(card).toContain("https://linkedin.com/posts/alice");
+        expect(card).toContain("Insightful perspectives on scalable systems.");
+        expect(card).toContain("Too generic");
+      });
+
+      it("handles cx_ed callback by cancelling edit and restoring suggestion markup", async () => {
+        let editedMarkup: any = null;
+        let answeredQuery = false;
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("editMessageReplyMarkup")) {
+            editedMarkup = JSON.parse(init?.body as string);
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          if (url.includes("answerCallbackQuery")) {
+            answeredQuery = true;
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response("Not found", { status: 404 }));
+        });
+
+        const req = makeRequest({
+          update_id: 150,
+          callback_query: {
+            id: "cb_cx_ed",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 991, chat: { id: 987654321 } },
+            data: "cx_ed:item_cancel_1",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("edit_cancelled");
+        expect(answeredQuery).toBe(true);
+        expect(editedMarkup).toBeDefined();
+        expect(editedMarkup.reply_markup.inline_keyboard[0][0].text).toBe("✅ Approve");
+      });
+
+      it("handles reset_cb callback by deleting incident and editing message", async () => {
+        let deletedKey = "";
+        const kvMock: any = {
+          delete: vi.fn(async (key: string) => {
+            deletedKey = key;
+          }),
+        };
+        const envWithKv: Env = { ...mockEnv, LINKEDIN_AGENT_KV: kvMock };
+
+        let editedText = "";
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("editMessageText")) {
+            const body = JSON.parse(init?.body as string);
+            editedText = body.text;
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          if (url.includes("answerCallbackQuery")) {
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response("Not found", { status: 404 }));
+        });
+
+        const req = makeRequest({
+          update_id: 151,
+          callback_query: {
+            id: "cb_reset_cb",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 992, chat: { id: 987654321 } },
+            data: "reset_cb:global",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, envWithKv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("circuit_breaker_reset");
+        expect(deletedKey).toBe("incident");
+        expect(editedText).toContain("Circuit Breaker Reset");
+      });
+
+      it("handles noop callback with loading guidance", async () => {
+        let toastText = "";
+        globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          if (url.includes("answerCallbackQuery")) {
+            const body = JSON.parse(init?.body as string);
+            toastText = body.text;
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          }
+          return Promise.resolve(new Response("Not found", { status: 404 }));
+        });
+
+        const req = makeRequest({
+          update_id: 152,
+          callback_query: {
+            id: "cb_noop",
+            from: { id: 987654321, is_bot: false, first_name: "Operator" },
+            message: { message_id: 993, chat: { id: 987654321 } },
+            data: "noop:item_123",
+          },
+        });
+        const ctx = createMockContext();
+        const res = await worker.fetch(req, mockEnv, ctx as any);
+        expect(res.status).toBe(200);
+        const json = await res.json() as any;
+        expect(json.status).toBe("noop_acknowledged");
+        expect(toastText).toContain("Generating draft with AI");
+      });
+
+      describe("Universal Home Menu, Back/Cancel, and Refresh Navigation", () => {
+        it("constructs home, stats, and help keyboards and formats hub html", () => {
+          const homeKb = getHomeKeyboard(false, 3, false);
+          expect(homeKb.inline_keyboard).toHaveLength(3);
+          expect(homeKb.inline_keyboard[0][0].callback_data).toBe("rev:list");
+          expect(homeKb.inline_keyboard[0][1].callback_data).toBe("refresh:status");
+          expect(homeKb.inline_keyboard[1][0].callback_data).toBe("refresh:stats");
+          expect(homeKb.inline_keyboard[1][1].text).toContain("Pause Agent");
+          expect(homeKb.inline_keyboard[1][1].callback_data).toBe("home:pause");
+          expect(homeKb.inline_keyboard[2][0].callback_data).toBe("refresh:home");
+          expect(homeKb.inline_keyboard[2][1].callback_data).toBe("close:menu");
+
+          const homeKbPaused = getHomeKeyboard(true, 0, true);
+          expect(homeKbPaused.inline_keyboard).toHaveLength(4);
+          expect(homeKbPaused.inline_keyboard[0][0].callback_data).toBe("reset_cb:global");
+          expect(homeKbPaused.inline_keyboard[2][1].text).toContain("Resume Agent");
+          expect(homeKbPaused.inline_keyboard[2][1].callback_data).toBe("home:resume");
+
+          const statsKb = getStatsKeyboard();
+          expect(statsKb.inline_keyboard[0][0].callback_data).toBe("refresh:stats");
+          expect(statsKb.inline_keyboard[0][1].callback_data).toBe("home:menu");
+
+          const helpKb = getHelpKeyboard();
+          expect(helpKb.inline_keyboard[0][0].callback_data).toBe("home:menu");
+          expect(helpKb.inline_keyboard[0][1].callback_data).toBe("refresh:status");
+
+          const hubHtml = formatHomeHub(
+            "🟢 Operational",
+            "🟢 Normal",
+            2,
+            { comments_executed: 5, posts_executed: 1, suggestions_sent: 8, date: "2026-10-07" },
+            ["AI Agents", "Autonomous Systems"]
+          );
+          expect(hubHtml).toContain("Command &amp; Control Hub");
+          expect(hubHtml).toContain("Operational");
+          expect(hubHtml).toContain("Comments:</b> 5");
+          expect(hubHtml).toContain("AI Agents, Autonomous Systems");
+        });
+
+        it("routes '🏠 Home Menu' docked button tap to home command", async () => {
+          let sentPayload: any = null;
+          globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+            if (url.includes("sendMessage")) {
+              sentPayload = JSON.parse(init?.body as string);
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          });
+
+          const req = makeRequest({
+            update_id: 160,
+            message: {
+              message_id: 850,
+              from: { id: 987654321 },
+              chat: { id: 987654321 },
+              text: "🏠 Home Menu",
+            },
+          });
+          const ctx = createMockContext();
+          const res = await worker.fetch(req, mockEnv, ctx as any);
+          expect(res.status).toBe(200);
+          const json = (await res.json()) as any;
+          expect(json.status).toBe("command_handled");
+          expect(json.command).toBe("home");
+
+          expect(sentPayload).not.toBeNull();
+          expect(sentPayload.text).toContain("Command &amp; Control Hub");
+          expect(sentPayload.reply_markup).toBeDefined();
+          expect(sentPayload.reply_markup.inline_keyboard[2][1].callback_data).toBe("close:menu");
+        });
+
+        it("handles /home command returning Command & Control hub with interactive keyboard", async () => {
+          let sentPayload: any = null;
+          globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+            if (url.includes("sendMessage")) {
+              sentPayload = JSON.parse(init?.body as string);
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+          });
+
+          const req = makeRequest({
+            update_id: 161,
+            message: {
+              message_id: 851,
+              from: { id: 987654321 },
+              chat: { id: 987654321 },
+              text: "/home",
+            },
+          });
+          const ctx = createMockContext();
+          const res = await worker.fetch(req, mockEnv, ctx as any);
+          expect(res.status).toBe(200);
+          const json = (await res.json()) as any;
+          expect(json.status).toBe("command_handled");
+          expect(json.command).toBe("home");
+
+          expect(sentPayload.text).toContain("Command &amp; Control Hub");
+          expect(sentPayload.reply_markup.inline_keyboard).toBeDefined();
+        });
+
+        it("handles home:pause and home:resume callbacks toggling agent pause state", async () => {
+          const kvStore = new Map<string, string>();
+          const mockKv = {
+            get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+            put: vi.fn(async (key: string, val: string) => {
+              kvStore.set(key, val);
+            }),
+            delete: vi.fn(async (key: string) => {
+              kvStore.delete(key);
+            }),
+            list: vi.fn(async () => ({ keys: [] })),
+          };
+          const envWithKv = { ...mockEnv, LINKEDIN_AGENT_KV: mockKv as any };
+
+          let answeredToast = "";
+          globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+            if (url.includes("answerCallbackQuery")) {
+              const body = JSON.parse(init?.body as string);
+              answeredToast = body.text;
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            if (url.includes("editMessageText")) {
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            return Promise.resolve(new Response("Not found", { status: 404 }));
+          });
+
+          // 1. Pause
+          const reqPause = makeRequest({
+            update_id: 162,
+            callback_query: {
+              id: "cb_pause",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 852, chat: { id: 987654321 } },
+              data: "home:pause",
+            },
+          });
+          const resPause = await worker.fetch(reqPause, envWithKv, createMockContext() as any);
+          expect(resPause.status).toBe(200);
+          const jsonPause = (await resPause.json()) as any;
+          expect(jsonPause.status).toBe("home_displayed");
+          expect(jsonPause.sub_action).toBe("pause");
+          expect(kvStore.has("paused")).toBe(true);
+          expect(answeredToast).toContain("Agent paused");
+
+          // 2. Resume
+          const reqResume = makeRequest({
+            update_id: 163,
+            callback_query: {
+              id: "cb_resume",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 853, chat: { id: 987654321 } },
+              data: "home:resume",
+            },
+          });
+          const resResume = await worker.fetch(reqResume, envWithKv, createMockContext() as any);
+          expect(resResume.status).toBe(200);
+          const jsonResume = (await resResume.json()) as any;
+          expect(jsonResume.status).toBe("home_displayed");
+          expect(jsonResume.sub_action).toBe("resume");
+          expect(kvStore.has("paused")).toBe(false);
+          expect(answeredToast).toContain("Agent resumed");
+        });
+
+        it("handles close:menu callback by deleting message", async () => {
+          let deletedMsgId: number | null = null;
+          let answeredClose = false;
+          globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+            if (url.includes("deleteMessage")) {
+              const body = JSON.parse(init?.body as string);
+              deletedMsgId = body.message_id;
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            if (url.includes("answerCallbackQuery")) {
+              answeredClose = true;
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            return Promise.resolve(new Response("Not found", { status: 404 }));
+          });
+
+          const req = makeRequest({
+            update_id: 164,
+            callback_query: {
+              id: "cb_close",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 854, chat: { id: 987654321 } },
+              data: "close:menu",
+            },
+          });
+          const res = await worker.fetch(req, mockEnv, createMockContext() as any);
+          expect(res.status).toBe(200);
+          const json = (await res.json()) as any;
+          expect(json.status).toBe("menu_closed");
+          expect(deletedMsgId).toBe(854);
+          expect(answeredClose).toBe(true);
+        });
+
+        it("handles refresh callbacks for status, stats, pending, and home", async () => {
+          let editedText = "";
+          globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+            if (url.includes("editMessageText")) {
+              const body = JSON.parse(init?.body as string);
+              editedText = body.text;
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            if (url.includes("answerCallbackQuery")) {
+              return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+            }
+            return Promise.resolve(new Response("Not found", { status: 404 }));
+          });
+
+          // Refresh status
+          const reqStatus = makeRequest({
+            update_id: 165,
+            callback_query: {
+              id: "cb_ref_status",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 855, chat: { id: 987654321 } },
+              data: "refresh:status",
+            },
+          });
+          const resStatus = await worker.fetch(reqStatus, mockEnv, createMockContext() as any);
+          expect(resStatus.status).toBe(200);
+          const jsonStatus = (await resStatus.json()) as any;
+          expect(jsonStatus.status).toBe("status_refreshed");
+          expect(editedText).toContain("Agent Status Report");
+
+          // Refresh stats
+          const reqStats = makeRequest({
+            update_id: 166,
+            callback_query: {
+              id: "cb_ref_stats",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 856, chat: { id: 987654321 } },
+              data: "refresh:stats",
+            },
+          });
+          const resStats = await worker.fetch(reqStats, mockEnv, createMockContext() as any);
+          expect(resStats.status).toBe(200);
+          const jsonStats = (await resStats.json()) as any;
+          expect(jsonStats.status).toBe("stats_refreshed");
+          expect(editedText).toContain("Agent Performance &amp; Execution Stats");
+
+          // Refresh pending
+          const reqPending = makeRequest({
+            update_id: 167,
+            callback_query: {
+              id: "cb_ref_pending",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 857, chat: { id: 987654321 } },
+              data: "refresh:pending",
+            },
+          });
+          const resPending = await worker.fetch(reqPending, mockEnv, createMockContext() as any);
+          expect(resPending.status).toBe(200);
+          const jsonPending = (await resPending.json()) as any;
+          expect(jsonPending.status).toBe("pending_refreshed");
+
+          // Refresh home
+          const reqHome = makeRequest({
+            update_id: 168,
+            callback_query: {
+              id: "cb_ref_home",
+              from: { id: 987654321, is_bot: false, first_name: "Operator" },
+              message: { message_id: 858, chat: { id: 987654321 } },
+              data: "refresh:home",
+            },
+          });
+          const resHome = await worker.fetch(reqHome, mockEnv, createMockContext() as any);
+          expect(resHome.status).toBe(200);
+          const jsonHome = (await resHome.json()) as any;
+          expect(jsonHome.status).toBe("home_refreshed");
+          expect(editedText).toContain("Command &amp; Control Hub");
+        });
       });
     });
   });

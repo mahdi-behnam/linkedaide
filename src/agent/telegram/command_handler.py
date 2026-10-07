@@ -25,6 +25,7 @@ from agent.telegram.client import TelegramClient
 from agent.telegram.commands import (
     execute_clear_incident_command,
     execute_help_command,
+    execute_home_command,
     execute_pause_command,
     execute_pending_command,
     execute_post_command,
@@ -164,7 +165,10 @@ class CommandHandler:
             cmd_token = parts[0].lower().lstrip("/")
             command_name = cmd_token.split("@")[0]
 
-        if command_name == "status":
+        if command_name == "home":
+            await self.handle_home(chat_id=chat_id, message_id=message_id)
+            return True
+        elif command_name == "status":
             await self.handle_status(chat_id=chat_id, message_id=message_id)
             return True
         elif command_name == "stats":
@@ -197,6 +201,17 @@ class CommandHandler:
             await self.handle_unknown(chat_id=chat_id, command=command_name, message_id=message_id)
             return True
 
+    async def handle_home(self, chat_id: int, message_id: int | None = None) -> str:
+        """Handle /home command: Command & Control hub with status and quick navigation."""
+        return await execute_home_command(
+            settings=self.settings,
+            state_store=self.state_store,
+            telegram=self.telegram,
+            repo_root=self.repo_root,
+            chat_id=chat_id,
+            message_id=message_id,
+        )
+
     async def handle_status(self, chat_id: int, message_id: int | None = None) -> str:
         """Handle /status command: operational state, breaker, daily counters, and pending count."""
         return await execute_status_command(
@@ -215,6 +230,7 @@ class CommandHandler:
             telegram=self.telegram,
             chat_id=chat_id,
             message_id=message_id,
+            settings=self.settings,
         )
 
     async def handle_pending(self, chat_id: int, message_id: int | None = None) -> str:
@@ -224,6 +240,7 @@ class CommandHandler:
             telegram=self.telegram,
             chat_id=chat_id,
             message_id=message_id,
+            settings=self.settings,
         )
 
     async def handle_pause(self, chat_id: int, message_id: int | None = None) -> str:
@@ -253,6 +270,7 @@ class CommandHandler:
             telegram=self.telegram,
             chat_id=chat_id,
             message_id=message_id,
+            settings=self.settings,
         )
 
     async def handle_post(
@@ -287,6 +305,8 @@ class CommandHandler:
             telegram=self.telegram,
             chat_id=chat_id,
             message_id=message_id,
+            settings=self.settings,
+            state_store=self.state_store,
         )
 
     async def handle_unknown(

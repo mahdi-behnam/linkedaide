@@ -177,7 +177,12 @@ export function formatPendingCardHtml(item: Record<string, any>, editNote?: stri
 }
 
 /** Constructs suggestion inline keyboard markup */
-export function getSuggestionKeyboard(itemId: string, actionType: string = "approve_comment") {
+export function getSuggestionKeyboard(
+  itemId: string,
+  actionType: string = "approve_comment",
+  postUrl?: string,
+  includeHome: boolean = true
+) {
   const cleanId = itemId.trim();
   let approveCode = "ac";
   if (actionType === "approve_post" || actionType === "post") {
@@ -188,18 +193,134 @@ export function getSuggestionKeyboard(itemId: string, actionType: string = "appr
     approveCode = "acon";
   }
 
+  const rows: Array<Array<{ text: string; callback_data?: string; url?: string }>> = [];
+  if (postUrl && postUrl.trim().startsWith("http")) {
+    rows.push([{ text: "🔗 View Post on LinkedIn", url: postUrl.trim() }]);
+  }
+
+  rows.push([
+    { text: "✅ Approve", callback_data: `${approveCode}:${cleanId}` },
+    { text: "❌ Reject", callback_data: `ask_rej:${cleanId}` },
+  ]);
+  rows.push([
+    { text: "🔄 Regenerate", callback_data: `reg:${cleanId}` },
+    { text: "✏️ Edit", callback_data: `edit:${cleanId}` },
+  ]);
+  if (includeHome) {
+    rows.push([{ text: "🏠 Home Menu", callback_data: "home:menu" }]);
+  }
+
+  return { inline_keyboard: rows };
+}
+
+/** Constructs active draft editing inline keyboard markup */
+export function getEditingKeyboard(itemId: string) {
+  const cleanId = itemId.trim();
   return {
     inline_keyboard: [
       [
-        { text: "✅ Approve", callback_data: `${approveCode}:${cleanId}` },
-        { text: "❌ Reject", callback_data: `ask_rej:${cleanId}` },
-      ],
-      [
-        { text: "🔄 Regenerate", callback_data: `reg:${cleanId}` },
-        { text: "✏️ Edit", callback_data: `edit:${cleanId}` },
+        { text: "❌ Cancel Edit", callback_data: `cx_ed:${cleanId}` },
+        { text: "🏠 Home Menu", callback_data: "home:menu" },
       ],
     ],
   };
+}
+
+/** Constructs loading AI draft generation inline keyboard markup */
+export function getRegeneratingKeyboard(itemId: string) {
+  const cleanId = itemId.trim();
+  return {
+    inline_keyboard: [
+      [{ text: "⏳ Generating with AI...", callback_data: `noop:${cleanId}` }],
+    ],
+  };
+}
+
+/** Constructs interactive review buttons for /pending list */
+export function getPendingListKeyboard(
+  items: Array<{ id?: string; item_id?: string; action_type?: string }>,
+  maxItems: number = 5,
+  includeNav: boolean = true
+) {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+  for (let i = 0; i < Math.min(items.length, maxItems); i++) {
+    const item = items[i];
+    const cleanId = (item.item_id || item.id || "").trim();
+    if (!cleanId) continue;
+    const actionType = item.action_type || "";
+    const sym = actionType.includes("post") ? "📝" : "💬";
+    rows.push([
+      {
+        text: `${sym} Review #${i + 1} (${cleanId.slice(0, 6)})`,
+        callback_data: `rev:${cleanId}`,
+      },
+    ]);
+  }
+  if (includeNav) {
+    rows.push([
+      { text: "🔄 Refresh Queue", callback_data: "refresh:pending" },
+      { text: "🏠 Home Menu", callback_data: "home:menu" },
+    ]);
+  }
+  return { inline_keyboard: rows };
+}
+
+/** Constructs status quick-action inline keyboard */
+export function getStatusKeyboard(
+  isTripped: boolean = false,
+  pendingCount: number = 0,
+  includeNav: boolean = true
+) {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+  if (isTripped) {
+    rows.push([{ text: "🔄 Reset Circuit Breaker", callback_data: "reset_cb:global" }]);
+  }
+  if (pendingCount > 0) {
+    rows.push([{ text: `📋 Review Pending (${pendingCount})`, callback_data: "rev:list" }]);
+  }
+  if (includeNav) {
+    rows.push([
+      { text: "🔄 Refresh Status", callback_data: "refresh:status" },
+      { text: "🏠 Home Menu", callback_data: "home:menu" },
+    ]);
+  }
+  return { inline_keyboard: rows };
+}
+
+/** Formats rejection summary card preserving context */
+export function formatRejectionCard(item?: any, reason?: string): string {
+  const safeItem = item || {};
+  const isPost = safeItem.action_type === "approve_post" || safeItem.action_type === "post";
+  const isReply = safeItem.action_type === "approve_reply" || safeItem.action_type === "reply";
+  const isConn = safeItem.action_type === "approve_connection" || safeItem.action_type === "connection";
+  let actionLabel = "Feed Comment";
+  if (isPost) actionLabel = "Original Post";
+  else if (isReply) actionLabel = "Thread Reply";
+  else if (isConn) actionLabel = "Connection Request";
+
+  const lines = [
+    "<b>❌ Suggestion rejected by operator</b>",
+  ];
+  if (safeItem.item_id || safeItem.id) {
+    lines.push(`<b>Item:</b> <code>${escapeHtml(safeItem.item_id || safeItem.id || "")}</code> (${actionLabel})`);
+  }
+  if (safeItem.author_name) {
+    lines.push(`<b>Author:</b> ${escapeHtml(safeItem.author_name)}`);
+  }
+  if (safeItem.post_url) {
+    lines.push(`<b>Target:</b> <a href="${escapeHtml(safeItem.post_url)}">Original Post</a>`);
+  }
+  if (safeItem.draft_text) {
+    const preview =
+      safeItem.draft_text.length > 200 ? safeItem.draft_text.slice(0, 200) + "..." : safeItem.draft_text;
+    lines.push(`<b>Draft Excerpt:</b>\n<blockquote expandable>${escapeHtml(preview)}</blockquote>`);
+  }
+  if (reason && reason !== "skip") {
+    lines.push(`<b>Feedback:</b> <i>${escapeHtml(reason)}</i>`);
+  } else if (!reason) {
+    lines.push("<i>Why was this suggestion rejected? (Optional feedback):</i>");
+  }
+  return lines.join("\n\n");
 }
 
 /** Constructs rejection confirmation inline keyboard markup */
@@ -210,6 +331,9 @@ export function getRejectConfirmKeyboard(itemId: string, actionType: string = "a
       [
         { text: "❌ Yes, Reject", callback_data: `cf_rej:${cleanId}` },
         { text: "🔙 Cancel / Keep", callback_data: `cx_rej:${cleanId}` },
+      ],
+      [
+        { text: "🏠 Home Menu", callback_data: "home:menu" },
       ],
     ],
   };
@@ -230,6 +354,7 @@ export function getRejectionFeedbackKeyboard(itemId: string) {
       ],
       [
         { text: "⏩ Done / Skip", callback_data: `fb:skip:${cleanId}` },
+        { text: "🏠 Home Menu", callback_data: "home:menu" },
       ],
     ],
   };
@@ -248,7 +373,10 @@ export function getTonePickerKeyboard(itemId: string, actionType: string = "appr
         ],
         [
           { text: "✂️ Concise", callback_data: `tone:concise:${cleanId}` },
+        ],
+        [
           { text: "🔙 Back to Review", callback_data: `back:${cleanId}` },
+          { text: "🏠 Home Menu", callback_data: "home:menu" },
         ],
       ],
     };
@@ -266,19 +394,108 @@ export function getTonePickerKeyboard(itemId: string, actionType: string = "appr
       ],
       [
         { text: "🔙 Back to Review", callback_data: `back:${cleanId}` },
+        { text: "🏠 Home Menu", callback_data: "home:menu" },
       ],
     ],
   };
 }
 
-/** Constructs persistent 2x2 reply keyboard dock for mobile navigation */
-export function getDockedReplyKeyboard(isPaused: boolean = false) {
+/** Constructs inline keyboard for /stats report */
+export function getStatsKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: "🔄 Refresh Stats", callback_data: "refresh:stats" },
+        { text: "🏠 Home Menu", callback_data: "home:menu" },
+      ],
+    ],
+  };
+}
+
+/** Constructs inline keyboard for /help command */
+export function getHelpKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: "🏠 Home Menu", callback_data: "home:menu" },
+        { text: "📊 Status Report", callback_data: "refresh:status" },
+      ],
+    ],
+  };
+}
+
+/** Constructs inline keyboard for /home Command & Control hub */
+export function getHomeKeyboard(
+  isTripped: boolean = false,
+  pendingCount: number = 0,
+  isPaused: boolean = false
+) {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+  if (isTripped) {
+    rows.push([{ text: "🔄 Reset Circuit Breaker", callback_data: "reset_cb:global" }]);
+  }
+
+  const reviewCb = pendingCount > 0 ? "rev:list" : "refresh:pending";
+  const pauseText = isPaused ? "▶️ Resume Agent" : "⏸️ Pause Agent";
+  const pauseCb = isPaused ? "home:resume" : "home:pause";
+
+  rows.push([
+    { text: `📋 Pending (${pendingCount})`, callback_data: reviewCb },
+    { text: "📊 Status", callback_data: "refresh:status" },
+  ]);
+  rows.push([
+    { text: "📈 Stats", callback_data: "refresh:stats" },
+    { text: pauseText, callback_data: pauseCb },
+  ]);
+  rows.push([
+    { text: "🔄 Refresh Hub", callback_data: "refresh:home" },
+    { text: "❌ Close Menu", callback_data: "close:menu" },
+  ]);
+  return { inline_keyboard: rows };
+}
+
+/** Formats HTML message for Command & Control Home Hub */
+export function formatHomeHub(
+  systemState: string,
+  cbStatus: string,
+  pendingCount: number,
+  counters: any,
+  focusAreas?: string[]
+): string {
+  const focusStr = focusAreas && focusAreas.length > 0 ? focusAreas.join(", ") : "General";
+  const dateStr = counters?.date || "Today";
+  const commentsExecuted = counters?.comments_executed || 0;
+  const postsExecuted = counters?.posts_executed || 0;
+  const suggestionsSent = counters?.suggestions_sent || 0;
+
+  const lines = [
+    "<b>🏠 LinkedIn HITL Agent — Command &amp; Control Hub</b>\n",
+    `• <b>System State:</b> ${systemState}`,
+    `• <b>Circuit Breaker:</b> ${cbStatus}`,
+    `• <b>Pending Queue:</b> <b>${pendingCount}</b> action(s) awaiting review\n`,
+    `📊 <b>Today's Activity (${escapeHtml(String(dateStr))})</b>`,
+    `• <b>Comments:</b> ${commentsExecuted}`,
+    `• <b>Posts:</b> ${postsExecuted}`,
+    `• <b>Suggestions Sent:</b> ${suggestionsSent}\n`,
+    `🎯 <b>Focus Areas:</b> <i>${escapeHtml(focusStr)}</i>\n`,
+    "<i>Select an option below or use docked buttons:</i>",
+  ];
+  return lines.join("\n");
+}
+
+/** Constructs persistent reply keyboard dock for mobile navigation */
+export function getDockedReplyKeyboard(
+  isPaused: boolean = false,
+  inputPlaceholder: string = "Tap a button or type /help..."
+) {
   return {
     keyboard: [
       [{ text: "📊 Status" }, { text: "📋 Pending Queue" }],
       [{ text: isPaused ? "▶️ Resume" : "⏸️ Pause" }, { text: "📈 Stats" }],
+      [{ text: "🏠 Home Menu" }, { text: "❓ Help" }],
     ],
     resize_keyboard: true,
     is_persistent: true,
+    input_field_placeholder: inputPlaceholder.slice(0, 64),
   };
 }

@@ -133,7 +133,9 @@ class TelegramClient:
             TelegramAPIError: If the API call fails or returns an error.
         """
         message_text = build_suggestion_message(item)
-        keyboard = build_suggestion_keyboard(item.item_id, item.action_type)
+        keyboard = build_suggestion_keyboard(
+            item.item_id, item.action_type, post_url=item.post_url
+        )
 
         image_url = getattr(item, "post_image_url", None)
         if not image_url and item.media_attachments:
@@ -183,15 +185,18 @@ class TelegramClient:
         chat_id: int,
         message_id: int,
         outcome_text: str,
+        reply_markup: dict[str, Any] | None = None,
     ) -> None:
         """Edit a suggestion message to terminal outcome and strip its inline keyboard.
 
-        This removes the inline buttons to prevent duplicate operator clicks.
+        This removes the inline buttons to prevent duplicate operator clicks,
+        or replaces with a read-only or proof link button if provided.
 
         Args:
             chat_id: Target Telegram chat ID.
             message_id: ID of the message to edit.
             outcome_text: Formatted terminal outcome text.
+            reply_markup: Optional replacement reply markup (defaults to empty keyboard).
 
         Raises:
             TelegramAPIError: If editing fails (except for harmless 'message is not modified').
@@ -202,7 +207,7 @@ class TelegramClient:
             "text": outcome_text,
             "parse_mode": "HTML",
             "link_preview_options": {"is_disabled": True},
-            "reply_markup": {"inline_keyboard": []},
+            "reply_markup": reply_markup if reply_markup is not None else {"inline_keyboard": []},
         }
 
         try:
@@ -320,6 +325,32 @@ class TelegramClient:
                 )
                 return
             raise
+
+    async def delete_message(
+        self,
+        chat_id: int,
+        message_id: int,
+    ) -> bool:
+        """Delete an existing message in a chat.
+
+        Args:
+            chat_id: Target Telegram chat ID.
+            message_id: ID of the message to delete.
+
+        Returns:
+            bool: True if deletion succeeded, False otherwise.
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+        }
+        try:
+            await self._post("deleteMessage", payload)
+            logger.info("Deleted Telegram message %s in chat %s.", message_id, chat_id)
+            return True
+        except Exception as e:
+            logger.warning("Failed to delete Telegram message %s in chat %s: %s", message_id, chat_id, e)
+            return False
 
     async def answer_callback_query(
         self,

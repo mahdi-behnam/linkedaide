@@ -239,6 +239,39 @@ class TestCommandHandlerStatus:
             assert "Bot challenge encountered" in report
 
 
+class TestCommandHandlerHome:
+    """Tests for /home command central Command & Control hub."""
+
+    @pytest.mark.asyncio
+    async def test_home_command_renders_hub(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        sent_payloads: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            sent_payloads.append(data)
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 8801}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            tg = TelegramClient(mock_settings, http_client=client)
+            cmd_handler = CommandHandler(
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=tg,
+            )
+
+            report = await cmd_handler.handle_home(chat_id=987654321)
+            assert "Command & Control Hub" in report
+            assert "Operational" in report
+            assert len(sent_payloads) == 1
+            assert sent_payloads[0]["chat_id"] == 987654321
+            assert "inline_keyboard" in sent_payloads[0]["reply_markup"]
+
+
 class TestCommandHandlerStats:
     """Tests for /stats command historical metric processing."""
 
@@ -670,6 +703,16 @@ class TestCommandHandlerRouting:
             assert res_resume is True
             assert test_state_store.is_paused() is False
             assert "Agent Resumed" in sent_payloads[2]["text"]
+
+            # Test 4: Docked Home button
+            msg_home = {
+                "text": "🏠 Home Menu",
+                "chat": {"id": 987654321},
+                "from": {"id": 987654321},
+            }
+            res_home = await cmd_handler.handle_message(msg_home)
+            assert res_home is True
+            assert "Command & Control Hub" in sent_payloads[3]["text"]
 
 
 class TestCommandHandlerOnDemandPostAndScout:
@@ -1504,6 +1547,8 @@ class TestCommandHandlerCallbackQueries:
         def tg_handler(request: httpx.Request) -> httpx.Response:
             data = json.loads(request.content.decode("utf-8"))
             answered.append(data)
+            if "sendMessage" in str(request.url.path):
+                return httpx.Response(200, json={"ok": True, "result": {"message_id": 9001}})
             return httpx.Response(200, json={"ok": True, "result": True})
 
         transport = httpx.MockTransport(tg_handler)
@@ -1527,9 +1572,18 @@ class TestCommandHandlerCallbackQueries:
 
             res = await cmd_handler.handle_callback_query(cb)
             assert res is True
-            assert len(answered) == 1
-            assert answered[0]["callback_query_id"] == "cb_edit_test"
-            assert "Reply to this suggestion with your revised draft text" in answered[0]["text"]
+            cb_answers = [a for a in answered if "callback_query_id" in a]
+            assert len(cb_answers) == 1
+            assert cb_answers[0]["callback_query_id"] == "cb_edit_test"
+            assert "Reply to this suggestion with your revised draft text" in cb_answers[0]["text"]
+
+            edit_markups = [a for a in answered if "reply_markup" in a and "inline_keyboard" in a["reply_markup"]]
+            assert len(edit_markups) == 1
+            assert edit_markups[0]["reply_markup"]["inline_keyboard"][0][0]["text"] == "❌ Cancel Edit"
+
+            force_replies = [a for a in answered if "reply_markup" in a and a["reply_markup"].get("force_reply")]
+            assert len(force_replies) == 1
+            assert force_replies[0]["reply_markup"]["input_field_placeholder"] == "Enter revised draft text..."
 
     @pytest.mark.asyncio
     async def test_callback_reg_tone_guidance(

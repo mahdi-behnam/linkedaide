@@ -12,13 +12,22 @@
 import { Env, TelegramUpdate } from "../types";
 import {
   escapeHtml,
+  formatHomeHub,
   formatPendingCardHtml,
+  formatRejectionCard,
   formatTelegramErrorMessage,
+  getDockedReplyKeyboard,
+  getEditingKeyboard,
+  getHelpKeyboard,
+  getHomeKeyboard,
+  getPendingListKeyboard,
+  getRegeneratingKeyboard,
   getRejectConfirmKeyboard,
   getRejectionFeedbackKeyboard,
+  getStatsKeyboard,
+  getStatusKeyboard,
   getSuggestionKeyboard,
   getTonePickerKeyboard,
-  getDockedReplyKeyboard,
   notifyTelegramFailure,
   sendTelegramMessage,
 } from "../utils";
@@ -58,6 +67,8 @@ export async function handleTelegramWebhook(
       "⏸️ Pause": "pause",
       "▶️ Resume": "resume",
       "⏸️ Pause / Resume": "pause",
+      "🏠 Home Menu": "home",
+      "❓ Help": "help",
     };
     const isDockButton = Boolean(DOCK_MAP[text]);
     const isVoice = Boolean(msg.voice);
@@ -189,7 +200,8 @@ export async function handleTelegramWebhook(
               link_preview_options: { is_disabled: true },
               reply_markup: getSuggestionKeyboard(
                 matchedPending.item_id,
-                matchedPending.action_type
+                matchedPending.action_type,
+                matchedPending.post_url
               ),
             }),
           }).catch(() => {})
@@ -214,6 +226,13 @@ export async function handleTelegramWebhook(
     }
 
     if (isCommand) {
+      let isPaused = false;
+      if (env.LINKEDIN_AGENT_KV) {
+        try {
+          isPaused = (await env.LINKEDIN_AGENT_KV.get("paused")) !== null;
+        } catch {}
+      }
+
       let parts: string[] = [];
       let cmdToken = "";
       if (DOCK_MAP[text]) {
@@ -267,7 +286,7 @@ export async function handleTelegramWebhook(
                   text: formatPendingCardHtml(pending, "Edited by operator"),
                   parse_mode: "HTML",
                   link_preview_options: { is_disabled: true },
-                  reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type),
+                  reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type, pending.post_url),
                 }),
               }).catch(() => {})
             );
@@ -334,7 +353,7 @@ export async function handleTelegramWebhook(
                     text: formatPendingCardHtml(pending, `Regenerated (${requestedTone})`),
                     parse_mode: "HTML",
                     link_preview_options: { is_disabled: true },
-                    reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type),
+                    reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type, pending.post_url),
                   }),
                 }).catch(() => {})
               );
@@ -414,8 +433,62 @@ export async function handleTelegramWebhook(
           `• <b>Comments Executed:</b> ${commentsCount}\n` +
           `• <b>Posts Executed:</b> ${postsCount}`;
 
-        await sendTelegramMessage(env, chatId, report, messageId, getDockedReplyKeyboard(isPaused));
+        const statusMarkup = hasIncident
+          ? getStatusKeyboard(true, pendingCount)
+          : getDockedReplyKeyboard(isPaused);
+
+        await sendTelegramMessage(env, chatId, report, messageId, statusMarkup);
         return new Response(JSON.stringify({ status: "command_handled", command: "status" }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } else if (cmdToken === "home") {
+        let isPaused = false;
+        let hasIncident = false;
+        let incidentReason = "";
+        let commentsCount = 0;
+        let postsCount = 0;
+        let pendingCount = 0;
+        let counters: any = null;
+
+        if (env.LINKEDIN_AGENT_KV) {
+          const rawPaused = await env.LINKEDIN_AGENT_KV.get("paused");
+          isPaused = rawPaused !== null;
+          const rawIncident = await env.LINKEDIN_AGENT_KV.get("incident");
+          if (rawIncident) {
+            hasIncident = true;
+            try {
+              const inc = JSON.parse(rawIncident);
+              incidentReason = inc.reason || "Incident detected";
+            } catch {
+              incidentReason = String(rawIncident);
+            }
+          }
+          const rawCounters = await env.LINKEDIN_AGENT_KV.get("daily_counters");
+          if (rawCounters) {
+            try {
+              counters = JSON.parse(rawCounters);
+              commentsCount = counters.comments_executed ?? 0;
+              postsCount = counters.posts_executed ?? 0;
+            } catch {}
+          }
+          const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+          pendingCount = listRes.keys ? listRes.keys.length : 0;
+        }
+
+        let sysStatus = "🟢 <b>Operational</b>";
+        let cbStatus = "🟢 <b>Normal</b> (No active incident)";
+        if (hasIncident) {
+          sysStatus = "🚨 <b>Halted (Circuit Breaker Tripped)</b>";
+          cbStatus = `🔴 <b>Tripped</b> (${escapeHtml(incidentReason)})`;
+        } else if (isPaused) {
+          sysStatus = "⏸️ <b>Paused</b>";
+        }
+
+        const hubHtml = formatHomeHub(sysStatus, cbStatus, pendingCount, counters);
+        const hubMarkup = getHomeKeyboard(hasIncident, pendingCount, isPaused);
+
+        await sendTelegramMessage(env, chatId, hubHtml, messageId, hubMarkup);
+        return new Response(JSON.stringify({ status: "command_handled", command: "home" }), {
           headers: { "Content-Type": "application/json" },
         });
       } else if (cmdToken === "pause") {
@@ -451,7 +524,7 @@ export async function handleTelegramWebhook(
         const reply =
           "✅ <b>Circuit Breaker Reset</b>\n\n" +
           "The active incident record has been cleared and the circuit breaker reset to normal.";
-        await sendTelegramMessage(env, chatId, reply, messageId, getDockedReplyKeyboard(false));
+        await sendTelegramMessage(env, chatId, reply, messageId, getDockedReplyKeyboard(isPaused));
         return new Response(
           JSON.stringify({ status: "command_handled", command: "clear_incident" }),
           { headers: { "Content-Type": "application/json" } }
@@ -474,7 +547,7 @@ export async function handleTelegramWebhook(
           `• <code>/tone &lt;item_id&gt; &lt;tone&gt;</code> — Rewrite draft with AI (${VALID_TONES.join(", ")})\n` +
           `• <i>Tip: You can also reply directly to any suggestion card with your revised draft or tone name!</i>`;
 
-        await sendTelegramMessage(env, chatId, helpMsg, messageId, getDockedReplyKeyboard(false));
+        await sendTelegramMessage(env, chatId, helpMsg, messageId, getHelpKeyboard());
         return new Response(JSON.stringify({ status: "command_handled", command: "help" }), {
           headers: { "Content-Type": "application/json" },
         });
@@ -537,7 +610,7 @@ export async function handleTelegramWebhook(
           `• <b>Expired / Failed:</b> ${failedCount}\n` +
           `• <b>Approval Rate:</b> <b>${approvalRate}</b>`;
 
-        await sendTelegramMessage(env, chatId, statsMsg, messageId, getDockedReplyKeyboard(false));
+        await sendTelegramMessage(env, chatId, statsMsg, messageId, getStatsKeyboard());
         return new Response(JSON.stringify({ status: "command_handled", command: "stats" }), {
           headers: { "Content-Type": "application/json" },
         });
@@ -554,7 +627,7 @@ export async function handleTelegramWebhook(
             chatId,
             "📭 <b>No Pending Actions</b>\n\nThere are no actions currently awaiting review.",
             messageId,
-            getDockedReplyKeyboard(false)
+            getDockedReplyKeyboard(isPaused)
           );
           return new Response(
             JSON.stringify({ status: "command_handled", command: "pending", count: 0 }),
@@ -564,12 +637,14 @@ export async function handleTelegramWebhook(
 
         const lines: string[] = [`📋 <b>Pending Approval Queue (${keys.length})</b>\n`];
         const displayKeys = keys.slice(0, 10);
+        const pendingItems: Array<any> = [];
         for (let i = 0; i < displayKeys.length; i++) {
           if (!env.LINKEDIN_AGENT_KV) continue;
           const raw = await env.LINKEDIN_AGENT_KV.get(displayKeys[i].name);
           if (!raw) continue;
           try {
             const item = JSON.parse(raw);
+            pendingItems.push(item);
             const actionType = item.action_type || "comment";
             let typeIcon = "💬 Comment";
             if (actionType === "post") typeIcon = "📝 Post";
@@ -594,7 +669,8 @@ export async function handleTelegramWebhook(
         }
         lines.push(`\n<i>Reply to any suggestion card or tap inline buttons to approve/reject.</i>`);
 
-        await sendTelegramMessage(env, chatId, lines.join("\n"), messageId, getDockedReplyKeyboard(false));
+        const pendingMarkup = getPendingListKeyboard(pendingItems);
+        await sendTelegramMessage(env, chatId, lines.join("\n"), messageId, pendingMarkup);
         return new Response(
           JSON.stringify({ status: "command_handled", command: "pending", count: keys.length }),
           { headers: { "Content-Type": "application/json" } }
@@ -607,7 +683,7 @@ export async function handleTelegramWebhook(
             chatId,
             `💡 <b>Draft an Original Post:</b>\n\nProvide an idea or topic after <code>/post</code>.\n\n<i>Example:</i> <code>/post 3 subtle pitfalls when building production agentic loops</code>`,
             messageId,
-            getDockedReplyKeyboard(false)
+            getDockedReplyKeyboard(isPaused)
           );
           return new Response(JSON.stringify({ status: "command_handled", command: "post", prompt: true }), {
             headers: { "Content-Type": "application/json" },
@@ -660,7 +736,7 @@ export async function handleTelegramWebhook(
             chatId,
             `🧭 <b>On-Demand Target Scouting:</b>\n\nProvide a LinkedIn post URL after <code>/scout</code>.\n\n<i>Example:</i> <code>/scout https://www.linkedin.com/feed/update/urn:li:activity:123456789/</code>`,
             messageId,
-            getDockedReplyKeyboard(false)
+            getDockedReplyKeyboard(isPaused)
           );
           return new Response(JSON.stringify({ status: "command_handled", command: "scout", prompt: true }), {
             headers: { "Content-Type": "application/json" },
@@ -671,7 +747,7 @@ export async function handleTelegramWebhook(
           `🧭 <b>Target Received:</b>\n\n` +
           `Queued for on-demand scouting:\n<a href="${escapeHtml(targetUrl)}">${escapeHtml(targetUrl)}</a>\n\n` +
           `<i>The agent will evaluate this target against your focus areas and deliver a draft comment card for your review.</i>`;
-        await sendTelegramMessage(env, chatId, confirmMsg, messageId, getDockedReplyKeyboard(false));
+        await sendTelegramMessage(env, chatId, confirmMsg, messageId, getDockedReplyKeyboard(isPaused));
 
         if (env.GITHUB_DISPATCH_PAT && env.GITHUB_REPO_OWNER && env.GITHUB_REPO_NAME) {
           try {
@@ -700,7 +776,7 @@ export async function handleTelegramWebhook(
         );
       } else {
         const unknownMsg = `❓ <b>Unknown Command:</b> <code>/${escapeHtml(cmdToken)}</code>\n\nUse the buttons below or send <code>/help</code> for available commands.`;
-        await sendTelegramMessage(env, chatId, unknownMsg, messageId, getDockedReplyKeyboard(false));
+        await sendTelegramMessage(env, chatId, unknownMsg, messageId, getDockedReplyKeyboard(isPaused));
         return new Response(JSON.stringify({ status: "command_handled", command: "unknown" }), {
           headers: { "Content-Type": "application/json" },
         });
@@ -779,12 +855,14 @@ export async function handleTelegramWebhook(
 
   if (actionCode === "back") {
     let actionType = "approve_comment";
+    let postUrl: string | undefined = undefined;
     if (env.LINKEDIN_AGENT_KV) {
       try {
         const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
         if (rawPending) {
           const parsed = JSON.parse(rawPending);
           actionType = parsed.action_type || actionType;
+          postUrl = parsed.post_url;
         }
       } catch {}
     }
@@ -809,7 +887,7 @@ export async function handleTelegramWebhook(
           body: JSON.stringify({
             chat_id: targetChatId,
             message_id: targetMessageId,
-            reply_markup: getSuggestionKeyboard(itemId, actionType),
+            reply_markup: getSuggestionKeyboard(itemId, actionType, postUrl),
           }),
         }).catch(() => {})
       );
@@ -852,6 +930,22 @@ export async function handleTelegramWebhook(
     }
 
     const pending = JSON.parse(raw);
+
+    // Show generating progress indicator on suggestion keyboard
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            reply_markup: getRegeneratingKeyboard(targetItemId),
+          }),
+        }).catch(() => {})
+      );
+    }
+
     try {
       const rewritten = await rewriteDraftWithLlm(
         env,
@@ -874,7 +968,7 @@ export async function handleTelegramWebhook(
               text: formatPendingCardHtml(pending, `Regenerated (${toneSlug})`),
               parse_mode: "HTML",
               link_preview_options: { is_disabled: true },
-              reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type),
+              reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type, pending.post_url),
             }),
           }).catch(() => {})
         );
@@ -898,6 +992,20 @@ export async function handleTelegramWebhook(
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     } catch (err: any) {
+      if (targetMessageId) {
+        ctx.waitUntil(
+          fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              message_id: targetMessageId,
+              reply_markup: getSuggestionKeyboard(pending.item_id, pending.action_type, pending.post_url),
+            }),
+          }).catch(() => {})
+        );
+      }
+
       ctx.waitUntil(
         fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
           method: "POST",
@@ -923,14 +1031,222 @@ export async function handleTelegramWebhook(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           callback_query_id: cb.id,
-          text: "✏️ Reply to this suggestion with your revised draft text.",
+          text: "✏️ Enter your revised draft text below.",
           show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            reply_markup: getEditingKeyboard(itemId),
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: targetChatId,
+          text: `✏️ <b>Editing Draft</b> (<code>${escapeHtml(itemId)}</code>)\n\nType your revised text in the reply box below:`,
+          parse_mode: "HTML",
+          reply_parameters: targetMessageId ? { message_id: targetMessageId } : undefined,
+          reply_markup: {
+            force_reply: true,
+            input_field_placeholder: "Enter revised draft text...",
+          },
         }),
       }).catch(() => {})
     );
 
     return new Response(
       JSON.stringify({ status: "edit_prompted", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "cx_ed") {
+    let actionType = "approve_comment";
+    let postUrl: string | undefined = undefined;
+    if (env.LINKEDIN_AGENT_KV) {
+      try {
+        const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+        if (rawPending) {
+          const parsed = JSON.parse(rawPending);
+          actionType = parsed.action_type || actionType;
+          postUrl = parsed.post_url;
+        }
+      } catch {}
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "Edit cancelled.",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            reply_markup: getSuggestionKeyboard(itemId, actionType, postUrl),
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "edit_cancelled", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "rev") {
+    if (itemId === "list") {
+      let keys: Array<{ name: string }> = [];
+      if (env.LINKEDIN_AGENT_KV) {
+        const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+        keys = listRes.keys || [];
+      }
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: `Queue has ${keys.length} pending action(s).`,
+            show_alert: false,
+          }),
+        }).catch(() => {})
+      );
+      return new Response(
+        JSON.stringify({ status: "pending_list_prompted", count: keys.length }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (env.LINKEDIN_AGENT_KV) {
+      const raw = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
+      if (raw) {
+        try {
+          const pending = JSON.parse(raw);
+          const cardHtml = formatPendingCardHtml(pending);
+          const keyboard = getSuggestionKeyboard(itemId, pending.action_type, pending.post_url);
+          const sentId = await sendTelegramMessage(env, targetChatId, cardHtml, undefined, keyboard);
+          if (sentId) {
+            pending.telegram_message_id = sentId;
+            await env.LINKEDIN_AGENT_KV.put(`pending:${itemId}`, JSON.stringify(pending));
+          }
+
+          ctx.waitUntil(
+            fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                callback_query_id: cb.id,
+                text: `Opening #${itemId}...`,
+                show_alert: false,
+              }),
+            }).catch(() => {})
+          );
+
+          return new Response(
+            JSON.stringify({ status: "review_opened", item_id: itemId }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        } catch {}
+      }
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "⚠️ Item no longer pending or already processed.",
+          show_alert: true,
+        }),
+      }).catch(() => {})
+    );
+
+    return new Response(
+      JSON.stringify({ status: "item_not_found", item_id: itemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "reset_cb") {
+    if (env.LINKEDIN_AGENT_KV) {
+      await env.LINKEDIN_AGENT_KV.delete("incident");
+    }
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "✅ Circuit breaker reset.",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            text: "✅ <b>Circuit Breaker Reset</b>\n\nThe active incident record has been cleared and the circuit breaker reset to normal.",
+            parse_mode: "HTML",
+            reply_markup: { inline_keyboard: [] },
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "circuit_breaker_reset" }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "noop") {
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "⏳ Generating draft with AI, please wait...",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+    return new Response(
+      JSON.stringify({ status: "noop_acknowledged" }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -981,12 +1297,14 @@ export async function handleTelegramWebhook(
 
   if (actionCode === "cx_rej") {
     let actionType = "approve_comment";
+    let postUrl: string | undefined = undefined;
     if (env.LINKEDIN_AGENT_KV) {
       try {
         const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
         if (rawPending) {
           const parsed = JSON.parse(rawPending);
           actionType = parsed.action_type || actionType;
+          postUrl = parsed.post_url;
         }
       } catch {}
     }
@@ -1011,7 +1329,7 @@ export async function handleTelegramWebhook(
           body: JSON.stringify({
             chat_id: targetChatId,
             message_id: targetMessageId,
-            reply_markup: getSuggestionKeyboard(itemId, actionType),
+            reply_markup: getSuggestionKeyboard(itemId, actionType, postUrl),
           }),
         }).catch(() => {})
       );
@@ -1062,10 +1380,14 @@ export async function handleTelegramWebhook(
     );
 
     if (targetMessageId) {
-      const finalText =
-        feedbackReason !== "skip"
-          ? `❌ <b>Suggestion rejected by operator</b>\n<i>Feedback: ${escapeHtml(feedbackReason)}</i>`
-          : `❌ <b>Suggestion rejected by operator</b>`;
+      let pendingObj: any = undefined;
+      if (env.LINKEDIN_AGENT_KV) {
+        try {
+          const raw = await env.LINKEDIN_AGENT_KV.get(`pending:${targetItemId}`);
+          if (raw) pendingObj = JSON.parse(raw);
+        } catch {}
+      }
+      const finalText = formatRejectionCard(pendingObj, feedbackReason);
       ctx.waitUntil(
         fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: "POST",
@@ -1075,6 +1397,7 @@ export async function handleTelegramWebhook(
             message_id: targetMessageId,
             text: finalText,
             parse_mode: "HTML",
+            link_preview_options: { is_disabled: true },
             reply_markup: { inline_keyboard: [] },
           }),
         }).catch(() => {})
@@ -1083,6 +1406,503 @@ export async function handleTelegramWebhook(
 
     return new Response(
       JSON.stringify({ status: "feedback_recorded", reason: feedbackReason, item_id: targetItemId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "home") {
+    const subAction = parts[1] || "menu";
+    let toast = "🏠 Control Hub";
+
+    if (subAction === "pause") {
+      if (env.LINKEDIN_AGENT_KV) {
+        await env.LINKEDIN_AGENT_KV.put(
+          "paused",
+          JSON.stringify({ paused_at: new Date().toISOString() })
+        );
+      }
+      toast = "⏸️ Agent paused";
+      broadcastEvent({ type: "agent_paused" });
+    } else if (subAction === "resume") {
+      if (env.LINKEDIN_AGENT_KV) {
+        await env.LINKEDIN_AGENT_KV.delete("paused");
+      }
+      toast = "▶️ Agent resumed";
+      broadcastEvent({ type: "agent_resumed" });
+    }
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: toast,
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    let isPaused = false;
+    let hasIncident = false;
+    let incidentReason = "";
+    let commentsCount = 0;
+    let postsCount = 0;
+    let pendingCount = 0;
+    let counters: any = null;
+
+    if (env.LINKEDIN_AGENT_KV) {
+      const rawPaused = await env.LINKEDIN_AGENT_KV.get("paused");
+      isPaused = rawPaused !== null;
+      const rawIncident = await env.LINKEDIN_AGENT_KV.get("incident");
+      if (rawIncident) {
+        hasIncident = true;
+        try {
+          const inc = JSON.parse(rawIncident);
+          incidentReason = inc.reason || "Incident detected";
+        } catch {
+          incidentReason = String(rawIncident);
+        }
+      }
+      const rawCounters = await env.LINKEDIN_AGENT_KV.get("daily_counters");
+      if (rawCounters) {
+        try {
+          counters = JSON.parse(rawCounters);
+          commentsCount = counters.comments_executed ?? 0;
+          postsCount = counters.posts_executed ?? 0;
+        } catch {}
+      }
+      const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+      pendingCount = listRes.keys ? listRes.keys.length : 0;
+    }
+
+    let sysStatus = "🟢 <b>Operational</b>";
+    let cbStatus = "🟢 <b>Normal</b> (No active incident)";
+    if (hasIncident) {
+      sysStatus = "🚨 <b>Halted (Circuit Breaker Tripped)</b>";
+      cbStatus = `🔴 <b>Tripped</b> (${escapeHtml(incidentReason)})`;
+    } else if (isPaused) {
+      sysStatus = "⏸️ <b>Paused</b>";
+    }
+
+    const hubHtml = formatHomeHub(sysStatus, cbStatus, pendingCount, counters);
+    const hubMarkup = getHomeKeyboard(hasIncident, pendingCount, isPaused);
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            text: hubHtml,
+            parse_mode: "HTML",
+            link_preview_options: { is_disabled: true },
+            reply_markup: hubMarkup,
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "home_displayed", sub_action: subAction, paused: isPaused }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "close") {
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "Menu closed.",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+          }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: targetChatId,
+                message_id: targetMessageId,
+                reply_markup: { inline_keyboard: [] },
+              }),
+            });
+          }
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "menu_closed" }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (actionCode === "refresh") {
+    const subAction = parts[1] || "home";
+
+    if (subAction === "status") {
+      let isPaused = false;
+      let hasIncident = false;
+      let incidentReason = "";
+      let commentsCount = 0;
+      let postsCount = 0;
+      let pendingCount = 0;
+
+      if (env.LINKEDIN_AGENT_KV) {
+        const rawPaused = await env.LINKEDIN_AGENT_KV.get("paused");
+        isPaused = rawPaused !== null;
+        const rawIncident = await env.LINKEDIN_AGENT_KV.get("incident");
+        if (rawIncident) {
+          hasIncident = true;
+          try {
+            const inc = JSON.parse(rawIncident);
+            incidentReason = inc.reason || "Incident detected";
+          } catch {
+            incidentReason = String(rawIncident);
+          }
+        }
+        const rawCounters = await env.LINKEDIN_AGENT_KV.get("daily_counters");
+        if (rawCounters) {
+          try {
+            const c = JSON.parse(rawCounters);
+            commentsCount = c.comments_executed ?? 0;
+            postsCount = c.posts_executed ?? 0;
+          } catch {}
+        }
+        const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+        pendingCount = listRes.keys ? listRes.keys.length : 0;
+      }
+
+      let sysStatus = "🟢 <b>Operational</b>";
+      let cbStatus = "🟢 <b>Normal</b> (No active incident)";
+      if (hasIncident) {
+        sysStatus = "🚨 <b>Halted (Circuit Breaker Tripped)</b>";
+        cbStatus = `🔴 <b>Tripped</b>\n  • <i>Reason:</i> ${escapeHtml(incidentReason)}`;
+      } else if (isPaused) {
+        sysStatus = "⏸️ <b>Paused</b>";
+      }
+
+      const report =
+        `🎛️ <b>Agent Status Report</b>\n\n` +
+        `• <b>System State:</b> ${sysStatus}\n` +
+        `• <b>Circuit Breaker:</b> ${cbStatus}\n` +
+        `• <b>Pending Approvals:</b> <b>${pendingCount}</b> action(s) awaiting review\n\n` +
+        `📊 <b>Daily Counters</b>\n` +
+        `• <b>Comments Executed:</b> ${commentsCount}\n` +
+        `• <b>Posts Executed:</b> ${postsCount}`;
+
+      const statusMarkup = getStatusKeyboard(hasIncident, pendingCount, true);
+
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: "🔄 Status refreshed",
+            show_alert: false,
+          }),
+        }).catch(() => {})
+      );
+
+      if (targetMessageId) {
+        ctx.waitUntil(
+          fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              message_id: targetMessageId,
+              text: report,
+              parse_mode: "HTML",
+              link_preview_options: { is_disabled: true },
+              reply_markup: statusMarkup,
+            }),
+          }).catch(() => {})
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ status: "status_refreshed" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (subAction === "pending") {
+      let keys: Array<{ name: string }> = [];
+      if (env.LINKEDIN_AGENT_KV) {
+        const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+        keys = listRes.keys || [];
+      }
+
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: `Queue refreshed (${keys.length} items)`,
+            show_alert: false,
+          }),
+        }).catch(() => {})
+      );
+
+      let textContent = "";
+      let pendingMarkup: any;
+
+      if (keys.length === 0) {
+        textContent = "📭 <b>No Pending Actions</b>\n\nThere are no actions currently awaiting review.";
+        pendingMarkup = getPendingListKeyboard([], 5, true);
+      } else {
+        const lines: string[] = [`📋 <b>Pending Approval Queue (${keys.length})</b>\n`];
+        const displayKeys = keys.slice(0, 10);
+        const pendingItems: Array<any> = [];
+        for (let i = 0; i < displayKeys.length; i++) {
+          if (!env.LINKEDIN_AGENT_KV) continue;
+          const raw = await env.LINKEDIN_AGENT_KV.get(displayKeys[i].name);
+          if (!raw) continue;
+          try {
+            const item = JSON.parse(raw);
+            pendingItems.push(item);
+            const actionType = item.action_type || "comment";
+            let typeIcon = "💬 Comment";
+            if (actionType === "post") typeIcon = "📝 Post";
+            else if (actionType === "reply") typeIcon = "↩️ Reply";
+            else if (actionType === "connect" || actionType === "connection") {
+              typeIcon = "🤝 Connection";
+            }
+
+            const target = item.author || item.recipient_name || item.target_author || "";
+            const draft = item.draft_text || item.note || item.text || "";
+            const shortDraft = draft.length > 80 ? draft.substring(0, 77) + "..." : draft;
+
+            lines.push(
+              `${i + 1}. ${typeIcon} (<code>${escapeHtml(item.item_id)}</code>)` +
+                (target ? `\n   • <i>Target:</i> ${escapeHtml(target)}` : "") +
+                (shortDraft ? `\n   • <i>Draft:</i> "${escapeHtml(shortDraft)}"` : "")
+            );
+          } catch {}
+        }
+        if (keys.length > 10) {
+          lines.push(`\n<i>...and ${keys.length - 10} more pending items.</i>`);
+        }
+        lines.push(`\n<i>Reply to any suggestion card or tap inline buttons to approve/reject.</i>`);
+        textContent = lines.join("\n");
+        pendingMarkup = getPendingListKeyboard(pendingItems, 5, true);
+      }
+
+      if (targetMessageId) {
+        ctx.waitUntil(
+          fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              message_id: targetMessageId,
+              text: textContent,
+              parse_mode: "HTML",
+              link_preview_options: { is_disabled: true },
+              reply_markup: pendingMarkup,
+            }),
+          }).catch(() => {})
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ status: "pending_refreshed", count: keys.length }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (subAction === "stats") {
+      let commentsExecuted = 0;
+      let postsExecuted = 0;
+      let connectionsSent = 0;
+      let suggestionsSent = 0;
+      let counterDate = "";
+      let historyEntries: Array<Record<string, unknown>> = [];
+
+      if (env.LINKEDIN_AGENT_KV) {
+        const rawCounters = await env.LINKEDIN_AGENT_KV.get("daily_counters");
+        if (rawCounters) {
+          try {
+            const c = JSON.parse(rawCounters);
+            commentsExecuted = c.comments_executed ?? 0;
+            postsExecuted = c.posts_executed ?? 0;
+            connectionsSent = c.connections_sent ?? 0;
+            suggestionsSent = c.suggestions_sent ?? 0;
+            counterDate = c.date ?? "";
+          } catch {}
+        }
+        const rawHistory = await env.LINKEDIN_AGENT_KV.get("history");
+        if (rawHistory) {
+          try {
+            const h = JSON.parse(rawHistory);
+            if (Array.isArray(h)) historyEntries = h;
+          } catch {}
+        }
+      }
+
+      let successCount = 0;
+      let rejectedCount = 0;
+      let failedCount = 0;
+
+      for (const entry of historyEntries) {
+        const status = entry.final_status;
+        if (status === "executed_success") successCount++;
+        else if (status === "rejected") rejectedCount++;
+        else if (status === "expired" || status === "executed_failed" || status === "halted") {
+          failedCount++;
+        }
+      }
+
+      const totalDecided = successCount + rejectedCount;
+      const approvalRate =
+        totalDecided > 0 ? `${((successCount / totalDecided) * 100).toFixed(1)}%` : "N/A";
+
+      const statsMsg =
+        `📊 <b>Agent Performance &amp; Execution Stats</b>\n\n` +
+        `📅 <b>Today's Counters${counterDate ? ` (${counterDate})` : ""}</b>\n` +
+        `• <b>Suggestions Sent:</b> ${suggestionsSent}\n` +
+        `• <b>Comments Published:</b> ${commentsExecuted}\n` +
+        `• <b>Posts Published:</b> ${postsExecuted}\n` +
+        `• <b>Connections Sent:</b> ${connectionsSent}\n\n` +
+        `📈 <b>All-Time History (${historyEntries.length} records)</b>\n` +
+        `• <b>Executed Actions:</b> ${successCount}\n` +
+        `• <b>Operator Rejections:</b> ${rejectedCount}\n` +
+        `• <b>Expired / Failed:</b> ${failedCount}\n` +
+        `• <b>Approval Rate:</b> <b>${approvalRate}</b>`;
+
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            callback_query_id: cb.id,
+            text: "🔄 Stats refreshed",
+            show_alert: false,
+          }),
+        }).catch(() => {})
+      );
+
+      if (targetMessageId) {
+        ctx.waitUntil(
+          fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              message_id: targetMessageId,
+              text: statsMsg,
+              parse_mode: "HTML",
+              link_preview_options: { is_disabled: true },
+              reply_markup: getStatsKeyboard(),
+            }),
+          }).catch(() => {})
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ status: "stats_refreshed" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Default: refresh home hub
+    let isPaused = false;
+    let hasIncident = false;
+    let incidentReason = "";
+    let commentsCount = 0;
+    let postsCount = 0;
+    let pendingCount = 0;
+    let counters: any = null;
+
+    if (env.LINKEDIN_AGENT_KV) {
+      const rawPaused = await env.LINKEDIN_AGENT_KV.get("paused");
+      isPaused = rawPaused !== null;
+      const rawIncident = await env.LINKEDIN_AGENT_KV.get("incident");
+      if (rawIncident) {
+        hasIncident = true;
+        try {
+          const inc = JSON.parse(rawIncident);
+          incidentReason = inc.reason || "Incident detected";
+        } catch {
+          incidentReason = String(rawIncident);
+        }
+      }
+      const rawCounters = await env.LINKEDIN_AGENT_KV.get("daily_counters");
+      if (rawCounters) {
+        try {
+          counters = JSON.parse(rawCounters);
+          commentsCount = counters.comments_executed ?? 0;
+          postsCount = counters.posts_executed ?? 0;
+        } catch {}
+      }
+      const listRes = await env.LINKEDIN_AGENT_KV.list({ prefix: "pending:" });
+      pendingCount = listRes.keys ? listRes.keys.length : 0;
+    }
+
+    let sysStatus = "🟢 <b>Operational</b>";
+    let cbStatus = "🟢 <b>Normal</b> (No active incident)";
+    if (hasIncident) {
+      sysStatus = "🚨 <b>Halted (Circuit Breaker Tripped)</b>";
+      cbStatus = `🔴 <b>Tripped</b> (${escapeHtml(incidentReason)})`;
+    } else if (isPaused) {
+      sysStatus = "⏸️ <b>Paused</b>";
+    }
+
+    const hubHtml = formatHomeHub(sysStatus, cbStatus, pendingCount, counters);
+    const hubMarkup = getHomeKeyboard(hasIncident, pendingCount, isPaused);
+
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: "🔄 Hub refreshed",
+          show_alert: false,
+        }),
+      }).catch(() => {})
+    );
+
+    if (targetMessageId) {
+      ctx.waitUntil(
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            message_id: targetMessageId,
+            text: hubHtml,
+            parse_mode: "HTML",
+            link_preview_options: { is_disabled: true },
+            reply_markup: hubMarkup,
+          }),
+        }).catch(() => {})
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ status: "home_refreshed" }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -1119,10 +1939,12 @@ export async function handleTelegramWebhook(
       actionType = "approve_connection";
     }
     let tgMsgId: number | null = null;
+    let pendingObj: any = null;
     try {
       const rawPending = await env.LINKEDIN_AGENT_KV.get(`pending:${itemId}`);
       if (rawPending) {
         const pending = JSON.parse(rawPending);
+        pendingObj = pending;
         actionType = pending.action_type || actionType;
         if (pending.telegram_message_id) {
           tgMsgId = Number(pending.telegram_message_id);
@@ -1208,9 +2030,7 @@ export async function handleTelegramWebhook(
 
     // 6. Edit Telegram message to show rejection and offer optional feedback tags
     if (targetMessageId) {
-      const rejectionPromptHtml =
-        `<b>${escapeHtml(rejectionLabel)}</b>\n\n` +
-        `<i>Why was this suggestion rejected? (Optional feedback):</i>`;
+      const rejectionPromptHtml = formatRejectionCard(pendingObj);
 
       ctx.waitUntil(
         fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
@@ -1221,6 +2041,7 @@ export async function handleTelegramWebhook(
             message_id: targetMessageId,
             text: rejectionPromptHtml,
             parse_mode: "HTML",
+            link_preview_options: { is_disabled: true },
             reply_markup: getRejectionFeedbackKeyboard(itemId),
           }),
         }).catch(() => {})

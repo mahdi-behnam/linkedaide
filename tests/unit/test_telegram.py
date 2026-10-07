@@ -13,22 +13,38 @@ from agent.state.store import GitStateStore
 from agent.telegram.callbacks import (
     execute_back_callback,
     execute_callback_query,
+    execute_cancel_edit_callback,
+    execute_close_callback,
     execute_feedback_callback,
+    execute_home_callback,
+    execute_noop_callback,
+    execute_refresh_callback,
     execute_reject_cancel_callback,
     execute_reject_confirm_callback,
     execute_reject_prompt_callback,
+    execute_reset_circuit_breaker_callback,
+    execute_review_callback,
     execute_tone_menu_callback,
     execute_tone_select_callback,
 )
 from agent.telegram.client import TelegramClient
 from agent.telegram.draft_editor import handle_draft_edit, handle_edit_callback
 from agent.telegram.keyboards import (
+    build_editing_keyboard,
+    build_help_keyboard,
+    build_home_keyboard,
     build_outcome_message,
+    build_pending_list_keyboard,
+    build_regenerating_keyboard,
     build_reject_confirm_keyboard,
     build_rejection_feedback_keyboard,
+    build_stats_keyboard,
+    build_status_keyboard,
     build_suggestion_keyboard,
     build_suggestion_message,
     build_tone_keyboard,
+    format_home_hub,
+    format_rejection_card,
     format_suggestion_card,
 )
 from agent.telegram.reply_keyboards import build_docked_reply_keyboard
@@ -116,9 +132,10 @@ class TestKeyboardsAndMessages:
 
     def test_build_suggestion_keyboard_includes_edit_button(self) -> None:
         keyboard = build_suggestion_keyboard("item_edit_test", "approve_comment")
-        assert len(keyboard["inline_keyboard"]) == 2
+        assert len(keyboard["inline_keyboard"]) == 3
         row1 = keyboard["inline_keyboard"][0]
         row2 = keyboard["inline_keyboard"][1]
+        row3 = keyboard["inline_keyboard"][2]
         assert len(row1) == 2
         assert row1[0]["text"] == "✅ Approve"
         assert row1[0]["callback_data"] == "ac:item_edit_test"
@@ -129,8 +146,106 @@ class TestKeyboardsAndMessages:
         assert row2[0]["callback_data"] == "reg:item_edit_test"
         assert row2[1]["text"] == "✏️ Edit"
         assert row2[1]["callback_data"] == "ed:item_edit_test"
+        assert row3[0]["text"] == "🏠 Home Menu"
+        assert row3[0]["callback_data"] == "home:menu"
         assert len(b"reg:item_edit_test") < 64
         assert len(b"ed:item_edit_test") < 64
+
+    def test_build_suggestion_keyboard_with_post_url(self) -> None:
+        keyboard = build_suggestion_keyboard(
+            "item_url_test", "approve_comment", post_url="https://linkedin.com/feed/update/urn:li:activity:123"
+        )
+        assert len(keyboard["inline_keyboard"]) == 4
+        # First row is LinkedIn URL button
+        assert keyboard["inline_keyboard"][0][0]["text"] == "🔗 View Post on LinkedIn"
+        assert keyboard["inline_keyboard"][0][0]["url"] == "https://linkedin.com/feed/update/urn:li:activity:123"
+        # Second row is Approve / Reject
+        assert keyboard["inline_keyboard"][1][0]["text"] == "✅ Approve"
+        assert keyboard["inline_keyboard"][1][1]["text"] == "❌ Reject"
+        # Third row is Regenerate / Edit
+        assert keyboard["inline_keyboard"][2][0]["text"] == "🔄 Regenerate"
+        assert keyboard["inline_keyboard"][2][1]["text"] == "✏️ Edit"
+        # Fourth row is Home Menu
+        assert keyboard["inline_keyboard"][3][0]["text"] == "🏠 Home Menu"
+
+    def test_build_editing_keyboard(self) -> None:
+        kb = build_editing_keyboard("item_edit_123")
+        assert len(kb["inline_keyboard"]) == 1
+        btn = kb["inline_keyboard"][0][0]
+        assert btn["text"] == "❌ Cancel Edit"
+        assert btn["callback_data"] == "cx_ed:item_edit_123"
+        assert len(b"cx_ed:item_edit_123") < 64
+
+    def test_build_regenerating_keyboard(self) -> None:
+        kb = build_regenerating_keyboard("item_regen_123")
+        assert len(kb["inline_keyboard"]) == 1
+        btn = kb["inline_keyboard"][0][0]
+        assert "Generating with AI" in btn["text"]
+        assert btn["callback_data"] == "noop:item_regen_123"
+        assert len(b"noop:item_regen_123") < 64
+
+    def test_build_pending_list_keyboard(self) -> None:
+        items = [
+            PendingAction(
+                item_id="item_01",
+                action_type="approve_comment",
+                post_url="",
+                draft_text="test draft 1",
+            ),
+            PendingAction(
+                item_id="item_02",
+                action_type="approve_post",
+                post_url="",
+                draft_text="test draft 2",
+            ),
+        ]
+        kb = build_pending_list_keyboard(items)
+        assert len(kb["inline_keyboard"]) == 3
+        assert "Review #1" in kb["inline_keyboard"][0][0]["text"]
+        assert kb["inline_keyboard"][0][0]["callback_data"] == "rev:item_01"
+        assert "Review #2" in kb["inline_keyboard"][1][0]["text"]
+        assert kb["inline_keyboard"][1][0]["callback_data"] == "rev:item_02"
+        assert kb["inline_keyboard"][2][0]["text"] == "🔄 Refresh Queue"
+        assert kb["inline_keyboard"][2][1]["text"] == "🏠 Home Menu"
+
+    def test_build_status_keyboard(self) -> None:
+        kb_tripped = build_status_keyboard(is_tripped=True, pending_count=3)
+        assert len(kb_tripped["inline_keyboard"]) == 3
+        assert kb_tripped["inline_keyboard"][0][0]["text"] == "🔄 Reset Circuit Breaker"
+        assert kb_tripped["inline_keyboard"][0][0]["callback_data"] == "reset_cb:global"
+        assert "Review Pending (3)" in kb_tripped["inline_keyboard"][1][0]["text"]
+        assert kb_tripped["inline_keyboard"][2][0]["text"] == "🔄 Refresh Status"
+        assert kb_tripped["inline_keyboard"][2][1]["text"] == "🏠 Home Menu"
+
+        kb_normal = build_status_keyboard(is_tripped=False, pending_count=0)
+        assert len(kb_normal["inline_keyboard"]) == 1
+        assert kb_normal["inline_keyboard"][0][0]["text"] == "🔄 Refresh Status"
+        assert kb_normal["inline_keyboard"][0][1]["text"] == "🏠 Home Menu"
+
+    def test_build_docked_reply_keyboard_placeholder(self) -> None:
+        markup = build_docked_reply_keyboard(is_paused=False, input_placeholder="Custom hint...")
+        assert markup["input_field_placeholder"] == "Custom hint..."
+        assert markup["resize_keyboard"] is True
+        assert markup["is_persistent"] is True
+
+    def test_format_rejection_card(self) -> None:
+        item = PendingAction(
+            item_id="rej_123",
+            action_type="approve_comment",
+            post_url="https://linkedin.com/post/123",
+            author_name="Alice Smith",
+            draft_text="Insightful thought!",
+        )
+        card_prompt = format_rejection_card(item)
+        assert "❌ Suggestion Rejected by Operator" in card_prompt
+        assert "rej_123" in card_prompt
+        assert "Alice Smith" in card_prompt
+        assert "Insightful thought!" in card_prompt
+        assert "Why was this suggestion rejected?" in card_prompt
+
+        card_feedback = format_rejection_card(item, reason="Too Generic")
+        assert "Too Generic" in card_feedback
+        assert "Feedback:" in card_feedback
 
     def test_format_suggestion_card_comprehensive(self) -> None:
         item = PendingAction(
@@ -195,13 +310,16 @@ class TestKeyboardsAndMessages:
 
     def test_build_reject_confirm_keyboard(self) -> None:
         kb = build_reject_confirm_keyboard("item_999", "approve_comment")
-        assert len(kb["inline_keyboard"]) == 1
-        row = kb["inline_keyboard"][0]
-        assert len(row) == 2
-        assert row[0]["text"] == "❌ Yes, Reject"
-        assert row[0]["callback_data"] == "cf_rej:item_999"
-        assert row[1]["text"] == "🔙 Cancel / Keep"
-        assert row[1]["callback_data"] == "cx_rej:item_999"
+        assert len(kb["inline_keyboard"]) == 2
+        row0 = kb["inline_keyboard"][0]
+        assert len(row0) == 2
+        assert row0[0]["text"] == "❌ Yes, Reject"
+        assert row0[0]["callback_data"] == "cf_rej:item_999"
+        assert row0[1]["text"] == "🔙 Cancel / Keep"
+        assert row0[1]["callback_data"] == "cx_rej:item_999"
+        row1 = kb["inline_keyboard"][1]
+        assert row1[0]["text"] == "🏠 Home Menu"
+        assert row1[0]["callback_data"] == "home:menu"
         assert len(b"cf_rej:item_999") < 64
         assert len(b"cx_rej:item_999") < 64
 
@@ -216,6 +334,7 @@ class TestKeyboardsAndMessages:
         assert row2[0]["callback_data"] == "fb:risky:item_999"
         assert row2[1]["callback_data"] == "fb:offtopic:item_999"
         assert row3[0]["callback_data"] == "fb:skip:item_999"
+        assert row3[1]["callback_data"] == "home:menu"
         for row in kb["inline_keyboard"]:
             for btn in row:
                 assert len(btn["callback_data"].encode("utf-8")) < 64
@@ -231,19 +350,22 @@ class TestKeyboardsAndMessages:
         assert row2[0]["callback_data"] == "tone:contrarian:item_999"
         assert row2[1]["callback_data"] == "tone:shorter:item_999"
         assert row3[0]["callback_data"] == "back:item_999"
+        assert row3[1]["callback_data"] == "home:menu"
         for row in kb["inline_keyboard"]:
             for btn in row:
                 assert len(btn["callback_data"].encode("utf-8")) < 64
 
     def test_build_tone_keyboard_connection(self) -> None:
         kb = build_tone_keyboard("conn_999", "approve_connection")
-        assert len(kb["inline_keyboard"]) == 2
+        assert len(kb["inline_keyboard"]) == 3
         row1 = kb["inline_keyboard"][0]
         row2 = kb["inline_keyboard"][1]
+        row3 = kb["inline_keyboard"][2]
         assert row1[0]["callback_data"] == "tone:casual:conn_999"
         assert row1[1]["callback_data"] == "tone:technical:conn_999"
         assert row2[0]["callback_data"] == "tone:concise:conn_999"
-        assert row2[1]["callback_data"] == "back:conn_999"
+        assert row3[0]["callback_data"] == "back:conn_999"
+        assert row3[1]["callback_data"] == "home:menu"
         for row in kb["inline_keyboard"]:
             for btn in row:
                 assert len(btn["callback_data"].encode("utf-8")) < 64
@@ -257,6 +379,8 @@ class TestKeyboardsAndMessages:
         assert rows[0][1]["text"] == "📋 Pending Queue"
         assert rows[1][0]["text"] == "⏸️ Pause"
         assert rows[1][1]["text"] == "📈 Stats"
+        assert rows[2][0]["text"] == "🏠 Home Menu"
+        assert rows[2][1]["text"] == "❓ Help"
 
         kb_paused = build_docked_reply_keyboard(is_paused=True)
         rows_paused = kb_paused["keyboard"]
@@ -319,6 +443,62 @@ class TestKeyboardsAndMessages:
         )
         assert "⚠️ Execution Failed" in failed_msg
         assert "Selector not found" in failed_msg
+
+    def test_build_home_keyboard(self) -> None:
+        kb_normal = build_home_keyboard(is_tripped=False, pending_count=2, is_paused=False)
+        assert len(kb_normal["inline_keyboard"]) == 3
+        # Row 1: Pending & Status
+        assert "Pending (2)" in kb_normal["inline_keyboard"][0][0]["text"]
+        assert kb_normal["inline_keyboard"][0][0]["callback_data"] == "rev:list"
+        assert kb_normal["inline_keyboard"][0][1]["text"] == "📊 Status"
+        assert kb_normal["inline_keyboard"][0][1]["callback_data"] == "refresh:status"
+        # Row 2: Stats & Pause
+        assert kb_normal["inline_keyboard"][1][0]["text"] == "📈 Stats"
+        assert kb_normal["inline_keyboard"][1][1]["text"] == "⏸️ Pause Agent"
+        assert kb_normal["inline_keyboard"][1][1]["callback_data"] == "home:pause"
+        # Row 3: Refresh & Close
+        assert kb_normal["inline_keyboard"][2][0]["text"] == "🔄 Refresh Hub"
+        assert kb_normal["inline_keyboard"][2][1]["text"] == "❌ Close Menu"
+
+        # Tripped case
+        kb_tripped = build_home_keyboard(is_tripped=True, pending_count=0, is_paused=True)
+        assert len(kb_tripped["inline_keyboard"]) == 4
+        assert kb_tripped["inline_keyboard"][0][0]["text"] == "🔄 Reset Circuit Breaker"
+        assert kb_tripped["inline_keyboard"][2][1]["text"] == "▶️ Resume Agent"
+        assert kb_tripped["inline_keyboard"][2][1]["callback_data"] == "home:resume"
+
+    def test_build_stats_keyboard(self) -> None:
+        kb = build_stats_keyboard()
+        assert len(kb["inline_keyboard"]) == 1
+        assert kb["inline_keyboard"][0][0]["text"] == "🔄 Refresh Stats"
+        assert kb["inline_keyboard"][0][0]["callback_data"] == "refresh:stats"
+        assert kb["inline_keyboard"][0][1]["text"] == "🏠 Home Menu"
+        assert kb["inline_keyboard"][0][1]["callback_data"] == "home:menu"
+
+    def test_build_help_keyboard(self) -> None:
+        kb = build_help_keyboard()
+        assert len(kb["inline_keyboard"]) == 1
+        assert kb["inline_keyboard"][0][0]["text"] == "🏠 Home Menu"
+        assert kb["inline_keyboard"][0][0]["callback_data"] == "home:menu"
+        assert kb["inline_keyboard"][0][1]["text"] == "📊 Status Report"
+        assert kb["inline_keyboard"][0][1]["callback_data"] == "refresh:status"
+
+    def test_format_home_hub(self, mock_settings: Settings) -> None:
+        from agent.models import DailyCounters
+
+        counters = DailyCounters(date="2026-10-07", comments_executed=3, posts_executed=1, suggestions_sent=5)
+        text = format_home_hub(
+            system_state="🟢 <b>Operational</b>",
+            cb_status="🟢 <b>Normal</b>",
+            pending_count=4,
+            counters=counters,
+            settings=mock_settings,
+        )
+        assert "Command & Control Hub" in text
+        assert "Operational" in text
+        assert "4</b> action(s) awaiting review" in text
+        assert "3 / 5" in text
+        assert "1 / 1" in text
 
     def test_build_outcome_messages_for_reply_and_connection(self) -> None:
         reply_action = PendingAction(
@@ -1619,9 +1799,10 @@ class TestTelegramCallbacks:
             # Check message was edited
             edit_req = next(r for r in recorded_requests if "editMessageText" in r["path"])
             assert "Rewritten in contrarian style:" in edit_req["payload"]["text"]
-            # Review buttons restored
+            # Review buttons restored (with LinkedIn URL button on top)
             kb = edit_req["payload"]["reply_markup"]["inline_keyboard"]
-            assert kb[0][0]["callback_data"] == f"ac:{sample_pending_action.item_id}"
+            assert kb[0][0]["url"] == sample_pending_action.post_url
+            assert kb[1][0]["callback_data"] == f"ac:{sample_pending_action.item_id}"
 
     @pytest.mark.asyncio
     async def test_execute_callback_query_router(
@@ -1673,6 +1854,222 @@ class TestTelegramCallbacks:
             )
             assert res_valid is True
             assert len(recorded_requests) == 2
+
+    @pytest.mark.asyncio
+    async def test_execute_cancel_edit_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_cancel_edit_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                callback_query_id="q_cx_ed",
+                chat_id=987654321,
+                message_id=42,
+            )
+            assert handled is True
+            assert len(recorded_requests) == 2
+            answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
+            assert "cancelled" in answer_req["payload"]["text"].lower()
+            edit_req = next(r for r in recorded_requests if "editMessageReplyMarkup" in r["path"])
+            kb = edit_req["payload"]["reply_markup"]["inline_keyboard"]
+            assert kb[0][0]["url"] == sample_pending_action.post_url
+            assert kb[1][0]["callback_data"] == f"ac:{sample_pending_action.item_id}"
+
+    @pytest.mark.asyncio
+    async def test_execute_review_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+        sample_pending_action: PendingAction,
+    ) -> None:
+        test_state_store.write_pending(sample_pending_action)
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": {"message_id": 555}})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_review_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                item_id=sample_pending_action.item_id,
+                callback_query_id="q_rev",
+                chat_id=987654321,
+            )
+            assert handled is True
+            # Answers callback and delivers suggestion card
+            assert any("answerCallbackQuery" in r["path"] for r in recorded_requests)
+            assert any("sendMessage" in r["path"] for r in recorded_requests)
+
+    @pytest.mark.asyncio
+    async def test_execute_reset_circuit_breaker_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        test_state_store.save_incident({"reason": "Test trip", "tripped_at": "2026-10-07T00:00:00Z"})
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_reset_circuit_breaker_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                callback_query_id="q_reset_cb",
+                chat_id=987654321,
+                message_id=42,
+            )
+            assert handled is True
+            assert test_state_store.read_incident() is None
+            assert len(recorded_requests) == 2
+            answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
+            assert "Circuit breaker reset" in answer_req["payload"]["text"]
+
+    @pytest.mark.asyncio
+    async def test_execute_noop_callback(
+        self,
+        mock_settings: Settings,
+    ) -> None:
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_noop_callback(
+                telegram=telegram,
+                callback_query_id="q_noop",
+            )
+            assert handled is True
+            assert len(recorded_requests) == 1
+            assert "AI draft generation" in recorded_requests[0]["payload"]["text"]
+
+    @pytest.mark.asyncio
+    async def test_execute_home_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_home_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                settings=mock_settings,
+                chat_id=987654321,
+                message_id=42,
+                callback_query_id="q_home",
+                action_arg="menu",
+            )
+            assert handled is True
+            assert any("answerCallbackQuery" in r["path"] for r in recorded_requests)
+            edit_req = next(r for r in recorded_requests if "editMessageText" in r["path"])
+            assert "Command & Control Hub" in edit_req["payload"]["text"]
+
+            # Test pause action_arg
+            handled_pause = await execute_home_callback(
+                state_store=test_state_store,
+                telegram=telegram,
+                settings=mock_settings,
+                chat_id=987654321,
+                message_id=42,
+                callback_query_id="q_pause",
+                action_arg="pause",
+            )
+            assert handled_pause is True
+            assert test_state_store.is_paused() is True
+
+    @pytest.mark.asyncio
+    async def test_execute_close_callback(
+        self,
+        mock_settings: Settings,
+    ) -> None:
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_close_callback(
+                telegram=telegram,
+                chat_id=987654321,
+                message_id=42,
+                callback_query_id="q_close",
+            )
+            assert handled is True
+            assert any("answerCallbackQuery" in r["path"] for r in recorded_requests)
+            assert any("deleteMessage" in r["path"] for r in recorded_requests)
+
+    @pytest.mark.asyncio
+    async def test_execute_refresh_callback(
+        self,
+        mock_settings: Settings,
+        test_state_store: GitStateStore,
+    ) -> None:
+        recorded_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            data = json.loads(request.content.decode("utf-8"))
+            recorded_requests.append({"path": request.url.path, "payload": data})
+            return httpx.Response(200, json={"ok": True, "result": True})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            telegram = TelegramClient(mock_settings, http_client=http_client)
+            handled = await execute_refresh_callback(
+                view="status",
+                settings=mock_settings,
+                state_store=test_state_store,
+                telegram=telegram,
+                chat_id=987654321,
+                message_id=42,
+                callback_query_id="q_ref_stat",
+            )
+            assert handled is True
+            assert any("answerCallbackQuery" in r["path"] for r in recorded_requests)
+            edit_req = next(r for r in recorded_requests if "editMessageText" in r["path"])
+            assert "Agent Status Report" in edit_req["payload"]["text"]
 
 
 class TestTelegramPhotoSuggestions:

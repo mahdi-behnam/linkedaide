@@ -21,10 +21,79 @@ from agent.config import Settings
 from agent.models import PendingAction, PostIdeationContext
 from agent.safety.circuit_breaker import is_halted
 from agent.state.base import BaseStateStore
-from agent.telegram.client import TelegramClient
+from agent.telegram.keyboards import (
+    build_help_keyboard,
+    build_home_keyboard,
+    build_pending_list_keyboard,
+    build_stats_keyboard,
+    build_status_keyboard,
+    format_home_hub,
+)
 from agent.telegram.reply_keyboards import build_docked_reply_keyboard
 
 logger = logging.getLogger(__name__)
+
+
+async def execute_home_command(
+    settings: Settings,
+    state_store: BaseStateStore,
+    telegram: TelegramClient,
+    repo_root: Path,
+    chat_id: int,
+    message_id: int | None = None,
+) -> str:
+    """Execute /home command: Command & Control hub with status and quick navigation.
+
+    Args:
+        settings: Application runtime settings.
+        state_store: Durable state store instance.
+        telegram: Telegram client for sending responses.
+        repo_root: Path to repository root.
+        chat_id: Target chat ID.
+        message_id: Optional reply-to message ID.
+
+    Returns:
+        str: The rendered HTML home hub message sent to Telegram.
+    """
+    halted, _ = is_halted(repo_root, settings, state_store=state_store)
+    incident = state_store.read_incident()
+
+    if incident is not None:
+        sys_status = "🚨 <b>Halted (Circuit Breaker Tripped)</b>"
+        reason = incident.get("reason", "Incident detected")
+        cb_status = f"🔴 <b>Tripped:</b> {html.escape(str(reason), quote=True)}"
+    elif halted or settings.agent_paused or state_store.is_paused():
+        sys_status = "⏸️ <b>Paused</b>"
+        cb_status = "🟢 <b>Normal</b> (No active incident)"
+    else:
+        sys_status = "🟢 <b>Operational</b>"
+        cb_status = "🟢 <b>Normal</b> (No active incident)"
+
+    counters = state_store.load_daily_counters()
+    pending_items = state_store.list_pending()
+    pending_count = len(pending_items)
+    is_paused_now = bool(halted or settings.agent_paused or state_store.is_paused())
+
+    report = format_home_hub(
+        system_state=sys_status,
+        cb_status=cb_status,
+        pending_count=pending_count,
+        counters=counters,
+        settings=settings,
+    )
+    reply_kb = build_home_keyboard(
+        is_tripped=(incident is not None),
+        pending_count=pending_count,
+        is_paused=is_paused_now,
+    )
+
+    await telegram.send_message(
+        chat_id=chat_id,
+        text=report,
+        reply_markup=reply_kb,
+        reply_to_message_id=message_id,
+    )
+    return report
 
 
 async def execute_status_command(
@@ -91,10 +160,17 @@ async def execute_status_command(
     )
 
     is_paused_now = bool(halted or settings.agent_paused or state_store.is_paused())
+    if incident is not None:
+        reply_kb: dict[str, Any] = build_status_keyboard(
+            is_tripped=True, pending_count=pending_count, include_nav=True
+        )
+    else:
+        reply_kb = build_docked_reply_keyboard(is_paused=is_paused_now)
+
     await telegram.send_message(
         chat_id=chat_id,
         text=report,
-        reply_markup=build_docked_reply_keyboard(is_paused=is_paused_now),
+        reply_markup=reply_kb,
         reply_to_message_id=message_id,
     )
     return report
@@ -105,6 +181,7 @@ async def execute_stats_command(
     telegram: TelegramClient,
     chat_id: int,
     message_id: int | None = None,
+    settings: Settings | None = None,
 ) -> str:
     """Execute /stats command: trailing metrics from state/history.jsonl.
 
@@ -113,6 +190,7 @@ async def execute_stats_command(
         telegram: Telegram client for sending responses.
         chat_id: Target chat ID.
         message_id: Optional reply-to message ID.
+        settings: Optional runtime settings to inspect pause state.
 
     Returns:
         str: The rendered HTML stats message sent to Telegram.
@@ -170,6 +248,7 @@ async def execute_stats_command(
     await telegram.send_message(
         chat_id=chat_id,
         text=report,
+        reply_markup=build_stats_keyboard(),
         reply_to_message_id=message_id,
     )
     return report
@@ -180,24 +259,28 @@ async def execute_pending_command(
     telegram: TelegramClient,
     chat_id: int,
     message_id: int | None = None,
+    settings: Settings | None = None,
 ) -> str:
-    """Execute /pending command: lists all pending actions with target links and status.
+    """Execute /pending command: lists all pending actions with interactive review buttons.
 
     Args:
         state_store: Durable state store instance.
         telegram: Telegram client for sending responses.
         chat_id: Target chat ID.
         message_id: Optional reply-to message ID.
+        settings: Optional runtime settings to inspect pause state.
 
     Returns:
         str: The rendered HTML pending list message sent to Telegram.
     """
+    is_paused = bool(state_store.is_paused() or (settings and settings.agent_paused))
     pending_items = state_store.list_pending()
     if not pending_items:
         empty_msg = "📋 <b>Pending Actions</b>\n\nNo actions currently awaiting approval."
         await telegram.send_message(
             chat_id=chat_id,
             text=empty_msg,
+            reply_markup=build_pending_list_keyboard([], include_nav=True),
             reply_to_message_id=message_id,
         )
         return empty_msg
@@ -230,9 +313,11 @@ async def execute_pending_command(
         )
 
     report = "\n\n".join(lines)
+    kb = build_pending_list_keyboard(pending_items, include_nav=True)
     await telegram.send_message(
         chat_id=chat_id,
         text=report,
+        reply_markup=kb,
         reply_to_message_id=message_id,
     )
     return report
@@ -314,6 +399,7 @@ async def execute_clear_incident_command(
     telegram: TelegramClient,
     chat_id: int,
     message_id: int | None = None,
+    settings: Settings | None = None,
 ) -> str:
     """Execute /clear_incident command: safely resets the circuit breaker.
 
@@ -322,6 +408,7 @@ async def execute_clear_incident_command(
         telegram: Telegram client for sending responses.
         chat_id: Target chat ID.
         message_id: Optional reply-to message ID.
+        settings: Optional runtime settings to inspect pause state.
 
     Returns:
         str: The result message sent to Telegram.
@@ -339,9 +426,11 @@ async def execute_clear_incident_command(
             "No active incident was found. The circuit breaker is not currently tripped."
         )
 
+    is_paused = bool(state_store.is_paused() or (settings and settings.agent_paused))
     await telegram.send_message(
         chat_id=chat_id,
         text=msg,
+        reply_markup=build_docked_reply_keyboard(is_paused=is_paused),
         reply_to_message_id=message_id,
     )
     return msg
@@ -351,6 +440,8 @@ async def execute_help_command(
     telegram: TelegramClient,
     chat_id: int,
     message_id: int | None = None,
+    settings: Settings | None = None,
+    state_store: BaseStateStore | None = None,
 ) -> str:
     """Execute /help or /start command: display operator command manual.
 
@@ -358,6 +449,8 @@ async def execute_help_command(
         telegram: Telegram client for sending responses.
         chat_id: Target chat ID.
         message_id: Optional reply-to message ID.
+        settings: Optional runtime settings.
+        state_store: Optional state store to inspect pause state.
 
     Returns:
         str: The help menu sent to Telegram.
@@ -365,6 +458,7 @@ async def execute_help_command(
     msg = (
         "🤖 <b>Operator Command & Control</b>\n\n"
         "Available commands:\n"
+        "• /home — Command & Control hub with status and quick navigation\n"
         "• /status — Operational state, circuit breaker, and daily counters\n"
         "• /stats — Trailing engagement metrics and historical outcomes\n"
         "• /pending — List all actions currently awaiting operator approval\n"
@@ -378,7 +472,7 @@ async def execute_help_command(
     await telegram.send_message(
         chat_id=chat_id,
         text=msg,
-        reply_markup=build_docked_reply_keyboard(is_paused=False),
+        reply_markup=build_help_keyboard(),
         reply_to_message_id=message_id,
     )
     return msg

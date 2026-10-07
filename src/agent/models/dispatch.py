@@ -28,6 +28,13 @@ ACTION_CODE_CANCEL_REJECT = "cx_rej"
 ACTION_CODE_TONE = "tone"
 ACTION_CODE_FEEDBACK = "fb"
 ACTION_CODE_BACK = "back"
+ACTION_CODE_CANCEL_EDIT = "cx_ed"
+ACTION_CODE_REVIEW = "rev"
+ACTION_CODE_RESET_CB = "reset_cb"
+ACTION_CODE_NOOP = "noop"
+ACTION_CODE_HOME = "home"
+ACTION_CODE_CLOSE = "close"
+ACTION_CODE_REFRESH = "refresh"
 
 CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_APPROVE_COMMENT: "approve_comment",
@@ -46,6 +53,16 @@ CALLBACK_ACTION_MAP: dict[str, str] = {
     ACTION_CODE_TONE: "tone",
     ACTION_CODE_FEEDBACK: "feedback",
     ACTION_CODE_BACK: "back",
+    ACTION_CODE_CANCEL_EDIT: "cancel_edit",
+    ACTION_CODE_REVIEW: "review",
+    ACTION_CODE_RESET_CB: "reset_circuit_breaker",
+    ACTION_CODE_NOOP: "noop",
+    ACTION_CODE_HOME: "home",
+    ACTION_CODE_CLOSE: "close",
+    ACTION_CODE_REFRESH: "refresh",
+    "home": "home",
+    "close": "close",
+    "refresh": "refresh",
     "edit": "edit",
     "ed": "edit",
     "reg": "regenerate",
@@ -81,6 +98,13 @@ REVERSE_ACTION_MAP: dict[str, str] = {
     "tone": ACTION_CODE_TONE,
     "feedback": ACTION_CODE_FEEDBACK,
     "back": ACTION_CODE_BACK,
+    "cancel_edit": ACTION_CODE_CANCEL_EDIT,
+    "review": ACTION_CODE_REVIEW,
+    "reset_circuit_breaker": ACTION_CODE_RESET_CB,
+    "noop": ACTION_CODE_NOOP,
+    "home": ACTION_CODE_HOME,
+    "close": ACTION_CODE_CLOSE,
+    "refresh": ACTION_CODE_REFRESH,
 }
 
 
@@ -219,6 +243,41 @@ class CallbackDataPayload(BaseModel):
             "reg",
             "regenerate",
         )
+
+    @property
+    def is_cancel_edit(self) -> bool:
+        """Check if action cancels active draft editing."""
+        return self.action_code in (ACTION_CODE_CANCEL_EDIT, "cx_ed")
+
+    @property
+    def is_review(self) -> bool:
+        """Check if action requests reviewing a pending item."""
+        return self.action_code in (ACTION_CODE_REVIEW, "rev")
+
+    @property
+    def is_reset_cb(self) -> bool:
+        """Check if action requests resetting the circuit breaker."""
+        return self.action_code in (ACTION_CODE_RESET_CB, "reset_cb")
+
+    @property
+    def is_noop(self) -> bool:
+        """Check if action is a placeholder with no operation."""
+        return self.action_code in (ACTION_CODE_NOOP, "noop")
+
+    @property
+    def is_home(self) -> bool:
+        """Check if action navigates to home menu hub."""
+        return self.action_code in (ACTION_CODE_HOME, "home")
+
+    @property
+    def is_close(self) -> bool:
+        """Check if action closes or dismisses an interactive menu."""
+        return self.action_code in (ACTION_CODE_CLOSE, "close")
+
+    @property
+    def is_refresh(self) -> bool:
+        """Check if action refreshes the current view."""
+        return self.action_code in (ACTION_CODE_REFRESH, "refresh")
 
     @property
     def canonical_action_type(self) -> str:

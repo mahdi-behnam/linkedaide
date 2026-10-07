@@ -16,22 +16,36 @@ from agent.models import (
     ACTION_CODE_APPROVE_REPLY,
     ACTION_CODE_ASK_REJECT,
     ACTION_CODE_BACK,
+    ACTION_CODE_CANCEL_EDIT,
     ACTION_CODE_CANCEL_REJECT,
+    ACTION_CODE_CLOSE,
     ACTION_CODE_CONFIRM_REJECT,
     ACTION_CODE_EDIT,
     ACTION_CODE_FEEDBACK,
+    ACTION_CODE_HOME,
+    ACTION_CODE_NOOP,
+    ACTION_CODE_REFRESH,
     ACTION_CODE_REGENERATE,
+    ACTION_CODE_RESET_CB,
+    ACTION_CODE_REVIEW,
     ACTION_CODE_TONE,
     PendingAction,
 )
 
 
-def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment") -> dict[str, Any]:
-    """Construct inline keyboard with Approve, Reject, Regenerate, and Edit buttons.
+def build_suggestion_keyboard(
+    item_id: str,
+    action_type: str = "approve_comment",
+    post_url: str | None = None,
+    include_home: bool = True,
+) -> dict[str, Any]:
+    """Construct inline keyboard with Approve, Reject, Regenerate, Edit, and optional URL button.
 
     Args:
         item_id: Unique identifier for the pending action item.
         action_type: One of 'approve_comment', 'approve_post', 'approve_reply', or 'approve_connection'.
+        post_url: Optional direct LinkedIn post URL for 1-tap verification.
+        include_home: Whether to include the standard Home Menu navigation button.
 
     Returns:
         Telegram inline_keyboard reply_markup dictionary.
@@ -53,32 +67,39 @@ def build_suggestion_keyboard(item_id: str, action_type: str = "approve_comment"
     reject_cb = f"{ACTION_CODE_ASK_REJECT}:{clean_id}"
     reg_cb = f"{ACTION_CODE_REGENERATE}:{clean_id}"
     edit_cb = f"{ACTION_CODE_EDIT}:{clean_id}"
+    home_cb = f"{ACTION_CODE_HOME}:menu"
 
-    for cb in (approve_cb, reject_cb, reg_cb, edit_cb):
+    for cb in (approve_cb, reject_cb, reg_cb, edit_cb, home_cb):
         byte_len = len(cb.encode("utf-8"))
         if byte_len > 64:
             raise ValueError(
                 f"Telegram callback_data exceeds 64 bytes limit ({byte_len} bytes): '{cb}'"
             )
 
-    return {
-        "inline_keyboard": [
-            [
-                {"text": "✅ Approve", "callback_data": approve_cb},
-                {"text": "❌ Reject", "callback_data": reject_cb},
-            ],
-            [
-                {"text": "🔄 Regenerate", "callback_data": reg_cb},
-                {"text": "✏️ Edit", "callback_data": edit_cb},
-            ],
-        ]
-    }
+    rows: list[list[dict[str, str]]] = []
+    if post_url and post_url.strip().startswith("http"):
+        rows.append([{"text": "🔗 View Post on LinkedIn", "url": post_url.strip()}])
+
+    rows.append([
+        {"text": "✅ Approve", "callback_data": approve_cb},
+        {"text": "❌ Reject", "callback_data": reject_cb},
+    ])
+    rows.append([
+        {"text": "🔄 Regenerate", "callback_data": reg_cb},
+        {"text": "✏️ Edit", "callback_data": edit_cb},
+    ])
+    if include_home:
+        rows.append([
+            {"text": "🏠 Home Menu", "callback_data": home_cb},
+        ])
+
+    return {"inline_keyboard": rows}
 
 
 def build_reject_confirm_keyboard(
     item_id: str, action_type: str = "approve_comment"
 ) -> dict[str, Any]:
-    """Construct rejection confirmation inline keyboard with Confirm and Cancel buttons.
+    """Construct rejection confirmation inline keyboard with Confirm, Cancel, and Home buttons.
 
     Args:
         item_id: Unique identifier for the pending action item.
@@ -93,8 +114,9 @@ def build_reject_confirm_keyboard(
     clean_id = item_id.strip()
     confirm_cb = f"{ACTION_CODE_CONFIRM_REJECT}:{clean_id}"
     cancel_cb = f"{ACTION_CODE_CANCEL_REJECT}:{clean_id}"
+    home_cb = f"{ACTION_CODE_HOME}:menu"
 
-    for cb in (confirm_cb, cancel_cb):
+    for cb in (confirm_cb, cancel_cb, home_cb):
         byte_len = len(cb.encode("utf-8"))
         if byte_len > 64:
             raise ValueError(
@@ -107,12 +129,15 @@ def build_reject_confirm_keyboard(
                 {"text": "❌ Yes, Reject", "callback_data": confirm_cb},
                 {"text": "🔙 Cancel / Keep", "callback_data": cancel_cb},
             ],
+            [
+                {"text": "🏠 Home Menu", "callback_data": home_cb},
+            ],
         ]
     }
 
 
 def build_rejection_feedback_keyboard(item_id: str) -> dict[str, Any]:
-    """Construct post-rejection feedback tags inline keyboard.
+    """Construct post-rejection feedback tags inline keyboard with Skip and Home navigation.
 
     Args:
         item_id: Unique identifier for the rejected action item.
@@ -130,6 +155,7 @@ def build_rejection_feedback_keyboard(item_id: str) -> dict[str, Any]:
         f"{ACTION_CODE_FEEDBACK}:risky:{clean_id}",
         f"{ACTION_CODE_FEEDBACK}:offtopic:{clean_id}",
         f"{ACTION_CODE_FEEDBACK}:skip:{clean_id}",
+        f"{ACTION_CODE_HOME}:menu",
     ]
 
     for cb in callbacks:
@@ -151,6 +177,7 @@ def build_rejection_feedback_keyboard(item_id: str) -> dict[str, Any]:
             ],
             [
                 {"text": "⏩ Done / Skip", "callback_data": callbacks[4]},
+                {"text": "🏠 Home Menu", "callback_data": callbacks[5]},
             ],
         ]
     }
@@ -174,6 +201,7 @@ def build_tone_keyboard(
     clean_id = item_id.strip()
     is_conn = action_type in ("approve_connection", "connection")
     back_cb = f"{ACTION_CODE_BACK}:{clean_id}"
+    home_cb = f"{ACTION_CODE_HOME}:menu"
 
     if is_conn:
         buttons = [
@@ -183,7 +211,10 @@ def build_tone_keyboard(
             ],
             [
                 {"text": "✂️ Concise", "callback_data": f"{ACTION_CODE_TONE}:concise:{clean_id}"},
+            ],
+            [
                 {"text": "🔙 Back to Review", "callback_data": back_cb},
+                {"text": "🏠 Home Menu", "callback_data": home_cb},
             ],
         ]
     else:
@@ -198,6 +229,7 @@ def build_tone_keyboard(
             ],
             [
                 {"text": "🔙 Back to Review", "callback_data": back_cb},
+                {"text": "🏠 Home Menu", "callback_data": home_cb},
             ],
         ]
 
@@ -211,6 +243,224 @@ def build_tone_keyboard(
                 )
 
     return {"inline_keyboard": buttons}
+
+
+def build_editing_keyboard(item_id: str) -> dict[str, Any]:
+    """Construct inline keyboard for active draft editing with Cancel Edit and Home buttons.
+
+    Args:
+        item_id: Unique identifier for the pending action item.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+    """
+    clean_id = item_id.strip()
+    cancel_cb = f"{ACTION_CODE_CANCEL_EDIT}:{clean_id}"
+    home_cb = f"{ACTION_CODE_HOME}:menu"
+    for cb in (cancel_cb, home_cb):
+        byte_len = len(cb.encode("utf-8"))
+        if byte_len > 64:
+            raise ValueError(
+                f"Telegram callback_data exceeds 64 bytes limit ({byte_len} bytes): '{cb}'"
+            )
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "❌ Cancel Edit", "callback_data": cancel_cb},
+                {"text": "🏠 Home Menu", "callback_data": home_cb},
+            ],
+        ]
+    }
+
+
+def build_regenerating_keyboard(item_id: str) -> dict[str, Any]:
+    """Construct inline keyboard displaying AI generation loading state.
+
+    Args:
+        item_id: Unique identifier for the pending action item.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+    """
+    clean_id = item_id.strip()
+    noop_cb = f"{ACTION_CODE_NOOP}:{clean_id}"
+    return {
+        "inline_keyboard": [
+            [{"text": "⏳ Generating with AI...", "callback_data": noop_cb}],
+        ]
+    }
+
+
+def build_pending_list_keyboard(
+    items: list[PendingAction], max_items: int = 5, include_nav: bool = True
+) -> dict[str, Any]:
+    """Construct inline keyboard for /pending list with direct review buttons and nav footer.
+
+    Args:
+        items: List of PendingAction items awaiting operator review.
+        max_items: Maximum items to attach direct buttons for.
+        include_nav: Whether to append the standard Refresh / Home navigation row.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+    """
+    rows: list[list[dict[str, str]]] = []
+    for idx, item in enumerate(items[:max_items], start=1):
+        clean_id = item.item_id.strip()
+        cb = f"{ACTION_CODE_REVIEW}:{clean_id}"
+        if len(cb.encode("utf-8")) <= 64:
+            action_sym = "📝" if "post" in item.action_type.lower() else "💬"
+            rows.append([
+                {"text": f"{action_sym} Review #{idx} ({clean_id[:6]})", "callback_data": cb}
+            ])
+    if include_nav:
+        rows.append([
+            {"text": "🔄 Refresh Queue", "callback_data": f"{ACTION_CODE_REFRESH}:pending"},
+            {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
+        ])
+    return {"inline_keyboard": rows}
+
+
+def build_status_keyboard(
+    is_tripped: bool = False, pending_count: int = 0, include_nav: bool = True
+) -> dict[str, Any]:
+    """Construct inline keyboard for /status report with quick action buttons and nav footer.
+
+    Args:
+        is_tripped: True if circuit breaker is tripped.
+        pending_count: Number of actions currently pending approval.
+        include_nav: Whether to append the standard Refresh / Home navigation row.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+    """
+    rows: list[list[dict[str, str]]] = []
+    if is_tripped:
+        rows.append([
+            {"text": "🔄 Reset Circuit Breaker", "callback_data": f"{ACTION_CODE_RESET_CB}:global"}
+        ])
+    if pending_count > 0:
+        rows.append([
+            {"text": f"📋 Review Pending ({pending_count})", "callback_data": f"{ACTION_CODE_REVIEW}:list"}
+        ])
+    if include_nav:
+        rows.append([
+            {"text": "🔄 Refresh Status", "callback_data": f"{ACTION_CODE_REFRESH}:status"},
+            {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
+        ])
+    return {"inline_keyboard": rows}
+
+
+def build_stats_keyboard() -> dict[str, Any]:
+    """Construct inline keyboard for /stats report with Refresh and Home buttons.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+    """
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🔄 Refresh Stats", "callback_data": f"{ACTION_CODE_REFRESH}:stats"},
+                {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
+            ],
+        ]
+    }
+
+
+def build_help_keyboard() -> dict[str, Any]:
+    """Construct inline keyboard for /help manual with Home Menu and Status Report shortcuts.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+    """
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
+                {"text": "📊 Status Report", "callback_data": f"{ACTION_CODE_REFRESH}:status"},
+            ],
+        ]
+    }
+
+
+def build_home_keyboard(
+    is_tripped: bool = False,
+    pending_count: int = 0,
+    is_paused: bool = False,
+) -> dict[str, Any]:
+    """Construct inline keyboard for /home Command & Control hub.
+
+    Args:
+        is_tripped: True if circuit breaker is tripped.
+        pending_count: Number of actions currently pending approval.
+        is_paused: True if agent operations are currently paused.
+
+    Returns:
+        Telegram inline_keyboard reply_markup dictionary.
+    """
+    rows: list[list[dict[str, str]]] = []
+    if is_tripped:
+        rows.append([
+            {"text": "🔄 Reset Circuit Breaker", "callback_data": f"{ACTION_CODE_RESET_CB}:global"}
+        ])
+
+    review_cb = f"{ACTION_CODE_REVIEW}:list" if pending_count > 0 else f"{ACTION_CODE_REFRESH}:pending"
+    pause_text = "▶️ Resume Agent" if is_paused else "⏸️ Pause Agent"
+    pause_cb = f"{ACTION_CODE_HOME}:resume" if is_paused else f"{ACTION_CODE_HOME}:pause"
+
+    rows.append([
+        {"text": f"📋 Pending ({pending_count})", "callback_data": review_cb},
+        {"text": "📊 Status", "callback_data": f"{ACTION_CODE_REFRESH}:status"},
+    ])
+    rows.append([
+        {"text": "📈 Stats", "callback_data": f"{ACTION_CODE_REFRESH}:stats"},
+        {"text": pause_text, "callback_data": pause_cb},
+    ])
+    rows.append([
+        {"text": "🔄 Refresh Hub", "callback_data": f"{ACTION_CODE_REFRESH}:home"},
+        {"text": "❌ Close Menu", "callback_data": f"{ACTION_CODE_CLOSE}:menu"},
+    ])
+    return {"inline_keyboard": rows}
+
+
+def format_home_hub(
+    system_state: str,
+    cb_status: str,
+    pending_count: int,
+    counters: Any,
+    settings: Any,
+) -> str:
+    """Format HTML message for Command & Control Home Hub.
+
+    Args:
+        system_state: Rendered system state HTML string.
+        cb_status: Rendered circuit breaker status HTML string.
+        pending_count: Number of items awaiting operator review.
+        counters: DailyCounters instance or equivalent object.
+        settings: Application Settings instance.
+
+    Returns:
+        HTML formatted home hub message string.
+    """
+    focus_str = ", ".join(settings.user_focus_areas) if settings.user_focus_areas else "General"
+    date_str = getattr(counters, "date", "Today")
+    comments_executed = getattr(counters, "comments_executed", 0)
+    posts_executed = getattr(counters, "posts_executed", 0)
+    suggestions_sent = getattr(counters, "suggestions_sent", 0)
+
+    lines = [
+        "<b>🏠 LinkedIn HITL Agent — Command & Control Hub</b>\n",
+        f"• <b>System State:</b> {system_state}",
+        f"• <b>Circuit Breaker:</b> {cb_status}",
+        f"• <b>Pending Queue:</b> <b>{pending_count}</b> action(s) awaiting review\n",
+        f"📊 <b>Today's Activity ({html.escape(str(date_str))})</b>",
+        f"• <b>Comments:</b> {comments_executed} / {settings.max_comments_per_day}",
+        f"• <b>Posts:</b> {posts_executed} / {settings.max_posts_per_day}",
+        f"• <b>Suggestions Sent:</b> {suggestions_sent}\n",
+        f"🎯 <b>Focus Areas:</b> <i>{html.escape(focus_str)}</i>\n",
+        "<i>Select an option below or use docked buttons:</i>",
+    ]
+    return "\n".join(lines)
 
 
 def format_suggestion_card(item: PendingAction) -> str:
@@ -306,6 +556,53 @@ def build_suggestion_message(item: PendingAction) -> str:
         HTML formatted message string.
     """
     return format_suggestion_card(item)
+
+
+def format_rejection_card(item: PendingAction, reason: str | None = None) -> str:
+    """Format a rejection status card preserving post author, target link, and draft text.
+
+    Args:
+        item: PendingAction containing original suggestion context.
+        reason: Optional rejection feedback reason (e.g. 'generic', 'skip').
+
+    Returns:
+        HTML formatted rejection summary string.
+    """
+    is_post = item.action_type in ("approve_post", "post")
+    is_reply = item.action_type in ("approve_reply", "reply")
+    is_conn = item.action_type in ("approve_connection", "connection")
+
+    if is_post:
+        action_label = "Original Post"
+    elif is_reply:
+        action_label = "Thread Reply"
+    elif is_conn:
+        action_label = "Connection Request"
+    else:
+        action_label = "Feed Comment"
+
+    lines: list[str] = [
+        "<b>❌ Suggestion Rejected by Operator</b>",
+        f"<b>Item:</b> <code>{html.escape(item.item_id)}</code> ({action_label})",
+    ]
+
+    author_name = (item.author_name or "").strip()
+    if author_name:
+        lines.append(f"<b>Author:</b> {html.escape(author_name)}")
+
+    if item.post_url:
+        lines.append(f'<b>Target:</b> <a href="{html.escape(item.post_url)}">Original Post</a>')
+
+    if item.draft_text:
+        draft_snippet = item.draft_text[:200] + ("..." if len(item.draft_text) > 200 else "")
+        lines.append(f"<b>Draft Excerpt:</b>\n<blockquote expandable>{html.escape(draft_snippet)}</blockquote>")
+
+    if reason and reason != "skip":
+        lines.append(f"<b>Feedback:</b> <i>{html.escape(reason)}</i>")
+    elif not reason:
+        lines.append("<i>Why was this suggestion rejected? (Optional feedback):</i>")
+
+    return "\n\n".join(lines)
 
 
 def build_outcome_message(
