@@ -11,7 +11,7 @@ from langgraph.graph import END, START, StateGraph
 from agent.errors import BotDetectionError, SessionExpiredError
 from agent.graphs.state import ExecuteState, get_graph_context
 from agent.llm.voice_memory import VoiceMemoryStore
-from agent.models import ActiveThreadRecord, HistoryEntry, PendingAction
+from agent.models import ActiveThreadRecord, ExecutionResult, HistoryEntry, PendingAction
 from agent.safety.circuit_breaker import is_halted, trip_breaker
 from agent.telegram.keyboards import build_outcome_message
 
@@ -222,7 +222,7 @@ async def verify_target(state: ExecuteState, config: RunnableConfig) -> dict[str
         if not logged_in:
             return {"error": "LinkedIn session is not authenticated", "status": "session_error"}
 
-        if pending.action_type in ("approve_comment", "approve_reply"):
+        if pending.action_type in ("approve_comment", "approve_reply", "approve_reaction"):
             exists = await context.executor.verify_post_exists(pending.post_url)
             if not exists:
                 return {"error": "Target post is no longer available", "status": "post_missing"}
@@ -290,6 +290,22 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
                 item_id=pending.item_id,
             )
             verification_url = getattr(result, "post_url", None) or pending.post_url
+        elif pending.action_type == "approve_reaction":
+            rx_type = getattr(pending, "reaction_type", None) or "like"
+            rx_success = await context.executor.react_to_post(
+                reaction_type=rx_type,
+                item_id=pending.item_id,
+            )
+            result = ExecutionResult(
+                success=rx_success,
+                action_type="approve_reaction",
+                item_id=pending.item_id,
+                post_url=pending.post_url,
+                screenshot_path=None,
+                error=None if rx_success else f"Reaction '{rx_type}' execution failed",
+                executed_at=datetime.now(UTC),
+            )
+            verification_url = pending.post_url
         else:
             result = await context.executor.create_post(
                 post_text=pending.draft_text,

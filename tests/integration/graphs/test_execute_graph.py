@@ -115,6 +115,7 @@ def mock_context(test_repo: Path) -> GraphContext:
             executed_at=datetime.now(UTC),
         )
     )
+    executor.react_to_post = AsyncMock(return_value=True)
 
     return GraphContext(
         settings=settings,
@@ -601,3 +602,47 @@ async def test_execute_graph_approve_comment_indexes_voice_memory(
     samples = mock_context.state_store.load_dynamic_voice_samples()
     assert len(samples) >= 1
     assert any("split votes" in s.get("sample", "") for s in samples)
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_approve_reaction(
+    mock_context: GraphContext,
+) -> None:
+    assert mock_context.state_store is not None
+    pending = PendingAction(
+        item_id="item_react_1",
+        action_type="approve_reaction",
+        reaction_type="insightful",
+        created_at=datetime.now(UTC),
+        post_urn="urn:li:activity:8888",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:8888/",
+        author_name="Alice Architect",
+        post_excerpt="Great article on event-driven architecture.",
+        draft_text="Reaction: Insightful",
+        confidence=0.88,
+        reasoning="Relevant architecture insight",
+        telegram_chat_id=12345,
+        telegram_message_id=514,
+    )
+    mock_context.state_store.write_pending(pending)
+
+    initial_state: ExecuteState = {
+        "action": "approve",
+        "item_id": "item_react_1",
+        "telegram_chat_id": 12345,
+        "telegram_message_id": 514,
+    }
+
+    graph = build_execute_graph()
+    result = await graph.ainvoke(initial_state, config={"configurable": {"context": mock_context}})
+
+    assert result["status"] == "completed_success"
+    mock_context.executor.react_to_post.assert_awaited_once_with(  # type: ignore[union-attr]
+        reaction_type="insightful",
+        item_id="item_react_1",
+    )
+    # Check that pending action was removed
+    assert mock_context.state_store.read_pending("item_react_1") is None
+    # Check history was recorded
+    history = mock_context.state_store.read_history()
+    assert any(h.item_id == "item_react_1" and h.final_status == "executed_success" for h in history)

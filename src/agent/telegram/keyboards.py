@@ -13,6 +13,7 @@ from agent.models import (
     ACTION_CODE_APPROVE_COMMENT,
     ACTION_CODE_APPROVE_CONNECTION,
     ACTION_CODE_APPROVE_POST,
+    ACTION_CODE_APPROVE_REACTION,
     ACTION_CODE_APPROVE_REPLY,
     ACTION_CODE_ASK_REJECT,
     ACTION_CODE_BACK,
@@ -54,12 +55,15 @@ def build_suggestion_keyboard(
         ValueError: If callback_data exceeds Telegram's 64-byte limit.
     """
     clean_id = item_id.strip()
+    is_reaction = action_type in ("approve_reaction", "reaction")
     if action_type in ("approve_post", "post"):
         approve_code = ACTION_CODE_APPROVE_POST
     elif action_type in ("approve_reply", "reply"):
         approve_code = ACTION_CODE_APPROVE_REPLY
     elif action_type in ("approve_connection", "connection"):
         approve_code = ACTION_CODE_APPROVE_CONNECTION
+    elif is_reaction:
+        approve_code = ACTION_CODE_APPROVE_REACTION
     else:
         approve_code = ACTION_CODE_APPROVE_COMMENT
 
@@ -69,7 +73,11 @@ def build_suggestion_keyboard(
     edit_cb = f"{ACTION_CODE_EDIT}:{clean_id}"
     home_cb = f"{ACTION_CODE_HOME}:menu"
 
-    for cb in (approve_cb, reject_cb, reg_cb, edit_cb, home_cb):
+    callbacks = [approve_cb, reject_cb, home_cb]
+    if not is_reaction:
+        callbacks.extend([reg_cb, edit_cb])
+
+    for cb in callbacks:
         byte_len = len(cb.encode("utf-8"))
         if byte_len > 64:
             raise ValueError(
@@ -84,10 +92,11 @@ def build_suggestion_keyboard(
         {"text": "✅ Approve", "callback_data": approve_cb},
         {"text": "❌ Reject", "callback_data": reject_cb},
     ])
-    rows.append([
-        {"text": "🔄 Regenerate", "callback_data": reg_cb},
-        {"text": "✏️ Edit", "callback_data": edit_cb},
-    ])
+    if not is_reaction:
+        rows.append([
+            {"text": "🔄 Regenerate", "callback_data": reg_cb},
+            {"text": "✏️ Edit", "callback_data": edit_cb},
+        ])
     if include_home:
         rows.append([
             {"text": "🏠 Home Menu", "callback_data": home_cb},
@@ -309,7 +318,14 @@ def build_pending_list_keyboard(
         clean_id = item.item_id.strip()
         cb = f"{ACTION_CODE_REVIEW}:{clean_id}"
         if len(cb.encode("utf-8")) <= 64:
-            action_sym = "📝" if "post" in item.action_type.lower() else "💬"
+            if "post" in item.action_type.lower():
+                action_sym = "📝"
+            elif "reaction" in item.action_type.lower():
+                action_sym = "👍"
+            elif "connection" in item.action_type.lower():
+                action_sym = "🤝"
+            else:
+                action_sym = "💬"
             rows.append([
                 {"text": f"{action_sym} Review #{idx} ({clean_id[:6]})", "callback_data": cb}
             ])
@@ -478,6 +494,7 @@ def format_suggestion_card(item: PendingAction) -> str:
     is_post = item.action_type in ("approve_post", "post")
     is_reply = item.action_type in ("approve_reply", "reply")
     is_conn = item.action_type in ("approve_connection", "connection")
+    is_reaction = item.action_type in ("approve_reaction", "reaction")
 
     if is_post:
         action_label = "📝 Original Post"
@@ -485,6 +502,9 @@ def format_suggestion_card(item: PendingAction) -> str:
         action_label = "💬 Thread Reply"
     elif is_conn:
         action_label = "🤝 Connection Request"
+    elif is_reaction:
+        rx_name = (getattr(item, "reaction_type", "") or "like").capitalize()
+        action_label = f"👍 Reaction ({rx_name})"
     else:
         action_label = "💬 Feed Comment"
 
@@ -524,14 +544,17 @@ def format_suggestion_card(item: PendingAction) -> str:
             f"<b>{excerpt_label}:</b>\n<blockquote expandable>{html.escape(item.post_excerpt)}</blockquote>"
         )
 
-    content_label = "Drafted Note" if is_conn else "Drafted Content"
-    lines.append(
-        f"<b>{content_label}:</b>\n<blockquote expandable>{html.escape(item.draft_text)}</blockquote>"
-    )
-
-    char_count = len(item.draft_text)
-    word_count = len(item.draft_text.split())
-    lines.append(f"<b>Metrics:</b> {char_count} chars • {word_count} words")
+    if is_reaction:
+        rx_name = (getattr(item, "reaction_type", "") or "like").capitalize()
+        lines.append(f"<b>Proposed Reaction:</b> {html.escape(rx_name)}")
+    else:
+        content_label = "Drafted Note" if is_conn else "Drafted Content"
+        lines.append(
+            f"<b>{content_label}:</b>\n<blockquote expandable>{html.escape(item.draft_text)}</blockquote>"
+        )
+        char_count = len(item.draft_text)
+        word_count = len(item.draft_text.split())
+        lines.append(f"<b>Metrics:</b> {char_count} chars • {word_count} words")
 
     confidence_pct = int(item.confidence * 100)
     lines.append(f"<b>Confidence:</b> {confidence_pct}%")
@@ -571,6 +594,7 @@ def format_rejection_card(item: PendingAction, reason: str | None = None) -> str
     is_post = item.action_type in ("approve_post", "post")
     is_reply = item.action_type in ("approve_reply", "reply")
     is_conn = item.action_type in ("approve_connection", "connection")
+    is_reaction = item.action_type in ("approve_reaction", "reaction")
 
     if is_post:
         action_label = "Original Post"
@@ -578,6 +602,9 @@ def format_rejection_card(item: PendingAction, reason: str | None = None) -> str
         action_label = "Thread Reply"
     elif is_conn:
         action_label = "Connection Request"
+    elif is_reaction:
+        rx_name = (getattr(item, "reaction_type", "") or "like").capitalize()
+        action_label = f"Reaction ({rx_name})"
     else:
         action_label = "Feed Comment"
 
@@ -593,7 +620,7 @@ def format_rejection_card(item: PendingAction, reason: str | None = None) -> str
     if item.post_url:
         lines.append(f'<b>Target:</b> <a href="{html.escape(item.post_url)}">Original Post</a>')
 
-    if item.draft_text:
+    if item.draft_text and not is_reaction:
         draft_snippet = item.draft_text[:200] + ("..." if len(item.draft_text) > 200 else "")
         lines.append(f"<b>Draft Excerpt:</b>\n<blockquote expandable>{html.escape(draft_snippet)}</blockquote>")
 
@@ -631,6 +658,9 @@ def build_outcome_message(
             header = "<b>✅ Successfully Replied on LinkedIn!</b>"
         elif item and item.action_type in ("approve_connection", "connection"):
             header = f"<b>✅ Sent Connection Invitation to {html.escape(item.author_name or 'target')}!</b>"
+        elif item and item.action_type in ("approve_reaction", "reaction"):
+            rx_name = (getattr(item, "reaction_type", "") or "like").capitalize()
+            header = f"<b>✅ Successfully Reacted ({html.escape(rx_name)}) on LinkedIn!</b>"
         else:
             header = "<b>✅ Successfully Commented on LinkedIn!</b>"
     elif status_lower in ("rejected", "reject"):
@@ -653,6 +683,9 @@ def build_outcome_message(
             item_type = "Thread Reply"
         elif item.action_type in ("approve_connection", "connection"):
             item_type = "Connection Request"
+        elif item.action_type in ("approve_reaction", "reaction"):
+            rx_name = (getattr(item, "reaction_type", "") or "like").capitalize()
+            item_type = f"Reaction ({rx_name})"
         else:
             item_type = "Comment"
         lines.append(f"<b>Item:</b> <code>{html.escape(item.item_id)}</code> ({item_type})")
@@ -669,11 +702,15 @@ def build_outcome_message(
                 lines.append(
                     f'<b>Proof:</b> <a href="{html.escape(verification_url)}">View Your Post on LinkedIn ↗</a>'
                 )
+            elif item.action_type in ("approve_reaction", "reaction"):
+                lines.append(
+                    f'<b>Proof:</b> <a href="{html.escape(verification_url)}">View Post on LinkedIn ↗</a>'
+                )
             else:
                 lines.append(
                     f'<b>Proof:</b> <a href="{html.escape(verification_url)}">View Your Comment on LinkedIn ↗</a>'
                 )
-        elif item.draft_text and status_lower not in ("executed_success", "success"):
+        elif item.draft_text and status_lower not in ("executed_success", "success") and item.action_type not in ("approve_reaction", "reaction"):
             lines.append(
                 f"<b>Draft:</b> <blockquote expandable>{html.escape(item.draft_text[:200])}</blockquote>"
             )

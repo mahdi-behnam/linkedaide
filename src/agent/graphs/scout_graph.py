@@ -280,19 +280,16 @@ async def draft_batch(state: ScoutState, config: RunnableConfig) -> dict[str, An
 
 
 async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> dict[str, Any]:
-    """Rank draft candidates by confidence and create PendingAction models."""
+    """Rank draft candidates and reaction candidates by confidence and create PendingAction models."""
     context = get_graph_context(config)
     drafts = state.get("drafts", [])
-    sorted_drafts = sorted(drafts, key=lambda x: x[1].confidence, reverse=True)
-
-    max_suggestions = context.settings.max_suggestions_per_run
-    top_candidates = sorted_drafts[:max_suggestions]
-
+    triage_results = state.get("triage_results", [])
     now = datetime.now(UTC)
-    pending_items: list[PendingAction] = []
-    connection_candidates: list[ConnectionRequestAction] = []
 
-    for post, triage, draft in top_candidates:
+    candidates: list[tuple[float, PendingAction, ConnectionRequestAction | None]] = []
+
+    # 1. Comment candidates from drafted comments
+    for post, triage, draft in drafts:
         item_id = hashlib.sha256(f"{post.post_urn}:{now.isoformat()}".encode()).hexdigest()[:8]
         pending = PendingAction(
             item_id=item_id,
@@ -310,9 +307,9 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
             telegram_chat_id=context.settings.telegram_authorized_chat_id,
             telegram_message_id=0,
         )
-        pending_items.append(pending)
 
         # Connection outreach candidate discovery
+        conn_candidate = None
         if post.author_name and post.author_name != "LinkedIn Member" and triage.confidence >= 0.7:
             profile_url = getattr(post, "author_profile_url", None) or ""
             if not profile_url:
@@ -320,7 +317,7 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
                 profile_url = f"https://www.linkedin.com/in/{slug}/"
             conn_id = f"conn-{hashlib.sha256(profile_url.encode()).hexdigest()[:8]}"
             first_name = post.author_name.split()[0]
-            candidate = ConnectionRequestAction(
+            conn_candidate = ConnectionRequestAction(
                 id=conn_id,
                 profile_url=profile_url,
                 target_name=post.author_name,
@@ -329,7 +326,39 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
                 status="pending",
                 created_at=now,
             )
-            connection_candidates.append(candidate)
+        candidates.append((triage.confidence, pending, conn_candidate))
+
+    # 2. Reaction candidates from triage results
+    for post, triage in triage_results:
+        if triage.recommendation == "react":
+            item_id = hashlib.sha256(f"{post.post_urn}:react:{now.isoformat()}".encode()).hexdigest()[:8]
+            rx_type = (triage.reaction_type or "like").strip().lower()
+            pending_rx = PendingAction(
+                item_id=item_id,
+                action_type="approve_reaction",
+                reaction_type=rx_type,
+                created_at=now,
+                post_urn=post.post_urn,
+                post_url=post.post_url,
+                author_name=post.author_name,
+                post_excerpt=post.post_text[:200],
+                draft_text=f"Reaction: {rx_type.capitalize()}",
+                confidence=triage.confidence,
+                reasoning=triage.reasoning,
+                post_image_url=post.image_url,
+                telegram_chat_id=context.settings.telegram_authorized_chat_id,
+                telegram_message_id=0,
+            )
+            candidates.append((triage.confidence, pending_rx, None))
+
+    sorted_candidates = sorted(candidates, key=lambda x: x[0], reverse=True)
+    max_suggestions = context.settings.max_suggestions_per_run
+    top_candidates = sorted_candidates[:max_suggestions]
+
+    pending_items: list[PendingAction] = [item for _, item, _ in top_candidates]
+    connection_candidates: list[ConnectionRequestAction] = [
+        conn for _, _, conn in top_candidates if conn is not None
+    ]
 
     return {"pending_items": pending_items, "connection_candidates": connection_candidates}
 
@@ -401,10 +430,13 @@ def route_after_scrape(state: ScoutState) -> str:
 
 def route_after_triage(state: ScoutState) -> str:
     triage_results = state.get("triage_results", [])
-    has_qualifying = any(t.recommendation == "comment" for _, t in triage_results)
-    if not has_qualifying:
-        return END
-    return "draft_batch"
+    has_comments = any(t.recommendation == "comment" for _, t in triage_results)
+    if has_comments:
+        return "draft_batch"
+    has_reacts = any(t.recommendation == "react" for _, t in triage_results)
+    if has_reacts:
+        return "rank_and_build_pending"
+    return END
 
 
 def build_scout_graph() -> Any:
@@ -426,7 +458,11 @@ def build_scout_graph() -> Any:
     graph.add_edge("prune_expired", "load_seen")
     graph.add_edge("load_seen", "scrape_feed")
     graph.add_conditional_edges("scrape_feed", route_after_scrape, [END, "triage_batch"])
-    graph.add_conditional_edges("triage_batch", route_after_triage, [END, "draft_batch"])
+    graph.add_conditional_edges(
+        "triage_batch",
+        route_after_triage,
+        [END, "draft_batch", "rank_and_build_pending"],
+    )
     graph.add_edge("draft_batch", "rank_and_build_pending")
     graph.add_edge("rank_and_build_pending", "persist_state")
     graph.add_edge("persist_state", "send_telegram_suggestions")

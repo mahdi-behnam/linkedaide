@@ -130,6 +130,16 @@ class TestKeyboardsAndMessages:
         assert buttons[0]["callback_data"] == "acon:conn_123"
         assert buttons[1]["callback_data"] == "ask_rej:conn_123"
 
+    def test_build_suggestion_keyboard_reaction(self) -> None:
+        keyboard = build_suggestion_keyboard("rx_123", "approve_reaction")
+        rows = keyboard["inline_keyboard"]
+        assert len(rows) == 2  # Approve/Reject, Home Menu (no regenerate/edit)
+        assert rows[0][0]["text"] == "✅ Approve"
+        assert rows[0][0]["callback_data"] == "areact:rx_123"
+        assert rows[0][1]["text"] == "❌ Reject"
+        assert rows[0][1]["callback_data"] == "ask_rej:rx_123"
+        assert rows[1][0]["text"] == "🏠 Home Menu"
+
     def test_build_suggestion_keyboard_includes_edit_button(self) -> None:
         keyboard = build_suggestion_keyboard("item_edit_test", "approve_comment")
         assert len(keyboard["inline_keyboard"]) == 3
@@ -407,11 +417,38 @@ class TestKeyboardsAndMessages:
         assert "📝 Original Post" in msg
         assert "post_999" in msg
 
+    def test_build_suggestion_message_reaction_type(self) -> None:
+        rx_item = PendingAction(
+            item_id="rx_999",
+            action_type="approve_reaction",
+            reaction_type="insightful",
+            draft_text="Reaction: Insightful",
+            confidence=0.85,
+            reasoning="Insightful technical perspective.",
+        )
+        msg = build_suggestion_message(rx_item)
+        assert "👍 Reaction (Insightful)" in msg
+        assert "<b>Proposed Reaction:</b> Insightful" in msg
+        assert "Metrics:" not in msg
+        assert "rx_999" in msg
+
     def test_build_outcome_messages(self, sample_pending_action: PendingAction) -> None:
         # Success
         success_msg = build_outcome_message(sample_pending_action, "executed_success")
         assert "✅ Successfully Commented on LinkedIn!" in success_msg
         assert "item_test_12345" in success_msg
+
+        # Reaction Success
+        rx_item = PendingAction(
+            item_id="rx_888",
+            action_type="approve_reaction",
+            reaction_type="celebrate",
+            draft_text="Reaction: Celebrate",
+            confidence=0.9,
+        )
+        rx_success_msg = build_outcome_message(rx_item, "executed_success")
+        assert "✅ Successfully Reacted (Celebrate) on LinkedIn!" in rx_success_msg
+        assert "rx_888" in rx_success_msg
 
         # Success with verification link
         proof_msg = build_outcome_message(
