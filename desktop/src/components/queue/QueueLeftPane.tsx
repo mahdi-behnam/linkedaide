@@ -6,6 +6,7 @@ import {
   Lightning,
 } from "@phosphor-icons/react";
 import { QueueTriageCard, PendingItem } from "./QueueTriageCard";
+import { formatKeyCombo } from "../../utils/platform";
 
 export type FilterType = "all" | "comment" | "post";
 
@@ -96,7 +97,7 @@ export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
             className="w-full bg-transparent border-0 outline-none text-xs text-on-surface placeholder:text-on-surface-variant"
           />
           <span className="text-[10px] text-on-surface-variant px-1 rounded bg-surface-container font-sans">
-            ⌘K
+            {formatKeyCombo("K")}
           </span>
         </div>
 

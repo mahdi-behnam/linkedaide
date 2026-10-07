@@ -111,7 +111,7 @@ describe("System Tray & Notification Engine", () => {
       expect(mocks.activeTray).not.toBeNull();
       expect(trayManager.getTray()).toBe(mocks.activeTray);
       expect(mocks.activeTray!.setToolTip).toHaveBeenCalledWith(
-        "LinkedIn HITL Agent"
+        "LinkedAide"
       );
       expect(mocks.activeTray!.setContextMenu).toHaveBeenCalled();
       expect(trayManager.getMainWindow()).toBe(mocks.mockBrowserWindow);
@@ -202,7 +202,7 @@ describe("System Tray & Notification Engine", () => {
       trayManager.updateBadge(2);
       expect(trayManager.getPendingCount()).toBe(2);
       expect(mocks.activeTray!.setToolTip).toHaveBeenCalledWith(
-        "LinkedIn HITL Agent (2 pending)"
+        "LinkedAide (2 pending)"
       );
       expect(mocks.activeTray!.setTitle).toHaveBeenCalledWith(" (2)");
 
@@ -210,7 +210,7 @@ describe("System Tray & Notification Engine", () => {
       trayManager.updateBadge(0);
       expect(trayManager.getPendingCount()).toBe(0);
       expect(mocks.activeTray!.setToolTip).toHaveBeenCalledWith(
-        "LinkedIn HITL Agent"
+        "LinkedAide"
       );
       expect(mocks.activeTray!.setTitle).toHaveBeenCalledWith("");
     });
@@ -364,7 +364,7 @@ describe("System Tray & Notification Engine", () => {
 
       // Expect Notification to have been constructed
       expect(mocks.activeNotification).not.toBeNull();
-      expect(mocks.activeNotification!.title).toBe("LinkedIn HITL Agent");
+      expect(mocks.activeNotification!.title).toBe("LinkedAide");
       expect(mocks.activeNotification!.body).toBe("2 new drafts awaiting your approval");
 
       // Expect notification show() to have been called

@@ -24,10 +24,10 @@ export function buildAppMenuTemplate(options: AppMenuOptions): MenuItemConstruct
   // 1. macOS Application Menu
   if (isMac) {
     template.push({
-      label: "LinkedIn HITL Agent",
+      label: "LinkedAide",
       submenu: [
         {
-          label: "About LinkedIn HITL Cockpit",
+          label: "About LinkedAide",
           click: () => showAboutDialog(getWin),
         },
         { type: "separator" },
@@ -291,7 +291,7 @@ export function buildAppMenuTemplate(options: AppMenuOptions): MenuItemConstruct
       },
       { type: "separator" },
       {
-        label: "About LinkedIn HITL Cockpit",
+        label: "About LinkedAide",
         click: () => showAboutDialog(getWin),
       },
     ],

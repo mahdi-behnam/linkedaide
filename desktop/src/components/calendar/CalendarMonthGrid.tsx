@@ -125,7 +125,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                       key={p.id}
                       onClick={() => onSelectPost(p)}
                       className="cursor-pointer truncate rounded-sm bg-surface-container-lowest px-1.5 py-0.5 font-mono text-[9px] text-on-surface hover:text-primary transition-colors border border-outline/50 shadow-2xs"
-                      title={p.headline}
+                      title={p.post_text ? `${p.headline || p.id}\n\n${p.post_text}` : (p.headline || p.id)}
                     >
                       {p.headline || p.id}
                     </div>

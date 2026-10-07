@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.linkedin.hitl.agent",
-    "productName": "LinkedIn HITL Agent",
+    "productName": "LinkedAide",
     "directories": {
       "output": "release"
     },

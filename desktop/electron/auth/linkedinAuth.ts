@@ -126,7 +126,7 @@ export async function captureLinkedInSession(
         modal: Boolean(parentWindow),
         width: 640,
         height: 780,
-        title: "LinkedIn Login - HITL Agent",
+        title: "LinkedIn Login - LinkedAide",
         autoHideMenuBar: true,
         webPreferences: {
           nodeIntegration: false,

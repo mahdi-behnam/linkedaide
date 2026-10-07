@@ -1,13 +1,10 @@
 import React from "react";
 import { useApp } from "../context/AppContext";
-import { StatusPill } from "../components/StatusPill";
 import { TelemetryCard } from "../components/dashboard/TelemetryCard";
 import { RateLimitBurnDown } from "../components/dashboard/RateLimitBurnDown";
 import { EdgeDispatcherStatus } from "../components/dashboard/EdgeDispatcherStatus";
 import { PendingApprovalQueuePreview } from "../components/dashboard/PendingApprovalQueuePreview";
 import {
-  Play,
-  Pause,
   Stethoscope,
   ArrowClockwise,
   ShieldCheck,
@@ -20,9 +17,7 @@ import {
 
 export const DashboardView: React.FC = () => {
   const {
-    systemStatus,
     isPaused,
-    togglePause,
     telemetry,
     quota,
     isScouting,
@@ -45,7 +40,6 @@ export const DashboardView: React.FC = () => {
             <h1 className="font-headline-display tracking-tight text-on-surface">
               Command Center
             </h1>
-            <StatusPill status={systemStatus} size="sm" />
           </div>
           <p className="body-md text-on-surface-variant">
             Real-time telemetry, daily rate limit burn-down, and autonomous scout controls.
@@ -67,35 +61,6 @@ export const DashboardView: React.FC = () => {
           >
             <Stethoscope size={14} className="text-secondary" />
             <span>Health Check</span>
-          </button>
-
-          {/* Edge Cycle Badge */}
-          <span className="text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md border border-outline font-sans tabular-nums">
-            Edge Cycle: #4,192
-          </span>
-
-          {/* Toggle Pause */}
-          <button
-            type="button"
-            data-testid="toggle-pause-btn"
-            onClick={togglePause}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors shadow-2xs shrink-0 active:scale-[0.99] ${
-              isPaused
-                ? "border-amber-500/35 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
-                : "border-outline bg-surface-container hover:bg-surface-container-high text-on-surface"
-            }`}
-          >
-            {isPaused ? (
-              <>
-                <Play size={12} weight="fill" className="text-amber-500" />
-                <span>Resume Agent</span>
-              </>
-            ) : (
-              <>
-                <Pause size={12} weight="fill" className="text-on-surface-variant" />
-                <span>Pause Agent</span>
-              </>
-            )}
           </button>
 
           {/* Trigger Scout Button */}

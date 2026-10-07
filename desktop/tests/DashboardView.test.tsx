@@ -12,10 +12,10 @@ describe("DashboardView", () => {
     );
   };
 
-  it("renders Command Center header and status indicator", () => {
+  it("renders Command Center header", () => {
     renderDashboard();
     expect(screen.getByText("Command Center")).toBeTruthy();
-    expect(screen.getByTestId("status-pill")).toBeTruthy();
+    expect(screen.queryByTestId("status-pill")).toBeNull();
   });
 
   it("renders telemetry status metrics", () => {
@@ -53,13 +53,10 @@ describe("DashboardView", () => {
     });
   });
 
-  it("handles toggle pause action", () => {
+  it("does not render duplicate pause agent button or edge cycle badge", () => {
     renderDashboard();
-    const pauseBtn = screen.getByTestId("toggle-pause-btn");
-    expect(pauseBtn.textContent).toContain("Pause Agent");
-
-    fireEvent.click(pauseBtn);
-    expect(screen.getByTestId("toggle-pause-btn").textContent).toContain("Resume Agent");
+    expect(screen.queryByTestId("toggle-pause-btn")).toBeNull();
+    expect(screen.queryByText(/Edge Cycle/i)).toBeNull();
   });
 
   it("renders pending approval queue preview card", () => {

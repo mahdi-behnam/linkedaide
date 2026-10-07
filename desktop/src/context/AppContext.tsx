@@ -11,6 +11,7 @@ import {
   ConnectionRequestAction,
 } from "../types";
 import { ActionResult } from "../types/api";
+import { ToastNotification } from "../components/toast/types";
 import { useScheduledPosts } from "../hooks/useScheduledPosts";
 import { useConnectionQueue } from "../hooks/useConnectionQueue";
 import { useDoctorDiagnostics } from "../hooks/useDoctorDiagnostics";
@@ -32,6 +33,12 @@ export interface AppContextType {
   auditEntries: AuditEntry[];
   doctorChecks: DoctorCheck[];
   lastTriggerMessage: string | null;
+  notifications: ToastNotification[];
+  addNotification: (
+    message: string,
+    options?: { type?: "info" | "success" | "warn" | "error"; durationMs?: number }
+  ) => void;
+  removeNotification: (id: string) => void;
   scheduledPosts: ScheduledPost[];
   saveScheduledPost: (post: ScheduledPost) => void;
   deleteScheduledPost: (id: string) => void;
@@ -114,7 +121,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isScouting, setIsScouting] = useState<boolean>(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [lastTriggerMessage, setLastTriggerMessage] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<ToastNotification[]>([]);
   const [commentWindows, setCommentWindows] = useState<AutomatedCommentWindow[]>(defaultCommentWindows);
+
+  const removeNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  const addNotification = useCallback(
+    (
+      message: string,
+      options?: { type?: "info" | "success" | "warn" | "error"; durationMs?: number }
+    ) => {
+      const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const newToast: ToastNotification = {
+        id,
+        message,
+        type: options?.type || "info",
+        durationMs: options?.durationMs ?? 5000,
+      };
+      setNotifications((prev) => [...prev, newToast]);
+      setLastTriggerMessage(message);
+    },
+    []
+  );
+
+  const handleSetLastTriggerMessage = useCallback(
+    (msg: string | null) => {
+      setLastTriggerMessage(msg);
+      if (msg) {
+        addNotification(msg);
+      }
+    },
+    [addNotification]
+  );
 
   const activeCommentWindows = useMemo(() => {
     return commentWindows.map((w) => ({
@@ -130,19 +170,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActivePostForEditing,
     saveScheduledPost,
     deleteScheduledPost,
-  } = useScheduledPosts(setLastTriggerMessage);
+  } = useScheduledPosts(handleSetLastTriggerMessage);
 
   const {
     connectionQueue,
     setConnectionQueue,
     executeConnectionAction,
-  } = useConnectionQueue(setLastTriggerMessage);
+  } = useConnectionQueue(handleSetLastTriggerMessage);
 
   const {
     isCheckingDoctor,
     doctorChecks,
     runDoctorCheck,
-  } = useDoctorDiagnostics(telemetry, setTelemetry, setLastTriggerMessage);
+  } = useDoctorDiagnostics(telemetry, setTelemetry, handleSetLastTriggerMessage);
 
   const refreshState = useCallback(async () => {
     if (typeof window === "undefined" || !window.api?.fetchState) {
@@ -265,6 +305,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   useEffect(() => {
+    // Immediate initial state fetch on app launch
+    refreshState();
+
+    const handleFocus = () => {
+      refreshState();
+    };
+    window.addEventListener("focus", handleFocus);
+
+    const interval = setInterval(() => {
+      refreshState();
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
+    };
+  }, [refreshState]);
+
+  useEffect(() => {
     if (typeof window === "undefined" || !window.api?.onRealtimeEvent) {
       return;
     }
@@ -276,11 +335,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (eventType === "queue_updated" || eventType === "action_executed") {
         refreshState();
         if (eventType === "action_executed") {
-          setLastTriggerMessage(
+          handleSetLastTriggerMessage(
             `⚡ Realtime: Action "${event.action || "executed"}" recorded for ${event.item_id || "item"}`
           );
         } else if (eventType === "queue_updated") {
-          setLastTriggerMessage("⚡ Realtime: Approval queue updated from cloud");
+          handleSetLastTriggerMessage("⚡ Realtime: Approval queue updated from cloud");
         }
       }
     });
@@ -290,7 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubscribe();
       }
     };
-  }, [refreshState]);
+  }, [refreshState, handleSetLastTriggerMessage]);
 
   const systemStatus: SystemStatusType = useMemo(() => {
     if (telemetry.circuitBreakerTripped) return "tripped";
@@ -401,6 +460,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       auditEntries,
       doctorChecks,
       lastTriggerMessage,
+      notifications,
+      addNotification,
+      removeNotification,
       scheduledPosts,
       saveScheduledPost,
       deleteScheduledPost,
@@ -429,6 +491,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       auditEntries,
       doctorChecks,
       lastTriggerMessage,
+      notifications,
+      addNotification,
+      removeNotification,
       scheduledPosts,
       saveScheduledPost,
       deleteScheduledPost,

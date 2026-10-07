@@ -104,7 +104,7 @@ export class TrayManager {
   private initTray(): void {
     const icon = getTrayIcon(this.isPaused ? "standby" : "active");
     this.tray = new Tray(icon);
-    this.tray.setToolTip("LinkedIn HITL Agent");
+    this.tray.setToolTip("LinkedAide");
     this.updateContextMenu();
 
     this.tray.on("click", () => {
@@ -226,8 +226,8 @@ export class TrayManager {
     this.pendingCount = Math.max(0, pendingCount);
     const tooltip =
       this.pendingCount > 0
-        ? `LinkedIn HITL Agent (${this.pendingCount} pending)`
-        : "LinkedIn HITL Agent";
+        ? `LinkedAide (${this.pendingCount} pending)`
+        : "LinkedAide";
     const title = this.pendingCount > 0 ? ` (${this.pendingCount})` : "";
 
     if (

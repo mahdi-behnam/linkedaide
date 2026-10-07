@@ -72,14 +72,14 @@ const mockComments = [
 ];
 
 describe("AnalyticsView", () => {
-  it("renders the view header and cockpit title", () => {
+  it("renders the view header and live analytics title", () => {
     render(
       <AppProvider>
         <AnalyticsView />
       </AppProvider>
     );
     expect(screen.getByText("LinkedIn Growth Analytics")).toBeTruthy();
-    expect(screen.getByText("Live Cockpit")).toBeTruthy();
+    expect(screen.getByText("Live Analytics")).toBeTruthy();
     expect(
       screen.getByText(/Real-time engagement telemetry, author reply conversions/i)
     ).toBeTruthy();

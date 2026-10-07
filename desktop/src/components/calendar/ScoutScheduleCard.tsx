@@ -43,10 +43,10 @@ export const ScoutScheduleCard: React.FC<ScoutScheduleCardProps> = ({
               className="flex items-center justify-between p-2.5 rounded-md bg-surface-container-low hover:bg-surface-container transition-colors border border-outline/50"
             >
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-on-surface truncate">
+                <span className="text-xs font-semibold text-on-surface truncate" title={win.title}>
                   {win.title}
                 </span>
-                <span className="text-[11px] text-on-surface-variant truncate">
+                <span className="text-[11px] text-on-surface-variant truncate" title={`Target: ${win.topic_filter}`}>
                   Target: {win.topic_filter}
                 </span>
               </div>

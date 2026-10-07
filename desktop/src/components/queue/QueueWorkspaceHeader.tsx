@@ -2,20 +2,17 @@ import React from "react";
 import {
   CheckCircle,
   ArrowSquareOut,
-  X,
-  ArrowClockwise,
-  PaperPlaneRight,
   WarningCircle,
 } from "@phosphor-icons/react";
 import { PendingItem } from "./QueueTriageCard";
 
 interface QueueWorkspaceHeaderProps {
   item: PendingItem;
-  onApprove: () => void;
-  onReject: () => void;
-  onRegenerate: () => void;
-  isProcessing: boolean;
-  isRewriting: boolean;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onRegenerate?: () => void;
+  isProcessing?: boolean;
+  isRewriting?: boolean;
   actionNotice: string | null;
   actionError: string | null;
 }
@@ -30,11 +27,6 @@ function getInitials(name: string): string {
 
 export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
   item,
-  onApprove,
-  onReject,
-  onRegenerate,
-  isProcessing,
-  isRewriting,
   actionNotice,
   actionError,
 }) => {
@@ -86,49 +78,6 @@ export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
               </span>
             </div>
           </div>
-        </div>
-
-        {/* Top Action Buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            data-testid="reject-btn"
-            disabled={isProcessing || isRewriting}
-            onClick={onReject}
-            className="group flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container hover:bg-error/10 hover:text-error text-on-surface-variant transition-colors text-xs font-medium whitespace-nowrap disabled:opacity-50"
-          >
-            <X size={13} weight="bold" className="group-hover:text-error" />
-            <span>Reject</span>
-            <kbd className="opacity-60 ml-0.5 font-sans text-[10px]">R</kbd>
-          </button>
-
-          <button
-            type="button"
-            data-testid="top-regenerate-btn"
-            disabled={isProcessing || isRewriting}
-            onClick={onRegenerate}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-medium transition-colors whitespace-nowrap disabled:opacity-50"
-          >
-            <ArrowClockwise
-              size={13}
-              className={isRewriting ? "animate-spin text-primary" : "text-on-surface-variant"}
-            />
-            <span>Regenerate</span>
-          </button>
-
-          <button
-            type="button"
-            data-testid="approve-btn"
-            disabled={isProcessing || isRewriting}
-            onClick={onApprove}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary hover:bg-primary-container text-on-primary text-xs font-medium shadow-2xs transition-colors whitespace-nowrap disabled:opacity-50"
-          >
-            <PaperPlaneRight size={13} weight="bold" />
-            <span>Approve &amp; Dispatch</span>
-            <kbd className="px-1 py-0.2 rounded bg-surface-bright/20 text-on-primary font-sans text-[10px]">
-              A
-            </kbd>
-          </button>
         </div>
       </div>
 

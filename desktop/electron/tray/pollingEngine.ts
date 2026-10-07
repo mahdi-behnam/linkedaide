@@ -130,6 +130,18 @@ export class PollingEngine {
       // Always update tray badge with current count
       this.trayManager.updateBadge(pendingActions.length);
 
+      // Notify renderer of polled queue update
+      if (
+        this.mainWindow &&
+        (typeof this.mainWindow.isDestroyed !== "function" || !this.mainWindow.isDestroyed()) &&
+        this.mainWindow.webContents
+      ) {
+        this.mainWindow.webContents.send("realtime:event", {
+          type: "queue_updated",
+          state,
+        });
+      }
+
       // Identify new pending items (item_id not in seen set)
       const newItems: PendingAction[] = [];
       for (const item of pendingActions) {
@@ -151,7 +163,7 @@ export class PollingEngine {
         this.trayManager.updateBadge(pendingActions.length);
 
         const notification = new Notification({
-          title: "LinkedIn HITL Agent",
+          title: "LinkedAide",
           body: `${newCount} new draft${newCount > 1 ? "s" : ""} awaiting your approval`,
         });
 

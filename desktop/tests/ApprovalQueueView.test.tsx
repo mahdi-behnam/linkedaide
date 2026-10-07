@@ -347,11 +347,12 @@ describe("ApprovalQueueView", () => {
       expect(screen.getByText("Andrej Karpathy")).toBeTruthy();
     });
 
+    const callsBeforeRefresh = (window.api.fetchState as any).mock.calls.length;
     const refreshBtn = screen.getByTestId("refresh-queue-btn");
     fireEvent.click(refreshBtn);
 
     await waitFor(() => {
-      expect(window.api.fetchState).toHaveBeenCalledTimes(2);
+      expect(window.api.fetchState).toHaveBeenCalledTimes(callsBeforeRefresh + 1);
     });
   });
 

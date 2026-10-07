@@ -21,7 +21,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({
   const defaultLabel = (() => {
     switch (status) {
       case "operational":
-        return "Ready";
+        return "";
       case "paused":
         return "Paused";
       case "tripped":
@@ -36,6 +36,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({
   })();
 
   const text = label || defaultLabel;
+  if (!text) return null;
 
   const colorStyles = isHealthy
     ? "text-tertiary"

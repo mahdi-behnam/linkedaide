@@ -89,8 +89,8 @@ export function showAboutDialog(
 
   const dialogOptions = {
     type: "info" as const,
-    title: "About LinkedIn HITL Cockpit",
-    message: "LinkedIn HITL Cockpit",
+    title: "About LinkedAide",
+    message: "LinkedAide",
     detail:
       "Version: 1.0.0\nHuman-in-the-Loop LinkedIn Autonomous Agent\n" +
       "Deterministic safety with mandatory human approval via Telegram & Desktop.\n\n" +

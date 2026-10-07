@@ -18,6 +18,7 @@ import {
   Moon,
   IconProps,
 } from "./icons";
+import { formatKeyCombo } from "../utils/platform";
 
 export interface CommandPaletteProps {
   isOpen: boolean;
@@ -325,7 +326,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               <kbd className="font-mono font-semibold">↵</kbd> select
             </span>
           </div>
-          <span>⌘K Spotlight</span>
+          <span>{formatKeyCombo("K")} Spotlight</span>
         </div>
       </div>
     </div>

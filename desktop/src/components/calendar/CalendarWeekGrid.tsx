@@ -148,6 +148,7 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                   <div
                     key={win.id}
                     data-testid="calendar-comment-window"
+                    title={`${win.title} (${win.start_time} - ${win.end_time} UTC)\nTopic Filter: ${win.topic_filter}`}
                     className={`p-2 rounded-md border shadow-2xs flex flex-col gap-0.5 transition-colors cursor-pointer ${
                       isToday
                         ? "bg-primary-container/10 border-primary/30 hover:bg-primary-container/20"
@@ -163,10 +164,10 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                         {win.start_time} - {win.end_time} UTC
                       </span>
                     </div>
-                    <span className="text-xs font-medium text-on-surface truncate">
+                    <span className="text-xs font-medium text-on-surface truncate" title={win.title}>
                       {win.title}
                     </span>
-                    <span className="text-[10px] text-on-surface-variant truncate">
+                    <span className="text-[10px] text-on-surface-variant truncate" title={`Topic Filter: ${win.topic_filter}`}>
                       {win.topic_filter}
                     </span>
                   </div>
@@ -188,6 +189,7 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                       key={post.id}
                       data-testid="calendar-post-card"
                       onClick={() => onSelectPost(post)}
+                      title={post.post_text ? `${post.headline}\n\n${post.post_text}` : post.headline}
                       className="p-2 rounded-md bg-surface-container-lowest shadow-2xs border border-outline/50 hover:border-outline transition-colors flex flex-col gap-1 cursor-pointer min-w-0"
                     >
                       <div className="flex items-center justify-between gap-1 w-full min-w-0 flex-wrap">
@@ -205,12 +207,15 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                         {getStatusBadge(post.status)}
                       </div>
 
-                      <h2 className="text-xs font-semibold text-on-surface line-clamp-2 min-w-0 hover:text-primary transition-colors">
+                      <h2
+                        className="text-xs font-semibold text-on-surface line-clamp-2 min-w-0 hover:text-primary transition-colors"
+                        title={post.headline}
+                      >
                         {post.headline || "Untitled Original Post"}
                       </h2>
 
                       <div className="flex items-center justify-between pt-1 border-t border-outline/40 min-w-0">
-                        <span className="text-[10px] text-on-surface-variant truncate">
+                        <span className="text-[10px] text-on-surface-variant truncate" title={post.topic_pillar}>
                           {post.topic_pillar}
                         </span>
                         {hasPdf ? (

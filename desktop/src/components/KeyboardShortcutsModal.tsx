@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Keyboard, X } from "@phosphor-icons/react";
+import { isMac } from "../utils/platform";
 
 export interface KeyboardShortcutsModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
       { keys: ["R"], description: "Reject current item" },
       { keys: ["E"], description: "Focus comment draft editor" },
       { keys: ["T"], description: "Cycle tone quick-pills (technical, inquisitive, contrarian, shorter)" },
-      { keys: ["Cmd+Enter", "Ctrl+Enter"], description: "Submit & approve edited draft" },
+      { keys: [isMac ? "Cmd+Enter" : "Ctrl+Enter"], description: "Submit & approve edited draft" },
     ],
   },
   {

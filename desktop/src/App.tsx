@@ -1,7 +1,9 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState, useEffect } from "react";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AppProvider, useApp } from "./context/AppContext";
 import { AppLayout } from "./layouts/AppLayout";
+
+import { NavigationTab } from "./types";
 
 const DashboardView = lazy(() => import("./views/DashboardView").then((m) => ({ default: m.DashboardView })));
 const ApprovalQueueView = lazy(() => import("./views/ApprovalQueueView").then((m) => ({ default: m.ApprovalQueueView })));
@@ -14,6 +16,19 @@ const AuditHistoryView = lazy(() => import("./views/AuditHistoryView").then((m) 
 const DoctorView = lazy(() => import("./views/DoctorView").then((m) => ({ default: m.DoctorView })));
 const SettingsView = lazy(() => import("./views/SettingsView").then((m) => ({ default: m.SettingsView })));
 
+const TAB_COMPONENTS: { id: NavigationTab; component: React.ComponentType }[] = [
+  { id: "dashboard", component: DashboardView },
+  { id: "queue", component: ApprovalQueueView },
+  { id: "outreach", component: OutreachQueueView },
+  { id: "composer", component: ComposerView },
+  { id: "calendar", component: CalendarView },
+  { id: "analytics", component: AnalyticsView },
+  { id: "vault", component: VaultView },
+  { id: "history", component: AuditHistoryView },
+  { id: "doctor", component: DoctorView },
+  { id: "settings", component: SettingsView },
+];
+
 const ViewLoadingFallback: React.FC = () => (
   <div className="flex items-center justify-center h-full min-h-[350px] text-gray-400">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
@@ -22,35 +37,32 @@ const ViewLoadingFallback: React.FC = () => (
 
 const MainContent: React.FC = () => {
   const { currentTab } = useApp();
+  const [visitedTabs, setVisitedTabs] = useState<Set<NavigationTab>>(() => new Set([currentTab]));
+
+  useEffect(() => {
+    setVisitedTabs((prev: Set<NavigationTab>) => {
+      if (prev.has(currentTab)) return prev;
+      const next = new Set<NavigationTab>(prev);
+      next.add(currentTab);
+      return next;
+    });
+  }, [currentTab]);
 
   return (
     <Suspense fallback={<ViewLoadingFallback />}>
-      {(() => {
-        switch (currentTab) {
-          case "dashboard":
-            return <DashboardView />;
-          case "queue":
-            return <ApprovalQueueView />;
-          case "outreach":
-            return <OutreachQueueView />;
-          case "composer":
-            return <ComposerView />;
-          case "calendar":
-            return <CalendarView />;
-          case "analytics":
-            return <AnalyticsView />;
-          case "vault":
-            return <VaultView />;
-          case "history":
-            return <AuditHistoryView />;
-          case "doctor":
-            return <DoctorView />;
-          case "settings":
-            return <SettingsView />;
-          default:
-            return <DashboardView />;
-        }
-      })()}
+      {TAB_COMPONENTS.map(({ id, component: Component }) => {
+        if (!visitedTabs.has(id)) return null;
+        const isActive = currentTab === id;
+        return (
+          <div
+            key={id}
+            className={isActive ? "contents" : "hidden"}
+            aria-hidden={!isActive}
+          >
+            <Component />
+          </div>
+        );
+      })}
     </Suspense>
   );
 };

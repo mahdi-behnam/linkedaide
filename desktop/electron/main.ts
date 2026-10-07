@@ -735,7 +735,7 @@ app.whenReady().then(() => {
     trayManager,
     mainWindow,
   });
-  pollingEngine.start();
+  pollingEngine.start(true);
 
   realtimeClient = new RealtimePushClient(
     mainWindow,

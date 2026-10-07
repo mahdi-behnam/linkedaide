@@ -19,7 +19,7 @@ describe("AppLayout", () => {
 
   it("renders the brand header and main content area", () => {
     renderLayout();
-    expect(screen.getByText("HITL Cockpit")).toBeTruthy();
+    expect(screen.getByText("Control Center")).toBeTruthy();
     expect(screen.getByTestId("test-content")).toBeTruthy();
   });
 
@@ -37,12 +37,12 @@ describe("AppLayout", () => {
     expect(screen.getByTestId("nav-settings")).toBeTruthy();
   });
 
-  it("renders top bar with worker URL, pending badge, and status pill", () => {
+  it("renders top bar with pending badge and decluttered layout", () => {
     renderLayout();
-    expect(screen.getByText(/relay\.hitl-agent\.workers\.dev/i)).toBeTruthy();
     expect(screen.getByTestId("pending-badge-button")).toBeTruthy();
     expect(screen.getByText("0 Pending")).toBeTruthy();
-    expect(screen.getByTestId("status-pill")).toBeTruthy();
+    expect(screen.getByTestId("global-pause-button")).toBeTruthy();
+    expect(screen.queryByTestId("profile-avatar")).toBeNull();
   });
 
   it("collapses and expands the sidebar when toggle button is clicked", () => {

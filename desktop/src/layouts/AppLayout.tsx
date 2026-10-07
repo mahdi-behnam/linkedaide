@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import { StatusPill } from "../components/StatusPill";
+import { ToastContainer } from "../components/toast/ToastContainer";
+import { formatKeyCombo, isMac } from "../utils/platform";
 import { NavigationTab } from "../types";
 import {
   House,
@@ -43,13 +45,6 @@ interface NavItem {
 const dragRegion = { WebkitAppRegion: "drag" } as unknown as React.CSSProperties;
 const noDragRegion = { WebkitAppRegion: "no-drag" } as unknown as React.CSSProperties;
 
-const isMac =
-  typeof window !== "undefined" &&
-  ((window as any).api?.platform === "darwin" ||
-    (typeof navigator !== "undefined" &&
-      (navigator.platform?.toLowerCase().includes("mac") ||
-        navigator.userAgent?.toLowerCase().includes("mac"))));
-
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const {
     currentTab,
@@ -58,9 +53,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     isPaused,
     togglePause,
     pendingCount,
-    telemetry,
     connectionQueue,
-    lastTriggerMessage,
+    notifications,
+    removeNotification,
   } = useApp();
 
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -159,7 +154,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         {/* Workspace Brand Header */}
         <div className="flex items-center gap-2.5 border-b border-outline px-3.5 pb-2.5 pt-0.5">
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden shadow-2xs transition-transform hover:scale-105"
+            className="relative flex h-7 w-7 shrink-0 items-center justify-center transition-transform hover:scale-105"
             title={
               isPaused
                 ? "LinkedAide: Standby Mode"
@@ -177,7 +172,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   : roundActiveIcon
               }
               alt="LinkedAide"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain select-none"
             />
           </div>
           {!isCollapsed && (
@@ -186,7 +181,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 LinkedAide
               </span>
               <span className="truncate text-[10px] text-on-surface-variant">
-                HITL Cockpit
+                Control Center
               </span>
             </div>
           )}
@@ -306,22 +301,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               <MagnifyingGlass size={13} className="text-on-surface-variant shrink-0" />
               <span className="truncate text-[11px] flex-1">Search views, actions...</span>
               <kbd className="hidden sm:inline-block rounded border border-outline/50 px-1 text-[10px] font-mono text-on-surface-variant bg-surface-container-low">
-                ⌘K
+                {formatKeyCombo("K")}
               </kbd>
             </button>
-
-            {/* Worker Endpoint */}
-            <div className="hidden lg:flex items-center gap-1.5 text-xs text-on-surface-variant font-mono">
-              <Globe size={13} className="text-on-surface-variant shrink-0" />
-              <span className="text-on-surface truncate max-w-[180px] text-[11px]">{telemetry.workerUrl}</span>
-              <span className="font-sans text-[10px] font-medium text-tertiary">({telemetry.workerStatus})</span>
-            </div>
           </div>
 
           {/* Right Status & Controls */}
           <div className="flex items-center gap-2" style={noDragRegion}>
-            {/* System Status Pill */}
-            <StatusPill status={systemStatus} size="sm" />
+            {/* System Status Pill (Shown only when non-operational/tripped) */}
+            {systemStatus !== "operational" && <StatusPill status={systemStatus} size="sm" />}
 
             {/* Pending Approvals Live Badge */}
             <button
@@ -373,14 +361,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <Moon size={13} weight="bold" className="text-secondary" />
               )}
             </button>
-
-            {/* Profile Avatar */}
-            <div
-              data-testid="profile-avatar"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-outline bg-surface-container-high text-[11px] font-medium text-on-surface shadow-2xs"
-            >
-              <span>HA</span>
-            </div>
           </div>
         </header>
 
@@ -389,15 +369,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {children}
         </main>
 
-        {/* Realtime Floating Toast Notification */}
-        {lastTriggerMessage && (
-          <div
-            data-testid="realtime-toast"
-            className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-lg border border-outline bg-surface-bright/95 px-3 py-2 text-xs font-medium text-on-surface shadow-md backdrop-blur-md"
-          >
-            <span>{lastTriggerMessage}</span>
-          </div>
-        )}
+        {/* Stackable In-App Toast Notifications */}
+        <ToastContainer toasts={notifications} onDismiss={removeNotification} />
 
         {/* ⌘K Command Palette Modal */}
         <CommandPalette

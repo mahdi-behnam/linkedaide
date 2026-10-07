@@ -6,6 +6,7 @@ import {
   Check,
   PencilSimple,
 } from "../icons";
+import { formatKeyCombo } from "../../utils/platform";
 
 export interface PreviewPendingItem {
   id: string;
@@ -114,7 +115,7 @@ export const PendingApprovalQueuePreview: React.FC<PendingApprovalQueuePreviewPr
         >
           <span>Review Queue</span>
           <span className="text-[10px] px-1 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-sans">
-            ⌘1
+            {formatKeyCombo("1")}
           </span>
           <CaretRight size={13} weight="bold" />
         </button>
