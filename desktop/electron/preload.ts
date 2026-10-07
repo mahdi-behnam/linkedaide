@@ -41,6 +41,7 @@ const api: ElectronAPI = {
     ipcRenderer.invoke("api:executeConnectionAction", action, id, note),
 
   triggerScout: (): Promise<boolean> => ipcRenderer.invoke("api:triggerScout"),
+  triggerIdeate: (): Promise<boolean> => ipcRenderer.invoke("api:triggerIdeate"),
 
   togglePause: (paused: boolean): Promise<boolean> =>
     ipcRenderer.invoke("api:togglePause", paused),

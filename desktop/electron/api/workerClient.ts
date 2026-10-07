@@ -421,6 +421,51 @@ export class WorkerClient {
   }
 
   /**
+   * Triggers an immediate post ideation run in GitHub Actions / Worker.
+   */
+  public async triggerIdeate(
+    cloudDispatchConfig?: CloudDispatchConfig & { ref?: string; dry_run?: boolean }
+  ): Promise<boolean> {
+    const body: Record<string, unknown> = {};
+    if (cloudDispatchConfig?.repo_owner) {
+      body.repo_owner = cloudDispatchConfig.repo_owner;
+    }
+    if (cloudDispatchConfig?.repo_name) {
+      body.repo_name = cloudDispatchConfig.repo_name;
+    }
+    if (cloudDispatchConfig?.github_pat) {
+      body.github_pat = cloudDispatchConfig.github_pat;
+    }
+    if (cloudDispatchConfig?.ref) {
+      body.ref = cloudDispatchConfig.ref;
+    }
+    if (cloudDispatchConfig?.dry_run !== undefined) {
+      body.dry_run = cloudDispatchConfig.dry_run;
+    }
+
+    try {
+      const res = await this.request<{ success?: boolean }>("/api/ideate", {
+        method: "POST",
+        body,
+      });
+      return res.success !== false;
+    } catch (err) {
+      // Fallback try /api/trigger-ideation if /api/ideate returned 404
+      if (err instanceof Error && err.message.includes("404")) {
+        const res = await this.request<{ success?: boolean }>(
+          "/api/trigger-ideation",
+          {
+            method: "POST",
+            body,
+          }
+        );
+        return res.success !== false;
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Toggles the remote agent pause state.
    */
   public async togglePause(paused: boolean): Promise<boolean> {

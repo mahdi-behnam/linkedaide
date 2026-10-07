@@ -4,7 +4,8 @@ import { formatTimeAgo } from "../../utils/datetime";
 
 export interface PendingItem {
   id: string;
-  actionType: "comment" | "post";
+  actionType: "comment" | "post" | "reaction" | "reply";
+  reactionType?: string;
   author: string;
   headline: string;
   postUrl: string;
@@ -39,6 +40,16 @@ export const QueueTriageCard: React.FC<QueueTriageCardProps> = ({
   const initials = getInitials(item.author);
   const matchPercent = Math.round(item.confidence * 100);
   const topicTag = `#${item.topic.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+  const getActionLabel = () => {
+    if (item.actionType === "reaction") {
+      const rx = (item.reactionType || "like").charAt(0).toUpperCase() + (item.reactionType || "like").slice(1);
+      return `Reaction · ${rx}`;
+    }
+    if (item.actionType === "post") return "Original Post";
+    if (item.actionType === "reply") return "Reply";
+    return "Comment";
+  };
 
   return (
     <article
@@ -76,7 +87,7 @@ export const QueueTriageCard: React.FC<QueueTriageCardProps> = ({
 
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-[11px] font-medium text-on-surface-variant">
-            {item.actionType === "comment" ? "Comment" : "Original Post"}
+            {getActionLabel()}
           </span>
           <span className="text-[10px] text-on-surface-variant font-sans">
             {formatTimeAgo(item.createdAt)}
@@ -98,7 +109,9 @@ export const QueueTriageCard: React.FC<QueueTriageCardProps> = ({
 
       {/* Draft Preview Box */}
       <p className="text-xs text-on-surface font-normal line-clamp-2 mb-1.5 bg-surface-container-low/70 p-2 rounded-md leading-relaxed border border-outline/30">
-        {item.draftText}
+        {item.actionType === "reaction"
+          ? `Proposed Reaction: ${(item.reactionType || "like").charAt(0).toUpperCase() + (item.reactionType || "like").slice(1)}`
+          : item.draftText}
       </p>
 
       {/* Card Footer: Match % & Topic Badge */}

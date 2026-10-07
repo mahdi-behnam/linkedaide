@@ -5,6 +5,7 @@ import {
   ArrowClockwise,
   WarningCircle,
   Keyboard,
+  Sparkle,
 } from "@phosphor-icons/react";
 import { useQueueShortcuts } from "../hooks/useQueueShortcuts";
 import { KeyboardShortcutsModal } from "../components/KeyboardShortcutsModal";
@@ -19,6 +20,36 @@ import { PendingItem } from "../components/queue/QueueTriageCard";
 export type { PendingItem };
 
 const TONE_CYCLE = ["technical", "inquisitive", "contrarian", "shorter"];
+
+export const mapRawPending = (rawPending: any[]): PendingItem[] => {
+  return rawPending.map((p: any) => {
+    let actionType: "comment" | "post" | "reaction" | "reply" = "comment";
+    const rawType = (p.action_type || "").toLowerCase();
+    if (rawType.includes("reaction")) {
+      actionType = "reaction";
+    } else if (rawType.includes("post")) {
+      actionType = "post";
+    } else if (rawType.includes("reply")) {
+      actionType = "reply";
+    }
+
+    return {
+      id: p.item_id,
+      actionType,
+      reactionType: p.reaction_type || "like",
+      author: p.author_name || (actionType === "post" ? "You (Draft)" : "Unknown Author"),
+      headline: p.author_headline || (actionType === "post" ? "Original Post Suggestion" : "LinkedIn Member"),
+      postUrl: p.post_url || "",
+      postExcerpt: p.post_excerpt || "",
+      draftText: p.draft_text || (actionType === "reaction" ? `Reaction: ${p.reaction_type || "like"}` : ""),
+      confidence: p.confidence ?? 0.85,
+      reasoning: p.reasoning || "",
+      engagementStyle: p.engagement_style || "Thought Leadership",
+      createdAt: p.created_at || new Date().toISOString(),
+      topic: "Engineering",
+    };
+  });
+};
 
 export interface ApprovalQueueViewProps {
   initialItems?: PendingItem[];
@@ -65,20 +96,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
         state.pending ||
         [];
 
-      const mapped: PendingItem[] = rawPending.map((p: any) => ({
-        id: p.item_id,
-        actionType: (p.action_type?.includes("post") ? "post" : "comment") as "comment" | "post",
-        author: p.author_name || "Unknown Author",
-        headline: p.author_headline || "LinkedIn Member",
-        postUrl: p.post_url || "",
-        postExcerpt: p.post_excerpt || "",
-        draftText: p.draft_text || "",
-        confidence: p.confidence ?? 0.85,
-        reasoning: p.reasoning || "",
-        engagementStyle: p.engagement_style || "Thought Leadership",
-        createdAt: p.created_at || new Date().toISOString(),
-        topic: "Engineering",
-      }));
+      const mapped = mapRawPending(rawPending);
       setItems(mapped);
       setSelectedId((prev) => (mapped.some((m) => m.id === prev) ? prev : mapped[0]?.id ?? null));
       setPendingCount(mapped.length);
@@ -105,20 +123,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
             event.state.pendingActions ||
             event.state.pending ||
             [];
-          const mapped: PendingItem[] = rawPending.map((p: any) => ({
-            id: p.item_id,
-            actionType: (p.action_type?.includes("post") ? "post" : "comment") as "comment" | "post",
-            author: p.author_name || "Unknown Author",
-            headline: p.author_headline || "LinkedIn Member",
-            postUrl: p.post_url || "",
-            postExcerpt: p.post_excerpt || "",
-            draftText: p.draft_text || "",
-            confidence: p.confidence ?? 0.85,
-            reasoning: p.reasoning || "",
-            engagementStyle: p.engagement_style || "Thought Leadership",
-            createdAt: p.created_at || new Date().toISOString(),
-            topic: "Engineering",
-          }));
+          const mapped = mapRawPending(rawPending);
           setItems(mapped);
           setSelectedId((prev) => (mapped.some((m) => m.id === prev) ? prev : mapped[0]?.id ?? null));
           setPendingCount(mapped.length);
@@ -214,6 +219,42 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
     handleRewrite(TONE_CYCLE[nextIndex]);
   }, [isProcessing, handleRewrite]);
 
+  const handleReactionChange = useCallback((newReaction: string) => {
+    const current = selectedItemRef.current;
+    if (!current) return;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === current.id ? { ...item, reactionType: newReaction } : item
+      )
+    );
+  }, []);
+
+  const [isDraftingPostIdea, setIsDraftingPostIdea] = useState<boolean>(false);
+
+  const handleDraftPostIdea = useCallback(async () => {
+    if (isDraftingPostIdea) return;
+    setIsDraftingPostIdea(true);
+    setActionError(null);
+    try {
+      if (typeof window !== "undefined" && window.api?.triggerIdeate) {
+        await window.api.triggerIdeate();
+        setActionNotice("Post ideation triggered. Drafts will appear in queue shortly.");
+      } else {
+        setActionNotice("Post ideation triggered.");
+      }
+      setTimeout(() => setActionNotice(null), 4000);
+      setTimeout(() => {
+        loadQueue();
+      }, 1500);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Failed to trigger post ideation."
+      );
+    } finally {
+      setIsDraftingPostIdea(false);
+    }
+  }, [isDraftingPostIdea, loadQueue]);
+
   const handleApprove = useCallback(async () => {
     const current = selectedItemRef.current;
     if (!current || isProcessing) return;
@@ -222,7 +263,9 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
     try {
       let result: { success: boolean; error?: string; message?: string };
       if (typeof window !== "undefined" && window.api?.executeAction) {
-        result = await window.api.executeAction("approve", current.id, current.draftText);
+        const payloadText =
+          current.actionType === "reaction" ? current.reactionType : current.draftText;
+        result = await window.api.executeAction("approve", current.id, payloadText);
       } else {
         result = { success: true, message: `Approved ${current.id}` };
       }
@@ -340,6 +383,22 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              data-testid="draft-post-idea-btn"
+              onClick={handleDraftPostIdea}
+              disabled={isDraftingPostIdea}
+              className="flex items-center gap-1.5 rounded-md border border-outline bg-surface-container px-2.5 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-high disabled:opacity-50"
+              title="Draft new post idea"
+            >
+              <Sparkle
+                size={13}
+                className={isDraftingPostIdea ? "animate-spin text-primary" : "text-primary"}
+                weight="fill"
+              />
+              <span>{isDraftingPostIdea ? "Drafting..." : "Draft Post Idea"}</span>
+            </button>
+
+            <button
+              type="button"
               data-testid="refresh-queue-btn"
               onClick={() => loadQueue()}
               disabled={isLoading}
@@ -426,6 +485,8 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
         onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
         queueListRef={queueListRef}
         autoRefreshInterval={autoRefreshInterval}
+        onDraftPostIdea={handleDraftPostIdea}
+        isDraftingPostIdea={isDraftingPostIdea}
       />
 
       {/* RIGHT PANE: Reading & Approval Workspace (Detail Canvas) */}
@@ -464,6 +525,9 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
                 isProcessing={isProcessing}
                 textareaRef={textareaRef}
                 initialDraftText={selectedItem.draftText}
+                actionType={selectedItem.actionType}
+                reactionType={selectedItem.reactionType}
+                onReactionChange={handleReactionChange}
               />
 
               {/* SECTION 4: Safety & Edge Dispatch Guarantee footer */}

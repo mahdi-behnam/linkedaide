@@ -7,7 +7,8 @@ export type { ScheduledPost, MediaAttachment, ScheduledPostStatus, AutomatedComm
 
 export interface PendingAction {
   item_id: string;
-  action_type: "approve_comment" | "approve_post" | string;
+  action_type: "approve_comment" | "approve_post" | "approve_reaction" | "approve_reply" | string;
+  reaction_type?: string;
   created_at: string;
   post_urn?: string;
   post_url?: string;
@@ -117,6 +118,7 @@ export interface ElectronAPI {
     note?: string
   ) => Promise<ActionResult>;
   triggerScout: () => Promise<boolean>;
+  triggerIdeate: () => Promise<boolean>;
   togglePause: (paused: boolean) => Promise<boolean>;
   clearIncident: () => Promise<boolean>;
   rewriteDraft: (draftText: string, tone: string) => Promise<string>;

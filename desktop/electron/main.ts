@@ -327,6 +327,35 @@ function registerIpcHandlers(): void {
     });
   });
 
+  ipcMain.handle("api:triggerIdeate", async () => {
+    const settings = loadSettings();
+    if (settings.executionMode === "local") {
+      return new Promise<boolean>((resolve) => {
+        const repoRoot = path.resolve(__dirname, "../..");
+        const ideateArgs = ["run", "agent", "ideate"];
+        const child = spawn("uv", ideateArgs, {
+          cwd: repoRoot,
+          env: {
+            ...process.env,
+            ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
+            ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+          },
+        });
+        child.on("close", (code) => {
+          resolve(code === 0);
+        });
+        child.on("error", () => {
+          resolve(false);
+        });
+      });
+    }
+    return await workerClient.triggerIdeate({
+      repo_owner: settings.githubRepoOwner,
+      repo_name: settings.githubRepoName,
+      github_pat: settings.githubDispatchPat,
+    });
+  });
+
   ipcMain.handle("api:togglePause", async (_event, paused: boolean) => {
     return await workerClient.togglePause(paused);
   });

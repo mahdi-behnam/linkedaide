@@ -4,11 +4,12 @@ import {
   ArrowClockwise,
   Keyboard,
   Lightning,
+  Sparkle,
 } from "@phosphor-icons/react";
 import { QueueTriageCard, PendingItem } from "./QueueTriageCard";
 import { formatKeyCombo } from "../../utils/platform";
 
-export type FilterType = "all" | "comment" | "post";
+export type FilterType = "all" | "comment" | "post" | "reaction";
 
 interface QueueLeftPaneProps {
   items: PendingItem[];
@@ -24,6 +25,8 @@ interface QueueLeftPaneProps {
   onOpenShortcuts: () => void;
   queueListRef: RefObject<HTMLDivElement | null>;
   autoRefreshInterval?: number;
+  onDraftPostIdea?: () => void;
+  isDraftingPostIdea?: boolean;
 }
 
 export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
@@ -40,9 +43,12 @@ export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
   onOpenShortcuts,
   queueListRef,
   autoRefreshInterval = 600,
+  onDraftPostIdea,
+  isDraftingPostIdea = false,
 }) => {
   const commentCount = items.filter((i) => i.actionType === "comment").length;
   const postCount = items.filter((i) => i.actionType === "post").length;
+  const reactionCount = items.filter((i) => i.actionType === "reaction").length;
 
   const formattedInterval = useMemo(() => {
     const sec = autoRefreshInterval;
@@ -71,6 +77,23 @@ export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
+            {onDraftPostIdea && (
+              <button
+                type="button"
+                data-testid="draft-post-idea-btn"
+                onClick={onDraftPostIdea}
+                disabled={isDraftingPostIdea}
+                title="Draft original post idea"
+                className="px-2 py-0.5 flex items-center gap-1 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface text-[11px] font-medium transition-colors disabled:opacity-50 border border-outline/30"
+              >
+                <Sparkle
+                  size={12}
+                  className={isDraftingPostIdea ? "animate-spin text-primary" : "text-primary"}
+                  weight="fill"
+                />
+                <span>{isDraftingPostIdea ? "Drafting..." : "Draft Post Idea"}</span>
+              </button>
+            )}
             <button
               type="button"
               data-testid="refresh-queue-btn"
@@ -146,6 +169,17 @@ export const QueueLeftPane: React.FC<QueueLeftPaneProps> = ({
             }`}
           >
             Posts ({postCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => onFilterChange("reaction")}
+            className={`flex-1 py-0.5 px-1.5 rounded-sm text-[11px] transition-colors text-center ${
+              filterType === "reaction"
+                ? "bg-surface-container-lowest text-on-surface shadow-2xs font-medium"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            Reactions ({reactionCount})
           </button>
         </div>
       </div>

@@ -43,7 +43,7 @@ export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
           <div className="flex flex-col justify-center min-w-0 flex-1 gap-0.5">
             <div className="flex items-center gap-1.5 flex-wrap">
               <h2 className="text-sm text-on-surface font-semibold tracking-tight">
-                Post by {item.author}
+                {item.actionType === "post" ? "Original Post Suggestion" : `Post by ${item.author}`}
               </h2>
               <span title="Verified" className="inline-flex items-center shrink-0">
                 <CheckCircle
@@ -74,7 +74,11 @@ export const QueueWorkspaceHeader: React.FC<QueueWorkspaceHeaderProps> = ({
               )}
               <span className="opacity-40 text-on-surface-variant text-[10px]">·</span>
               <span className="text-on-surface-variant opacity-75 font-sans">
-                via Feed Scout · Published {item.createdAt}
+                {item.actionType === "post"
+                  ? `via Post Ideation · Created ${item.createdAt}`
+                  : item.actionType === "reaction"
+                  ? `Reaction (${(item.reactionType || "like").toUpperCase()}) · via Feed Scout`
+                  : `via Feed Scout · Published ${item.createdAt}`}
               </span>
             </div>
           </div>

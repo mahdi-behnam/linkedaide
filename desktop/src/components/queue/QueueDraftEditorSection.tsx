@@ -21,6 +21,15 @@ const TONE_OPTIONS: ToneOption[] = [
   { label: "Short & Punchy", tone: "shorter" },
 ];
 
+const REACTION_OPTIONS = [
+  { type: "like", label: "Like", icon: "👍" },
+  { type: "insightful", label: "Insightful", icon: "💡" },
+  { type: "celebrate", label: "Celebrate", icon: "👏" },
+  { type: "support", label: "Support", icon: "🤝" },
+  { type: "funny", label: "Funny", icon: "😄" },
+  { type: "love", label: "Love", icon: "❤️" },
+];
+
 interface QueueDraftEditorSectionProps {
   draftText: string;
   onDraftChange: (text: string) => void;
@@ -32,6 +41,9 @@ interface QueueDraftEditorSectionProps {
   isProcessing: boolean;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   initialDraftText?: string;
+  actionType?: "comment" | "post" | "reaction" | "reply";
+  reactionType?: string;
+  onReactionChange?: (reactionType: string) => void;
 }
 
 export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = ({
@@ -45,6 +57,9 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
   isProcessing,
   textareaRef,
   initialDraftText,
+  actionType = "comment",
+  reactionType = "like",
+  onReactionChange,
 }) => {
   const charCount = draftText.length;
   const wordCount = draftText.trim()
@@ -62,6 +77,79 @@ export const QueueDraftEditorSection: React.FC<QueueDraftEditorSectionProps> = (
   const handleAddHashtag = () => {
     onDraftChange(draftText ? `${draftText} #AI #Automation` : "#AI #Automation");
   };
+
+  if (actionType === "reaction") {
+    return (
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold text-on-surface">
+            Select Reaction to Dispatch
+          </label>
+          <span className="text-[11px] text-tertiary font-medium">
+            Reaction Action
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-lg bg-surface-bright border border-outline shadow-2xs flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-md bg-surface-container-low border border-outline/50">
+            {REACTION_OPTIONS.map((opt) => {
+              const isSelected = (reactionType || "like").toLowerCase() === opt.type;
+              return (
+                <button
+                  key={opt.type}
+                  type="button"
+                  data-testid={`reaction-pill-${opt.type}`}
+                  onClick={() => onReactionChange?.(opt.type)}
+                  className={`px-2.5 py-1 rounded-sm text-xs transition-colors flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-surface-bright text-on-surface shadow-2xs font-semibold border border-primary/40"
+                      : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                  }`}
+                >
+                  <span>{opt.icon}</span>
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+            Approving will dispatch a {reactionType.toUpperCase()} reaction to LinkedIn for this post.
+          </p>
+
+          <div className="flex items-center justify-end gap-2 border-t border-outline/50 pt-2.5">
+            <button
+              type="button"
+              data-testid="reject-action-btn"
+              disabled={isProcessing}
+              onClick={onReject}
+              className="flex items-center gap-1 rounded-md border border-error/30 bg-error/10 px-2.5 py-1 text-xs font-medium text-error transition-colors hover:bg-error/20 active:scale-[0.99] disabled:opacity-50"
+            >
+              <X size={12} weight="bold" />
+              <span>Reject</span>
+              <kbd className="ml-0.5 rounded border border-error/30 bg-error/10 px-1 py-0.2 font-sans text-[10px] text-error">
+                R
+              </kbd>
+            </button>
+
+            <button
+              type="button"
+              data-testid="approve-action-btn"
+              disabled={isProcessing}
+              onClick={onApprove}
+              className="flex items-center gap-1 rounded-md border border-primary/40 bg-primary px-3 py-1 text-xs font-medium text-on-primary transition-colors hover:bg-primary-container active:scale-[0.99] disabled:opacity-50 shadow-2xs"
+            >
+              <Check size={12} weight="bold" />
+              <span>Approve &amp; Queue</span>
+              <kbd className="ml-0.5 rounded border border-white/20 bg-white/15 px-1 py-0.2 font-sans text-[10px] text-on-primary">
+                A
+              </kbd>
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-3">

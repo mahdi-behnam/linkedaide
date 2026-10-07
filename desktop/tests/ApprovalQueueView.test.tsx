@@ -68,6 +68,7 @@ describe("ApprovalQueueView", () => {
         .fn()
         .mockResolvedValue({ success: true, message: "Action processed" }),
       triggerScout: vi.fn().mockResolvedValue(true),
+      triggerIdeate: vi.fn().mockResolvedValue(true),
       togglePause: vi.fn().mockResolvedValue(true),
       clearIncident: vi.fn().mockResolvedValue(true),
       rewriteDraft: vi
@@ -386,5 +387,113 @@ describe("ApprovalQueueView", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("queue-fetch-error")).toBeNull();
     });
+  });
+
+  it("triggers post ideation when Draft Post Idea button is clicked in queue header", async () => {
+    renderApprovalQueue();
+
+    const draftBtn = screen.getByTestId("draft-post-idea-btn");
+    expect(draftBtn).toBeTruthy();
+    expect(draftBtn.textContent).toContain("Draft Post Idea");
+
+    fireEvent.click(draftBtn);
+
+    await waitFor(() => {
+      expect(window.api.triggerIdeate).toHaveBeenCalled();
+    });
+  });
+
+  it("triggers post ideation from empty queue state button", async () => {
+    renderApprovalQueue({ initialItems: [] });
+
+    expect(screen.getByTestId("empty-queue-state")).toBeTruthy();
+    const draftBtn = screen.getByTestId("draft-post-idea-btn");
+    expect(draftBtn).toBeTruthy();
+
+    fireEvent.click(draftBtn);
+
+    await waitFor(() => {
+      expect(window.api.triggerIdeate).toHaveBeenCalled();
+    });
+  });
+
+  it("renders reaction item with picker and dispatches reaction approval", async () => {
+    const reactionItems: PendingItem[] = [
+      {
+        id: "act-rx-1",
+        actionType: "reaction",
+        reactionType: "insightful",
+        author: "Demis Hassabis",
+        headline: "CEO at Google DeepMind",
+        postUrl: "https://linkedin.com/feed/update/urn:li:activity:7999999999",
+        postExcerpt: "Major breakthrough in protein folding and biological physics.",
+        draftText: "Reaction: Insightful",
+        confidence: 0.95,
+        reasoning: "World-class AI science breakthrough.",
+        engagementStyle: "thought_leadership",
+        createdAt: "5m ago",
+        topic: "AI Research",
+      },
+    ];
+
+    renderApprovalQueue({ initialItems: reactionItems });
+
+    // Verify card rendered with reaction badge
+    expect(screen.getByText("Reaction · Insightful")).toBeTruthy();
+    expect(screen.getByText("Demis Hassabis")).toBeTruthy();
+
+    // Verify reaction picker pill is active
+    const insightfulPill = screen.getByTestId("reaction-pill-insightful");
+    expect(insightfulPill).toBeTruthy();
+
+    // Select different reaction: celebrate
+    const celebratePill = screen.getByTestId("reaction-pill-celebrate");
+    fireEvent.click(celebratePill);
+
+    // Approve the reaction
+    const approveBtn = screen.getByTestId("approve-action-btn");
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      expect(window.api.executeAction).toHaveBeenCalledWith(
+        "approve",
+        "act-rx-1",
+        "celebrate"
+      );
+    });
+  });
+
+  it("filters items by reaction tab in segmented control", async () => {
+    const mixedItems: PendingItem[] = [
+      ...fixturePendingItems,
+      {
+        id: "act-rx-2",
+        actionType: "reaction",
+        reactionType: "like",
+        author: "Yann LeCun",
+        headline: "Chief AI Scientist at Meta",
+        postUrl: "https://linkedin.com/feed/update/urn:li:activity:7888888888",
+        postExcerpt: "World models and self-supervised learning directions.",
+        draftText: "Reaction: Like",
+        confidence: 0.92,
+        reasoning: "Foundational AI architecture discourse.",
+        engagementStyle: "technical",
+        createdAt: "10m ago",
+        topic: "Deep Learning",
+      },
+    ];
+
+    renderApprovalQueue({ initialItems: mixedItems });
+
+    expect(screen.getByText("Reactions (1)")).toBeTruthy();
+
+    // Click Reactions filter tab
+    const reactionTab = screen.getByText("Reactions (1)");
+    fireEvent.click(reactionTab);
+
+    // Only Yann LeCun's reaction card should be visible
+    expect(screen.getByText("Yann LeCun")).toBeTruthy();
+    expect(screen.queryByText("Satya Nadella")).toBeNull();
+    expect(screen.queryByText("Harrison Chase")).toBeNull();
   });
 });
