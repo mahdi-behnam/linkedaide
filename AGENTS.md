@@ -727,6 +727,8 @@ Use Conventional Commits:
 
 ```text
 <type>(<scope>): <short imperative description>
+
+[optional body / description]
 ```
 
 Preferred types:
@@ -744,6 +746,7 @@ Recommended scopes include:
 - `llm`
 - `graphs`
 - `browser`
+- `desktop`
 - `telegram`
 - `state`
 - `safety`
@@ -783,6 +786,17 @@ phase 2
 ```
 
 The commit should be understandable without reading the diff.
+
+#### Commit description / body requirement
+
+Whenever a commit is being created, it must also include an explanatory description (body) unless the change is trivial or small (e.g., a one-line typo fix, a single configuration constant tweak, or a minor version bump).
+
+For all non-trivial changes:
+
+- Separate the subject line from the body with a single blank line.
+- Provide a clear summary of what was changed and the rationale behind it.
+- Highlight important design decisions, platform nuances, or trade-offs.
+- Use bullet points in the body when covering multiple files or components.
 
 ### 13.5 Commit boundaries
 
