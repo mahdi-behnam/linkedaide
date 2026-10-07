@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { ScheduledPost } from "../../types";
 import { isSameDay } from "./types";
+import { useApp } from "../../context/AppContext";
 
 interface CalendarMonthGridProps {
   currentDate: Date;
@@ -15,6 +16,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
   filteredPosts,
   onSelectPost,
 }) => {
+  const { timezone } = useApp();
   const monthDays = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -37,7 +39,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         date: d,
         dayNum: daysInPrevMonth - i,
         isCurrentMonth: false,
-        isToday: isSameDay(d, new Date().toISOString()),
+        isToday: isSameDay(d, new Date().toISOString(), timezone),
       });
     }
 
@@ -48,7 +50,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         date: d,
         dayNum: day,
         isCurrentMonth: true,
-        isToday: isSameDay(d, new Date().toISOString()),
+        isToday: isSameDay(d, new Date().toISOString(), timezone),
       });
     }
 
@@ -61,12 +63,12 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         date: d,
         dayNum: day,
         isCurrentMonth: false,
-        isToday: isSameDay(d, new Date().toISOString()),
+        isToday: isSameDay(d, new Date().toISOString(), timezone),
       });
     }
 
     return cells;
-  }, [currentDate]);
+  }, [currentDate, timezone]);
 
   return (
     <div
@@ -84,7 +86,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
       <div className="mt-2 grid grid-cols-7 gap-1.5">
         {monthDays.map((cell, i) => {
           const dayPosts = filteredPosts.filter((p) =>
-            isSameDay(cell.date, p.scheduled_time)
+            isSameDay(cell.date, p.scheduled_time, timezone)
           );
           const countPosts = dayPosts.length;
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { CheckCircle } from "@phosphor-icons/react";
+import { formatTimeAgo } from "../../utils/datetime";
 
 export interface PendingItem {
   id: string;
@@ -78,7 +79,7 @@ export const QueueTriageCard: React.FC<QueueTriageCardProps> = ({
             {item.actionType === "comment" ? "Comment" : "Original Post"}
           </span>
           <span className="text-[10px] text-on-surface-variant font-sans">
-            {item.createdAt}
+            {formatTimeAgo(item.createdAt)}
           </span>
         </div>
       </div>

@@ -58,6 +58,7 @@ function loadSettings(): DesktopSettings {
     maxConnectionsPerDay: 10,
     maxSuggestionsPerRun: 3,
     actionTtlHours: 12,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   };
 
   try {
@@ -98,6 +99,9 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
     }
     if (updated.githubDispatchPat !== undefined) {
       updated.githubDispatchPat = updated.githubDispatchPat.trim();
+    }
+    if (updated.timezone !== undefined) {
+      updated.timezone = updated.timezone.trim();
     }
     const settingsPath = getSettingsPath();
     const dir = path.dirname(settingsPath);

@@ -84,7 +84,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   initialHeatmapRates,
   initialAuditEntries,
 }) => {
-  const { auditEntries: contextAuditEntries, refreshState } = useApp();
+  const { auditEntries: contextAuditEntries, refreshState, formatDate } = useApp();
   const auditEntries = initialAuditEntries ?? contextAuditEntries;
   const [selectedTimeframe, setSelectedTimeframe] = useState<"7d" | "30d" | "all">("7d");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -119,7 +119,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         commentExcerpt: e.draftExcerpt || "High-resonance architectural commentary.",
         authorReplied: true,
         reach: "~1.2k",
-        timestamp: e.executedAt ? new Date(e.executedAt).toLocaleDateString() : "Recent",
+        timestamp: e.executedAt ? formatDate(e.executedAt) : "Recent",
       }));
   }, [auditEntries]);
 

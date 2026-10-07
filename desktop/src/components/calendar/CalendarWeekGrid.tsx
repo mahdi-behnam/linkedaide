@@ -7,6 +7,7 @@ import {
   Plus,
 } from "../icons";
 import { isSameDay } from "./types";
+import { useApp } from "../../context/AppContext";
 
 interface CalendarWeekGridProps {
   weekDays: Date[];
@@ -25,6 +26,7 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
   onSelectPost,
   onNewPost,
 }) => {
+  const { formatTime, timezone } = useApp();
   // Status badge styling helper
   const getStatusBadge = (status: ScheduledPostStatus) => {
     switch (status) {
@@ -91,11 +93,11 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2.5"
       >
         {weekDays.map((dayDate, idx) => {
-          const isToday = isSameDay(dayDate, new Date().toISOString());
+          const isToday = isSameDay(dayDate, new Date().toISOString(), timezone);
           const dayCode = dayNames[idx];
 
           const dayPosts = filteredPosts.filter((p) =>
-            isSameDay(dayDate, p.scheduled_time)
+            isSameDay(dayDate, p.scheduled_time, timezone)
           );
 
           // Automated comment windows applicable to this day (by 3-letter day name)
@@ -178,10 +180,10 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
                   const hasPdf = post.media.some((m) => m.media_type === "carousel_pdf");
                   const hasImg = post.media.some((m) => m.media_type === "image");
                   const timeStr = post.scheduled_time
-                    ? new Date(post.scheduled_time)
-                        .toISOString()
-                        .split("T")[1]
-                        ?.substring(0, 5) + " UTC"
+                    ? formatTime(post.scheduled_time, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                     : "Draft";
 
                   return (

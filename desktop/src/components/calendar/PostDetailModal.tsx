@@ -8,6 +8,7 @@ import {
   Clock,
   CheckCircle,
 } from "../icons";
+import { useApp } from "../../context/AppContext";
 
 interface PostDetailModalProps {
   post: ScheduledPost;
@@ -20,6 +21,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
   onClose,
   onEditInComposer,
 }) => {
+  const { formatDateTime } = useApp();
   const getStatusBadge = (status: ScheduledPostStatus) => {
     switch (status) {
       case "published":
@@ -115,7 +117,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
           <span className="font-mono text-[10px] text-on-surface-variant">
             Scheduled:{" "}
             {post.scheduled_time
-              ? new Date(post.scheduled_time).toUTCString()
+              ? formatDateTime(post.scheduled_time)
               : "Draft"}
           </span>
 

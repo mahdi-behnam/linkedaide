@@ -140,6 +140,7 @@ export interface DesktopSettings {
   maxConnectionsPerDay?: number;
   maxSuggestionsPerRun?: number;
   actionTtlHours?: number;
+  timezone?: string;
 }
 
 export interface ElectronAPI {

@@ -354,4 +354,32 @@ describe("SettingsView", () => {
       );
     });
   });
+
+  it("allows selecting, filtering, and saving timezone preference", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("Regional & Timezone Settings")).toBeTruthy();
+    const tzSelect = screen.getByTestId("timezone-select") as HTMLSelectElement;
+    expect(tzSelect).toBeTruthy();
+
+    // Change timezone to America/New_York
+    fireEvent.change(tzSelect, { target: { value: "America/New_York" } });
+    expect(tzSelect.value).toBe("America/New_York");
+
+    const saveBtn = screen.getByRole("button", {
+      name: /Save & Apply Settings/i,
+    });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timezone: "America/New_York",
+        })
+      );
+    });
+  });
 });

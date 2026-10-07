@@ -39,7 +39,7 @@ export interface AuditHistoryViewProps {
 }
 
 export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntries }) => {
-  const { auditEntries: contextEntries, telemetry } = useApp();
+  const { auditEntries: contextEntries, telemetry, formatTime, formatDateTime } = useApp();
   const auditEntries = initialEntries ?? contextEntries;
   const [settings, setSettings] = useState<DesktopSettings | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,8 +148,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
 
   const formatDate = (isoString: string) => {
     try {
-      const d = new Date(isoString);
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      return formatTime(isoString, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     } catch {
       return isoString;
     }
@@ -403,12 +402,12 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
               </div>
               <div className="flex justify-between border-b border-outline-variant/20 pb-2">
                 <span className="text-on-surface-variant">Decision Timestamp</span>
-                <span className="text-on-surface">{selectedEntry.decidedAt}</span>
+                <span className="text-on-surface">{formatDateTime(selectedEntry.decidedAt)}</span>
               </div>
               {selectedEntry.executedAt && (
                 <div className="flex justify-between border-b border-outline-variant/20 pb-2">
                   <span className="text-on-surface-variant">Execution Timestamp</span>
-                  <span className="text-on-surface">{selectedEntry.executedAt}</span>
+                  <span className="text-on-surface">{formatDateTime(selectedEntry.executedAt)}</span>
                 </div>
               )}
               {getEntryScreenshotPath(selectedEntry) && (
@@ -516,7 +515,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
                   <div>
                     <span className="text-on-surface-variant">Timestamp: </span>
                     <span className="text-on-surface font-medium">
-                      {previewScreenshotEntry.executedAt || previewScreenshotEntry.decidedAt}
+                      {formatDateTime(previewScreenshotEntry.executedAt || previewScreenshotEntry.decidedAt)}
                     </span>
                   </div>
                   <div>

@@ -12,6 +12,14 @@ import {
 } from "../types";
 import { ActionResult } from "../types/api";
 import { ToastNotification } from "../components/toast/types";
+import {
+  getDefaultTimezone,
+  isValidTimezone,
+  formatTime as utilFormatTime,
+  formatDate as utilFormatDate,
+  formatDateTime as utilFormatDateTime,
+  formatTimeAgo as utilFormatTimeAgo,
+} from "../utils/datetime";
 import { useScheduledPosts } from "../hooks/useScheduledPosts";
 import { useConnectionQueue } from "../hooks/useConnectionQueue";
 import { useDoctorDiagnostics } from "../hooks/useDoctorDiagnostics";
@@ -39,6 +47,21 @@ export interface AppContextType {
     options?: { type?: "info" | "success" | "warn" | "error"; durationMs?: number }
   ) => void;
   removeNotification: (id: string) => void;
+  timezone: string;
+  setTimezone: (tz: string) => void;
+  formatTime: (
+    date: Date | string | number | null | undefined,
+    options?: Intl.DateTimeFormatOptions
+  ) => string;
+  formatDate: (
+    date: Date | string | number | null | undefined,
+    options?: Intl.DateTimeFormatOptions
+  ) => string;
+  formatDateTime: (
+    date: Date | string | number | null | undefined,
+    options?: Intl.DateTimeFormatOptions
+  ) => string;
+  formatTimeAgo: (date: Date | string | number | null | undefined) => string;
   scheduledPosts: ScheduledPost[];
   saveScheduledPost: (post: ScheduledPost) => void;
   deleteScheduledPost: (id: string) => void;
@@ -123,6 +146,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lastTriggerMessage, setLastTriggerMessage] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
   const [commentWindows, setCommentWindows] = useState<AutomatedCommentWindow[]>(defaultCommentWindows);
+  const [timezone, setTimezoneState] = useState<string>(() => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const saved = window.localStorage.getItem("linkedaide_timezone");
+      if (saved && isValidTimezone(saved)) return saved;
+    }
+    return getDefaultTimezone();
+  });
+
+  const setTimezone = useCallback((tz: string) => {
+    const validTz = isValidTimezone(tz) ? tz : getDefaultTimezone();
+    setTimezoneState(validTz);
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem("linkedaide_timezone", validTz);
+    }
+    if (typeof window !== "undefined" && window.api?.saveSettings) {
+      void window.api.saveSettings({ timezone: validTz });
+    }
+  }, []);
+
+  const formatTime = useCallback(
+    (date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions) =>
+      utilFormatTime(date, timezone, options),
+    [timezone]
+  );
+
+  const formatDate = useCallback(
+    (date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions) =>
+      utilFormatDate(date, timezone, options),
+    [timezone]
+  );
+
+  const formatDateTime = useCallback(
+    (date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions) =>
+      utilFormatDateTime(date, timezone, options),
+    [timezone]
+  );
+
+  const formatTimeAgo = useCallback(
+    (date: Date | string | number | null | undefined) =>
+      utilFormatTimeAgo(date, timezone),
+    [timezone]
+  );
 
   const removeNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -274,11 +339,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (typeof window !== "undefined" && window.api?.getSettings) {
         try {
           const s = await window.api.getSettings();
-          if (isMounted && s?.nimModel) {
-            setTelemetry((prev) => ({
-              ...prev,
-              nimModel: s.nimModel || prev.nimModel,
-            }));
+          if (isMounted) {
+            if (s?.nimModel) {
+              setTelemetry((prev) => ({
+                ...prev,
+                nimModel: s.nimModel || prev.nimModel,
+              }));
+            }
+            if (s?.timezone && isValidTimezone(s.timezone)) {
+              setTimezoneState(s.timezone);
+            }
           }
         } catch {
           // ignore
@@ -463,6 +533,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notifications,
       addNotification,
       removeNotification,
+      timezone,
+      setTimezone,
+      formatTime,
+      formatDate,
+      formatDateTime,
+      formatTimeAgo,
       scheduledPosts,
       saveScheduledPost,
       deleteScheduledPost,
@@ -494,6 +570,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notifications,
       addNotification,
       removeNotification,
+      timezone,
+      setTimezone,
+      formatTime,
+      formatDate,
+      formatDateTime,
+      formatTimeAgo,
       scheduledPosts,
       saveScheduledPost,
       deleteScheduledPost,

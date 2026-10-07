@@ -97,6 +97,7 @@ export interface DesktopSettings {
   githubRepoOwner?: string;
   githubRepoName?: string;
   githubDispatchPat?: string;
+  timezone?: string;
 }
 
 export interface ElectronAPI {

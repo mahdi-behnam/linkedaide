@@ -8,6 +8,8 @@ import { VaultEncryptionCard } from "./settings/VaultEncryptionCard";
 import { NimIntelligenceCard } from "./settings/NimIntelligenceCard";
 import { SafetyGuardrailsCard } from "./settings/SafetyGuardrailsCard";
 import { NotificationsCard } from "./settings/NotificationsCard";
+import { TimezoneCard } from "./settings/TimezoneCard";
+import { getDefaultTimezone } from "../utils/datetime";
 import type { DesktopSettings } from "../types/api";
 
 const defaultSettings: DesktopSettings = {
@@ -29,6 +31,7 @@ const defaultSettings: DesktopSettings = {
   maxConnectionsPerDay: 10,
   maxSuggestionsPerRun: 3,
   actionTtlHours: 12,
+  timezone: getDefaultTimezone(),
 };
 
 const DEFAULT_NIM_MODELS = [
@@ -42,7 +45,7 @@ const DEFAULT_NIM_MODELS = [
 ];
 
 export const SettingsView: React.FC = () => {
-  const { quota } = useApp();
+  const { quota, setTimezone: setAppTimezone } = useApp();
   const [settings, setSettings] = useState<DesktopSettings>(defaultSettings);
   const [showSecret, setShowSecret] = useState(false);
   const [showNimKey, setShowNimKey] = useState(false);
@@ -108,6 +111,9 @@ export const SettingsView: React.FC = () => {
     value: DesktopSettings[K]
   ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+    if (key === "timezone" && typeof value === "string") {
+      setAppTimezone(value);
+    }
     setSaveSuccess(false);
     setSaveError(null);
   };
@@ -117,6 +123,10 @@ export const SettingsView: React.FC = () => {
     setIsSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
+
+    if (settings.timezone) {
+      setAppTimezone(settings.timezone);
+    }
 
     try {
       if (typeof window !== "undefined" && window.api?.saveSettings) {
@@ -378,6 +388,12 @@ export const SettingsView: React.FC = () => {
           notificationsEnabled={settings.notificationsEnabled ?? true}
           onMinimizeChange={(val) => handleChange("minimizeToTray", val)}
           onNotificationsChange={(val) => handleChange("notificationsEnabled", val)}
+        />
+
+        {/* Section 8: Regional & Timezone Preferences */}
+        <TimezoneCard
+          timezone={settings.timezone ?? getDefaultTimezone()}
+          onChange={(tz) => handleChange("timezone", tz)}
         />
 
         {/* Bottom Save Button Bar */}
