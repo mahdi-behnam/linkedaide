@@ -587,6 +587,117 @@ export async function handlePostScout(request: Request, env: Env): Promise<Respo
   });
 }
 
+export async function handlePostIdeate(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method Not Allowed" }, 405);
+  }
+
+  let body: {
+    ref?: string;
+    use_repository_dispatch?: boolean;
+    repo_owner?: string;
+    repo_name?: string;
+    github_pat?: string;
+    dry_run?: boolean;
+  } = {};
+  try {
+    const text = await request.text();
+    if (text) {
+      body = JSON.parse(text);
+    }
+  } catch {
+    // Optional body
+  }
+
+  const repoOwner = body.repo_owner || env.GITHUB_REPO_OWNER;
+  const repoName = body.repo_name || env.GITHUB_REPO_NAME;
+  const pat = body.github_pat || env.GITHUB_DISPATCH_PAT;
+
+  if (!repoOwner || !repoName || !pat) {
+    const missing = [
+      !repoOwner && "GITHUB_REPO_OWNER",
+      !repoName && "GITHUB_REPO_NAME",
+      !pat && "GITHUB_DISPATCH_PAT",
+    ].filter(Boolean);
+    return jsonResponse(
+      {
+        error: "GitHub ideation dispatch failed: Missing configuration",
+        details: `Missing required cloud dispatch settings: ${missing.join(", ")}. Please configure them in Desktop Settings or Cloudflare Worker environment.`,
+      },
+      400
+    );
+  }
+
+  let dispatchUrl: string;
+  let dispatchBody: Record<string, unknown>;
+
+  if (body.use_repository_dispatch) {
+    dispatchUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/dispatches`;
+    dispatchBody = {
+      event_type: "linkedin_agent_action",
+      client_payload: { action: "ideate" },
+    };
+  } else {
+    dispatchUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/ideation.yml/dispatches`;
+    dispatchBody = {
+      ref: body.ref || "main",
+      inputs: {
+        dry_run: body.dry_run ? "true" : "false",
+      },
+    };
+  }
+
+  let dispatchResponse: Response;
+  try {
+    dispatchResponse = await fetch(dispatchUrl, {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${pat}`,
+        "User-Agent": "Telegram-Relay-Worker",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      body: JSON.stringify(dispatchBody),
+    });
+  } catch (networkError: unknown) {
+    const errMsg =
+      networkError instanceof Error ? networkError.message : "Network request failed";
+    return jsonResponse(
+      { error: "GitHub dispatch network failure", details: errMsg },
+      502
+    );
+  }
+
+  if (!dispatchResponse.ok) {
+    const errText = await dispatchResponse.text();
+    let details = errText;
+    if (
+      dispatchResponse.status === 403 &&
+      errText.includes("Resource not accessible by personal access token")
+    ) {
+      details = `${errText} -> Personal Access Token lacks workflow dispatch permission. For Classic PATs (ghp_...), check 'workflow' and 'repo' scopes. For Fine-grained PATs (github_pat_...), set Repository Permissions -> 'Actions' to 'Read and write'.`;
+    }
+    return jsonResponse(
+      {
+        error: "GitHub ideation dispatch failed",
+        status_code: dispatchResponse.status,
+        status_text: dispatchResponse.statusText,
+        details,
+      },
+      502
+    );
+  }
+
+  broadcastEvent({
+    type: "queue_updated",
+  });
+
+  return jsonResponse({
+    success: true,
+    status: "ideation_triggered",
+  });
+}
+
 export async function handlePostPause(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method Not Allowed" }, 405);
@@ -855,6 +966,9 @@ export async function handleApiRequest(
   }
   if (pathname === "/api/scout") {
     return handlePostScout(request, env);
+  }
+  if (pathname === "/api/ideate" || pathname === "/api/trigger-ideation") {
+    return handlePostIdeate(request, env);
   }
   if (pathname === "/api/pause") {
     return handlePostPause(request, env);

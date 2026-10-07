@@ -659,6 +659,91 @@ describe("Authenticated Worker REST API Suite", () => {
     });
   });
 
+  describe("POST /api/ideate", () => {
+    it("dispatches workflow_dispatch event to GitHub Actions ideation.yml", async () => {
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("actions/workflows/ideation.yml/dispatches")) {
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      });
+      globalThis.fetch = fetchMock;
+
+      const req = makeApiRequest("/api/ideate", {
+        method: "POST",
+        body: { ref: "main" },
+      });
+      const ctx = createMockContext();
+
+      const res = await worker.fetch(req, mockEnv, ctx as any);
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as any;
+      expect(data.success).toBe(true);
+      expect(data.status).toBe("ideation_triggered");
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `https://api.github.com/repos/${mockEnv.GITHUB_REPO_OWNER}/${mockEnv.GITHUB_REPO_NAME}/actions/workflows/ideation.yml/dispatches`,
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: `Bearer ${mockEnv.GITHUB_DISPATCH_PAT}`,
+          }),
+          body: JSON.stringify({
+            ref: "main",
+            inputs: { dry_run: "false" },
+          }),
+        })
+      );
+    });
+
+    it("supports use_repository_dispatch flag with action: 'ideate'", async () => {
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        if (url.endsWith("/dispatches")) {
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      });
+      globalThis.fetch = fetchMock;
+
+      const req = makeApiRequest("/api/ideate", {
+        method: "POST",
+        body: { use_repository_dispatch: true },
+      });
+      const ctx = createMockContext();
+
+      const res = await worker.fetch(req, mockEnv, ctx as any);
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as any;
+      expect(data.status).toBe("ideation_triggered");
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `https://api.github.com/repos/${mockEnv.GITHUB_REPO_OWNER}/${mockEnv.GITHUB_REPO_NAME}/dispatches`,
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            event_type: "linkedin_agent_action",
+            client_payload: { action: "ideate" },
+          }),
+        })
+      );
+    });
+
+    it("returns 502 if GitHub dispatch fails", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response("Server Error", { status: 500, statusText: "Internal Server Error" })
+      );
+      globalThis.fetch = fetchMock;
+
+      const req = makeApiRequest("/api/ideate", { method: "POST" });
+      const ctx = createMockContext();
+
+      const res = await worker.fetch(req, mockEnv, ctx as any);
+      expect(res.status).toBe(502);
+      const data = (await res.json()) as any;
+      expect(data.error).toBe("GitHub ideation dispatch failed");
+    });
+  });
+
   describe("POST /api/pause", () => {
     it("returns 400 when paused is not a boolean", async () => {
       const { kv } = createMockKv();
