@@ -5,7 +5,6 @@ import { RateLimitBurnDown } from "../components/dashboard/RateLimitBurnDown";
 import { EdgeDispatcherStatus } from "../components/dashboard/EdgeDispatcherStatus";
 import { PendingApprovalQueuePreview } from "../components/dashboard/PendingApprovalQueuePreview";
 import {
-  Stethoscope,
   ArrowClockwise,
   ShieldCheck,
   Cpu,
@@ -22,8 +21,6 @@ export const DashboardView: React.FC = () => {
     quota,
     isScouting,
     triggerScout,
-    isCheckingDoctor,
-    runDoctorCheck,
     clearIncident,
     setCurrentTab,
     lastTriggerMessage,
@@ -48,21 +45,6 @@ export const DashboardView: React.FC = () => {
 
         {/* Action Controls Toolbar */}
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {/* Health Check Button */}
-          <button
-            type="button"
-            data-testid="health-check-btn"
-            disabled={isCheckingDoctor}
-            onClick={() => {
-              runDoctorCheck();
-              setCurrentTab("doctor");
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container-lowest border border-outline hover:bg-surface-container text-on-surface text-xs font-medium transition-colors shadow-2xs shrink-0 active:scale-[0.99]"
-          >
-            <Stethoscope size={14} className="text-secondary" />
-            <span>Health Check</span>
-          </button>
-
           {/* Trigger Scout Button */}
           <button
             type="button"

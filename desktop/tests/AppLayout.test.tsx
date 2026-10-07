@@ -21,6 +21,7 @@ describe("AppLayout", () => {
     renderLayout();
     expect(screen.getByText("Control Center")).toBeTruthy();
     expect(screen.getByTestId("test-content")).toBeTruthy();
+    expect(screen.queryByText(/KV Edge Synced/i)).toBeNull();
   });
 
   it("renders all navigation tabs in the sidebar", () => {

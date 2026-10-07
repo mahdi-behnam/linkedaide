@@ -53,9 +53,10 @@ describe("DashboardView", () => {
     });
   });
 
-  it("does not render duplicate pause agent button or edge cycle badge", () => {
+  it("does not render duplicate pause agent button, health check button, or edge cycle badge", () => {
     renderDashboard();
     expect(screen.queryByTestId("toggle-pause-btn")).toBeNull();
+    expect(screen.queryByTestId("health-check-btn")).toBeNull();
     expect(screen.queryByText(/Edge Cycle/i)).toBeNull();
   });
 

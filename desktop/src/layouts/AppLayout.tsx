@@ -16,7 +16,6 @@ import {
   Pause,
   CaretLeft,
   CaretRight,
-  Globe,
   PencilSimple,
   Calendar,
   UserPlus,
@@ -229,22 +228,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             );
           })}
         </nav>
-
-        {/* Persistent Bottom Bar: KV Edge Sync Status Widget */}
-        <div className="border-t border-outline p-2">
-          {!isCollapsed ? (
-            <div className="flex items-center justify-between rounded-md border border-outline bg-surface-container-lowest px-2.5 py-1.5 shadow-2xs">
-              <div className="flex flex-col">
-                <span className="text-[11px] font-medium text-on-surface">KV Edge Synced</span>
-                <span className="text-[10px] text-on-surface-variant">Edge Relay Connected</span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center py-1" title="KV Edge Synced · Edge Relay Connected">
-              <Globe size={14} className="text-tertiary" />
-            </div>
-          )}
-        </div>
       </aside>
 
       {/* Main Container */}
