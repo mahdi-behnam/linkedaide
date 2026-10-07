@@ -17,12 +17,8 @@ export const UnsavedChangesBar: React.FC<UnsavedChangesBarProps> = ({
       data-testid="unsaved-changes-bar"
       className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-2rem)] sm:w-auto animate-in fade-in slide-in-from-bottom-4 duration-200"
     >
-      <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-5 px-4 py-2.5 rounded-full bg-surface-container-highest/95 border border-primary/40 shadow-2xl backdrop-blur-md text-on-surface">
+      <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-5 px-4 py-2.5 rounded-xl bg-surface-container-highest/95 border border-primary/40 shadow-2xl backdrop-blur-md text-on-surface">
         <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
-          </span>
           <span className="text-xs font-medium text-on-surface whitespace-nowrap">
             Careful — you have unsaved changes!
           </span>
@@ -34,7 +30,7 @@ export const UnsavedChangesBar: React.FC<UnsavedChangesBarProps> = ({
             data-testid="discard-settings-btn"
             disabled={isSaving}
             onClick={onDiscard}
-            className="px-3 py-1 text-xs font-medium rounded-full border border-outline hover:bg-surface-container text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-medium rounded-md border border-outline hover:bg-surface-container text-on-surface transition-colors cursor-pointer disabled:opacity-50"
           >
             Discard
           </button>
@@ -43,7 +39,7 @@ export const UnsavedChangesBar: React.FC<UnsavedChangesBarProps> = ({
             data-testid="save-settings-btn"
             disabled={isSaving}
             onClick={onSave}
-            className="px-3.5 py-1 text-xs font-semibold rounded-full bg-primary hover:bg-primary-container text-on-primary shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-primary hover:bg-primary-container text-on-primary shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
           >
             {isSaving ? (
               <ArrowClockwise size={13} className="animate-spin text-on-primary" />
