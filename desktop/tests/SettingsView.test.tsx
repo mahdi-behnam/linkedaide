@@ -174,26 +174,59 @@ describe("SettingsView", () => {
     });
   });
 
-  it("saves updated settings when form is submitted", async () => {
+  it("saves updated settings when form is modified and saved", async () => {
     renderWithContext();
     await waitFor(() => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
-    const saveBtn = screen.getByRole("button", {
-      name: /Save & Apply Settings/i,
-    });
+    // Unsaved changes bar should not be present initially
+    expect(screen.queryByTestId("unsaved-changes-bar")).toBeNull();
+
+    // Modify a setting
+    const urlInput = screen.getByPlaceholderText(
+      "https://relay.your-subdomain.workers.dev"
+    ) as HTMLInputElement;
+    fireEvent.change(urlInput, { target: { value: "https://relay.modified.workers.dev" } });
+
+    // Floating save and discard buttons appear
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    expect(saveBtn).toBeTruthy();
+    expect(screen.getByTestId("discard-settings-btn")).toBeTruthy();
+
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
       expect(window.api.saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          workerUrl: "https://relay.custom.workers.dev",
+          workerUrl: "https://relay.modified.workers.dev",
           executionMode: "cloud",
         })
       );
       expect(screen.getByText("Settings Saved & Applied")).toBeTruthy();
     });
+  });
+
+  it("shows unsaved changes bar when edited and hides on discard", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByTestId("unsaved-changes-bar")).toBeNull();
+
+    const urlInput = screen.getByPlaceholderText(
+      "https://relay.your-subdomain.workers.dev"
+    ) as HTMLInputElement;
+    fireEvent.change(urlInput, { target: { value: "https://relay.temporary.workers.dev" } });
+
+    expect(screen.getByTestId("unsaved-changes-bar")).toBeTruthy();
+
+    const discardBtn = screen.getByTestId("discard-settings-btn");
+    fireEvent.click(discardBtn);
+
+    expect(urlInput.value).toBe("https://relay.custom.workers.dev");
+    expect(screen.queryByTestId("unsaved-changes-bar")).toBeNull();
   });
 
   it("allows selecting an NVIDIA NIM model from dropdown and saving", async () => {
@@ -210,9 +243,7 @@ describe("SettingsView", () => {
     ) as HTMLInputElement;
     fireEvent.change(keyInput, { target: { value: "nvapi-test-token" } });
 
-    const saveBtn = screen.getByRole("button", {
-      name: /Save & Apply Settings/i,
-    });
+    const saveBtn = screen.getByTestId("save-settings-btn");
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -255,9 +286,7 @@ describe("SettingsView", () => {
     const customInput = screen.getByLabelText("Custom NIM Model Identifier") as HTMLInputElement;
     fireEvent.change(customInput, { target: { value: "custom-org/special-model-v1" } });
 
-    const saveBtn = screen.getByRole("button", {
-      name: /Save & Apply Settings/i,
-    });
+    const saveBtn = screen.getByTestId("save-settings-btn");
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -316,9 +345,7 @@ describe("SettingsView", () => {
     fireEvent.click(patToggle);
     expect(patInput.type).toBe("text");
 
-    const saveBtn = screen.getByRole("button", {
-      name: /Save & Apply Settings/i,
-    });
+    const saveBtn = screen.getByTestId("save-settings-btn");
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -341,9 +368,7 @@ describe("SettingsView", () => {
     const connInput = screen.getByLabelText("Max Connections / Day") as HTMLInputElement;
     fireEvent.change(connInput, { target: { value: "18" } });
 
-    const saveBtn = screen.getByRole("button", {
-      name: /Save & Apply Settings/i,
-    });
+    const saveBtn = screen.getByTestId("save-settings-btn");
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -369,9 +394,7 @@ describe("SettingsView", () => {
     fireEvent.change(tzSelect, { target: { value: "America/New_York" } });
     expect(tzSelect.value).toBe("America/New_York");
 
-    const saveBtn = screen.getByRole("button", {
-      name: /Save & Apply Settings/i,
-    });
+    const saveBtn = screen.getByTestId("save-settings-btn");
     fireEvent.click(saveBtn);
 
     await waitFor(() => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { AppProvider } from "../src/context/AppContext";
+import { AppProvider, useApp } from "../src/context/AppContext";
 import { ThemeProvider } from "../src/context/ThemeContext";
 import { AppLayout } from "../src/layouts/AppLayout";
 
@@ -150,6 +150,60 @@ describe("AppLayout", () => {
     // Press Escape
     fireEvent.keyDown(screen.getByTestId("command-palette-input"), { key: "Escape" });
     expect(screen.queryByTestId("command-palette")).toBeNull();
+  });
+
+  it("intercepts navigation when leaving settings with unsaved changes", () => {
+    const TestHelper = () => {
+      const { setHasUnsavedSettings, setCurrentTab, setDiscardSettingsHandler } = useApp();
+      return (
+        <div>
+          <button
+            data-testid="simulate-unsaved"
+            onClick={() => {
+              setCurrentTab("settings");
+              setHasUnsavedSettings(true);
+              setDiscardSettingsHandler(() => () => {});
+            }}
+          >
+            Simulate Unsaved
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <ThemeProvider>
+        <AppProvider>
+          <AppLayout>
+            <TestHelper />
+          </AppLayout>
+        </AppProvider>
+      </ThemeProvider>
+    );
+
+    // Simulate unsaved changes on settings tab
+    fireEvent.click(screen.getByTestId("simulate-unsaved"));
+
+    // Attempt to navigate to Dashboard
+    fireEvent.click(screen.getByTestId("nav-dashboard"));
+
+    // Locking modal should appear
+    expect(screen.getByTestId("unsaved-changes-modal")).toBeTruthy();
+    expect(screen.getByText("Unsaved Settings Changes")).toBeTruthy();
+
+    // Click Stay on Settings
+    fireEvent.click(screen.getByTestId("unsaved-modal-stay-btn"));
+    expect(screen.queryByTestId("unsaved-changes-modal")).toBeNull();
+    expect(screen.getByTestId("nav-settings").className).toContain("bg-surface-container-highest");
+
+    // Attempt to navigate to Dashboard again
+    fireEvent.click(screen.getByTestId("nav-dashboard"));
+    expect(screen.getByTestId("unsaved-changes-modal")).toBeTruthy();
+
+    // Click Discard & Leave
+    fireEvent.click(screen.getByTestId("unsaved-modal-discard-btn"));
+    expect(screen.queryByTestId("unsaved-changes-modal")).toBeNull();
+    expect(screen.getByTestId("nav-dashboard").className).toContain("bg-surface-container-highest");
   });
 });
 

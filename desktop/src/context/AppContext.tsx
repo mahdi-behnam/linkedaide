@@ -76,6 +76,12 @@ export interface AppContextType {
     id: string,
     note?: string
   ) => Promise<ActionResult>;
+  hasUnsavedSettings: boolean;
+  setHasUnsavedSettings: (dirty: boolean) => void;
+  saveSettingsHandler: (() => Promise<boolean>) | null;
+  setSaveSettingsHandler: (fn: (() => Promise<boolean>) | null) => void;
+  discardSettingsHandler: (() => void) | null;
+  setDiscardSettingsHandler: (fn: (() => void) | null) => void;
   clearIncident?: () => Promise<void>;
   refreshState?: () => Promise<void>;
 }
@@ -191,6 +197,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  const [hasUnsavedSettings, setHasUnsavedSettings] = useState<boolean>(false);
+  const [saveSettingsHandler, setSaveSettingsHandlerState] = useState<(() => Promise<boolean>) | null>(null);
+  const [discardSettingsHandler, setDiscardSettingsHandlerState] = useState<(() => void) | null>(null);
+
+  const setSaveSettingsHandler = useCallback((fn: (() => Promise<boolean>) | null) => {
+    setSaveSettingsHandlerState(() => fn);
+  }, []);
+
+  const setDiscardSettingsHandler = useCallback((fn: (() => void) | null) => {
+    setDiscardSettingsHandlerState(() => fn);
   }, []);
 
   const addNotification = useCallback(
@@ -549,6 +567,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       connectionQueue,
       setConnectionQueue,
       executeConnectionAction,
+      hasUnsavedSettings,
+      setHasUnsavedSettings,
+      saveSettingsHandler,
+      setSaveSettingsHandler,
+      discardSettingsHandler,
+      setDiscardSettingsHandler,
       refreshState,
     }),
     [
@@ -586,6 +610,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       connectionQueue,
       setConnectionQueue,
       executeConnectionAction,
+      hasUnsavedSettings,
+      setHasUnsavedSettings,
+      saveSettingsHandler,
+      setSaveSettingsHandler,
+      discardSettingsHandler,
+      setDiscardSettingsHandler,
       refreshState,
     ]
   );

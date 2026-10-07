@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useApp } from "../context/AppContext";
-import { Check, CheckCircle, WarningCircle, ArrowClockwise } from "../components/icons";
+import { CheckCircle, WarningCircle } from "../components/icons";
 import { ExecutionModeCard } from "./settings/ExecutionModeCard";
 import { CloudflareRelayCard } from "./settings/CloudflareRelayCard";
 import { GitHubActionsCard } from "./settings/GitHubActionsCard";
@@ -9,8 +9,19 @@ import { NimIntelligenceCard } from "./settings/NimIntelligenceCard";
 import { SafetyGuardrailsCard } from "./settings/SafetyGuardrailsCard";
 import { NotificationsCard } from "./settings/NotificationsCard";
 import { TimezoneCard } from "./settings/TimezoneCard";
+import { UnsavedChangesBar } from "./settings/UnsavedChangesBar";
 import { getDefaultTimezone } from "../utils/datetime";
 import type { DesktopSettings } from "../types/api";
+
+export function areSettingsEqual(a: DesktopSettings, b: DesktopSettings): boolean {
+  const allKeys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof DesktopSettings>;
+  for (const k of allKeys) {
+    const valA = a[k] !== undefined ? a[k] : "";
+    const valB = b[k] !== undefined ? b[k] : "";
+    if (valA !== valB) return false;
+  }
+  return true;
+}
 
 const defaultSettings: DesktopSettings = {
   workerUrl: "https://relay.hitl-agent.workers.dev",
@@ -45,8 +56,15 @@ const DEFAULT_NIM_MODELS = [
 ];
 
 export const SettingsView: React.FC = () => {
-  const { quota, setTimezone: setAppTimezone } = useApp();
+  const {
+    quota,
+    setTimezone: setAppTimezone,
+    setHasUnsavedSettings,
+    setSaveSettingsHandler,
+    setDiscardSettingsHandler,
+  } = useApp();
   const [settings, setSettings] = useState<DesktopSettings>(defaultSettings);
+  const [savedSettings, setSavedSettings] = useState<DesktopSettings>(defaultSettings);
   const [showSecret, setShowSecret] = useState(false);
   const [showNimKey, setShowNimKey] = useState(false);
   const [showGithubPat, setShowGithubPat] = useState(false);
@@ -68,17 +86,69 @@ export const SettingsView: React.FC = () => {
   } | null>(null);
   const [isCustomModel, setIsCustomModel] = useState(false);
 
-  const handleDiscard = async () => {
-    if (typeof window !== "undefined" && window.api?.getSettings) {
+  const hasUnsavedChanges = useMemo(
+    () => !areSettingsEqual(settings, savedSettings),
+    [settings, savedSettings]
+  );
+
+  const handleDiscard = useCallback(() => {
+    setSettings(savedSettings);
+    if (savedSettings.timezone) {
+      setAppTimezone(savedSettings.timezone);
+    }
+    setSaveSuccess(false);
+    setSaveError(null);
+  }, [savedSettings, setAppTimezone]);
+
+  const handleSave = useCallback(
+    async (e?: React.FormEvent): Promise<boolean> => {
+      if (e) e.preventDefault();
+      setIsSaving(true);
+      setSaveSuccess(false);
+      setSaveError(null);
+
+      if (settings.timezone) {
+        setAppTimezone(settings.timezone);
+      }
+
       try {
-        const loaded = await window.api.getSettings();
-        if (loaded) {
-          setSettings((prev) => ({ ...prev, ...loaded }));
+        if (typeof window !== "undefined" && window.api?.saveSettings) {
+          const ok = await window.api.saveSettings(settings);
+          if (ok) {
+            setSavedSettings(settings);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+            return true;
+          } else {
+            setSaveError("Failed to save settings to local disk.");
+            return false;
+          }
+        } else {
+          setSavedSettings(settings);
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3000);
+          return true;
         }
       } catch (err) {
-        console.error("Failed to discard settings:", err);
+        setSaveError(err instanceof Error ? err.message : "Error saving settings");
+        return false;
+      } finally {
+        setIsSaving(false);
       }
+    },
+    [settings, setAppTimezone]
+  );
+
+  const handleChange = <K extends keyof DesktopSettings>(
+    key: K,
+    value: DesktopSettings[K]
+  ) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+    if (key === "timezone" && typeof value === "string") {
+      setAppTimezone(value);
     }
+    setSaveSuccess(false);
+    setSaveError(null);
   };
 
   useEffect(() => {
@@ -89,6 +159,7 @@ export const SettingsView: React.FC = () => {
           const loaded = await window.api.getSettings();
           if (isMounted && loaded) {
             setSettings((prev) => ({ ...prev, ...loaded }));
+            setSavedSettings((prev) => ({ ...prev, ...loaded }));
             if (loaded.nimModel) {
               setModelsList((prev) =>
                 prev.includes(loaded.nimModel!) ? prev : [loaded.nimModel!, ...prev]
@@ -106,47 +177,30 @@ export const SettingsView: React.FC = () => {
     };
   }, []);
 
-  const handleChange = <K extends keyof DesktopSettings>(
-    key: K,
-    value: DesktopSettings[K]
-  ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-    if (key === "timezone" && typeof value === "string") {
-      setAppTimezone(value);
-    }
-    setSaveSuccess(false);
-    setSaveError(null);
-  };
+  useEffect(() => {
+    setHasUnsavedSettings(hasUnsavedChanges);
+  }, [hasUnsavedChanges, setHasUnsavedSettings]);
 
-  const handleSave = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsSaving(true);
-    setSaveSuccess(false);
-    setSaveError(null);
+  useEffect(() => {
+    setSaveSettingsHandler(handleSave);
+    setDiscardSettingsHandler(handleDiscard);
+    return () => {
+      setSaveSettingsHandler(null);
+      setDiscardSettingsHandler(null);
+      setHasUnsavedSettings(false);
+    };
+  }, [handleSave, handleDiscard, setSaveSettingsHandler, setDiscardSettingsHandler, setHasUnsavedSettings]);
 
-    if (settings.timezone) {
-      setAppTimezone(settings.timezone);
-    }
-
-    try {
-      if (typeof window !== "undefined" && window.api?.saveSettings) {
-        const ok = await window.api.saveSettings(settings);
-        if (ok) {
-          setSaveSuccess(true);
-          setTimeout(() => setSaveSuccess(false), 3000);
-        } else {
-          setSaveError("Failed to save settings to local disk.");
-        }
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
       }
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Error saving settings");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const handleGenerateKey = async () => {
     try {
@@ -268,40 +322,22 @@ export const SettingsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
-          {saveSuccess && (
-            <div className="flex items-center gap-1.5 font-mono text-[11px] text-tertiary font-medium">
-              <CheckCircle size={14} weight="bold" />
-              <span>Settings Saved &amp; Applied</span>
-            </div>
-          )}
-          {saveError && (
-            <div className="flex items-center gap-1.5 font-mono text-[11px] text-error font-medium">
-              <WarningCircle size={14} weight="bold" />
-              <span>{saveError}</span>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => void handleDiscard()}
-            className="px-3 py-1.5 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/30 transition-colors font-medium text-[13px] flex items-center gap-1.5 cursor-pointer"
-          >
-            <span>Discard</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSave()}
-            disabled={isSaving}
-            className="px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-container text-on-primary transition-colors font-medium text-[13px] shadow-xs flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer active:bg-primary/90 disabled:opacity-50"
-          >
-            {isSaving ? (
-              <ArrowClockwise size={14} className="animate-spin text-on-primary" />
-            ) : (
-              <Check size={14} weight="bold" />
+        {(saveSuccess || saveError) && (
+          <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+            {saveSuccess && (
+              <div className="flex items-center gap-1.5 font-mono text-[11px] text-tertiary font-medium">
+                <CheckCircle size={14} weight="bold" />
+                <span>Settings Saved &amp; Applied</span>
+              </div>
             )}
-            <span>Save Changes</span>
-          </button>
-        </div>
+            {saveError && (
+              <div className="flex items-center gap-1.5 font-mono text-[11px] text-error font-medium">
+                <WarningCircle size={14} weight="bold" />
+                <span>{saveError}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSave} className="flex flex-col gap-4">
@@ -396,19 +432,15 @@ export const SettingsView: React.FC = () => {
           onChange={(tz) => handleChange("timezone", tz)}
         />
 
-        {/* Bottom Save Button Bar */}
-        <div className="flex items-center justify-end gap-3 pt-2 border-t border-surface-container-high">
-          <button
-            type="submit"
-            data-testid="save-settings-btn"
-            disabled={isSaving}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-md bg-primary hover:bg-primary-container text-on-primary font-medium text-[13px] shadow-xs transition-colors cursor-pointer active:bg-primary/90 disabled:opacity-50"
-          >
-            {isSaving && <ArrowClockwise size={14} className="animate-spin" />}
-            <span>{isSaving ? "Saving Configuration..." : "Save & Apply Settings"}</span>
-          </button>
-        </div>
       </form>
+
+      {hasUnsavedChanges && (
+        <UnsavedChangesBar
+          isSaving={isSaving}
+          onSave={() => void handleSave()}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   );
 };

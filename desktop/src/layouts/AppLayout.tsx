@@ -26,6 +26,7 @@ import {
   IconProps,
 } from "../components/icons";
 import { CommandPalette } from "../components/CommandPalette";
+import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import roundActiveIcon from "../assets/icons/round-active.png";
 import roundStandbyIcon from "../assets/icons/round-standby.png";
 import roundAttentionIcon from "../assets/icons/round-attention.png";
@@ -55,6 +56,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     connectionQueue,
     notifications,
     removeNotification,
+    hasUnsavedSettings,
+    setHasUnsavedSettings,
+    saveSettingsHandler,
+    discardSettingsHandler,
   } = useApp();
 
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -63,9 +68,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [navHistory, setNavHistory] = useState<NavigationTab[]>([currentTab]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [isModalSaving, setIsModalSaving] = useState(false);
 
-  const navigateToTab = (tab: NavigationTab) => {
-    if (tab === currentTab) return;
+  const executeNavigation = (tab: NavigationTab) => {
     const newHistory = navHistory.slice(0, historyIndex + 1);
     newHistory.push(tab);
     setNavHistory(newHistory);
@@ -73,19 +80,87 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     setCurrentTab(tab);
   };
 
+  const navigateToTab = (tab: NavigationTab) => {
+    if (tab === currentTab) return;
+    if (currentTab === "settings" && hasUnsavedSettings) {
+      setPendingNavigation(() => () => executeNavigation(tab));
+      setShowUnsavedModal(true);
+      return;
+    }
+    executeNavigation(tab);
+  };
+
   const handleBack = () => {
     if (historyIndex > 0) {
       const prevIndex = historyIndex - 1;
+      const targetTab = navHistory[prevIndex];
+      if (currentTab === "settings" && hasUnsavedSettings) {
+        setPendingNavigation(() => () => {
+          setHistoryIndex(prevIndex);
+          setCurrentTab(targetTab);
+        });
+        setShowUnsavedModal(true);
+        return;
+      }
       setHistoryIndex(prevIndex);
-      setCurrentTab(navHistory[prevIndex]);
+      setCurrentTab(targetTab);
     }
   };
 
   const handleForward = () => {
     if (historyIndex < navHistory.length - 1) {
       const nextIndex = historyIndex + 1;
+      const targetTab = navHistory[nextIndex];
+      if (currentTab === "settings" && hasUnsavedSettings) {
+        setPendingNavigation(() => () => {
+          setHistoryIndex(nextIndex);
+          setCurrentTab(targetTab);
+        });
+        setShowUnsavedModal(true);
+        return;
+      }
       setHistoryIndex(nextIndex);
-      setCurrentTab(navHistory[nextIndex]);
+      setCurrentTab(targetTab);
+    }
+  };
+
+  const handleStay = () => {
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
+  };
+
+  const handleDiscardAndLeave = () => {
+    discardSettingsHandler?.();
+    setHasUnsavedSettings(false);
+    setShowUnsavedModal(false);
+    if (pendingNavigation) {
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleSaveAndLeave = async () => {
+    if (saveSettingsHandler) {
+      setIsModalSaving(true);
+      try {
+        const success = await saveSettingsHandler();
+        if (success) {
+          setHasUnsavedSettings(false);
+          setShowUnsavedModal(false);
+          if (pendingNavigation) {
+            pendingNavigation();
+            setPendingNavigation(null);
+          }
+        }
+      } finally {
+        setIsModalSaving(false);
+      }
+    } else {
+      setShowUnsavedModal(false);
+      if (pendingNavigation) {
+        pendingNavigation();
+        setPendingNavigation(null);
+      }
     }
   };
 
@@ -364,6 +439,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           isPaused={isPaused}
           onToggleTheme={toggleTheme}
           currentTheme={resolvedTheme}
+        />
+
+        {/* Unsaved Settings Navigation Warning Modal */}
+        <UnsavedChangesModal
+          isOpen={showUnsavedModal}
+          isSaving={isModalSaving}
+          onStay={handleStay}
+          onDiscardAndLeave={handleDiscardAndLeave}
+          onSaveAndLeave={() => void handleSaveAndLeave()}
         />
       </div>
     </div>
