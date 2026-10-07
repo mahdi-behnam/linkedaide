@@ -629,6 +629,26 @@ class GitStateStore(BaseStateStore):
         return False
 
     # -------------------------------------------------------------------------
+    # Scout Schedule (Configurable Scout Runs)
+    # -------------------------------------------------------------------------
+
+    def get_scout_schedule(self) -> list[dict[str, Any]]:
+        """Retrieve configured scout schedule from state/scout_schedule.json."""
+        target_path = self.state_dir / "scout_schedule.json"
+        if not target_path.exists():
+            return []
+        try:
+            raw = json.loads(target_path.read_text(encoding="utf-8"))
+            return raw if isinstance(raw, list) else []
+        except Exception:
+            return []
+
+    def save_scout_schedule(self, schedule: list[dict[str, Any]]) -> None:
+        """Persist configured scout schedule to state/scout_schedule.json."""
+        target_path = self.state_dir / "scout_schedule.json"
+        target_path.write_text(json.dumps(schedule, indent=2), encoding="utf-8")
+
+    # -------------------------------------------------------------------------
     # Active Threads (Comment Thread Monitoring)
     # -------------------------------------------------------------------------
 

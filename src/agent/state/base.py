@@ -277,6 +277,18 @@ class BaseStateStore(ABC):
         return False
 
     # -------------------------------------------------------------------------
+    # Scout Schedule (Configurable Scout Runs)
+    # -------------------------------------------------------------------------
+
+    def get_scout_schedule(self) -> list[dict[str, Any]]:
+        """Retrieve the configured automated scout schedule."""
+        return []
+
+    def save_scout_schedule(self, schedule: list[dict[str, Any]]) -> None:
+        """Persist the configured automated scout schedule."""
+        pass
+
+    # -------------------------------------------------------------------------
     # Active Threads (Comment Thread Monitoring)
     # -------------------------------------------------------------------------
 

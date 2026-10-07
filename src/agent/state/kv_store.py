@@ -491,6 +491,25 @@ class CloudflareKVStateStore(BaseStateStore):
         return deleted
 
     # -------------------------------------------------------------------------
+    # Scout Schedule (Configurable Scout Runs)
+    # -------------------------------------------------------------------------
+
+    def get_scout_schedule(self) -> list[dict[str, Any]]:
+        """Retrieve configured scout schedule from KV key scout_schedule."""
+        raw = self._get_value("scout_schedule")
+        if not raw:
+            return []
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, list) else []
+        except Exception:
+            return []
+
+    def save_scout_schedule(self, schedule: list[dict[str, Any]]) -> None:
+        """Persist configured scout schedule to KV key scout_schedule."""
+        self._put_value("scout_schedule", json.dumps(schedule))
+
+    # -------------------------------------------------------------------------
     # Active Threads (Comment Thread Monitoring)
     # -------------------------------------------------------------------------
 
