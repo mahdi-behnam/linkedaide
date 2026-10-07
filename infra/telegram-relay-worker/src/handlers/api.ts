@@ -7,6 +7,7 @@ import { inferContentType, jsonResponse } from "../utils";
 import { broadcastEvent, handleWebSocketUpgrade } from "./ws";
 import { handleScheduledPosts } from "./scheduled";
 import { handleConnectionQueue } from "./connectionQueue";
+import { handleScoutSchedule, defaultScoutWindows } from "./scoutSchedule";
 import { rewriteDraftWithLlm, VALID_TONES } from "./llm";
 
 export async function handleGetState(request: Request, env: Env): Promise<Response> {
@@ -115,6 +116,17 @@ export async function handleGetState(request: Request, env: Env): Promise<Respon
     }
   }
 
+  // 9. scout_schedule (optional)
+  const rawScoutSchedule = await env.LINKEDIN_AGENT_KV.get("scout_schedule");
+  let scoutSchedule: unknown = null;
+  if (rawScoutSchedule) {
+    try {
+      scoutSchedule = JSON.parse(rawScoutSchedule);
+    } catch {
+      scoutSchedule = null;
+    }
+  }
+
   const statePayload: Record<string, unknown> = {
     pending,
     daily_counters: dailyCounters,
@@ -130,6 +142,9 @@ export async function handleGetState(request: Request, env: Env): Promise<Respon
   }
   if (activeThreads !== null) {
     statePayload.active_threads = activeThreads;
+  }
+  if (scoutSchedule !== null) {
+    statePayload.scout_schedule = scoutSchedule;
   }
 
   return jsonResponse({
@@ -824,6 +839,9 @@ export async function handleApiRequest(
   }
   if (pathname === "/api/connection-queue") {
     return handleConnectionQueue(request, env);
+  }
+  if (pathname === "/api/scout-schedule") {
+    return handleScoutSchedule(request, env);
   }
 
   return jsonResponse({ error: "Not Found" }, 404);
