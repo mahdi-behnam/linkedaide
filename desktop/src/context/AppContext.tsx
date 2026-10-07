@@ -298,96 +298,105 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     runDoctorCheck,
   } = useDoctorDiagnostics(telemetry, setTelemetry, handleSetLastTriggerMessage);
 
-  const refreshState = useCallback(async () => {
+  const applyState = useCallback((state: any) => {
+    if (!state) return;
+
+    const rawPending =
+      state.pending_actions ||
+      state.pendingActions ||
+      state.pending ||
+      [];
+    const newPendingCount = rawPending.length;
+
+    setPendingCount((prev) => {
+      if (newPendingCount > prev) {
+        const diff = newPendingCount - prev;
+        setLastTriggerMessage(`⚡ Realtime: ${diff} new approval${diff > 1 ? "s" : ""} available in queue`);
+      }
+      return newPendingCount;
+    });
+
+    if (typeof state.paused === "boolean") {
+      setIsPaused(state.paused);
+    }
+
+    setTelemetry((prev) => ({
+      ...prev,
+      isPaused: typeof state.paused === "boolean" ? state.paused : prev.isPaused,
+      circuitBreakerTripped: Boolean(state.incident),
+      pendingCount: newPendingCount,
+      lastScanAt: state.last_updated || state.lastUpdated || "Just now",
+    }));
+
+    if (state.connection_queue || state.connectionQueue) {
+      setConnectionQueue(state.connection_queue || state.connectionQueue || []);
+    }
+
+    if (Array.isArray(state.scout_schedule || state.scoutSchedule)) {
+      const schedule = (state.scout_schedule || state.scoutSchedule) as AutomatedCommentWindow[];
+      if (schedule.length > 0) {
+        setCommentWindows(schedule);
+      }
+    }
+
+    if (state.daily_counters || state.dailyCounters) {
+      const counters = (state.daily_counters || state.dailyCounters) as any;
+      setQuota((prev) => ({
+        ...prev,
+        commentsExecuted: counters.comments_executed ?? counters.commentsExecuted ?? prev.commentsExecuted,
+        postsExecuted: counters.posts_executed ?? counters.postsExecuted ?? prev.postsExecuted,
+        suggestionsSent: counters.suggestions_sent ?? counters.suggestionsSent ?? prev.suggestionsSent,
+        connectionsSent: counters.connections_sent ?? counters.connectionsSent ?? prev.connectionsSent,
+      }));
+    }
+
+    if (Array.isArray(state.history)) {
+      if (state.history.length === 0) {
+        setAuditEntries([]);
+      } else {
+        setAuditEntries(
+          state.history.map((h: any, i: number) => {
+            const rawType = (h.action_type || "").toLowerCase();
+            const actionType: "comment" | "post" | "connection" | "reply" =
+              rawType.includes("conn")
+                ? "connection"
+                : rawType.includes("reply")
+                  ? "reply"
+                  : rawType.includes("post")
+                    ? "post"
+                    : "comment";
+            return {
+              id: `hist-${h.item_id || i}`,
+              itemId: h.item_id || `item-${i}`,
+              actionType,
+              status: (h.final_status as any) || "executed_success",
+              decidedAt: h.decided_at || new Date().toISOString(),
+              executedAt: h.executed_at || undefined,
+              screenshotPath: h.screenshot_path || undefined,
+              error: h.error || undefined,
+            };
+          })
+        );
+      }
+    }
+  }, [setConnectionQueue]);
+
+  const refreshState = useCallback(async (preloadedState?: any) => {
+    if (preloadedState) {
+      applyState(preloadedState);
+      return;
+    }
     if (typeof window === "undefined" || !window.api?.fetchState) {
       return;
     }
     try {
       const state = await window.api.fetchState();
       if (!state) return;
-
-      const rawPending =
-        state.pending_actions ||
-        state.pendingActions ||
-        state.pending ||
-        [];
-      const newPendingCount = rawPending.length;
-
-      setPendingCount((prev) => {
-        if (newPendingCount > prev) {
-          const diff = newPendingCount - prev;
-          setLastTriggerMessage(`⚡ Realtime: ${diff} new approval${diff > 1 ? "s" : ""} available in queue`);
-        }
-        return newPendingCount;
-      });
-
-      if (typeof state.paused === "boolean") {
-        setIsPaused(state.paused);
-      }
-
-      setTelemetry((prev) => ({
-        ...prev,
-        isPaused: typeof state.paused === "boolean" ? state.paused : prev.isPaused,
-        circuitBreakerTripped: Boolean(state.incident),
-        pendingCount: newPendingCount,
-        lastScanAt: state.last_updated || state.lastUpdated || "Just now",
-      }));
-
-      if (state.connection_queue || state.connectionQueue) {
-        setConnectionQueue(state.connection_queue || state.connectionQueue || []);
-      }
-
-      if (Array.isArray(state.scout_schedule || state.scoutSchedule)) {
-        const schedule = (state.scout_schedule || state.scoutSchedule) as AutomatedCommentWindow[];
-        if (schedule.length > 0) {
-          setCommentWindows(schedule);
-        }
-      }
-
-      if (state.daily_counters || state.dailyCounters) {
-        const counters = (state.daily_counters || state.dailyCounters) as any;
-        setQuota((prev) => ({
-          ...prev,
-          commentsExecuted: counters.comments_executed ?? counters.commentsExecuted ?? prev.commentsExecuted,
-          postsExecuted: counters.posts_executed ?? counters.postsExecuted ?? prev.postsExecuted,
-          suggestionsSent: counters.suggestions_sent ?? counters.suggestionsSent ?? prev.suggestionsSent,
-          connectionsSent: counters.connections_sent ?? counters.connectionsSent ?? prev.connectionsSent,
-        }));
-      }
-
-      if (Array.isArray(state.history)) {
-        if (state.history.length === 0) {
-          setAuditEntries([]);
-        } else {
-          setAuditEntries(
-            state.history.map((h, i) => {
-              const rawType = (h.action_type || "").toLowerCase();
-              const actionType: "comment" | "post" | "connection" | "reply" =
-                rawType.includes("conn")
-                  ? "connection"
-                  : rawType.includes("reply")
-                    ? "reply"
-                    : rawType.includes("post")
-                      ? "post"
-                      : "comment";
-              return {
-                id: `hist-${h.item_id || i}`,
-                itemId: h.item_id || `item-${i}`,
-                actionType,
-                status: (h.final_status as any) || "executed_success",
-                decidedAt: h.decided_at || new Date().toISOString(),
-                executedAt: h.executed_at || undefined,
-                screenshotPath: h.screenshot_path || undefined,
-                error: h.error || undefined,
-              };
-            })
-          );
-        }
-      }
+      applyState(state);
     } catch (err) {
       console.warn("Silent background refreshState failed:", err);
     }
-  }, [setConnectionQueue]);
+  }, [applyState]);
 
   useEffect(() => {
     let isMounted = true;
@@ -444,14 +453,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Immediate initial state fetch on app launch
     refreshState();
 
+    let lastFetchTime = Date.now();
+    const FOCUS_THROTTLE_MS = 300_000; // Throttle window focus sync to at most once per 5 minutes
+
     const handleFocus = () => {
-      refreshState();
+      const now = Date.now();
+      if (now - lastFetchTime >= FOCUS_THROTTLE_MS) {
+        lastFetchTime = now;
+        refreshState();
+      }
     };
     window.addEventListener("focus", handleFocus);
 
+    // Fallback idle background polling every 10 minutes (600,000ms) to respect Cloudflare KV limits
     const interval = setInterval(() => {
+      lastFetchTime = Date.now();
       refreshState();
-    }, 15000);
+    }, 600_000);
 
     return () => {
       window.removeEventListener("focus", handleFocus);
@@ -469,7 +487,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const eventType = event.type;
 
       if (eventType === "queue_updated" || eventType === "action_executed") {
-        refreshState();
+        if (event.state) {
+          applyState(event.state);
+        } else {
+          refreshState();
+        }
         if (eventType === "action_executed") {
           handleSetLastTriggerMessage(
             `⚡ Realtime: Action "${event.action || "executed"}" recorded for ${event.item_id || "item"}`
@@ -488,7 +510,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubscribe();
       }
     };
-  }, [refreshState, handleSetLastTriggerMessage]);
+  }, [applyState, refreshState, handleSetLastTriggerMessage]);
 
   const systemStatus: SystemStatusType = useMemo(() => {
     if (telemetry.circuitBreakerTripped) return "tripped";

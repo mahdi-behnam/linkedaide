@@ -10,12 +10,36 @@ import { handleConnectionQueue } from "./connectionQueue";
 import { handleScoutSchedule, defaultScoutWindows } from "./scoutSchedule";
 import { rewriteDraftWithLlm, VALID_TONES } from "./llm";
 
+// In-memory edge cache for GET /api/state to protect KV limits against burst reads
+let cachedKvRef: unknown = null;
+let cachedStatePayload: Record<string, unknown> | null = null;
+let cachedStateTimestamp = 0;
+const STATE_CACHE_TTL_MS = 30_000; // 30 seconds edge cache
+
+export function invalidateStateCache(): void {
+  cachedKvRef = null;
+  cachedStatePayload = null;
+  cachedStateTimestamp = 0;
+}
+
 export async function handleGetState(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") {
     return jsonResponse({ error: "Method Not Allowed" }, 405);
   }
   if (!env.LINKEDIN_AGENT_KV) {
     return jsonResponse({ error: "KV namespace not configured" }, 500);
+  }
+
+  // Return cached state if available and within TTL to conserve KV reads/lists
+  if (
+    cachedKvRef === env.LINKEDIN_AGENT_KV &&
+    cachedStatePayload &&
+    Date.now() - cachedStateTimestamp < STATE_CACHE_TTL_MS
+  ) {
+    return jsonResponse({
+      success: true,
+      state: cachedStatePayload,
+    });
   }
 
   // 1. Lists and gets all pending:* records
@@ -146,6 +170,10 @@ export async function handleGetState(request: Request, env: Env): Promise<Respon
   if (scoutSchedule !== null) {
     statePayload.scout_schedule = scoutSchedule;
   }
+
+  cachedKvRef = env.LINKEDIN_AGENT_KV;
+  cachedStatePayload = statePayload;
+  cachedStateTimestamp = Date.now();
 
   return jsonResponse({
     success: true,
@@ -278,6 +306,7 @@ export async function handlePostAction(
       );
     }
 
+    invalidateStateCache();
     broadcastEvent({
       type: "action_executed",
       item_id: itemId,
@@ -436,6 +465,7 @@ export async function handlePostAction(
     );
   }
 
+  invalidateStateCache();
   broadcastEvent({
     type: "action_executed",
     item_id: itemId,
@@ -585,6 +615,7 @@ export async function handlePostPause(request: Request, env: Env): Promise<Respo
     await env.LINKEDIN_AGENT_KV.delete("paused");
   }
 
+  invalidateStateCache();
   return jsonResponse({
     success: true,
     paused: body.paused,
@@ -600,6 +631,7 @@ export async function handleClearIncident(request: Request, env: Env): Promise<R
   }
 
   await env.LINKEDIN_AGENT_KV.delete("incident");
+  invalidateStateCache();
 
   return jsonResponse({
     success: true,
@@ -676,6 +708,7 @@ export async function handlePostSession(request: Request, env: Env): Promise<Res
   }
 
   await env.LINKEDIN_AGENT_KV.put("linkedin_session_state_enc", body.session_data);
+  invalidateStateCache();
 
   return jsonResponse({
     success: true,
@@ -772,6 +805,7 @@ export async function handlePostEvent(request: Request, _env: Env): Promise<Resp
     return jsonResponse({ error: "Field 'type' is required and must be a non-empty string" }, 400);
   }
 
+  invalidateStateCache();
   broadcastEvent(body as { type: string; [key: string]: any });
 
   return jsonResponse({

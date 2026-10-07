@@ -32,13 +32,13 @@ export class PollingEngine {
     optionsOrClient: PollingEngineOptions | WorkerClient,
     trayManager?: TrayManager,
     mainWindow?: BrowserWindow | null,
-    intervalMs: number = 300_000
+    intervalMs: number = 600_000
   ) {
     if ("workerClient" in optionsOrClient) {
       this.workerClient = optionsOrClient.workerClient;
       this.trayManager = optionsOrClient.trayManager;
       this.mainWindow = optionsOrClient.mainWindow ?? null;
-      this.intervalMs = optionsOrClient.intervalMs ?? 300_000;
+      this.intervalMs = optionsOrClient.intervalMs ?? 600_000;
     } else {
       this.workerClient = optionsOrClient;
       this.trayManager = trayManager!;

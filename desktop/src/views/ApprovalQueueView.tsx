@@ -99,13 +99,38 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
     if (typeof window === "undefined" || !window.api?.onRealtimeEvent) return;
     const unsubscribe = window.api.onRealtimeEvent((event: any) => {
       if (event?.type === "queue_updated" || event?.type === "action_executed") {
-        loadQueue();
+        if (event?.state) {
+          const rawPending =
+            event.state.pending_actions ||
+            event.state.pendingActions ||
+            event.state.pending ||
+            [];
+          const mapped: PendingItem[] = rawPending.map((p: any) => ({
+            id: p.item_id,
+            actionType: (p.action_type?.includes("post") ? "post" : "comment") as "comment" | "post",
+            author: p.author_name || "Unknown Author",
+            headline: p.author_headline || "LinkedIn Member",
+            postUrl: p.post_url || "",
+            postExcerpt: p.post_excerpt || "",
+            draftText: p.draft_text || "",
+            confidence: p.confidence ?? 0.85,
+            reasoning: p.reasoning || "",
+            engagementStyle: p.engagement_style || "Thought Leadership",
+            createdAt: p.created_at || new Date().toISOString(),
+            topic: "Engineering",
+          }));
+          setItems(mapped);
+          setSelectedId((prev) => (mapped.some((m) => m.id === prev) ? prev : mapped[0]?.id ?? null));
+          setPendingCount(mapped.length);
+        } else {
+          loadQueue();
+        }
       }
     });
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [loadQueue]);
+  }, [loadQueue, setPendingCount]);
 
   const filteredItems = useMemo(() => {
     let result = items;

@@ -33,7 +33,7 @@ const defaultSettings: DesktopSettings = {
   githubRepoOwner: "mahdi-behnam",
   githubRepoName: "linkedin-hitl-agent",
   githubDispatchPat: "",
-  autoRefreshInterval: 300,
+  autoRefreshInterval: 600,
   executionMode: "cloud",
   headless: true,
   minimizeToTray: true,
@@ -352,7 +352,7 @@ export const SettingsView: React.FC = () => {
         <CloudflareRelayCard
           workerUrl={settings.workerUrl}
           apiSecret={settings.apiSecret}
-          autoRefreshInterval={settings.autoRefreshInterval ?? 300}
+          autoRefreshInterval={settings.autoRefreshInterval ?? 600}
           showSecret={showSecret}
           onToggleShowSecret={() => setShowSecret((prev) => !prev)}
           onWorkerUrlChange={(url) => handleChange("workerUrl", url)}
@@ -408,7 +408,7 @@ export const SettingsView: React.FC = () => {
           maxConnectionsPerDay={settings.maxConnectionsPerDay ?? quota.connectionsMax ?? 10}
           maxSuggestionsPerRun={settings.maxSuggestionsPerRun ?? 10}
           actionTtlHours={settings.actionTtlHours ?? 24}
-          autoRefreshInterval={settings.autoRefreshInterval ?? 300}
+          autoRefreshInterval={settings.autoRefreshInterval ?? 600}
           headless={settings.headless ?? true}
           onCommentsChange={(val) => handleChange("maxCommentsPerDay", val)}
           onPostsChange={(val) => handleChange("maxPostsPerDay", val)}

@@ -64,8 +64,8 @@ export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
             >
               <option value={60}>1 Minute</option>
               <option value={120}>2 Minutes</option>
-              <option value={300}>5 Minutes (Default)</option>
-              <option value={600}>10 Minutes</option>
+              <option value={300}>5 Minutes</option>
+              <option value={600}>10 Minutes (Default)</option>
               <option value={900}>15 Minutes</option>
             </select>
           </div>

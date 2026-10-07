@@ -48,7 +48,7 @@ function loadSettings(): DesktopSettings {
     githubRepoOwner: process.env.GITHUB_REPO_OWNER || "mahdi-behnam",
     githubRepoName: process.env.GITHUB_REPO_NAME || "linkedin-hitl-agent",
     githubDispatchPat: process.env.GITHUB_DISPATCH_PAT || "",
-    autoRefreshInterval: 30,
+    autoRefreshInterval: 600,
     executionMode: "cloud",
     headless: true,
     minimizeToTray: true,
@@ -746,6 +746,7 @@ app.whenReady().then(() => {
     workerClient,
     trayManager,
     mainWindow,
+    intervalMs: (settings.autoRefreshInterval || 600) * 1000,
   });
   pollingEngine.start(true);
 
