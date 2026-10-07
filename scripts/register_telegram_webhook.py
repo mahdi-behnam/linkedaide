@@ -11,6 +11,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -114,6 +115,16 @@ def register_bot_commands(
         return False
 
 
+def get_webhook_info(bot_token: str | None = None) -> dict[str, Any]:
+    """Retrieve current Telegram webhook registration status."""
+    token = _get_bot_token(bot_token)
+    api_url = f"https://api.telegram.org/bot{token}/getWebhookInfo"
+    resp = httpx.get(api_url, timeout=15.0)
+    resp.raise_for_status()
+    data = resp.json()
+    return data.get("result", {})
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Manage Telegram webhook for Relay Worker")
     parser.add_argument("--worker-url", type=str, help="Cloudflare Worker HTTPS URL")
@@ -123,21 +134,55 @@ def main() -> None:
     )
     parser.add_argument("--delete", action="store_true", help="Delete existing webhook")
     parser.add_argument("--set-commands", action="store_true", help="Register Telegram bot commands menu only")
+    parser.add_argument("--info", action="store_true", help="Inspect current Telegram webhook status")
     args = parser.parse_args()
 
     try:
-        if args.set_commands:
+        if args.info:
+            info = get_webhook_info(args.bot_token)
+            print("Telegram Webhook Status:")
+            print(f"  URL: {info.get('url') or '(None - polling mode)'}")
+            allowed = info.get("allowed_updates") or []
+            print(f"  Allowed Updates: {allowed}")
+            print(f"  Pending Updates: {info.get('pending_update_count', 0)}")
+            if info.get("last_error_message"):
+                print(f"  Last Error: {info['last_error_message']}")
+
+            if info.get("url") and "message" not in allowed:
+                print(
+                    "\n⚠️ WARNING: 'message' is missing from allowed_updates!\n"
+                    "Telegram will DROP all text messages (like /status, /start).\n"
+                    "To fix, re-register your webhook with allowed_updates containing 'message':\n"
+                    "  uv run python scripts/register_telegram_webhook.py --secret-token <YOUR_SECRET_TOKEN>"
+                )
+            success = True
+        elif args.set_commands:
             success = register_bot_commands(args.bot_token)
         elif args.delete:
             success = delete_webhook(args.bot_token)
         else:
-            if not args.worker_url or not args.secret_token:
+            worker_url = args.worker_url
+            if not worker_url:
+                info = get_webhook_info(args.bot_token)
+                worker_url = info.get("url")
+                if worker_url:
+                    print(f"Re-using existing registered worker URL: {worker_url}")
+                else:
+                    print(
+                        "Error: --worker-url is required (no existing webhook URL found in Telegram).",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+
+            secret_token = args.secret_token or os.environ.get("TELEGRAM_WEBHOOK_SECRET")
+            if not secret_token:
                 print(
-                    "Error: --worker-url and --secret-token are required to register webhook.",
+                    "Error: --secret-token is required to register webhook.",
                     file=sys.stderr,
                 )
                 sys.exit(1)
-            success = register_webhook(args.worker_url, args.secret_token, args.bot_token)
+
+            success = register_webhook(worker_url, secret_token, args.bot_token)
             if success:
                 try:
                     register_bot_commands(args.bot_token)

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy && uv run python ../../scripts/register_telegram_webhook.py --set-commands",
+    "tail": "wrangler tail",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

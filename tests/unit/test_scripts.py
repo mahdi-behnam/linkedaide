@@ -11,7 +11,12 @@ from scripts.generate_secrets import (
     generate_session_encryption_key,
     generate_telegram_webhook_secret,
 )
-from scripts.register_telegram_webhook import delete_webhook, register_webhook
+from scripts.register_telegram_webhook import (
+    delete_webhook,
+    get_webhook_info,
+    register_bot_commands,
+    register_webhook,
+)
 
 
 def test_register_webhook_success() -> None:
@@ -63,3 +68,35 @@ def test_generate_secrets_functions() -> None:
     assert len(desktop_sec) >= 32
     for ch in desktop_sec:
         assert ch.isalnum() or ch in ("_", "-")
+
+
+def test_get_webhook_info_success() -> None:
+    with patch("httpx.get") as mock_get:
+        mock_resp = AsyncMock()
+        mock_resp.raise_for_status = lambda: None
+        mock_resp.json = lambda: {
+            "ok": True,
+            "result": {
+                "url": "https://relay.workers.dev",
+                "allowed_updates": ["callback_query", "message"],
+                "pending_update_count": 0,
+            },
+        }
+        mock_get.return_value = mock_resp
+
+        info = get_webhook_info(bot_token="123:bot_token")
+        assert info["url"] == "https://relay.workers.dev"
+        assert "message" in info["allowed_updates"]
+
+
+def test_register_bot_commands_success() -> None:
+    with patch("httpx.post") as mock_post:
+        mock_resp = AsyncMock()
+        mock_resp.raise_for_status = lambda: None
+        mock_resp.json = lambda: {"ok": True, "result": True}
+        mock_post.return_value = mock_resp
+
+        success = register_bot_commands(bot_token="123:bot_token")
+        assert success is True
+        sent_payload = mock_post.call_args[1]["json"]
+        assert len(sent_payload["commands"]) >= 5
