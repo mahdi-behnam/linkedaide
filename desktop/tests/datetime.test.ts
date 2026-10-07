@@ -9,6 +9,9 @@ import {
   formatDateTime,
   formatTimeAgo,
   isSameDayInTimezone,
+  convertUtcTimeToLocal,
+  convertLocalTimeToUtc,
+  calculateNextScoutTime,
 } from "../src/utils/datetime";
 
 describe("Datetime & Timezone Utilities", () => {
@@ -119,5 +122,77 @@ describe("Datetime & Timezone Utilities", () => {
     // In Tokyo (JST, UTC+9), 23:30 UTC is 08:30 on Oct 8
     expect(isSameDayInTimezone(oct7, postTimeIso, "Asia/Tokyo")).toBe(false);
     expect(isSameDayInTimezone(oct8, postTimeIso, "Asia/Tokyo")).toBe(true);
+  });
+
+  it("convertUtcTimeToLocal converts UTC HH:MM to local HH:MM", () => {
+    // In London / UTC: 08:00 UTC -> 08:00
+    expect(convertUtcTimeToLocal("08:00", "UTC")).toBe("08:00");
+
+    // In New York with reference date in October (EDT, UTC-4): 13:00 UTC -> 09:00
+    const refDateOct = new Date("2026-10-07T12:00:00Z");
+    const nyTimeOct = convertUtcTimeToLocal("13:00", "America/New_York", refDateOct);
+    expect(nyTimeOct).toBe("09:00");
+
+    // In New York with reference date in January (EST, UTC-5): 13:00 UTC -> 08:00
+    const refDateJan = new Date("2026-01-15T12:00:00Z");
+    const nyTimeJan = convertUtcTimeToLocal("13:00", "America/New_York", refDateJan);
+    expect(nyTimeJan).toBe("08:00");
+  });
+
+  it("convertLocalTimeToUtc converts local HH:MM to UTC HH:MM", () => {
+    // 09:00 in UTC -> 09:00
+    expect(convertLocalTimeToUtc("09:00", "UTC")).toBe("09:00");
+
+    // In New York with reference date in October (EDT, UTC-4): 09:00 EDT -> 13:00 UTC
+    const refDateOct = new Date("2026-10-07T12:00:00Z");
+    const utcTimeOct = convertLocalTimeToUtc("09:00", "America/New_York", refDateOct);
+    expect(utcTimeOct).toBe("13:00");
+
+    // In New York with reference date in January (EST, UTC-5): 08:00 EST -> 13:00 UTC
+    const refDateJan = new Date("2026-01-15T12:00:00Z");
+    const utcTimeJan = convertLocalTimeToUtc("08:00", "America/New_York", refDateJan);
+    expect(utcTimeJan).toBe("13:00");
+  });
+
+  it("calculateNextScoutTime handles active and empty windows", () => {
+    // Empty windows
+    expect(calculateNextScoutTime([], "UTC")).toBe("No active runs scheduled");
+
+    // Paused window only
+    expect(
+      calculateNextScoutTime(
+        [
+          {
+            id: "win-1",
+            title: "Paused",
+            start_time: "08:00",
+            end_time: "09:00",
+            days: ["Mon"],
+            status: "paused",
+            topic_filter: "",
+          },
+        ],
+        "UTC"
+      )
+    ).toBe("No active runs scheduled");
+
+    // Active window
+    const baseDate = new Date("2026-10-05T07:00:00Z"); // Monday 07:00 UTC
+    const res = calculateNextScoutTime(
+      [
+        {
+          id: "win-1",
+          title: "Morning Run",
+          start_time: "08:00",
+          end_time: "09:30",
+          days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+          status: "active",
+          topic_filter: "AI",
+        },
+      ],
+      "UTC",
+      baseDate
+    );
+    expect(res).toContain("Today at 08:00");
   });
 });

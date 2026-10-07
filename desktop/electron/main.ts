@@ -358,6 +358,14 @@ function registerIpcHandlers(): void {
     return await workerClient.deleteScheduledPost(id);
   });
 
+  ipcMain.handle("api:fetchScoutSchedule", async () => {
+    return await workerClient.fetchScoutSchedule();
+  });
+
+  ipcMain.handle("api:saveScoutSchedule", async (_event, schedule: any) => {
+    return await workerClient.saveScoutSchedule(schedule);
+  });
+
   ipcMain.handle("api:fetchConnectionQueue", async () => {
     return await workerClient.fetchConnectionQueue();
   });

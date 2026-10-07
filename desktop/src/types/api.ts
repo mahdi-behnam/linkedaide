@@ -2,7 +2,7 @@
  * API types and global window definition for Desktop Renderer process.
  */
 
-import type { ConnectionRequestAction, ScheduledPost } from "./index";
+import type { ConnectionRequestAction, ScheduledPost, AutomatedCommentWindow } from "./index";
 export type { ScheduledPost, MediaAttachment, ScheduledPostStatus, AutomatedCommentWindow, ConnectionRequestAction } from "./index";
 
 export interface PendingAction {
@@ -66,6 +66,8 @@ export interface AgentState {
   paused: boolean;
   seen_posts_count?: number;
   seenPostsCount?: number;
+  scout_schedule?: AutomatedCommentWindow[];
+  scoutSchedule?: AutomatedCommentWindow[];
   last_updated?: string;
   lastUpdated?: string;
 }
@@ -98,6 +100,7 @@ export interface DesktopSettings {
   githubRepoName?: string;
   githubDispatchPat?: string;
   timezone?: string;
+  scoutSchedule?: AutomatedCommentWindow[];
 }
 
 export interface ElectronAPI {
@@ -130,6 +133,8 @@ export interface ElectronAPI {
   fetchScheduledPosts?: () => Promise<ScheduledPost[]>;
   saveScheduledPost?: (post: ScheduledPost) => Promise<ScheduledPost>;
   deleteScheduledPost?: (id: string) => Promise<boolean>;
+  fetchScoutSchedule?: () => Promise<AutomatedCommentWindow[]>;
+  saveScoutSchedule?: (schedule: AutomatedCommentWindow[]) => Promise<boolean>;
   fetchConnectionQueue?: () => Promise<ConnectionRequestAction[]>;
   uploadMedia?: (
     fileName: string,

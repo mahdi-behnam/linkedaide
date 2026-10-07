@@ -27,7 +27,7 @@ export interface ApprovalQueueViewProps {
 export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
   initialItems,
 }) => {
-  const { setPendingCount, quota } = useApp();
+  const { setPendingCount, quota, nextScoutTime } = useApp();
   const [items, setItems] = useState<PendingItem[]>(() => initialItems ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(
     () => (initialItems ?? [])[0]?.id ?? null
@@ -444,7 +444,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
               <QueueSafetyFooter
                 commentsRemaining={commentsRemaining}
                 commentsMax={quota?.commentsMax ?? 15}
-                nextScoutTime="14:00 UTC"
+                nextScoutTime={nextScoutTime}
               />
             </div>
           </>

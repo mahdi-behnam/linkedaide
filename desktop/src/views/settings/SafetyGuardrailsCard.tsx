@@ -70,7 +70,7 @@ export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
             </select>
           </div>
           <span className="font-label-sm text-[11px] text-on-surface-variant">
-            Frequency of background timeline scouting
+            Frequency of local telemetry and pending approval sync
           </span>
         </div>
 

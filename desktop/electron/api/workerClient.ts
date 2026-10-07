@@ -11,6 +11,7 @@ import type {
   Incident,
   ScheduledPost,
   ConnectionRequestAction,
+  AutomatedCommentWindow,
 } from "../types";
 
 export interface WorkerClientConfig {
@@ -551,6 +552,31 @@ export class WorkerClient {
     const res = await this.request<{ success?: boolean }>(
       `/api/scheduled-posts/${id}`,
       { method: "DELETE" }
+    );
+    return res?.success !== false;
+  }
+
+  /**
+   * Fetches current scout schedule from Worker KV.
+   */
+  public async fetchScoutSchedule(): Promise<AutomatedCommentWindow[]> {
+    const res = await this.request<{ success?: boolean; schedule?: AutomatedCommentWindow[] }>(
+      "/api/scout-schedule",
+      { method: "GET" }
+    );
+    return Array.isArray(res?.schedule) ? res.schedule : [];
+  }
+
+  /**
+   * Persists configured scout schedule to Worker KV.
+   */
+  public async saveScoutSchedule(schedule: AutomatedCommentWindow[]): Promise<boolean> {
+    const res = await this.request<{ success?: boolean; schedule?: AutomatedCommentWindow[] }>(
+      "/api/scout-schedule",
+      {
+        method: "POST",
+        body: { schedule },
+      }
     );
     return res?.success !== false;
   }

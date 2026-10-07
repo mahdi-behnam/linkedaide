@@ -3,6 +3,8 @@
  * Ensures consistent timezone-aware time and date rendering throughout LinkedAide.
  */
 
+import type { AutomatedCommentWindow } from "../types";
+
 export interface TimezoneOption {
   value: string;
   label: string;
@@ -268,5 +270,177 @@ export function isSameDayInTimezone(
       d1.getMonth() === d2.getMonth() &&
       d1.getDate() === d2.getDate()
     );
+  }
+}
+
+/**
+ * Converts a UTC HH:MM time string to the user's local timezone HH:MM.
+ */
+export function convertUtcTimeToLocal(
+  timeStr: string,
+  timezone: string = "UTC",
+  refDate: Date = new Date()
+): string {
+  if (!timeStr || !timeStr.includes(":")) return timeStr || "08:00";
+  const [hStr, mStr] = timeStr.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+
+  const targetTz = isValidTimezone(timezone) ? timezone : "UTC";
+  // Reference date to extract hours/minutes in target timezone taking DST into account
+  const d = new Date(
+    Date.UTC(
+      refDate.getUTCFullYear(),
+      refDate.getUTCMonth(),
+      refDate.getUTCDate(),
+      h,
+      m,
+      0
+    )
+  );
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: targetTz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(d);
+    const hourPart = parts.find((p) => p.type === "hour")?.value || String(h).padStart(2, "0");
+    const minPart = parts.find((p) => p.type === "minute")?.value || String(m).padStart(2, "0");
+    return `${hourPart}:${minPart}`;
+  } catch {
+    return timeStr;
+  }
+}
+
+/**
+ * Converts a local HH:MM time string in the given timezone to UTC HH:MM.
+ */
+export function convertLocalTimeToUtc(
+  timeStr: string,
+  timezone: string = "UTC",
+  refDate: Date = new Date()
+): string {
+  if (!timeStr || !timeStr.includes(":")) return timeStr || "08:00";
+  const [hStr, mStr] = timeStr.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+
+  const targetTz = isValidTimezone(timezone) ? timezone : "UTC";
+  try {
+    const invDate = new Date(
+      Date.UTC(
+        refDate.getFullYear(),
+        refDate.getMonth(),
+        refDate.getDate(),
+        h,
+        m,
+        0
+      )
+    );
+    const tzParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: targetTz,
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    }).formatToParts(invDate);
+
+    let tzH = h;
+    let tzM = m;
+    for (const p of tzParts) {
+      if (p.type === "hour") tzH = parseInt(p.value, 10);
+      if (p.type === "minute") tzM = parseInt(p.value, 10);
+    }
+
+    const diffM = (tzH - h) * 60 + (tzM - m);
+    let targetUtcM = (h * 60 + m - diffM) % (24 * 60);
+    if (targetUtcM < 0) targetUtcM += 24 * 60;
+    const utcH = Math.floor(targetUtcM / 60);
+    const utcMin = targetUtcM % 60;
+    return `${String(utcH).padStart(2, "0")}:${String(utcMin).padStart(2, "0")}`;
+  } catch {
+    return timeStr;
+  }
+}
+
+/**
+ * Calculates the next upcoming scout time from active comment windows,
+ * taking into account active days, current time, and user timezone.
+ */
+export function calculateNextScoutTime(
+  windows: AutomatedCommentWindow[],
+  timezone: string = "UTC",
+  now: Date = new Date()
+): string {
+  const activeWindows = (windows || []).filter((w) => w.status === "active");
+  if (activeWindows.length === 0) {
+    return "No active runs scheduled";
+  }
+
+  const targetTz = isValidTimezone(timezone) ? timezone : "UTC";
+
+  let nearestDate: Date | null = null;
+  let nearestTimeStr = "";
+
+  // Scan upcoming 8 days to catch the next occurrence
+  for (let dayOffset = 0; dayOffset <= 8; dayOffset++) {
+    const checkDate = new Date(now.getTime() + dayOffset * 24 * 3600 * 1000);
+    const dayCode = new Intl.DateTimeFormat("en-US", {
+      timeZone: targetTz,
+      weekday: "short",
+    }).format(checkDate);
+
+    for (const win of activeWindows) {
+      if (!win.days.includes(dayCode)) continue;
+
+      const [startHStr, startMStr] = (win.start_time || "").split(":");
+      const startH = parseInt(startHStr, 10);
+      const startM = parseInt(startMStr, 10);
+      if (isNaN(startH) || isNaN(startM)) continue;
+
+      const candidate = new Date(
+        Date.UTC(
+          checkDate.getUTCFullYear(),
+          checkDate.getUTCMonth(),
+          checkDate.getUTCDate(),
+          startH,
+          startM,
+          0
+        )
+      );
+
+      if (candidate.getTime() > now.getTime()) {
+        if (!nearestDate || candidate.getTime() < nearestDate.getTime()) {
+          nearestDate = candidate;
+          nearestTimeStr = formatTime(candidate, targetTz, {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+      }
+    }
+  }
+
+  if (!nearestDate) {
+    return "None upcoming";
+  }
+
+  const isToday = isSameDayInTimezone(nearestDate, now.toISOString(), targetTz);
+  const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
+  const isTomorrow = isSameDayInTimezone(nearestDate, tomorrow.toISOString(), targetTz);
+  const offsetPart = getTimezoneOffsetString(targetTz, nearestDate);
+
+  if (isToday) {
+    return `Today at ${nearestTimeStr} (${offsetPart})`;
+  } else if (isTomorrow) {
+    return `Tomorrow at ${nearestTimeStr} (${offsetPart})`;
+  } else {
+    const weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone: targetTz,
+      weekday: "short",
+    }).format(nearestDate);
+    return `${weekday} at ${nearestTimeStr} (${offsetPart})`;
   }
 }

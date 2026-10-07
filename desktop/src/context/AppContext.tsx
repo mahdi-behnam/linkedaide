@@ -19,6 +19,7 @@ import {
   formatDate as utilFormatDate,
   formatDateTime as utilFormatDateTime,
   formatTimeAgo as utilFormatTimeAgo,
+  calculateNextScoutTime,
 } from "../utils/datetime";
 import { useScheduledPosts } from "../hooks/useScheduledPosts";
 import { useConnectionQueue } from "../hooks/useConnectionQueue";
@@ -67,6 +68,8 @@ export interface AppContextType {
   deleteScheduledPost: (id: string) => void;
   commentWindows: AutomatedCommentWindow[];
   setCommentWindows: React.Dispatch<React.SetStateAction<AutomatedCommentWindow[]>>;
+  saveCommentWindows: (windows: AutomatedCommentWindow[]) => Promise<boolean>;
+  nextScoutTime: string;
   activePostForEditing: ScheduledPost | null;
   setActivePostForEditing: (post: ScheduledPost | null) => void;
   connectionQueue: ConnectionRequestAction[];
@@ -246,6 +249,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   }, [commentWindows, isPaused]);
 
+  const nextScoutTime = useMemo(() => {
+    return calculateNextScoutTime(activeCommentWindows, timezone);
+  }, [activeCommentWindows, timezone]);
+
+  const saveCommentWindows = useCallback(
+    async (windows: AutomatedCommentWindow[]): Promise<boolean> => {
+      setCommentWindows(windows);
+      try {
+        if (typeof window !== "undefined" && window.api?.saveScoutSchedule) {
+          const ok = await window.api.saveScoutSchedule(windows);
+          if (ok) {
+            addNotification("Scout schedule saved to Cloudflare Worker", { type: "success" });
+            return true;
+          } else {
+            addNotification("Failed to save scout schedule to worker", { type: "error" });
+            return false;
+          }
+        }
+        return true;
+      } catch (err) {
+        console.error("Failed to save scout schedule:", err);
+        addNotification("Failed to save scout schedule to worker", { type: "error" });
+        return false;
+      }
+    },
+    [addNotification]
+  );
+
   // Modular custom hooks
   const {
     scheduledPosts,
@@ -304,6 +335,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (state.connection_queue || state.connectionQueue) {
         setConnectionQueue(state.connection_queue || state.connectionQueue || []);
+      }
+
+      if (Array.isArray(state.scout_schedule || state.scoutSchedule)) {
+        const schedule = (state.scout_schedule || state.scoutSchedule) as AutomatedCommentWindow[];
+        if (schedule.length > 0) {
+          setCommentWindows(schedule);
+        }
       }
 
       if (state.daily_counters || state.dailyCounters) {
@@ -372,6 +410,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // ignore
         }
       }
+      if (typeof window !== "undefined" && window.api?.fetchScoutSchedule) {
+        try {
+          const schedule = await window.api.fetchScoutSchedule();
+          if (isMounted && Array.isArray(schedule) && schedule.length > 0) {
+            setCommentWindows(schedule);
+          }
+        } catch {
+          // ignore
+        }
+      }
       if (typeof window !== "undefined" && window.api?.checkSessionHealth) {
         try {
           const h = await window.api.checkSessionHealth();
@@ -429,6 +477,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else if (eventType === "queue_updated") {
           handleSetLastTriggerMessage("⚡ Realtime: Approval queue updated from cloud");
         }
+      } else if (eventType === "scout_schedule_updated" && Array.isArray(event.schedule)) {
+        setCommentWindows(event.schedule);
+        handleSetLastTriggerMessage("⚡ Realtime: Scout schedule synchronized");
       }
     });
 
@@ -562,6 +613,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteScheduledPost,
       commentWindows: activeCommentWindows,
       setCommentWindows,
+      saveCommentWindows,
+      nextScoutTime,
       activePostForEditing,
       setActivePostForEditing,
       connectionQueue,
@@ -605,6 +658,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteScheduledPost,
       activeCommentWindows,
       setCommentWindows,
+      saveCommentWindows,
+      nextScoutTime,
       activePostForEditing,
       setActivePostForEditing,
       connectionQueue,

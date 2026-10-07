@@ -13,6 +13,7 @@ import type {
   ElectronAPI,
   ScheduledPost,
   ConnectionRequestAction,
+  AutomatedCommentWindow,
 } from "./types";
 
 const api: ElectronAPI = {
@@ -107,6 +108,12 @@ const api: ElectronAPI = {
 
   deleteScheduledPost: (id: string): Promise<boolean> =>
     ipcRenderer.invoke("api:deleteScheduledPost", id),
+
+  fetchScoutSchedule: (): Promise<AutomatedCommentWindow[]> =>
+    ipcRenderer.invoke("api:fetchScoutSchedule"),
+
+  saveScoutSchedule: (schedule: AutomatedCommentWindow[]): Promise<boolean> =>
+    ipcRenderer.invoke("api:saveScoutSchedule", schedule),
 
   fetchConnectionQueue: (): Promise<ConnectionRequestAction[]> =>
     ipcRenderer.invoke("api:fetchConnectionQueue"),

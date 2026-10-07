@@ -94,6 +94,20 @@ export interface ScheduledPost {
   approved_at?: string | null;
 }
 
+export interface AutomatedCommentWindow {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  days: string[];
+  status: "active" | "standby" | "paused";
+  topic_filter: string;
+  local_start_time?: string;
+  local_end_time?: string;
+  timezone?: string;
+  last_dispatched_at?: string | null;
+}
+
 export interface AgentState {
   pending?: PendingAction[];
   pending_actions: PendingAction[];
@@ -109,6 +123,8 @@ export interface AgentState {
   connectionQueue?: ConnectionRequestAction[];
   scheduled_posts?: ScheduledPost[];
   scheduledPosts?: ScheduledPost[];
+  scout_schedule?: AutomatedCommentWindow[];
+  scoutSchedule?: AutomatedCommentWindow[];
   last_updated?: string;
   lastUpdated?: string;
 }
@@ -141,6 +157,7 @@ export interface DesktopSettings {
   maxSuggestionsPerRun?: number;
   actionTtlHours?: number;
   timezone?: string;
+  scoutSchedule?: AutomatedCommentWindow[];
 }
 
 export interface ElectronAPI {
@@ -173,6 +190,8 @@ export interface ElectronAPI {
   fetchScheduledPosts?: () => Promise<ScheduledPost[]>;
   saveScheduledPost?: (post: ScheduledPost) => Promise<ScheduledPost>;
   deleteScheduledPost?: (id: string) => Promise<boolean>;
+  fetchScoutSchedule?: () => Promise<AutomatedCommentWindow[]>;
+  saveScoutSchedule?: (schedule: AutomatedCommentWindow[]) => Promise<boolean>;
   fetchConnectionQueue?: () => Promise<ConnectionRequestAction[]>;
   uploadMedia?: (
     fileName: string,

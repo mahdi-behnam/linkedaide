@@ -7,6 +7,7 @@ import { GitHubActionsCard } from "./settings/GitHubActionsCard";
 import { VaultEncryptionCard } from "./settings/VaultEncryptionCard";
 import { NimIntelligenceCard } from "./settings/NimIntelligenceCard";
 import { SafetyGuardrailsCard } from "./settings/SafetyGuardrailsCard";
+import { ScoutScheduleCard } from "./settings/ScoutScheduleCard";
 import { NotificationsCard } from "./settings/NotificationsCard";
 import { TimezoneCard } from "./settings/TimezoneCard";
 import { UnsavedChangesBar } from "./settings/UnsavedChangesBar";
@@ -418,7 +419,10 @@ export const SettingsView: React.FC = () => {
           onHeadlessChange={(val) => handleChange("headless", val)}
         />
 
-        {/* Section 7: Notifications & Desktop Integration */}
+        {/* Section 7: Scout Schedule & Cadence */}
+        <ScoutScheduleCard />
+
+        {/* Section 8: Notifications & Desktop Integration */}
         <NotificationsCard
           minimizeToTray={settings.minimizeToTray ?? true}
           notificationsEnabled={settings.notificationsEnabled ?? true}

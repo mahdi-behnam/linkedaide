@@ -8,6 +8,7 @@ import {
 } from "../icons";
 import { isSameDay } from "./types";
 import { useApp } from "../../context/AppContext";
+import { convertUtcTimeToLocal } from "../../utils/datetime";
 
 interface CalendarWeekGridProps {
   weekDays: Date[];
@@ -146,34 +147,53 @@ export const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
               {/* Day Content Area */}
               <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto">
                 {/* Automated Comment Windows */}
-                {applicableWindows.map((win) => (
-                  <div
-                    key={win.id}
-                    data-testid="calendar-comment-window"
-                    title={`${win.title} (${win.start_time} - ${win.end_time} UTC)\nTopic Filter: ${win.topic_filter}`}
-                    className={`p-2 rounded-md border shadow-2xs flex flex-col gap-0.5 transition-colors cursor-pointer ${
-                      isToday
-                        ? "bg-primary-container/10 border-primary/30 hover:bg-primary-container/20"
-                        : "bg-surface-container-lowest border-outline/50 hover:border-outline"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`font-mono text-[10px] font-semibold tabular-nums ${
-                          isToday ? "text-primary" : "text-secondary"
-                        }`}
-                      >
-                        {win.start_time} - {win.end_time} UTC
+                {applicableWindows.map((win) => {
+                  const localStart =
+                    win.local_start_time || convertUtcTimeToLocal(win.start_time, timezone);
+                  const localEnd =
+                    win.local_end_time || convertUtcTimeToLocal(win.end_time, timezone);
+                  const isPaused = win.status === "paused";
+
+                  return (
+                    <div
+                      key={win.id}
+                      data-testid="calendar-comment-window"
+                      title={`${win.title} (${localStart} - ${localEnd})\nUTC: ${win.start_time} - ${win.end_time}\nTopic Filter: ${win.topic_filter}`}
+                      className={`p-2 rounded-md border shadow-2xs flex flex-col gap-0.5 transition-colors cursor-pointer ${
+                        isPaused
+                          ? "bg-surface-container-lowest/60 border-outline/30 opacity-60"
+                          : isToday
+                          ? "bg-primary-container/10 border-primary/30 hover:bg-primary-container/20"
+                          : "bg-surface-container-lowest border-outline/50 hover:border-outline"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-mono text-[10px] font-semibold tabular-nums ${
+                            isPaused
+                              ? "text-on-surface-variant"
+                              : isToday
+                              ? "text-primary"
+                              : "text-secondary"
+                          }`}
+                        >
+                          {localStart} - {localEnd}
+                        </span>
+                        {isPaused && (
+                          <span className="text-[9px] font-mono text-on-surface-variant px-1 rounded bg-surface-container-highest">
+                            paused
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-medium text-on-surface truncate" title={win.title}>
+                        {win.title}
+                      </span>
+                      <span className="text-[10px] text-on-surface-variant truncate" title={`Topic Filter: ${win.topic_filter}`}>
+                        {win.topic_filter}
                       </span>
                     </div>
-                    <span className="text-xs font-medium text-on-surface truncate" title={win.title}>
-                      {win.title}
-                    </span>
-                    <span className="text-[10px] text-on-surface-variant truncate" title={`Topic Filter: ${win.topic_filter}`}>
-                      {win.topic_filter}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Scheduled / Draft / Published Original Posts */}
                 {dayPosts.map((post) => {

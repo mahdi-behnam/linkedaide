@@ -61,6 +61,10 @@ export interface AutomatedCommentWindow {
   days: string[];
   status: "active" | "standby" | "paused";
   topic_filter: string;
+  local_start_time?: string;
+  local_end_time?: string;
+  timezone?: string;
+  last_dispatched_at?: string | null;
 }
 
 export interface DailyQuota {

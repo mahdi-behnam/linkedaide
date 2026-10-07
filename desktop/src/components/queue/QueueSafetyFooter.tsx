@@ -10,7 +10,7 @@ interface QueueSafetyFooterProps {
 export const QueueSafetyFooter: React.FC<QueueSafetyFooterProps> = ({
   commentsRemaining,
   commentsMax,
-  nextScoutTime = "14:00 UTC",
+  nextScoutTime = "Upcoming",
 }) => {
   return (
     <footer className="p-3 rounded-lg bg-surface-container border border-outline/50 flex items-center justify-between text-on-surface-variant shadow-2xs">
