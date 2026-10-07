@@ -180,6 +180,12 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; key?: string; url?: string; error?: string }>;
   runCliDoctor?: () => Promise<CliDoctorResult>;
   onMenuAction?: (callback: (action: string, data?: any) => void) => () => void;
+  platform?: string;
+  minimizeWindow?: () => Promise<boolean>;
+  maximizeWindow?: () => Promise<boolean>;
+  closeWindow?: () => Promise<boolean>;
+  isMaximized?: () => Promise<boolean>;
+  setTitleBarTheme?: (theme: "dark" | "light") => Promise<boolean>;
 }
 
 export interface CliDoctorResult {

@@ -120,6 +120,23 @@ const api: ElectronAPI = {
 
   runCliDoctor: (): Promise<{ success: boolean; exitCode: number; output: string }> =>
     ipcRenderer.invoke("doctor:runCliDoctor"),
+
+  platform: process.platform,
+
+  minimizeWindow: (): Promise<boolean> =>
+    ipcRenderer.invoke("window:minimize"),
+
+  maximizeWindow: (): Promise<boolean> =>
+    ipcRenderer.invoke("window:maximize"),
+
+  closeWindow: (): Promise<boolean> =>
+    ipcRenderer.invoke("window:close"),
+
+  isMaximized: (): Promise<boolean> =>
+    ipcRenderer.invoke("window:isMaximized"),
+
+  setTitleBarTheme: (theme: "dark" | "light"): Promise<boolean> =>
+    ipcRenderer.invoke("window:setTitleBarTheme", theme),
 };
 
 contextBridge.exposeInMainWorld("api", api);

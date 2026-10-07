@@ -43,6 +43,13 @@ interface NavItem {
 const dragRegion = { WebkitAppRegion: "drag" } as unknown as React.CSSProperties;
 const noDragRegion = { WebkitAppRegion: "no-drag" } as unknown as React.CSSProperties;
 
+const isMac =
+  typeof window !== "undefined" &&
+  ((window as any).api?.platform === "darwin" ||
+    (typeof navigator !== "undefined" &&
+      (navigator.platform?.toLowerCase().includes("mac") ||
+        navigator.userAgent?.toLowerCase().includes("mac"))));
+
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const {
     currentTab,
@@ -126,8 +133,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         }`}
       >
         <div
-          className={`flex items-center pt-3 pb-2 px-3.5 ${
-            isCollapsed ? "justify-center" : "justify-end"
+          className={`flex items-center pb-2 px-3.5 ${
+            isMac
+              ? isCollapsed
+                ? "pt-8 justify-center"
+                : "pt-3 justify-end"
+              : isCollapsed
+              ? "pt-3 justify-center"
+              : "pt-3 justify-end"
           }`}
           style={dragRegion}
         >
@@ -245,7 +258,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <header
           data-testid="top-bar"
           style={dragRegion}
-          className="flex h-11 items-center justify-between border-b border-outline bg-surface-container-low/80 px-4 backdrop-blur-md"
+          className={`flex h-11 items-center justify-between border-b border-outline bg-surface-container-low/80 pl-4 ${
+            isMac ? "pr-4" : "pr-[140px]"
+          } backdrop-blur-md`}
         >
           {/* Left Controls & Search */}
           <div className="flex items-center gap-2.5" style={noDragRegion}>

@@ -561,6 +561,69 @@ function registerIpcHandlers(): void {
       }
     });
   });
+
+  // Window Management & Custom Title Bar Handlers
+  ipcMain.handle("window:minimize", () => {
+    const targetWin = mainWindow || BrowserWindow.getFocusedWindow();
+    if (targetWin && !targetWin.isDestroyed()) {
+      targetWin.minimize();
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle("window:maximize", () => {
+    const targetWin = mainWindow || BrowserWindow.getFocusedWindow();
+    if (targetWin && !targetWin.isDestroyed()) {
+      if (targetWin.isMaximized()) {
+        targetWin.unmaximize();
+      } else {
+        targetWin.maximize();
+      }
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle("window:close", () => {
+    const targetWin = mainWindow || BrowserWindow.getFocusedWindow();
+    if (targetWin && !targetWin.isDestroyed()) {
+      targetWin.close();
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle("window:isMaximized", () => {
+    const targetWin = mainWindow || BrowserWindow.getFocusedWindow();
+    if (targetWin && !targetWin.isDestroyed()) {
+      return targetWin.isMaximized();
+    }
+    return false;
+  });
+
+  ipcMain.handle("window:setTitleBarTheme", (_event, theme: "dark" | "light") => {
+    const targetWin = mainWindow || BrowserWindow.getFocusedWindow();
+    if (
+      targetWin &&
+      !targetWin.isDestroyed() &&
+      process.platform !== "darwin" &&
+      typeof targetWin.setTitleBarOverlay === "function"
+    ) {
+      try {
+        targetWin.setTitleBarOverlay({
+          color: theme === "dark" ? "#222222" : "#f2f2f7",
+          symbolColor: theme === "dark" ? "#98989d" : "#86868b",
+          height: 44,
+        });
+        return true;
+      } catch (err) {
+        console.warn("Failed to set title bar overlay theme:", err);
+        return false;
+      }
+    }
+    return false;
+  });
 }
 
 function getAppIconPath(): string | undefined {
@@ -580,6 +643,8 @@ function getAppIconPath(): string | undefined {
 
 function createWindow(): BrowserWindow {
   const iconPath = getAppIconPath();
+  const isMac = process.platform === "darwin";
+
   const win = new BrowserWindow({
     title: "LinkedAide",
     icon: iconPath,
@@ -590,6 +655,18 @@ function createWindow(): BrowserWindow {
     backgroundColor: "#09090b",
     show: false,
     autoHideMenuBar: true,
+    titleBarStyle: "hidden",
+    ...(isMac
+      ? {
+          trafficLightPosition: { x: 16, y: 14 },
+        }
+      : {
+          titleBarOverlay: {
+            color: "#222222",
+            symbolColor: "#98989d",
+            height: 44,
+          },
+        }),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

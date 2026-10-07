@@ -80,7 +80,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     return theme;
   }, [theme, systemTheme]);
 
-  // Synchronize 'dark' class on document.documentElement
+  // Synchronize 'dark' class on document.documentElement and title bar overlay
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
@@ -88,6 +88,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
+    }
+
+    if (typeof window !== "undefined" && window.api?.setTitleBarTheme) {
+      window.api.setTitleBarTheme(resolvedTheme).catch(() => {
+        // Ignore IPC errors in unsupported environments
+      });
     }
   }, [resolvedTheme]);
 
