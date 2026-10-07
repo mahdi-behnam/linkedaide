@@ -157,5 +157,31 @@ describe("Scout Schedule UI Components", () => {
       expect(screen.getByDisplayValue("Morning Feed Scout Window")).toBeTruthy();
       expect(screen.queryByDisplayValue("Midday Feed Scout Window")).toBeNull();
     });
+
+    it("allows toggling a window active state using the Apple-style switch", async () => {
+      const handleSave = vi.fn().mockResolvedValue(true);
+      const handleClose = vi.fn();
+
+      render(
+        <ScoutScheduleModal
+          isOpen={true}
+          onClose={handleClose}
+          commentWindows={mockWindows}
+          onSave={handleSave}
+          timezone="UTC"
+        />
+      );
+
+      const switches = screen.getAllByRole("switch");
+      expect(switches.length).toBe(2);
+
+      // Initially first window is active, second is paused
+      expect(switches[0].getAttribute("aria-checked")).toBe("true");
+      expect(switches[1].getAttribute("aria-checked")).toBe("false");
+
+      // Toggle first window to paused
+      fireEvent.click(switches[0]);
+      expect(switches[0].getAttribute("aria-checked")).toBe("false");
+    });
   });
 });

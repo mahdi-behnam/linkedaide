@@ -264,25 +264,33 @@ export const ScoutScheduleModal: React.FC<ScoutScheduleModalProps> = ({
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Toggle Active Status */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleUpdate(
-                          idx,
-                          "status",
-                          win.status === "active" ? "paused" : "active"
-                        )
-                      }
-                      className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors border ${
-                        win.status === "active"
-                          ? "bg-primary/10 text-primary border-primary/30"
-                          : "bg-surface-container-highest text-on-surface-variant border-outline/50"
-                      }`}
-                    >
-                      {win.status === "active" ? "Active" : "Paused"}
-                    </button>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {/* Toggle Active Status Switch */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium text-on-surface-variant select-none">
+                        {win.status === "active" ? "Active" : "Paused"}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={win.status === "active"}
+                        aria-label={`Toggle active state for ${win.title}`}
+                        onClick={() =>
+                          handleUpdate(
+                            idx,
+                            "status",
+                            win.status === "active" ? "paused" : "active"
+                          )
+                        }
+                        className={`w-8 h-4.5 rounded-full p-0.5 transition-colors flex items-center cursor-pointer ${
+                          win.status === "active"
+                            ? "bg-primary justify-end"
+                            : "bg-surface-container-highest justify-start"
+                        }`}
+                      >
+                        <div className="w-3.5 h-3.5 rounded-full bg-white shadow-2xs" />
+                      </button>
+                    </div>
 
                     {/* Delete Window */}
                     <button
@@ -290,7 +298,7 @@ export const ScoutScheduleModal: React.FC<ScoutScheduleModalProps> = ({
                       onClick={() => handleRemoveWindow(idx)}
                       disabled={windows.length <= 1}
                       title="Remove this scout window"
-                      className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                      className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error/10 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                     >
                       <Trash size={14} />
                     </button>
@@ -303,28 +311,34 @@ export const ScoutScheduleModal: React.FC<ScoutScheduleModalProps> = ({
                     <label className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">
                       Start Time
                     </label>
-                    <input
-                      type="time"
-                      value={win.local_start_time}
-                      onChange={(e) =>
-                        handleUpdate(idx, "local_start_time", e.target.value)
-                      }
-                      className="w-full bg-surface-container-lowest px-2 py-1 rounded text-xs font-mono text-on-surface border border-outline/50 focus:border-primary focus:outline-hidden tabular-nums"
-                    />
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-lowest border border-outline/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors">
+                      <Clock size={13} className="text-on-surface-variant shrink-0" />
+                      <input
+                        type="time"
+                        value={win.local_start_time}
+                        onChange={(e) =>
+                          handleUpdate(idx, "local_start_time", e.target.value)
+                        }
+                        className="w-full bg-transparent border-0 outline-none text-xs font-mono text-on-surface tabular-nums cursor-pointer p-0"
+                      />
+                    </div>
                   </div>
 
                   <div className="sm:col-span-3 flex flex-col gap-1">
                     <label className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">
                       End Time
                     </label>
-                    <input
-                      type="time"
-                      value={win.local_end_time}
-                      onChange={(e) =>
-                        handleUpdate(idx, "local_end_time", e.target.value)
-                      }
-                      className="w-full bg-surface-container-lowest px-2 py-1 rounded text-xs font-mono text-on-surface border border-outline/50 focus:border-primary focus:outline-hidden tabular-nums"
-                    />
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-lowest border border-outline/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors">
+                      <Clock size={13} className="text-on-surface-variant shrink-0" />
+                      <input
+                        type="time"
+                        value={win.local_end_time}
+                        onChange={(e) =>
+                          handleUpdate(idx, "local_end_time", e.target.value)
+                        }
+                        className="w-full bg-transparent border-0 outline-none text-xs font-mono text-on-surface tabular-nums cursor-pointer p-0"
+                      />
+                    </div>
                   </div>
 
                   <div className="sm:col-span-6 flex flex-col gap-1">

@@ -28,6 +28,7 @@
 }
 
 :root {
+  color-scheme: light;
   --surface: #f5f5f7;
   --surface-dim: #e5e5ea;
   --surface-bright: #ffffff;
@@ -55,6 +56,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --surface: #1e1e1e;
   --surface-dim: #181818;
   --surface-bright: #282828;
@@ -165,5 +167,32 @@
   * {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Native date & time picker calendar/clock indicator styling */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.55;
+    filter: invert(0.35);
+    transition: opacity 0.15s ease, filter 0.15s ease;
+  }
+
+  input[type="date"]:hover::-webkit-calendar-picker-indicator,
+  input[type="time"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 0.85;
+    filter: invert(0.2);
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.65) brightness(1.15);
+    opacity: 0.75;
+  }
+
+  .dark input[type="date"]:hover::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]:hover::-webkit-calendar-picker-indicator {
+    filter: invert(0.85) brightness(1.25);
+    opacity: 1;
   }
 }

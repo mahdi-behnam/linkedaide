@@ -48,7 +48,7 @@ export const ScheduleDispatcher: React.FC<ScheduleDispatcherProps> = ({
               data-testid="schedule-date-input"
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
-              className="w-full bg-transparent border-0 outline-none font-mono text-xs text-on-surface"
+              className="w-full bg-transparent border-0 outline-none font-mono text-xs text-on-surface cursor-pointer"
             />
           </div>
         </div>
@@ -64,7 +64,7 @@ export const ScheduleDispatcher: React.FC<ScheduleDispatcherProps> = ({
               data-testid="schedule-time-input"
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
-              className="w-full bg-transparent border-0 outline-none font-mono text-xs text-on-surface"
+              className="w-full bg-transparent border-0 outline-none font-mono text-xs text-on-surface cursor-pointer"
             />
           </div>
         </div>

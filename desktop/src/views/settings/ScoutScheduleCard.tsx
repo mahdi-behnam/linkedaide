@@ -3,7 +3,6 @@ import { useApp } from "../../context/AppContext";
 import {
   Lightning,
   Clock,
-  PencilSimple,
   Plus,
 } from "../../components/icons";
 import {
@@ -52,16 +51,6 @@ export const ScoutScheduleCard: React.FC = () => {
               Timeline discovery frequency &amp; edge triggers
             </span>
           </div>
-
-          <button
-            type="button"
-            data-testid="settings-configure-scout-btn"
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium text-primary hover:bg-primary/10 transition-colors border border-primary/20"
-          >
-            <PencilSimple size={12} weight="bold" />
-            <span>Configure Runs</span>
-          </button>
         </div>
 
         <div className="p-4 rounded-lg border border-outline/40 bg-surface-container-low flex flex-col gap-3.5 shadow-2xs">
@@ -165,11 +154,12 @@ export const ScoutScheduleCard: React.FC = () => {
             </span>
             <button
               type="button"
+              data-testid="settings-configure-scout-btn"
               onClick={() => setIsModalOpen(true)}
-              className="text-xs text-primary hover:underline font-medium flex items-center gap-1"
+              className="text-xs text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer"
             >
               <Plus size={12} weight="bold" />
-              <span>Add or Reconfigure Runs</span>
+              <span>Configure Runs</span>
             </button>
           </div>
         </div>
