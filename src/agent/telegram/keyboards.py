@@ -479,14 +479,58 @@ def format_home_hub(
     return "\n".join(lines)
 
 
-def format_suggestion_card(item: PendingAction) -> str:
+def _format_safe_excerpt(excerpt: str, label: str, max_allowed_len: int) -> str:
+    """Format and HTML-escape an excerpt inside an expandable blockquote, respecting character budget.
+
+    Args:
+        excerpt: Raw post or comment excerpt text.
+        label: UI label (e.g. 'Post Excerpt' or 'Parent Comment').
+        max_allowed_len: Maximum allowed character length for the entire formatted block.
+
+    Returns:
+        Formatted HTML block string.
+    """
+    clean_raw = excerpt.strip()
+    if not clean_raw:
+        return ""
+
+    wrapper_overhead = len(f"<b>{label}:</b>\n<blockquote expandable></blockquote>")
+    available_chars = max_allowed_len - wrapper_overhead
+    if available_chars <= 50:
+        return ""
+
+    escaped_full = html.escape(clean_raw)
+    if len(escaped_full) <= available_chars:
+        return f"<b>{label}:</b>\n<blockquote expandable>{escaped_full}</blockquote>"
+
+    # Truncate raw text with safe margin for HTML expansion and notice
+    trunc_notice = "… [truncated for length]"
+    budget_raw = max(50, available_chars - len(trunc_notice) - 20)
+    truncated = clean_raw[:budget_raw]
+    if " " in truncated:
+        truncated = truncated.rsplit(" ", 1)[0]
+    escaped_candidate = html.escape(truncated) + trunc_notice
+
+    # Settle down if HTML entities pushed it over available budget
+    while len(escaped_candidate) > available_chars and len(truncated) > 20:
+        cut = truncated[:-20]
+        truncated = cut.rsplit(" ", 1)[0] if " " in cut else cut
+        escaped_candidate = html.escape(truncated) + trunc_notice
+
+    return f"<b>{label}:</b>\n<blockquote expandable>{escaped_candidate}</blockquote>"
+
+
+def format_suggestion_card(item: PendingAction, max_card_length: int = 3800) -> str:
     """Format an action suggestion card with rich HTML styling and metrics.
 
-    Includes target post author, headline, clean excerpt blockquotes,
-    character/word count metrics, confidence, and reasoning.
+    Includes target post author, headline, clean excerpt blockquotes (dynamically
+    budgeted to fit within Telegram message limits), character/word count metrics,
+    confidence, and reasoning.
 
     Args:
         item: PendingAction containing context, author, draft, and confidence.
+        max_card_length: Maximum allowed total character length (defaults to 3800,
+            safely under Telegram's 4096 limit).
 
     Returns:
         HTML formatted message card string.
@@ -508,7 +552,7 @@ def format_suggestion_card(item: PendingAction) -> str:
     else:
         action_label = "💬 Feed Comment"
 
-    lines: list[str] = [
+    pre_lines: list[str] = [
         "<b>🚀 LinkedIn Action Suggestion</b>",
         f"<b>Type:</b> {action_label}",
     ]
@@ -520,51 +564,55 @@ def format_suggestion_card(item: PendingAction) -> str:
             else str(item.engagement_style)
         )
         style_label = " ".join(w.capitalize() for w in style_raw.replace("_", " ").split())
-        lines.append(f"<b>Style:</b> {html.escape(style_label)}")
+        pre_lines.append(f"<b>Style:</b> {html.escape(style_label)}")
 
     author_name = (item.author_name or "").strip()
     author_headline = (getattr(item, "author_headline", "") or "").strip()
     if author_name and author_headline:
-        lines.append(
+        pre_lines.append(
             f"<b>Author:</b> {html.escape(author_name)} (<i>{html.escape(author_headline)}</i>)"
         )
     elif author_name:
-        lines.append(f"<b>Author:</b> {html.escape(author_name)}")
+        pre_lines.append(f"<b>Author:</b> {html.escape(author_name)}")
     elif author_headline:
-        lines.append(f"<b>Author Headline:</b> <i>{html.escape(author_headline)}</i>")
+        pre_lines.append(f"<b>Author Headline:</b> <i>{html.escape(author_headline)}</i>")
 
     if item.post_url:
-        lines.append(
+        pre_lines.append(
             f'<b>Post URL:</b> <a href="{html.escape(item.post_url)}">View on LinkedIn</a>'
         )
 
-    if item.post_excerpt and not is_post:
-        excerpt_label = "Parent Comment" if is_reply else "Post Excerpt"
-        lines.append(
-            f"<b>{excerpt_label}:</b>\n<blockquote expandable>{html.escape(item.post_excerpt)}</blockquote>"
-        )
-
+    post_lines: list[str] = []
     if is_reaction:
         rx_name = (getattr(item, "reaction_type", "") or "like").capitalize()
-        lines.append(f"<b>Proposed Reaction:</b> {html.escape(rx_name)}")
+        post_lines.append(f"<b>Proposed Reaction:</b> {html.escape(rx_name)}")
     else:
         content_label = "Drafted Note" if is_conn else "Drafted Content"
-        lines.append(
+        post_lines.append(
             f"<b>{content_label}:</b>\n<blockquote expandable>{html.escape(item.draft_text)}</blockquote>"
         )
         char_count = len(item.draft_text)
         word_count = len(item.draft_text.split())
-        lines.append(f"<b>Metrics:</b> {char_count} chars • {word_count} words")
+        post_lines.append(f"<b>Metrics:</b> {char_count} chars • {word_count} words")
 
     confidence_pct = int(item.confidence * 100)
-    lines.append(f"<b>Confidence:</b> {confidence_pct}%")
+    post_lines.append(f"<b>Confidence:</b> {confidence_pct}%")
 
     if item.reasoning:
-        lines.append(f"<b>Reasoning:</b> {html.escape(item.reasoning)}")
+        post_lines.append(f"<b>Reasoning:</b> {html.escape(item.reasoning)}")
 
-    lines.append(f"<i>ID: {html.escape(item.item_id)}</i>")
+    post_lines.append(f"<i>ID: {html.escape(item.item_id)}</i>")
 
-    return "\n\n".join(lines)
+    # Combine with budget-managed post excerpt
+    if item.post_excerpt and not is_post:
+        excerpt_label = "Parent Comment" if is_reply else "Post Excerpt"
+        other_text = "\n\n".join(pre_lines + post_lines)
+        remaining_budget = max(200, max_card_length - len(other_text) - 4)
+        excerpt_block = _format_safe_excerpt(item.post_excerpt, excerpt_label, remaining_budget)
+        if excerpt_block:
+            return "\n\n".join(pre_lines + [excerpt_block] + post_lines)
+
+    return "\n\n".join(pre_lines + post_lines)
 
 
 def build_suggestion_message(item: PendingAction) -> str:

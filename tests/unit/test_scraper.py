@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
 
+from agent.browser.feed_parser import parse_feed_card
 from agent.browser.scraper import FeedScraper
 from agent.browser.url_utils import hashtag_to_feed_url
 from agent.config import Settings
@@ -714,4 +716,62 @@ async def test_scraper_respects_custom_screens_scroll_parameter(
         await scraper.scrape_feed(max_posts=5, seen_hashes=set(), screens=4)
 
         mock_scroll.assert_awaited_once_with(page, screens=4)
+
+
+@pytest.mark.asyncio
+async def test_parse_feed_card_clicks_see_more_to_expand_post() -> None:
+    now = datetime.now(UTC)
+    card = MagicMock()
+    card.get_attribute = AsyncMock(return_value="urn:li:activity:999000")
+
+    # Comment button present
+    comment_btn = MagicMock()
+    comment_btn.count = AsyncMock(return_value=1)
+
+    # Actor name present
+    actor_el = MagicMock()
+    actor_el.count = AsyncMock(return_value=1)
+    actor_el.inner_text = AsyncMock(return_value="Jane Developer")
+
+    # See more button present and visible
+    see_more_btn = MagicMock()
+    see_more_btn.count = AsyncMock(return_value=1)
+    see_more_btn.is_visible = AsyncMock(return_value=True)
+    see_more_btn.click = AsyncMock()
+
+    # Expandable text box with full text
+    expanded_text = (
+        "This is a full-length expanded post that was revealed after clicking see more on LinkedIn. "
+        "It includes in-depth discussion of systems programming and concurrency primitives."
+    )
+    text_box = MagicMock()
+    text_box.count = AsyncMock(return_value=1)
+    text_box.inner_text = AsyncMock(return_value=expanded_text)
+
+    def card_locator(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "Comment" in selector:
+            loc.first = comment_btn
+        elif "actor" in selector:
+            loc.first = actor_el
+        elif "see-more" in selector or "see more" in selector:
+            loc.first = see_more_btn
+        elif "expandable-text-box" in selector or "update-components-text" in selector:
+            loc.first = text_box
+        else:
+            unmatched = MagicMock()
+            unmatched.count = AsyncMock(return_value=0)
+            loc.first = unmatched
+        return loc
+
+    card.locator = MagicMock(side_effect=card_locator)
+
+    record, reason = await parse_feed_card(card, index=0, now=now, seen_hashes=set())
+
+    # Verify that see_more was clicked to expand post text
+    see_more_btn.click.assert_awaited_once_with(timeout=1000)
+    assert record is not None
+    assert record.post_text == expanded_text
+    assert record.author_name == "Jane Developer"
+
 

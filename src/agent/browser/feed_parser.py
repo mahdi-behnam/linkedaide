@@ -222,6 +222,22 @@ async def parse_feed_card(
         ).strip()
 
     # 4. Extract Post Text
+    # Expand collapsed "...see more" button if present
+    try:
+        see_more = card.locator(
+            "button.feed-shared-inline-show-more-text__see-more-less-toggle, "
+            "button[aria-label*='see more' i], "
+            "button:has-text('… more'), "
+            "button:has-text('...more'), "
+            "button:has-text('see more')"
+        ).first
+        if await see_more.count() > 0:
+            visible = await see_more.is_visible() if hasattr(see_more, "is_visible") else True
+            if visible:
+                await see_more.click(timeout=1000)
+    except Exception:
+        pass
+
     post_text = ""
     # Priority 1: Modern expandable-text-box or description components
     try:

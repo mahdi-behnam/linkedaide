@@ -196,6 +196,62 @@ async def test_scout_graph_qualifying_post_creates_pending_and_notifies(
     persisted = mock_context.state_store.read_pending(pending_items[0].item_id)
     assert persisted is not None
     assert persisted.post_urn == "urn:li:activity:200"
+    assert persisted.post_excerpt == sample_post.post_text
+
+
+@pytest.mark.asyncio
+async def test_scout_graph_preserves_full_post_excerpt_without_200_char_truncation(
+    mock_context: GraphContext,
+) -> None:
+    now = datetime.now(UTC)
+    long_post_text = (
+        "This is an extensive analysis on building distributed consensus engines in Rust and C++. "
+        "Historically, Raft and Paxos required centralized leader lease mechanisms to avoid split-brain, "
+        "which introduces latency during leader failover. In modern geo-distributed architectures, "
+        "flexible quorums and multi-leader protocols like EPaxos or Mencius provide higher throughput. "
+        "Here we measure tail latency under 30% simulated packet loss and packet reordering."
+    )
+    assert len(long_post_text) > 400
+
+    long_post = PostRecord(
+        post_urn="urn:li:activity:long_300",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:long_300/",
+        author_name="Systems Lead",
+        post_text=long_post_text,
+        content_hash="hash_long_300",
+        scraped_at=now,
+    )
+    scraper_mock: Any = mock_context.scraper
+    scraper_mock.scrape_feed = AsyncMock(return_value=[long_post])
+
+    llm_mock: Any = mock_context.llm
+    llm_mock.evaluate_post = AsyncMock(
+        return_value=TriageResult(
+            recommendation="comment",
+            confidence=0.96,
+            reasoning="Core systems and consensus architecture",
+            risk_flags=[],
+        )
+    )
+    llm_mock.draft_comment = AsyncMock(
+        return_value=CommentDraft(
+            draft_comment="EPaxos is great, but dependency resolution complexity often favors Raft in practice.",
+            topic_tags=["Distributed Systems", "Consensus"],
+        )
+    )
+
+    graph = build_scout_graph()
+    result = await graph.ainvoke({}, config={"configurable": {"context": mock_context}})
+
+    pending_items = result.get("pending_items", [])
+    assert len(pending_items) == 1
+    # Verify full post text (>200 chars) is completely preserved without truncation
+    assert pending_items[0].post_excerpt == long_post_text
+    assert len(pending_items[0].post_excerpt) > 400
+
+    persisted = mock_context.state_store.read_pending(pending_items[0].item_id)
+    assert persisted is not None
+    assert persisted.post_excerpt == long_post_text
 
 
 @pytest.mark.asyncio

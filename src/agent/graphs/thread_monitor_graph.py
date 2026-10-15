@@ -178,7 +178,7 @@ async def persist_pending(state: ThreadMonitorState, config: RunnableConfig) -> 
             post_url=thread.post_url,
             author_name=reply.author_name,
             author_headline=reply.author_headline,
-            post_excerpt=reply.reply_text[:200],
+            post_excerpt=reply.reply_text.strip(),
             draft_text=draft.draft_comment,
             confidence=triage.confidence,
             reasoning=triage.reasoning,

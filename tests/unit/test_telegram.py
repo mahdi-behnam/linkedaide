@@ -46,6 +46,7 @@ from agent.telegram.keyboards import (
     format_home_hub,
     format_rejection_card,
     format_suggestion_card,
+    _format_safe_excerpt,
 )
 from agent.telegram.reply_keyboards import build_docked_reply_keyboard
 
@@ -312,6 +313,78 @@ class TestKeyboardsAndMessages:
         card1 = format_suggestion_card(sample_pending_action)
         card2 = TelegramClient.format_suggestion_card(sample_pending_action)
         assert card1 == card2
+
+    def test_format_suggestion_card_full_length_excerpt(self) -> None:
+        full_text = (
+            "Building scalable microservices requires addressing distributed transaction consistency, "
+            "network partitioning, and consensus latency. When designing services in Rust and Go, "
+            "we often rely on asynchronous messaging brokers like Kafka or NATS to decouple components. "
+            "However, handling idempotency and dual-write anomalies remains a primary challenge. "
+            "In this post, we explore the Outbox pattern combined with change-data-capture (CDC) "
+            "to guarantee at-least-once delivery without distributed locks."
+        )
+        assert len(full_text) > 400
+        item = PendingAction(
+            item_id="item_full_post_01",
+            action_type="approve_comment",
+            post_urn="urn:li:activity:777888",
+            post_url="https://linkedin.com/feed/update/urn:li:activity:777888",
+            author_name="Alice Architect",
+            post_excerpt=full_text,
+            draft_text="Great overview! The CDC Outbox pattern is crucial for reliable microservices.",
+            confidence=0.92,
+            reasoning="Directly covers distributed systems and messaging patterns.",
+        )
+        card = format_suggestion_card(item)
+
+        # Verify the entire post text is preserved without the old 200 char truncation
+        assert full_text in card
+        assert f"<blockquote expandable>{full_text}</blockquote>" in card
+        assert len(card) <= 3800
+
+    def test_format_suggestion_card_dynamic_budget_truncation(self) -> None:
+        # Create a massive post of 5000 characters
+        huge_post = "Distributed systems require careful consensus design. " * 100
+        assert len(huge_post) > 5000
+
+        item = PendingAction(
+            item_id="item_huge_post_01",
+            action_type="approve_comment",
+            post_urn="urn:li:activity:999111",
+            post_url="https://linkedin.com/feed/update/urn:li:activity:999111",
+            author_name="Bob Consensus",
+            post_excerpt=huge_post,
+            draft_text="Raft consensus and leader lease patterns are fundamental.",
+            confidence=0.95,
+            reasoning="Core consensus topic.",
+        )
+        card = format_suggestion_card(item, max_card_length=3800)
+
+        # Verify that total length is bounded by max_card_length
+        assert len(card) <= 3800
+        # Verify truncation indicator is present
+        assert "… [truncated for length]" in card
+        # Verify expandable blockquote is cleanly closed
+        assert "<blockquote expandable>" in card
+        assert "</blockquote>" in card
+        # Verify card contains vital metadata despite truncation
+        assert "Bob Consensus" in card
+        assert "<i>ID: item_huge_post_01</i>" in card
+
+    def test_format_safe_excerpt_edge_cases(self) -> None:
+        # Empty excerpt returns empty
+        assert _format_safe_excerpt("", "Post Excerpt", 1000) == ""
+        assert _format_safe_excerpt("   ", "Post Excerpt", 1000) == ""
+
+        # Tiny budget returns empty
+        assert _format_safe_excerpt("Some post text", "Post Excerpt", 40) == ""
+
+        # HTML entity escaping
+        raw_with_html = "Testing <script>alert('xss')</script> & 'quotes' > < symbols"
+        res = _format_safe_excerpt(raw_with_html, "Post Excerpt", 1000)
+        assert "<script>" not in res
+        assert "&lt;script&gt;" in res
+        assert "&amp;" in res
 
     def test_build_suggestion_keyboard_exceeds_64_bytes(self) -> None:
         long_id = "x" * 63
