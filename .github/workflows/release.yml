@@ -96,7 +96,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx electron-builder --publish always
+          npx electron-builder --publish always -c.publish.releaseType=release
 
       - name: Compute Checksums
         run: |
@@ -153,4 +153,20 @@ jobs:
             gh release upload "$TAG_NAME" SHA256SUMS.txt --clobber
           else
             echo "No tag name resolved; skipping release asset upload."
+          fi
+
+      - name: Publish GitHub Release as Latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name || inputs.tag_name }}
+        run: |
+          RESOLVED_TAG="$TAG_NAME"
+          if [ -z "$RESOLVED_TAG" ]; then
+            RESOLVED_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          fi
+          if [ -n "$RESOLVED_TAG" ]; then
+            echo "Publishing and setting release as latest for tag: $RESOLVED_TAG"
+            gh release edit "$RESOLVED_TAG" --draft=false --latest
+          else
+            echo "No tag could be resolved to mark as latest."
           fi

@@ -34,7 +34,8 @@
     "publish": {
       "provider": "github",
       "owner": "mahdi-behnam",
-      "repo": "linkedin-hitl-agent"
+      "repo": "linkedin-hitl-agent",
+      "releaseType": "release"
     },
     "directories": {
       "output": "release"
