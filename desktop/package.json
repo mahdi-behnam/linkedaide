@@ -19,9 +19,18 @@
     "dist:mac": "npm run package && electron-builder --mac",
     "dist:linux": "npm run package && electron-builder --linux"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mahdi-behnam/linkedin-hitl-agent.git"
+  },
   "build": {
     "appId": "com.linkedin.hitl.agent",
     "productName": "LinkedAide",
+    "publish": {
+      "provider": "github",
+      "owner": "mahdi-behnam",
+      "repo": "linkedin-hitl-agent"
+    },
     "directories": {
       "output": "release"
     },
@@ -32,9 +41,20 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "artifactName": "LinkedAide.${ext}",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
       ]
     },
     "win": {
@@ -43,12 +63,19 @@
         "portable"
       ]
     },
+    "nsis": {
+      "artifactName": "LinkedAide-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "LinkedAide-Portable.${ext}"
+    },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "LinkedAide.${ext}"
     }
   },
   "dependencies": {

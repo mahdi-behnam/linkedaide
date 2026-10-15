@@ -6,6 +6,22 @@
 
 An enterprise-grade, human-supervised LinkedIn automation agent orchestrating candidate discovery, LLM triage, personalized comment drafting, thought leadership post ideation, Telegram human approval, and verified Playwright browser execution.
 
+<p align="center">
+  <a href="https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest">
+    <img src="https://img.shields.io/badge/Download%20Desktop%20App-Latest%20Release-0077B5?style=for-the-badge&logo=electron&logoColor=white" alt="Download Desktop App" />
+  </a>
+  <a href="https://github.com/mahdi-behnam/linkedin-hitl-agent/releases">
+    <img src="https://img.shields.io/github/v/release/mahdi-behnam/linkedin-hitl-agent?style=for-the-badge&color=2ea44f&label=Version" alt="Latest Version" />
+  </a>
+</p>
+
+<p align="center">
+  <b>Direct Downloads:</b>&nbsp;
+  <a href="https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide-Setup.exe">🪟 Windows (.exe)</a> &nbsp;•&nbsp;
+  <a href="https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide.dmg">🍏 macOS (.dmg)</a> &nbsp;•&nbsp;
+  <a href="https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide.AppImage">🐧 Linux (.AppImage)</a>
+</p>
+
 ---
 
 ## What This Assistant Does & How It Helps
@@ -233,11 +249,25 @@ The repository includes a modern Electron desktop application in [`desktop/`](de
 
 ### 📥 1-Click Standalone Download (Recommended)
 
-No Node.js, terminal commands, or build steps required. Download the ready-to-run installer directly from [GitHub Releases](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases):
+No Node.js, Python, or terminal setup required. Download the latest installer for your operating system directly from [GitHub Releases](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest):
 
-* 🪟 **Windows**: [Download `LinkedIn-HITL-Agent-Setup.exe`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases) (or portable `.exe`)
-* 🍏 **macOS**: [Download `LinkedIn-HITL-Agent.dmg`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases)
-* 🐧 **Linux**: [Download `LinkedIn-HITL-Agent.AppImage`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases) (or `.deb`)
+| Platform | Recommended Installer | Alternative Format |
+|---|---|---|
+| 🪟 **Windows** | [**Download `LinkedAide-Setup.exe`**](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide-Setup.exe) (NSIS Installer) | [Download `LinkedAide-Portable.exe`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide-Portable.exe) (Standalone executable) |
+| 🍏 **macOS** | [**Download `LinkedAide.dmg`**](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide.dmg) (Universal: Apple Silicon & Intel) | [Download `LinkedAide.zip`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide.zip) |
+| 🐧 **Linux** | [**Download `LinkedAide.AppImage`**](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide.AppImage) (Self-contained binary) | [Download `LinkedAide.deb`](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest/download/LinkedAide.deb) (Debian / Ubuntu) |
+
+> [!TIP]
+> **Verification & Checksums**: Each release automatically attaches an aggregated `SHA256SUMS.txt` manifest on the [Releases](https://github.com/mahdi-behnam/linkedin-hitl-agent/releases/latest) page so you can verify the cryptographic integrity of your downloaded package.
+
+<details>
+<summary><b>ℹ️ First-Time Launch: Bypassing Unsigned App Warnings (SmartScreen / Gatekeeper)</b></summary>
+
+Because LinkedAide is a free and open-source project, binaries are distributed without costly proprietary enterprise signing certificates. Your operating system may display a standard security prompt on first launch:
+* **macOS**: Right-click (or `Ctrl`+click) `LinkedAide.app` in `/Applications` and select **Open** → Click **Open** in the confirmation dialog. (Alternatively, open *System Settings → Privacy & Security* and click *Open Anyway*).
+* **Windows**: Click **More info** on the blue Windows SmartScreen popup, then click **Run anyway**.
+* **Linux**: Ensure the downloaded AppImage is executable before launching: `chmod +x LinkedAide.AppImage`.
+</details>
 
 *(Prefer to build, customize, or run from source? Check out [Building the Desktop App from Source](docs/setup-guide.md#building-the-desktop-app-from-source-developers)).*
 
