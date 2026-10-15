@@ -122,6 +122,7 @@ jobs:
   publish-checksums:
     name: Aggregate & Publish SHA-256 Checksums
     needs: [release-please, build-desktop]
+    if: always() && (needs.release-please.outputs.releases_created == 'true' || inputs.force_build == true)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository

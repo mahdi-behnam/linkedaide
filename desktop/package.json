@@ -4,6 +4,11 @@
   "description": "Desktop Control Panel for LinkedIn Human-in-the-Loop AI Agent",
   "main": "dist-electron/main.js",
   "type": "module",
+  "author": {
+    "name": "Mahdi Behnam",
+    "email": "mahdi.behnam20@gmail.com"
+  },
+  "desktopName": "LinkedAide.desktop",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -75,6 +80,8 @@
         "deb"
       ],
       "category": "Utility",
+      "maintainer": "Mahdi Behnam <mahdi.behnam20@gmail.com>",
+      "syncDesktopName": true,
       "artifactName": "LinkedAide.${ext}"
     }
   },
