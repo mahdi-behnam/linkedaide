@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/mahdi-behnam/linkedin-hitl-agent/compare/v1.2.0...v1.2.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **ci:** automatically publish release and set latest tag ([fbaeba9](https://github.com/mahdi-behnam/linkedin-hitl-agent/commit/fbaeba9a63cfc2ffd5d1efe60e5b16c3a0590796))
+
 ## [1.2.0](https://github.com/mahdi-behnam/linkedin-hitl-agent/compare/v1.1.0...v1.2.0) (2026-10-15)
 
 
