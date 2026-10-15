@@ -528,3 +528,28 @@ class TestSettings:
         assert settings.llm_provider == "gemini"
         assert isinstance(settings.gemini_api_key, SecretStr)
         assert settings.gemini_api_key.get_secret_value() == "AIzaSyFakeGoogleKey"
+
+    def test_scout_engine_settings_defaults_and_env_overrides(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        defaults = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123456:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert defaults.scout_scroll_screens == 2
+        assert defaults.candidate_pool_multiplier == 3
+        assert defaults.min_triage_confidence == 0.7
+
+        monkeypatch.setenv("SCOUT_SCROLL_SCREENS", "4")
+        monkeypatch.setenv("CANDIDATE_POOL_MULTIPLIER", "5")
+        monkeypatch.setenv("MIN_TRIAGE_CONFIDENCE", "0.85")
+        monkeypatch.setenv("NVIDIA_NIM_API_KEY", "nvapi-test-key")
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:TOKEN")
+        monkeypatch.setenv("TELEGRAM_AUTHORIZED_CHAT_ID", "123")
+
+        custom = load_settings()
+        assert custom.scout_scroll_screens == 4
+        assert custom.candidate_pool_multiplier == 5
+        assert custom.min_triage_confidence == 0.85
+

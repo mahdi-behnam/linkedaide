@@ -80,6 +80,7 @@ class FeedScraper:
         max_posts: int,
         seen_hashes: set[str],
         target_url: str | None = None,
+        screens: int = 2,
     ) -> list[PostRecord]:
         """Scrape new, unseen posts from the feed or a target URL.
 
@@ -87,6 +88,7 @@ class FeedScraper:
             max_posts: Maximum candidate posts to return.
             seen_hashes: Set of previously seen post content hashes.
             target_url: Optional specific LinkedIn feed or hashtag URL to navigate to.
+            screens: Number of screen lengths to organically scroll (default: 2).
 
         Returns:
             list[PostRecord]: List of discovered new posts.
@@ -163,7 +165,7 @@ class FeedScraper:
 
         # 4. Organic scroll to load more dynamic content
         try:
-            await humanized_scroll(self.page, screens=2)
+            await humanized_scroll(self.page, screens=max(1, screens))
         except Exception:
             pass
 

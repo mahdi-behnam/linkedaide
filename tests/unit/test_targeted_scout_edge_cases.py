@@ -484,3 +484,99 @@ class TestTargetSourcesIntegrationAndVulnerabilities:
         mock_settings.scout_target_urls = []
         mock_settings.target_hashtags = ["# #"]
         assert get_scout_target_sources(mock_settings) == [None]
+
+    @pytest.mark.asyncio
+    async def test_scout_graph_calculates_max_total_posts_with_candidate_multiplier(self) -> None:
+        from agent.graphs.scout_graph import scrape_feed
+        from agent.graphs.state import GraphContext
+
+        mock_scraper = MagicMock()
+        mock_scraper.scrape_feed = AsyncMock(return_value=[])
+
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            max_suggestions_per_run=3,
+            candidate_pool_multiplier=4,
+            scout_scroll_screens=3,
+        )
+
+        context = GraphContext(settings=settings, scraper=mock_scraper)
+        config = {"configurable": {"context": context}}
+
+        state = {"seen_hashes": []}
+        result = await scrape_feed(state, config)
+
+        assert result["status"] == "scraped"
+        # 3 suggestions * 4 multiplier = 12 max_posts
+        mock_scraper.scrape_feed.assert_awaited_once_with(
+            max_posts=12,
+            seen_hashes=set(),
+            target_url=None,
+            screens=3,
+        )
+
+    @pytest.mark.asyncio
+    async def test_scout_graph_draft_batch_skips_below_min_triage_confidence(self) -> None:
+        from datetime import UTC, datetime
+        from agent.graphs.scout_graph import draft_batch
+        from agent.graphs.state import GraphContext
+        from agent.models.browser import PostRecord
+        from agent.models.llm import CommentDraft, TriageResult
+
+        settings = Settings(
+            nvidia_nim_api_key="nvapi-test-key",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+            min_triage_confidence=0.75,
+        )
+
+        mock_llm = MagicMock()
+        mock_llm.draft_comment = AsyncMock(
+            return_value=CommentDraft(draft_comment="High signal commentary")
+        )
+
+        context = GraphContext(settings=settings, llm=mock_llm)
+        config = {"configurable": {"context": context}}
+
+        post1 = PostRecord(
+            post_urn="urn:li:activity:1",
+            author_name="Alice",
+            post_text="First post",
+            post_url="https://linkedin.com/feed/update/1",
+            content_hash="hash1",
+            scraped_at=datetime.now(UTC),
+        )
+        post2 = PostRecord(
+            post_urn="urn:li:activity:2",
+            author_name="Bob",
+            post_text="Second post",
+            post_url="https://linkedin.com/feed/update/2",
+            content_hash="hash2",
+            scraped_at=datetime.now(UTC),
+        )
+
+        triage_low = TriageResult(
+            recommendation="comment",
+            confidence=0.60,  # Below 0.75 threshold
+            reasoning="Marginal relevance",
+        )
+        triage_high = TriageResult(
+            recommendation="comment",
+            confidence=0.85,  # Above threshold
+            reasoning="Strong relevance",
+        )
+
+        state = {
+            "triage_results": [(post1, triage_low), (post2, triage_high)],
+        }
+
+        result = await draft_batch(state, config)
+        drafts = result["drafts"]
+
+        # Only post2 should qualify for drafting
+        assert len(drafts) == 1
+        assert drafts[0][0].post_urn == "urn:li:activity:2"
+        mock_llm.draft_comment.assert_awaited_once_with(post2, triage_high)
+

@@ -7,6 +7,8 @@ import { GitHubActionsCard } from "./settings/GitHubActionsCard";
 import { VaultEncryptionCard } from "./settings/VaultEncryptionCard";
 import { NimIntelligenceCard } from "./settings/NimIntelligenceCard";
 import { SafetyGuardrailsCard } from "./settings/SafetyGuardrailsCard";
+import { ScoutTargetingCard } from "./settings/ScoutTargetingCard";
+import { ScoutEngineCard, type ReactionType } from "./settings/ScoutEngineCard";
 import { ScoutScheduleCard } from "./settings/ScoutScheduleCard";
 import { NotificationsCard } from "./settings/NotificationsCard";
 import { TimezoneCard } from "./settings/TimezoneCard";
@@ -17,9 +19,15 @@ import type { DesktopSettings } from "../types/api";
 export function areSettingsEqual(a: DesktopSettings, b: DesktopSettings): boolean {
   const allKeys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof DesktopSettings>;
   for (const k of allKeys) {
-    const valA = a[k] !== undefined ? a[k] : "";
-    const valB = b[k] !== undefined ? b[k] : "";
-    if (valA !== valB) return false;
+    const valA = a[k];
+    const valB = b[k];
+    if (Array.isArray(valA) || Array.isArray(valB)) {
+      if (JSON.stringify(valA || []) !== JSON.stringify(valB || [])) return false;
+      continue;
+    }
+    const normalizedA = valA !== undefined ? valA : "";
+    const normalizedB = valB !== undefined ? valB : "";
+    if (normalizedA !== normalizedB) return false;
   }
   return true;
 }
@@ -43,6 +51,15 @@ const defaultSettings: DesktopSettings = {
   maxConnectionsPerDay: 10,
   maxSuggestionsPerRun: 3,
   actionTtlHours: 12,
+  feedScrollScreens: 2,
+  candidatePoolMultiplier: 3,
+  minTriageConfidence: 0.7,
+  maxCommentWords: 80,
+  enablePreCommentReaction: false,
+  defaultReactionType: "like",
+  userFocusAreas: [],
+  targetHashtags: [],
+  scoutTargetUrls: [],
   timezone: getDefaultTimezone(),
 };
 
@@ -426,10 +443,36 @@ export const SettingsView: React.FC = () => {
           onHeadlessChange={(val) => handleChange("headless", val)}
         />
 
-        {/* Section 7: Scout Schedule & Cadence */}
+        {/* Section 7: Scout Targets & Focus Topics */}
+        <ScoutTargetingCard
+          userFocusAreas={settings.userFocusAreas ?? []}
+          targetHashtags={settings.targetHashtags ?? []}
+          scoutTargetUrls={settings.scoutTargetUrls ?? []}
+          onFocusAreasChange={(areas) => handleChange("userFocusAreas", areas)}
+          onHashtagsChange={(hashtags) => handleChange("targetHashtags", hashtags)}
+          onTargetUrlsChange={(urls) => handleChange("scoutTargetUrls", urls)}
+        />
+
+        {/* Section 8: Scout Engine & Scraping Parameters */}
+        <ScoutEngineCard
+          feedScrollScreens={settings.feedScrollScreens ?? 2}
+          candidatePoolMultiplier={settings.candidatePoolMultiplier ?? 3}
+          minTriageConfidence={settings.minTriageConfidence ?? 0.7}
+          maxCommentWords={settings.maxCommentWords ?? 80}
+          enablePreCommentReaction={settings.enablePreCommentReaction ?? false}
+          defaultReactionType={(settings.defaultReactionType as ReactionType) ?? "like"}
+          onScrollScreensChange={(screens) => handleChange("feedScrollScreens", screens)}
+          onMultiplierChange={(multiplier) => handleChange("candidatePoolMultiplier", multiplier)}
+          onConfidenceChange={(confidence) => handleChange("minTriageConfidence", confidence)}
+          onMaxWordsChange={(words) => handleChange("maxCommentWords", words)}
+          onPreReactionToggle={(enabled) => handleChange("enablePreCommentReaction", enabled)}
+          onReactionTypeChange={(type) => handleChange("defaultReactionType", type)}
+        />
+
+        {/* Section 9: Scout Schedule & Cadence */}
         <ScoutScheduleCard />
 
-        {/* Section 8: Notifications & Desktop Integration */}
+        {/* Section 10: Notifications & Desktop Integration */}
         <NotificationsCard
           minimizeToTray={settings.minimizeToTray ?? true}
           notificationsEnabled={settings.notificationsEnabled ?? true}

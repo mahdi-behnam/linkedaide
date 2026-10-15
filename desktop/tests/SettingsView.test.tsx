@@ -405,4 +405,131 @@ describe("SettingsView", () => {
       );
     });
   });
+
+  it("renders ScoutTargetingCard and allows adding/removing focus areas and normalized hashtags", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("Scout Targets & Focus Topics")).toBeTruthy();
+
+    // Add focus area
+    const focusInput = screen.getByPlaceholderText(/Add focus topic/i) as HTMLInputElement;
+    fireEvent.change(focusInput, { target: { value: "Distributed AI" } });
+    fireEvent.keyDown(focusInput, { key: "Enter", code: "Enter" });
+
+    expect(screen.getByText("Distributed AI")).toBeTruthy();
+
+    // Add hashtag without leading # (should auto-normalize)
+    const hashtagInput = screen.getByPlaceholderText(/Add hashtag/i) as HTMLInputElement;
+    fireEvent.change(hashtagInput, { target: { value: "agentic" } });
+    fireEvent.keyDown(hashtagInput, { key: "Enter", code: "Enter" });
+
+    // Should display normalized without leading hash in pill text
+    expect(screen.getByText("agentic")).toBeTruthy();
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userFocusAreas: ["Distributed AI"],
+          targetHashtags: ["#agentic"],
+        })
+      );
+    });
+
+    // Remove the focus area
+    const removeFocusBtn = screen.getByLabelText("Remove focus area Distributed AI");
+    fireEvent.click(removeFocusBtn);
+    expect(screen.queryByText("Distributed AI")).toBeNull();
+  });
+
+  it("allows adding and removing direct scout target URLs", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const urlInput = screen.getByPlaceholderText(/linkedin.com\/company/i) as HTMLInputElement;
+    fireEvent.change(urlInput, { target: { value: "https://www.linkedin.com/company/anthropic/posts/" } });
+
+    const addBtn = screen.getByRole("button", { name: "Add target URL" });
+    fireEvent.click(addBtn);
+
+    expect(screen.getByText("https://www.linkedin.com/company/anthropic/posts/")).toBeTruthy();
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoutTargetUrls: ["https://www.linkedin.com/company/anthropic/posts/"],
+        })
+      );
+    });
+
+    // Remove URL
+    const removeUrlBtn = screen.getByLabelText("Remove URL https://www.linkedin.com/company/anthropic/posts/");
+    fireEvent.click(removeUrlBtn);
+    expect(screen.queryByText("https://www.linkedin.com/company/anthropic/posts/")).toBeNull();
+  });
+
+  it("renders ScoutEngineCard and allows configuring scroll depth, multiplier, confidence, and pre-reactions", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("Scout Engine & Scraping Parameters")).toBeTruthy();
+
+    // Change scroll depth to 3 screens
+    const scrollSelect = screen.getByLabelText("Feed Scroll Depth") as HTMLSelectElement;
+    fireEvent.change(scrollSelect, { target: { value: "3" } });
+    expect(scrollSelect.value).toBe("3");
+
+    // Change candidate multiplier to 4x
+    const multiplierSelect = screen.getByLabelText("Candidate Pool Multiplier") as HTMLSelectElement;
+    fireEvent.change(multiplierSelect, { target: { value: "4" } });
+    expect(multiplierSelect.value).toBe("4");
+
+    // Change min triage confidence
+    const confidenceSlider = screen.getByLabelText("Min Triage Confidence") as HTMLInputElement;
+    fireEvent.change(confidenceSlider, { target: { value: "0.85" } });
+    expect(screen.getByText("85%")).toBeTruthy();
+
+    // Change max comment words
+    const maxWordsInput = screen.getByLabelText("Max Comment Words") as HTMLInputElement;
+    fireEvent.change(maxWordsInput, { target: { value: "60" } });
+    expect(maxWordsInput.value).toBe("60");
+
+    // Enable pre-comment reaction
+    const preReactionCheckbox = screen.getByRole("checkbox", { name: /Organic Pre-Comment Reaction/i }) as HTMLInputElement;
+    fireEvent.click(preReactionCheckbox);
+    expect(preReactionCheckbox.checked).toBe(true);
+
+    // Select reaction type
+    const reactionSelect = screen.getByLabelText("Type:") as HTMLSelectElement;
+    fireEvent.change(reactionSelect, { target: { value: "insightful" } });
+    expect(reactionSelect.value).toBe("insightful");
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          feedScrollScreens: 3,
+          candidatePoolMultiplier: 4,
+          minTriageConfidence: 0.85,
+          maxCommentWords: 60,
+          enablePreCommentReaction: true,
+          defaultReactionType: "insightful",
+        })
+      );
+    });
+  });
 });

@@ -681,3 +681,37 @@ async def test_scraper_survives_when_login_redirect_succeeds(
 
         assert len(posts) == 0  # No cards found, but did not raise SessionExpiredError
         mock_wait.assert_awaited_once_with(page, timeout=15.0)
+
+
+@pytest.mark.asyncio
+async def test_scraper_respects_custom_screens_scroll_parameter(
+    mock_settings: Settings,
+) -> None:
+    page = MagicMock()
+    page.url = "https://www.linkedin.com/feed/"
+
+    container_loc = MagicMock()
+    container_loc.count = AsyncMock(return_value=1)
+
+    cards_loc = MagicMock()
+    cards_loc.count = AsyncMock(return_value=0)
+
+    def page_locator(selector: str) -> MagicMock:
+        if "main" in selector:
+            return container_loc
+        return cards_loc
+
+    page.locator = MagicMock(side_effect=page_locator)
+    page.wait_for_selector = AsyncMock()
+
+    with (
+        patch("agent.browser.scraper.wait_for_login_redirect", new_callable=AsyncMock) as mock_wait,
+        patch("agent.browser.scraper.capture_dom_telemetry", new_callable=AsyncMock),
+        patch("agent.browser.scraper.humanized_scroll", new_callable=AsyncMock) as mock_scroll,
+    ):
+        mock_wait.return_value = True
+        scraper = FeedScraper(page, mock_settings)
+        await scraper.scrape_feed(max_posts=5, seen_hashes=set(), screens=4)
+
+        mock_scroll.assert_awaited_once_with(page, screens=4)
+

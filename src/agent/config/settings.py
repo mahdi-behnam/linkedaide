@@ -273,6 +273,27 @@ class Settings(BaseSettings):
         description="Default reaction type (like, insightful, celebrate, support, love, funny)",
         validation_alias=AliasChoices("DEFAULT_REACTION_TYPE", "default_reaction_type"),
     )
+    scout_scroll_screens: int = Field(
+        default=2,
+        ge=1,
+        le=5,
+        description="Number of screen lengths to scroll during feed scraping",
+        validation_alias=AliasChoices("SCOUT_SCROLL_SCREENS", "scout_scroll_screens"),
+    )
+    candidate_pool_multiplier: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Multiplier against max_suggestions_per_run for candidate post harvest",
+        validation_alias=AliasChoices("CANDIDATE_POOL_MULTIPLIER", "candidate_pool_multiplier"),
+    )
+    min_triage_confidence: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum LLM triage confidence threshold for qualifying candidate posts",
+        validation_alias=AliasChoices("MIN_TRIAGE_CONFIDENCE", "min_triage_confidence"),
+    )
     log_level: str = Field(
         default="INFO",
         description="Logging level",

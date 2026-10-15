@@ -102,6 +102,15 @@ export interface DesktopSettings {
   githubDispatchPat?: string;
   timezone?: string;
   scoutSchedule?: AutomatedCommentWindow[];
+  userFocusAreas?: string[];
+  targetHashtags?: string[];
+  scoutTargetUrls?: string[];
+  feedScrollScreens?: number;
+  candidatePoolMultiplier?: number;
+  minTriageConfidence?: number;
+  maxCommentWords?: number;
+  enablePreCommentReaction?: boolean;
+  defaultReactionType?: "like" | "celebrate" | "support" | "love" | "insightful" | "funny";
 }
 
 export interface ElectronAPI {
@@ -118,7 +127,7 @@ export interface ElectronAPI {
     note?: string
   ) => Promise<ActionResult>;
   triggerScout: () => Promise<boolean>;
-  triggerIdeate: () => Promise<boolean>;
+  triggerIdeate?: () => Promise<boolean>;
   togglePause: (paused: boolean) => Promise<boolean>;
   clearIncident: () => Promise<boolean>;
   rewriteDraft: (draftText: string, tone: string) => Promise<string>;

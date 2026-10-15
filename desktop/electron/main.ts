@@ -103,6 +103,21 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
     if (updated.timezone !== undefined) {
       updated.timezone = updated.timezone.trim();
     }
+    if (Array.isArray(updated.userFocusAreas)) {
+      updated.userFocusAreas = updated.userFocusAreas
+        .map((s) => (typeof s === "string" ? s.trim() : ""))
+        .filter(Boolean);
+    }
+    if (Array.isArray(updated.targetHashtags)) {
+      updated.targetHashtags = updated.targetHashtags
+        .map((s) => (typeof s === "string" ? s.trim() : ""))
+        .filter(Boolean);
+    }
+    if (Array.isArray(updated.scoutTargetUrls)) {
+      updated.scoutTargetUrls = updated.scoutTargetUrls
+        .map((s) => (typeof s === "string" ? s.trim() : ""))
+        .filter(Boolean);
+    }
     const settingsPath = getSettingsPath();
     const dir = path.dirname(settingsPath);
     if (!fs.existsSync(dir)) {
@@ -310,6 +325,16 @@ function registerIpcHandlers(): void {
             HEADLESS: String(settings.headless ?? true),
             ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
             ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+            ...(settings.userFocusAreas?.length ? { USER_FOCUS_AREAS: JSON.stringify(settings.userFocusAreas) } : {}),
+            ...(settings.targetHashtags?.length ? { TARGET_HASHTAGS: JSON.stringify(settings.targetHashtags) } : {}),
+            ...(settings.scoutTargetUrls?.length ? { SCOUT_TARGET_URLS: JSON.stringify(settings.scoutTargetUrls) } : {}),
+            ...(settings.feedScrollScreens ? { SCOUT_SCROLL_SCREENS: String(settings.feedScrollScreens) } : {}),
+            ...(settings.candidatePoolMultiplier ? { CANDIDATE_POOL_MULTIPLIER: String(settings.candidatePoolMultiplier) } : {}),
+            ...(settings.minTriageConfidence !== undefined ? { MIN_TRIAGE_CONFIDENCE: String(settings.minTriageConfidence) } : {}),
+            ...(settings.maxCommentWords ? { MAX_COMMENT_WORDS: String(settings.maxCommentWords) } : {}),
+            ...(settings.enablePreCommentReaction !== undefined ? { ENABLE_PRE_COMMENT_REACTION: String(settings.enablePreCommentReaction) } : {}),
+            ...(settings.defaultReactionType ? { DEFAULT_REACTION_TYPE: settings.defaultReactionType } : {}),
+            ...(settings.maxSuggestionsPerRun ? { MAX_SUGGESTIONS_PER_RUN: String(settings.maxSuggestionsPerRun) } : {}),
           },
         });
         child.on("close", (code) => {

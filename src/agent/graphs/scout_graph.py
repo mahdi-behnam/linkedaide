@@ -123,7 +123,8 @@ async def scrape_feed(state: ScoutState, config: RunnableConfig) -> dict[str, An
 
     seen_hashes = set(state.get("seen_hashes", []))
     target_sources = get_scout_target_sources(context.settings)
-    max_total_posts = context.settings.max_suggestions_per_run * 3
+    multiplier = getattr(context.settings, "candidate_pool_multiplier", 3)
+    max_total_posts = context.settings.max_suggestions_per_run * multiplier
 
     all_posts: list[PostRecord] = []
     errors: list[str] = list(state.get("errors", []))
@@ -152,6 +153,7 @@ async def scrape_feed(state: ScoutState, config: RunnableConfig) -> dict[str, An
                 max_posts=remaining,
                 seen_hashes=seen_hashes,
                 target_url=target_url,
+                screens=getattr(context.settings, "scout_scroll_screens", 2),
             )
             all_posts.extend(posts)
             for p in posts:
@@ -252,7 +254,20 @@ async def draft_batch(state: ScoutState, config: RunnableConfig) -> dict[str, An
         return {"drafts": []}
 
     triage_results = state.get("triage_results", [])
-    qualifying = [(p, t) for p, t in triage_results if t.recommendation == "comment"]
+    min_confidence = getattr(context.settings, "min_triage_confidence", 0.7)
+    qualifying: list[tuple[PostRecord, TriageResult]] = []
+    for p, t in triage_results:
+        if t.recommendation == "comment":
+            if t.confidence < min_confidence:
+                logger.info(
+                    "Post [%s] by '%s' skipped: triage confidence %.2f below threshold %.2f (confidence_below_threshold)",
+                    p.post_urn,
+                    p.author_name,
+                    t.confidence,
+                    min_confidence,
+                )
+            else:
+                qualifying.append((p, t))
 
     drafts: list[tuple[PostRecord, TriageResult, CommentDraft]] = []
     errors: list[str] = list(state.get("errors", []))
@@ -329,8 +344,18 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
         candidates.append((triage.confidence, pending, conn_candidate))
 
     # 2. Reaction candidates from triage results
+    min_confidence = getattr(context.settings, "min_triage_confidence", 0.7)
     for post, triage in triage_results:
         if triage.recommendation == "react":
+            if triage.confidence < min_confidence:
+                logger.info(
+                    "Reaction for [%s] by '%s' skipped: triage confidence %.2f below threshold %.2f (confidence_below_threshold)",
+                    post.post_urn,
+                    post.author_name,
+                    triage.confidence,
+                    min_confidence,
+                )
+                continue
             item_id = hashlib.sha256(f"{post.post_urn}:react:{now.isoformat()}".encode()).hexdigest()[:8]
             rx_type = (triage.reaction_type or "like").strip().lower()
             pending_rx = PendingAction(

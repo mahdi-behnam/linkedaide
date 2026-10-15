@@ -58,6 +58,10 @@ import {
   Moon,
   DeviceMobile,
   Desktop,
+  Target,
+  Hash,
+  ThumbsUp,
+  Tag,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -123,4 +127,8 @@ export {
   Moon,
   DeviceMobile,
   Desktop,
+  Target,
+  Hash,
+  ThumbsUp,
+  Tag,
 };
