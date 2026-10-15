@@ -64,7 +64,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release-please.outputs.tag_name || inputs.tag_name || github.ref }}
+          fetch-depth: 0
+
+      - name: Switch to Release Tag If Available
+        run: |
+          TARGET_TAG="${{ needs.release-please.outputs.tag_name || inputs.tag_name }}"
+          if [ -n "$TARGET_TAG" ] && git rev-parse -q --verify "refs/tags/$TARGET_TAG" >/dev/null; then
+            echo "Checking out tag: $TARGET_TAG"
+            git checkout "$TARGET_TAG"
+          else
+            echo "Tag '$TARGET_TAG' not found in repository. Continuing on current commit ($(git rev-parse --short HEAD))."
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -117,7 +127,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release-please.outputs.tag_name || inputs.tag_name || github.ref }}
+          fetch-depth: 0
 
       - name: Download Checksum Artifacts
         uses: actions/download-artifact@v4
