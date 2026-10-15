@@ -1,6 +1,6 @@
 [project]
 name = "linkedin-hitl-agent"
-version = "1.2.0"
+version = "1.2.1"
 description = "Human-in-the-Loop LinkedIn AI Agent orchestrating scouting, LLM triage, Telegram approval, and Playwright execution."
 readme = "README.md"
 requires-python = ">=3.11"
