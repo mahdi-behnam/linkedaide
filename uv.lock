@@ -1561,7 +1561,7 @@ wheels = [
 ]
 
 [[package]]
-name = "linkedin-hitl-agent"
+name = "linkedaide"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

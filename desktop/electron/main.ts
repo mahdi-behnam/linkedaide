@@ -43,10 +43,11 @@ function loadSettings(): DesktopSettings {
     workerUrl: process.env.WORKER_URL || "",
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
-    nimModel: process.env.NIM_MODEL_PRIMARY || "nvidia/nemotron-3-super-120b-a12b",
+    nimModel:
+      process.env.NIM_MODEL_PRIMARY || "nvidia/nemotron-3-super-120b-a12b",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
     githubRepoOwner: process.env.GITHUB_REPO_OWNER || "mahdi-behnam",
-    githubRepoName: process.env.GITHUB_REPO_NAME || "linkedin-hitl-agent",
+    githubRepoName: process.env.GITHUB_REPO_NAME || "linkedaide",
     githubDispatchPat: process.env.GITHUB_DISPATCH_PAT || "",
     autoRefreshInterval: 600,
     executionMode: "cloud",
@@ -149,7 +150,10 @@ function registerIpcHandlers(): void {
   // Cloudflare Worker & Local Runner API Handlers
   ipcMain.handle(
     "api:testConnection",
-    async (_event, credentials?: { workerUrl?: string; apiSecret?: string }) => {
+    async (
+      _event,
+      credentials?: { workerUrl?: string; apiSecret?: string },
+    ) => {
       const result = await workerClient.testConnection({
         baseUrl: credentials?.workerUrl,
         apiSecret: credentials?.apiSecret,
@@ -158,17 +162,20 @@ function registerIpcHandlers(): void {
         if (realtimeClient) {
           realtimeClient.updateCredentials(
             credentials.workerUrl,
-            credentials.apiSecret
+            credentials.apiSecret,
           );
         }
       }
       return result;
-    }
+    },
   );
 
   ipcMain.handle(
     "api:fetchState",
-    async (_event, credentials?: { workerUrl?: string; apiSecret?: string }) => {
+    async (
+      _event,
+      credentials?: { workerUrl?: string; apiSecret?: string },
+    ) => {
       if (credentials?.workerUrl || credentials?.apiSecret) {
         workerClient.updateConfig({
           baseUrl: credentials.workerUrl,
@@ -176,43 +183,77 @@ function registerIpcHandlers(): void {
         });
       }
       return await workerClient.fetchState();
-    }
+    },
   );
 
   ipcMain.handle(
     "api:executeAction",
-    async (_event, action: "approve" | "reject", itemId: string, draftText?: string) => {
+    async (
+      _event,
+      action: "approve" | "reject",
+      itemId: string,
+      draftText?: string,
+    ) => {
       const settings = loadSettings();
       if (settings.executionMode === "local") {
         const repoRoot = path.resolve(__dirname, "../..");
         if (action === "approve" && draftText) {
           try {
-            const pendingFilePath = path.join(repoRoot, "state/pending", `${itemId}.json`);
+            const pendingFilePath = path.join(
+              repoRoot,
+              "state/pending",
+              `${itemId}.json`,
+            );
             if (fs.existsSync(pendingFilePath)) {
-              const pendingData = JSON.parse(fs.readFileSync(pendingFilePath, "utf-8"));
+              const pendingData = JSON.parse(
+                fs.readFileSync(pendingFilePath, "utf-8"),
+              );
               pendingData.draft_text = draftText;
-              fs.writeFileSync(pendingFilePath, JSON.stringify(pendingData, null, 2), "utf-8");
+              fs.writeFileSync(
+                pendingFilePath,
+                JSON.stringify(pendingData, null, 2),
+                "utf-8",
+              );
             }
           } catch (err) {
             console.warn("Failed updating local pending draft file:", err);
           }
         }
         return new Promise<ActionResult>((resolve) => {
-          const child = spawn("uv", ["run", "agent", "execute", "--action", action, "--item-id", itemId], {
-            cwd: repoRoot,
-            env: {
-              ...process.env,
-              HEADLESS: String(settings.headless ?? true),
-              ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
-              ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+          const child = spawn(
+            "uv",
+            [
+              "run",
+              "agent",
+              "execute",
+              "--action",
+              action,
+              "--item-id",
+              itemId,
+            ],
+            {
+              cwd: repoRoot,
+              env: {
+                ...process.env,
+                HEADLESS: String(settings.headless ?? true),
+                ...(settings.nimApiKey
+                  ? { NVIDIA_NIM_API_KEY: settings.nimApiKey }
+                  : {}),
+                ...(settings.nimModel
+                  ? { NIM_MODEL_PRIMARY: settings.nimModel }
+                  : {}),
+              },
             },
-          });
+          );
           child.on("close", (code) => {
             resolve({
               success: code === 0,
               itemId,
               action,
-              message: code === 0 ? "Local execution completed" : "Local execution failed",
+              message:
+                code === 0
+                  ? "Local execution completed"
+                  : "Local execution failed",
             });
           });
           child.on("error", (err) => {
@@ -234,9 +275,9 @@ function registerIpcHandlers(): void {
           github_pat: settings.githubDispatchPat,
         },
         undefined,
-        draftText
+        draftText,
       );
-    }
+    },
   );
 
   ipcMain.handle(
@@ -247,7 +288,10 @@ function registerIpcHandlers(): void {
         const repoRoot = path.resolve(__dirname, "../..");
         if (note) {
           try {
-            const queuePath = path.join(repoRoot, "state/connection_queue.json");
+            const queuePath = path.join(
+              repoRoot,
+              "state/connection_queue.json",
+            );
             if (fs.existsSync(queuePath)) {
               const queue = JSON.parse(fs.readFileSync(queuePath, "utf-8"));
               if (Array.isArray(queue)) {
@@ -260,7 +304,11 @@ function registerIpcHandlers(): void {
                   } else {
                     queue[idx].status = "rejected";
                   }
-                  fs.writeFileSync(queuePath, JSON.stringify(queue, null, 2), "utf-8");
+                  fs.writeFileSync(
+                    queuePath,
+                    JSON.stringify(queue, null, 2),
+                    "utf-8",
+                  );
                 }
               }
             }
@@ -269,21 +317,32 @@ function registerIpcHandlers(): void {
           }
         }
         return new Promise<ActionResult>((resolve) => {
-          const child = spawn("uv", ["run", "agent", "execute", "--action", action, "--item-id", id], {
-            cwd: repoRoot,
-            env: {
-              ...process.env,
-              HEADLESS: String(settings.headless ?? true),
-              ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
-              ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+          const child = spawn(
+            "uv",
+            ["run", "agent", "execute", "--action", action, "--item-id", id],
+            {
+              cwd: repoRoot,
+              env: {
+                ...process.env,
+                HEADLESS: String(settings.headless ?? true),
+                ...(settings.nimApiKey
+                  ? { NVIDIA_NIM_API_KEY: settings.nimApiKey }
+                  : {}),
+                ...(settings.nimModel
+                  ? { NIM_MODEL_PRIMARY: settings.nimModel }
+                  : {}),
+              },
             },
-          });
+          );
           child.on("close", (code) => {
             resolve({
               success: code === 0,
               itemId: id,
               action,
-              message: code === 0 ? "Local execution completed" : "Local execution failed",
+              message:
+                code === 0
+                  ? "Local execution completed"
+                  : "Local execution failed",
             });
           });
           child.on("error", (err) => {
@@ -304,9 +363,9 @@ function registerIpcHandlers(): void {
           repo_name: settings.githubRepoName,
           github_pat: settings.githubDispatchPat,
         },
-        note
+        note,
       );
-    }
+    },
   );
 
   ipcMain.handle("api:triggerScout", async () => {
@@ -323,18 +382,54 @@ function registerIpcHandlers(): void {
           env: {
             ...process.env,
             HEADLESS: String(settings.headless ?? true),
-            ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
-            ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
-            ...(settings.userFocusAreas?.length ? { USER_FOCUS_AREAS: JSON.stringify(settings.userFocusAreas) } : {}),
-            ...(settings.targetHashtags?.length ? { TARGET_HASHTAGS: JSON.stringify(settings.targetHashtags) } : {}),
-            ...(settings.scoutTargetUrls?.length ? { SCOUT_TARGET_URLS: JSON.stringify(settings.scoutTargetUrls) } : {}),
-            ...(settings.feedScrollScreens ? { SCOUT_SCROLL_SCREENS: String(settings.feedScrollScreens) } : {}),
-            ...(settings.candidatePoolMultiplier ? { CANDIDATE_POOL_MULTIPLIER: String(settings.candidatePoolMultiplier) } : {}),
-            ...(settings.minTriageConfidence !== undefined ? { MIN_TRIAGE_CONFIDENCE: String(settings.minTriageConfidence) } : {}),
-            ...(settings.maxCommentWords ? { MAX_COMMENT_WORDS: String(settings.maxCommentWords) } : {}),
-            ...(settings.enablePreCommentReaction !== undefined ? { ENABLE_PRE_COMMENT_REACTION: String(settings.enablePreCommentReaction) } : {}),
-            ...(settings.defaultReactionType ? { DEFAULT_REACTION_TYPE: settings.defaultReactionType } : {}),
-            ...(settings.maxSuggestionsPerRun ? { MAX_SUGGESTIONS_PER_RUN: String(settings.maxSuggestionsPerRun) } : {}),
+            ...(settings.nimApiKey
+              ? { NVIDIA_NIM_API_KEY: settings.nimApiKey }
+              : {}),
+            ...(settings.nimModel
+              ? { NIM_MODEL_PRIMARY: settings.nimModel }
+              : {}),
+            ...(settings.userFocusAreas?.length
+              ? { USER_FOCUS_AREAS: JSON.stringify(settings.userFocusAreas) }
+              : {}),
+            ...(settings.targetHashtags?.length
+              ? { TARGET_HASHTAGS: JSON.stringify(settings.targetHashtags) }
+              : {}),
+            ...(settings.scoutTargetUrls?.length
+              ? { SCOUT_TARGET_URLS: JSON.stringify(settings.scoutTargetUrls) }
+              : {}),
+            ...(settings.feedScrollScreens
+              ? { SCOUT_SCROLL_SCREENS: String(settings.feedScrollScreens) }
+              : {}),
+            ...(settings.candidatePoolMultiplier
+              ? {
+                  CANDIDATE_POOL_MULTIPLIER: String(
+                    settings.candidatePoolMultiplier,
+                  ),
+                }
+              : {}),
+            ...(settings.minTriageConfidence !== undefined
+              ? { MIN_TRIAGE_CONFIDENCE: String(settings.minTriageConfidence) }
+              : {}),
+            ...(settings.maxCommentWords
+              ? { MAX_COMMENT_WORDS: String(settings.maxCommentWords) }
+              : {}),
+            ...(settings.enablePreCommentReaction !== undefined
+              ? {
+                  ENABLE_PRE_COMMENT_REACTION: String(
+                    settings.enablePreCommentReaction,
+                  ),
+                }
+              : {}),
+            ...(settings.defaultReactionType
+              ? { DEFAULT_REACTION_TYPE: settings.defaultReactionType }
+              : {}),
+            ...(settings.maxSuggestionsPerRun
+              ? {
+                  MAX_SUGGESTIONS_PER_RUN: String(
+                    settings.maxSuggestionsPerRun,
+                  ),
+                }
+              : {}),
           },
         });
         child.on("close", (code) => {
@@ -362,8 +457,12 @@ function registerIpcHandlers(): void {
           cwd: repoRoot,
           env: {
             ...process.env,
-            ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
-            ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
+            ...(settings.nimApiKey
+              ? { NVIDIA_NIM_API_KEY: settings.nimApiKey }
+              : {}),
+            ...(settings.nimModel
+              ? { NIM_MODEL_PRIMARY: settings.nimModel }
+              : {}),
           },
         });
         child.on("close", (code) => {
@@ -393,7 +492,7 @@ function registerIpcHandlers(): void {
     "api:rewriteDraft",
     async (_event, draftText: string, tone: string) => {
       return await workerClient.rewriteDraft(draftText, tone);
-    }
+    },
   );
 
   ipcMain.handle("api:saveSession", async (_event, sessionData: string) => {
@@ -433,7 +532,7 @@ function registerIpcHandlers(): void {
     "settings:save",
     async (_event, settings: Partial<DesktopSettings>) => {
       return saveSettings(settings);
-    }
+    },
   );
 
   // Fernet Cryptography Handlers
@@ -441,14 +540,14 @@ function registerIpcHandlers(): void {
     "crypto:encryptSession",
     async (_event, data: string, base64Key: string) => {
       return encryptSession(data, base64Key);
-    }
+    },
   );
 
   ipcMain.handle(
     "crypto:decryptSession",
     async (_event, token: string, base64Key: string) => {
       return decryptSession(token, base64Key);
-    }
+    },
   );
 
   ipcMain.handle("crypto:generateFernetKey", async () => {
@@ -459,29 +558,37 @@ function registerIpcHandlers(): void {
   ipcMain.handle("auth:captureSession", async () => {
     const settings = loadSettings();
     if (!settings.encryptionKey) {
-      return { success: false, error: "Session encryption key not configured in settings" };
+      return {
+        success: false,
+        error: "Session encryption key not configured in settings",
+      };
     }
-    const targetWin = mainWindow || BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    const targetWin =
+      mainWindow ||
+      BrowserWindow.getFocusedWindow() ||
+      BrowserWindow.getAllWindows()[0];
     return await captureLinkedInSession(
       targetWin,
       settings.encryptionKey,
       async (data: string) => {
         return await workerClient.saveSession(data);
-      }
+      },
     );
   });
 
   ipcMain.handle("auth:checkSessionHealth", async () => {
     try {
-      const cookies = await session.defaultSession.cookies.get({ name: "li_at" });
+      const cookies = await session.defaultSession.cookies.get({
+        name: "li_at",
+      });
       const liAt = cookies.find(
-        (c) => c.domain?.includes("linkedin.com") || c.name === "li_at"
+        (c) => c.domain?.includes("linkedin.com") || c.name === "li_at",
       );
       if (liAt && liAt.value) {
         let daysRemaining = 18;
         if (typeof liAt.expirationDate === "number") {
           const days = Math.round(
-            (liAt.expirationDate * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
+            (liAt.expirationDate * 1000 - Date.now()) / (1000 * 60 * 60 * 24),
           );
           if (days > 0) {
             daysRemaining = days;
@@ -493,7 +600,11 @@ function registerIpcHandlers(): void {
       // Fallback if session check encounters an error
     }
 
-    return { valid: false, daysRemaining: 0, details: "No active LinkedIn session found in storage" };
+    return {
+      valid: false,
+      daysRemaining: 0,
+      details: "No active LinkedIn session found in storage",
+    };
   });
 
   // NVIDIA NIM Models Fetcher
@@ -507,10 +618,13 @@ function registerIpcHandlers(): void {
         headers["Authorization"] = `Bearer ${activeKey}`;
       }
 
-      const response = await fetch("https://integrate.api.nvidia.com/v1/models", {
-        method: "GET",
-        headers,
-      });
+      const response = await fetch(
+        "https://integrate.api.nvidia.com/v1/models",
+        {
+          method: "GET",
+          headers,
+        },
+      );
 
       if (!response.ok) {
         return {
@@ -550,14 +664,25 @@ function registerIpcHandlers(): void {
   // Media Upload Handler (Cloudflare R2 Media Vault / Local Storage)
   ipcMain.handle(
     "api:uploadMedia",
-    async (_event, fileName: string, fileBuffer: ArrayBuffer, contentType?: string) => {
+    async (
+      _event,
+      fileName: string,
+      fileBuffer: ArrayBuffer,
+      contentType?: string,
+    ) => {
       try {
         const settings = loadSettings();
-        const ext = path.extname(fileName) || (contentType?.includes("pdf") ? ".pdf" : ".png");
+        const ext =
+          path.extname(fileName) ||
+          (contentType?.includes("pdf") ? ".pdf" : ".png");
         const uniqueKey = `posts/${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}${ext}`;
 
         if (workerClient && settings.workerUrl && settings.apiSecret) {
-          return await workerClient.uploadMedia(uniqueKey, fileBuffer, contentType);
+          return await workerClient.uploadMedia(
+            uniqueKey,
+            fileBuffer,
+            contentType,
+          );
         }
 
         // Local storage fallback under userData/media
@@ -576,56 +701,66 @@ function registerIpcHandlers(): void {
         const error = err instanceof Error ? err.message : String(err);
         return { success: false, error };
       }
-    }
+    },
   );
 
   // CLI Doctor Execution Handler (uv run agent doctor)
   ipcMain.handle("doctor:runCliDoctor", async () => {
-    return new Promise<{ success: boolean; exitCode: number; output: string }>((resolve) => {
-      try {
-        const repoRoot = path.resolve(__dirname, "../..");
-        const settings = loadSettings();
-        const child = spawn("uv", ["run", "agent", "doctor", "--repo-root", repoRoot], {
-          cwd: repoRoot,
-          env: {
-            ...process.env,
-            ...(settings.nimApiKey ? { NVIDIA_NIM_API_KEY: settings.nimApiKey } : {}),
-            ...(settings.nimModel ? { NIM_MODEL_PRIMARY: settings.nimModel } : {}),
-          },
-        });
+    return new Promise<{ success: boolean; exitCode: number; output: string }>(
+      (resolve) => {
+        try {
+          const repoRoot = path.resolve(__dirname, "../..");
+          const settings = loadSettings();
+          const child = spawn(
+            "uv",
+            ["run", "agent", "doctor", "--repo-root", repoRoot],
+            {
+              cwd: repoRoot,
+              env: {
+                ...process.env,
+                ...(settings.nimApiKey
+                  ? { NVIDIA_NIM_API_KEY: settings.nimApiKey }
+                  : {}),
+                ...(settings.nimModel
+                  ? { NIM_MODEL_PRIMARY: settings.nimModel }
+                  : {}),
+              },
+            },
+          );
 
-        let output = "";
-        child.stdout?.on("data", (data) => {
-          output += data.toString();
-        });
-        child.stderr?.on("data", (data) => {
-          output += data.toString();
-        });
-
-        child.on("close", (code) => {
-          resolve({
-            success: code === 0,
-            exitCode: code ?? 0,
-            output: output.trim(),
+          let output = "";
+          child.stdout?.on("data", (data) => {
+            output += data.toString();
           });
-        });
+          child.stderr?.on("data", (data) => {
+            output += data.toString();
+          });
 
-        child.on("error", (err) => {
+          child.on("close", (code) => {
+            resolve({
+              success: code === 0,
+              exitCode: code ?? 0,
+              output: output.trim(),
+            });
+          });
+
+          child.on("error", (err) => {
+            resolve({
+              success: false,
+              exitCode: 1,
+              output: `Failed to spawn CLI doctor: ${err.message}`,
+            });
+          });
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err.message : String(err);
           resolve({
             success: false,
             exitCode: 1,
-            output: `Failed to spawn CLI doctor: ${err.message}`,
+            output: `Error executing doctor check: ${error}`,
           });
-        });
-      } catch (err: unknown) {
-        const error = err instanceof Error ? err.message : String(err);
-        resolve({
-          success: false,
-          exitCode: 1,
-          output: `Error executing doctor check: ${error}`,
-        });
-      }
-    });
+        }
+      },
+    );
   });
 
   // Window Management & Custom Title Bar Handlers
@@ -668,28 +803,31 @@ function registerIpcHandlers(): void {
     return false;
   });
 
-  ipcMain.handle("window:setTitleBarTheme", (_event, theme: "dark" | "light") => {
-    const targetWin = mainWindow || BrowserWindow.getFocusedWindow();
-    if (
-      targetWin &&
-      !targetWin.isDestroyed() &&
-      process.platform !== "darwin" &&
-      typeof targetWin.setTitleBarOverlay === "function"
-    ) {
-      try {
-        targetWin.setTitleBarOverlay({
-          color: theme === "dark" ? "#222222" : "#f2f2f7",
-          symbolColor: theme === "dark" ? "#98989d" : "#86868b",
-          height: 44,
-        });
-        return true;
-      } catch (err) {
-        console.warn("Failed to set title bar overlay theme:", err);
-        return false;
+  ipcMain.handle(
+    "window:setTitleBarTheme",
+    (_event, theme: "dark" | "light") => {
+      const targetWin = mainWindow || BrowserWindow.getFocusedWindow();
+      if (
+        targetWin &&
+        !targetWin.isDestroyed() &&
+        process.platform !== "darwin" &&
+        typeof targetWin.setTitleBarOverlay === "function"
+      ) {
+        try {
+          targetWin.setTitleBarOverlay({
+            color: theme === "dark" ? "#222222" : "#f2f2f7",
+            symbolColor: theme === "dark" ? "#98989d" : "#86868b",
+            height: 44,
+          });
+          return true;
+        } catch (err) {
+          console.warn("Failed to set title bar overlay theme:", err);
+          return false;
+        }
       }
-    }
-    return false;
-  });
+      return false;
+    },
+  );
 }
 
 function getAppIconPath(): string | undefined {
@@ -760,8 +898,8 @@ function createWindow(): BrowserWindow {
     !app.isPackaged &&
     Boolean(
       process.env.VITE_DEV_SERVER_URL ||
-        process.env.NODE_ENV === "development" ||
-        !fs.existsSync(path.join(__dirname, "../dist/index.html"))
+      process.env.NODE_ENV === "development" ||
+      !fs.existsSync(path.join(__dirname, "../dist/index.html")),
     );
 
   if (isDev) {
@@ -807,7 +945,7 @@ app.whenReady().then(() => {
   realtimeClient = new RealtimePushClient(
     mainWindow,
     settings.workerUrl,
-    settings.apiSecret
+    settings.apiSecret,
   );
   realtimeClient.connect();
 

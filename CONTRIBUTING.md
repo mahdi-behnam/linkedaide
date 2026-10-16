@@ -37,17 +37,20 @@ For a full breakdown of agent and architectural rules, see [AGENTS.md](AGENTS.md
 ### Installation Steps
 
 1. **Fork and clone the repository:**
+
    ```bash
-   git clone https://github.com/<your-username>/linkedin-hitl-agent.git
-   cd linkedin-hitl-agent
+   git clone https://github.com/<your-username>/linkedaide.git
+   cd linkedaide
    ```
 
 2. **Set up the virtual environment and install dependencies:**
+
    ```bash
    uv sync
    ```
 
 3. **Install Playwright browser binaries (for browser testing):**
+
    ```bash
    uv run playwright install chromium
    ```
@@ -56,7 +59,7 @@ For a full breakdown of agent and architectural rules, see [AGENTS.md](AGENTS.md
    ```bash
    cp .env.example .env
    ```
-   *Note: For local unit testing, real credentials are not required as all external services (NVIDIA NIM, Telegram, LinkedIn) are mocked in tests.*
+   _Note: For local unit testing, real credentials are not required as all external services (NVIDIA NIM, Telegram, LinkedIn) are mocked in tests._
 
 ---
 
@@ -65,16 +68,21 @@ For a full breakdown of agent and architectural rules, see [AGENTS.md](AGENTS.md
 Before submitting any code changes or opening a pull request, ensure all checks pass locally:
 
 ### 1. Run Unit and Integration Tests
+
 ```bash
 uv run pytest
 ```
+
 To run tests with coverage reporting:
+
 ```bash
 uv run pytest --cov=agent --cov-report=term-missing
 ```
 
 ### 2. Linting and Code Formatting
+
 We use [Ruff](https://docs.astral.sh/ruff/) for fast linting and code formatting:
+
 ```bash
 # Check for lint errors
 uv run ruff check .
@@ -90,7 +98,9 @@ uv run ruff format .
 ```
 
 ### 3. Static Type Checking
+
 We enforce strict typing with `mypy` across source, test, and script directories:
+
 ```bash
 uv run mypy src tests scripts
 ```
@@ -114,6 +124,7 @@ We adhere to [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 ### Common Types:
+
 - `feat`: A new feature or capability.
 - `fix`: A bug fix.
 - `refactor`: Code restructuring without changing external behavior.
@@ -123,9 +134,11 @@ We adhere to [Conventional Commits](https://www.conventionalcommits.org/):
 - `ci`: GitHub Actions or CI/CD updates.
 
 ### Recommended Scopes:
+
 `graphs`, `llm`, `browser`, `telegram`, `state`, `safety`, `config`, `models`, `actions`, `relay`.
 
 ### Examples:
+
 ```text
 feat(graphs): add structured retry handling to scout triage
 fix(browser): update selector fallback for feed post authors

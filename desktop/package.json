@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mahdi-behnam/linkedin-hitl-agent.git"
+    "url": "git+https://github.com/mahdi-behnam/linkedaide.git"
   },
   "build": {
     "appId": "com.linkedin.hitl.agent",
@@ -34,7 +34,7 @@
     "publish": {
       "provider": "github",
       "owner": "mahdi-behnam",
-      "repo": "linkedin-hitl-agent",
+      "repo": "linkedaide",
       "releaseType": "release"
     },
     "directories": {

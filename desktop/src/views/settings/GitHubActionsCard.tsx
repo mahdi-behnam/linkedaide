@@ -49,7 +49,16 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
       </div>
 
       <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed text-[12px]">
-        Dispatches automated workflows (<code className="font-code-sm text-code-sm text-on-surface px-1 py-0.5 rounded bg-surface-container">scout.yml</code> and <code className="font-code-sm text-code-sm text-on-surface px-1 py-0.5 rounded bg-surface-container">execute.yml</code>) via GitHub Actions when using Cloud Remote Runner. Configure your repository coordinates and a Personal Access Token (PAT).
+        Dispatches automated workflows (
+        <code className="font-code-sm text-code-sm text-on-surface px-1 py-0.5 rounded bg-surface-container">
+          scout.yml
+        </code>{" "}
+        and{" "}
+        <code className="font-code-sm text-code-sm text-on-surface px-1 py-0.5 rounded bg-surface-container">
+          execute.yml
+        </code>
+        ) via GitHub Actions when using Cloud Remote Runner. Configure your
+        repository coordinates and a Personal Access Token (PAT).
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-0.5">
@@ -79,7 +88,7 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
             type="text"
             value={githubRepoName}
             onChange={(e) => onRepoNameChange(e.target.value)}
-            placeholder="e.g. linkedin-hitl-agent"
+            placeholder="e.g. linkedaide"
             className="w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-outline-variant/30 focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
           />
           <span className="font-label-sm text-[11px] text-on-surface-variant">
@@ -119,10 +128,29 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
           </span>
           <ul className="list-disc list-inside space-y-0.5">
             <li>
-              <strong className="text-on-surface">Classic PAT (<code className="font-mono">ghp_...</code>):</strong> Must check both <code className="text-amber-500 font-mono font-semibold">workflow</code> (&quot;Update GitHub Action workflows&quot;) AND <code className="text-amber-500 font-mono font-semibold">repo</code>.
+              <strong className="text-on-surface">
+                Classic PAT (<code className="font-mono">ghp_...</code>):
+              </strong>{" "}
+              Must check both{" "}
+              <code className="text-amber-500 font-mono font-semibold">
+                workflow
+              </code>{" "}
+              (&quot;Update GitHub Action workflows&quot;) AND{" "}
+              <code className="text-amber-500 font-mono font-semibold">
+                repo
+              </code>
+              .
             </li>
             <li>
-              <strong className="text-on-surface">Fine-grained PAT (<code className="font-mono">github_pat_...</code>):</strong> Under <em>Repository Permissions</em>, set <code className="text-amber-500 font-mono font-semibold">Actions</code> to <strong>Read and write</strong>.
+              <strong className="text-on-surface">
+                Fine-grained PAT (
+                <code className="font-mono">github_pat_...</code>):
+              </strong>{" "}
+              Under <em>Repository Permissions</em>, set{" "}
+              <code className="text-amber-500 font-mono font-semibold">
+                Actions
+              </code>{" "}
+              to <strong>Read and write</strong>.
             </li>
           </ul>
         </div>

@@ -53,7 +53,7 @@ describe("DoctorView", () => {
     return render(
       <AppProvider>
         <DoctorView />
-      </AppProvider>
+      </AppProvider>,
     );
   };
 
@@ -64,10 +64,12 @@ describe("DoctorView", () => {
       expect(screen.getByText("System Diagnostics")).toBeTruthy();
       expect(screen.getByText("Awaiting Execution")).toBeTruthy();
       expect(
-        screen.getByText("No diagnostic checks performed yet")
+        screen.getByText("No diagnostic checks performed yet"),
       ).toBeTruthy();
       expect(
-        screen.getByText(/Click 'Run Doctor Checks' above to verify runtime dependencies/i)
+        screen.getByText(
+          /Click 'Run Doctor Checks' above to verify runtime dependencies/i,
+        ),
       ).toBeTruthy();
     });
   });
@@ -114,7 +116,7 @@ describe("DoctorView", () => {
       encryptionKey: "test-fernet-key-32b=",
       nimApiKey: "nvapi-test",
       githubRepoOwner: "mahdi-behnam",
-      githubRepoName: "linkedin-hitl-agent",
+      githubRepoName: "linkedaide",
       githubDispatchPat: "", // Missing
     });
 
@@ -124,9 +126,13 @@ describe("DoctorView", () => {
     fireEvent.click(runBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("GitHub Actions Dispatch (Cloud Runner)")).toBeTruthy();
       expect(
-        screen.getByText(/Cloud runner dispatch credentials missing: GITHUB_DISPATCH_PAT/i)
+        screen.getByText("GitHub Actions Dispatch (Cloud Runner)"),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          /Cloud runner dispatch credentials missing: GITHUB_DISPATCH_PAT/i,
+        ),
       ).toBeTruthy();
     });
   });
@@ -152,7 +158,9 @@ describe("DoctorView", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Environment Configuration")).toBeTruthy();
-      expect(screen.queryByText("GitHub Actions Dispatch (Cloud Runner)")).toBeNull();
+      expect(
+        screen.queryByText("GitHub Actions Dispatch (Cloud Runner)"),
+      ).toBeNull();
     });
   });
 
@@ -160,7 +168,8 @@ describe("DoctorView", () => {
     const runCliDoctorMock = vi.fn().mockResolvedValue({
       success: true,
       exitCode: 0,
-      output: "[PASS] Python 3.12 verified\n[PASS] Playwright browser installed\n[PASS] State store directory writable",
+      output:
+        "[PASS] Python 3.12 verified\n[PASS] Playwright browser installed\n[PASS] State store directory writable",
     });
     window.api.runCliDoctor = runCliDoctorMock;
 
@@ -186,4 +195,3 @@ describe("DoctorView", () => {
     expect(screen.queryByTestId("cli-doctor-output")).toBeNull();
   });
 });
-

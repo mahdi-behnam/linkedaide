@@ -60,7 +60,7 @@ describe("SettingsView", () => {
     return render(
       <AppProvider>
         <SettingsView />
-      </AppProvider>
+      </AppProvider>,
     );
   };
 
@@ -70,7 +70,7 @@ describe("SettingsView", () => {
     expect(screen.getByText("Execution Architecture Mode")).toBeTruthy();
     expect(screen.getByText("Cloudflare Worker Edge Relay")).toBeTruthy();
     expect(
-      screen.getByText("Session Vault Encryption (Fernet AES-128-CBC)")
+      screen.getByText("Session Vault Encryption (Fernet AES-128-CBC)"),
     ).toBeTruthy();
   });
 
@@ -78,7 +78,7 @@ describe("SettingsView", () => {
     renderWithContext();
     await waitFor(() => {
       const urlInput = screen.getByPlaceholderText(
-        "https://relay.your-subdomain.workers.dev"
+        "https://relay.your-subdomain.workers.dev",
       ) as HTMLInputElement;
       expect(urlInput.value).toBe("https://relay.custom.workers.dev");
     });
@@ -87,7 +87,7 @@ describe("SettingsView", () => {
   it("toggles execution mode between cloud and local", async () => {
     renderWithContext();
     const localRadio = screen.getByLabelText(
-      /Local Playwright Runner/i
+      /Local Playwright Runner/i,
     ) as HTMLInputElement;
     fireEvent.click(localRadio);
     expect(localRadio.checked).toBe(true);
@@ -111,7 +111,7 @@ describe("SettingsView", () => {
     await waitFor(() => {
       expect(window.api.fetchState).toHaveBeenCalled();
       expect(
-        screen.getByText(/Connected successfully to Cloudflare Worker API/i)
+        screen.getByText(/Connected successfully to Cloudflare Worker API/i),
       ).toBeTruthy();
     });
   });
@@ -128,12 +128,14 @@ describe("SettingsView", () => {
     });
 
     const urlInput = screen.getByPlaceholderText(
-      "https://relay.your-subdomain.workers.dev"
+      "https://relay.your-subdomain.workers.dev",
     ) as HTMLInputElement;
-    fireEvent.change(urlInput, { target: { value: "https://new-worker.workers.dev" } });
+    fireEvent.change(urlInput, {
+      target: { value: "https://new-worker.workers.dev" },
+    });
 
     const secretInput = screen.getByPlaceholderText(
-      "Enter DESKTOP_API_SECRET"
+      "Enter DESKTOP_API_SECRET",
     ) as HTMLInputElement;
     fireEvent.change(secretInput, { target: { value: "new-secret-123" } });
 
@@ -146,16 +148,20 @@ describe("SettingsView", () => {
         apiSecret: "new-secret-123",
       });
       expect(
-        screen.getByText(/Connected successfully to Cloudflare Worker API/i)
+        screen.getByText(/Connected successfully to Cloudflare Worker API/i),
       ).toBeTruthy();
       expect(screen.getByText("42 ms")).toBeTruthy();
     });
   });
 
   it("displays connection error when testConnection fails", async () => {
-    window.api.testConnection = vi.fn().mockRejectedValue(
-      new Error("Authentication failed (401 Unauthorized): Invalid Desktop API Secret.")
-    );
+    window.api.testConnection = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          "Authentication failed (401 Unauthorized): Invalid Desktop API Secret.",
+        ),
+      );
 
     renderWithContext();
     await waitFor(() => {
@@ -168,8 +174,8 @@ describe("SettingsView", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          /Connection error: Authentication failed \(401 Unauthorized\)/i
-        )
+          /Connection error: Authentication failed \(401 Unauthorized\)/i,
+        ),
       ).toBeTruthy();
     });
   });
@@ -185,9 +191,11 @@ describe("SettingsView", () => {
 
     // Modify a setting
     const urlInput = screen.getByPlaceholderText(
-      "https://relay.your-subdomain.workers.dev"
+      "https://relay.your-subdomain.workers.dev",
     ) as HTMLInputElement;
-    fireEvent.change(urlInput, { target: { value: "https://relay.modified.workers.dev" } });
+    fireEvent.change(urlInput, {
+      target: { value: "https://relay.modified.workers.dev" },
+    });
 
     // Floating save and discard buttons appear
     const saveBtn = screen.getByTestId("save-settings-btn");
@@ -201,7 +209,7 @@ describe("SettingsView", () => {
         expect.objectContaining({
           workerUrl: "https://relay.modified.workers.dev",
           executionMode: "cloud",
-        })
+        }),
       );
       expect(screen.getByText("Settings Saved & Applied")).toBeTruthy();
     });
@@ -216,9 +224,11 @@ describe("SettingsView", () => {
     expect(screen.queryByTestId("unsaved-changes-bar")).toBeNull();
 
     const urlInput = screen.getByPlaceholderText(
-      "https://relay.your-subdomain.workers.dev"
+      "https://relay.your-subdomain.workers.dev",
     ) as HTMLInputElement;
-    fireEvent.change(urlInput, { target: { value: "https://relay.temporary.workers.dev" } });
+    fireEvent.change(urlInput, {
+      target: { value: "https://relay.temporary.workers.dev" },
+    });
 
     expect(screen.getByTestId("unsaved-changes-bar")).toBeTruthy();
 
@@ -235,11 +245,15 @@ describe("SettingsView", () => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
-    const modelSelect = screen.getByLabelText("Primary NIM Model") as HTMLSelectElement;
-    fireEvent.change(modelSelect, { target: { value: "meta/llama-3.3-70b-instruct" } });
+    const modelSelect = screen.getByLabelText(
+      "Primary NIM Model",
+    ) as HTMLSelectElement;
+    fireEvent.change(modelSelect, {
+      target: { value: "meta/llama-3.3-70b-instruct" },
+    });
 
     const keyInput = screen.getByPlaceholderText(
-      "Enter NVIDIA_NIM_API_KEY (nvapi-...)"
+      "Enter NVIDIA_NIM_API_KEY (nvapi-...)",
     ) as HTMLInputElement;
     fireEvent.change(keyInput, { target: { value: "nvapi-test-token" } });
 
@@ -251,7 +265,7 @@ describe("SettingsView", () => {
         expect.objectContaining({
           nimModel: "meta/llama-3.3-70b-instruct",
           nimApiKey: "nvapi-test-token",
-        })
+        }),
       );
     });
   });
@@ -280,11 +294,17 @@ describe("SettingsView", () => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
-    const modelSelect = screen.getByLabelText("Primary NIM Model") as HTMLSelectElement;
+    const modelSelect = screen.getByLabelText(
+      "Primary NIM Model",
+    ) as HTMLSelectElement;
     fireEvent.change(modelSelect, { target: { value: "__custom__" } });
 
-    const customInput = screen.getByLabelText("Custom NIM Model Identifier") as HTMLInputElement;
-    fireEvent.change(customInput, { target: { value: "custom-org/special-model-v1" } });
+    const customInput = screen.getByLabelText(
+      "Custom NIM Model Identifier",
+    ) as HTMLInputElement;
+    fireEvent.change(customInput, {
+      target: { value: "custom-org/special-model-v1" },
+    });
 
     const saveBtn = screen.getByTestId("save-settings-btn");
     fireEvent.click(saveBtn);
@@ -293,7 +313,7 @@ describe("SettingsView", () => {
       expect(window.api.saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           nimModel: "custom-org/special-model-v1",
-        })
+        }),
       );
     });
   });
@@ -326,22 +346,32 @@ describe("SettingsView", () => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
-    expect(screen.getByText("GitHub Actions Cloud Runner Dispatch")).toBeTruthy();
+    expect(
+      screen.getByText("GitHub Actions Cloud Runner Dispatch"),
+    ).toBeTruthy();
 
-    const ownerInput = screen.getByPlaceholderText("e.g. mahdi-behnam") as HTMLInputElement;
+    const ownerInput = screen.getByPlaceholderText(
+      "e.g. mahdi-behnam",
+    ) as HTMLInputElement;
     fireEvent.change(ownerInput, { target: { value: "my-github-user" } });
 
-    const repoInput = screen.getByPlaceholderText("e.g. linkedin-hitl-agent") as HTMLInputElement;
+    const repoInput = screen.getByPlaceholderText(
+      "e.g. linkedaide",
+    ) as HTMLInputElement;
     fireEvent.change(repoInput, { target: { value: "my-linkedin-repo" } });
 
     const patInput = screen.getByPlaceholderText(
-      "Enter GITHUB_DISPATCH_PAT (ghp_... or github_pat_...)"
+      "Enter GITHUB_DISPATCH_PAT (ghp_... or github_pat_...)",
     ) as HTMLInputElement;
     expect(patInput.type).toBe("password");
-    fireEvent.change(patInput, { target: { value: "ghp_securetoken9876543210" } });
+    fireEvent.change(patInput, {
+      target: { value: "ghp_securetoken9876543210" },
+    });
 
     // Toggle show/hide
-    const patToggle = screen.getByRole("button", { name: /Toggle GitHub PAT visibility/i });
+    const patToggle = screen.getByRole("button", {
+      name: /Toggle GitHub PAT visibility/i,
+    });
     fireEvent.click(patToggle);
     expect(patInput.type).toBe("text");
 
@@ -354,7 +384,7 @@ describe("SettingsView", () => {
           githubRepoOwner: "my-github-user",
           githubRepoName: "my-linkedin-repo",
           githubDispatchPat: "ghp_securetoken9876543210",
-        })
+        }),
       );
     });
   });
@@ -365,7 +395,9 @@ describe("SettingsView", () => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
-    const connInput = screen.getByLabelText("Max Connections / Day") as HTMLInputElement;
+    const connInput = screen.getByLabelText(
+      "Max Connections / Day",
+    ) as HTMLInputElement;
     fireEvent.change(connInput, { target: { value: "18" } });
 
     const saveBtn = screen.getByTestId("save-settings-btn");
@@ -375,7 +407,7 @@ describe("SettingsView", () => {
       expect(window.api.saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           maxConnectionsPerDay: 18,
-        })
+        }),
       );
     });
   });
@@ -401,7 +433,7 @@ describe("SettingsView", () => {
       expect(window.api.saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           timezone: "America/New_York",
-        })
+        }),
       );
     });
   });
@@ -415,14 +447,18 @@ describe("SettingsView", () => {
     expect(screen.getByText("Scout Targets & Focus Topics")).toBeTruthy();
 
     // Add focus area
-    const focusInput = screen.getByPlaceholderText(/Add focus topic/i) as HTMLInputElement;
+    const focusInput = screen.getByPlaceholderText(
+      /Add focus topic/i,
+    ) as HTMLInputElement;
     fireEvent.change(focusInput, { target: { value: "Distributed AI" } });
     fireEvent.keyDown(focusInput, { key: "Enter", code: "Enter" });
 
     expect(screen.getByText("Distributed AI")).toBeTruthy();
 
     // Add hashtag without leading # (should auto-normalize)
-    const hashtagInput = screen.getByPlaceholderText(/Add hashtag/i) as HTMLInputElement;
+    const hashtagInput = screen.getByPlaceholderText(
+      /Add hashtag/i,
+    ) as HTMLInputElement;
     fireEvent.change(hashtagInput, { target: { value: "agentic" } });
     fireEvent.keyDown(hashtagInput, { key: "Enter", code: "Enter" });
 
@@ -437,12 +473,14 @@ describe("SettingsView", () => {
         expect.objectContaining({
           userFocusAreas: ["Distributed AI"],
           targetHashtags: ["#agentic"],
-        })
+        }),
       );
     });
 
     // Remove the focus area
-    const removeFocusBtn = screen.getByLabelText("Remove focus area Distributed AI");
+    const removeFocusBtn = screen.getByLabelText(
+      "Remove focus area Distributed AI",
+    );
     fireEvent.click(removeFocusBtn);
     expect(screen.queryByText("Distributed AI")).toBeNull();
   });
@@ -453,13 +491,19 @@ describe("SettingsView", () => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
-    const urlInput = screen.getByPlaceholderText(/linkedin.com\/company/i) as HTMLInputElement;
-    fireEvent.change(urlInput, { target: { value: "https://www.linkedin.com/company/anthropic/posts/" } });
+    const urlInput = screen.getByPlaceholderText(
+      /linkedin.com\/company/i,
+    ) as HTMLInputElement;
+    fireEvent.change(urlInput, {
+      target: { value: "https://www.linkedin.com/company/anthropic/posts/" },
+    });
 
     const addBtn = screen.getByRole("button", { name: "Add target URL" });
     fireEvent.click(addBtn);
 
-    expect(screen.getByText("https://www.linkedin.com/company/anthropic/posts/")).toBeTruthy();
+    expect(
+      screen.getByText("https://www.linkedin.com/company/anthropic/posts/"),
+    ).toBeTruthy();
 
     const saveBtn = screen.getByTestId("save-settings-btn");
     fireEvent.click(saveBtn);
@@ -467,15 +511,21 @@ describe("SettingsView", () => {
     await waitFor(() => {
       expect(window.api.saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          scoutTargetUrls: ["https://www.linkedin.com/company/anthropic/posts/"],
-        })
+          scoutTargetUrls: [
+            "https://www.linkedin.com/company/anthropic/posts/",
+          ],
+        }),
       );
     });
 
     // Remove URL
-    const removeUrlBtn = screen.getByLabelText("Remove URL https://www.linkedin.com/company/anthropic/posts/");
+    const removeUrlBtn = screen.getByLabelText(
+      "Remove URL https://www.linkedin.com/company/anthropic/posts/",
+    );
     fireEvent.click(removeUrlBtn);
-    expect(screen.queryByText("https://www.linkedin.com/company/anthropic/posts/")).toBeNull();
+    expect(
+      screen.queryByText("https://www.linkedin.com/company/anthropic/posts/"),
+    ).toBeNull();
   });
 
   it("renders ScoutEngineCard and allows configuring scroll depth, multiplier, confidence, and pre-reactions", async () => {
@@ -487,27 +537,37 @@ describe("SettingsView", () => {
     expect(screen.getByText("Scout Engine & Scraping Parameters")).toBeTruthy();
 
     // Change scroll depth to 3 screens
-    const scrollSelect = screen.getByLabelText("Feed Scroll Depth") as HTMLSelectElement;
+    const scrollSelect = screen.getByLabelText(
+      "Feed Scroll Depth",
+    ) as HTMLSelectElement;
     fireEvent.change(scrollSelect, { target: { value: "3" } });
     expect(scrollSelect.value).toBe("3");
 
     // Change candidate multiplier to 4x
-    const multiplierSelect = screen.getByLabelText("Candidate Pool Multiplier") as HTMLSelectElement;
+    const multiplierSelect = screen.getByLabelText(
+      "Candidate Pool Multiplier",
+    ) as HTMLSelectElement;
     fireEvent.change(multiplierSelect, { target: { value: "4" } });
     expect(multiplierSelect.value).toBe("4");
 
     // Change min triage confidence
-    const confidenceSlider = screen.getByLabelText("Min Triage Confidence") as HTMLInputElement;
+    const confidenceSlider = screen.getByLabelText(
+      "Min Triage Confidence",
+    ) as HTMLInputElement;
     fireEvent.change(confidenceSlider, { target: { value: "0.85" } });
     expect(screen.getByText("85%")).toBeTruthy();
 
     // Change max comment words
-    const maxWordsInput = screen.getByLabelText("Max Comment Words") as HTMLInputElement;
+    const maxWordsInput = screen.getByLabelText(
+      "Max Comment Words",
+    ) as HTMLInputElement;
     fireEvent.change(maxWordsInput, { target: { value: "60" } });
     expect(maxWordsInput.value).toBe("60");
 
     // Enable pre-comment reaction
-    const preReactionCheckbox = screen.getByRole("checkbox", { name: /Organic Pre-Comment Reaction/i }) as HTMLInputElement;
+    const preReactionCheckbox = screen.getByRole("checkbox", {
+      name: /Organic Pre-Comment Reaction/i,
+    }) as HTMLInputElement;
     fireEvent.click(preReactionCheckbox);
     expect(preReactionCheckbox.checked).toBe(true);
 
@@ -528,7 +588,7 @@ describe("SettingsView", () => {
           maxCommentWords: 60,
           enablePreCommentReaction: true,
           defaultReactionType: "insightful",
-        })
+        }),
       );
     });
   });

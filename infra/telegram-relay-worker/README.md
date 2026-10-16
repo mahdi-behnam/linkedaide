@@ -11,10 +11,10 @@ Configure these secrets via `wrangler secret put <NAME>`:
 - `TELEGRAM_AUTHORIZED_CHAT_ID` — Numeric Telegram chat/user ID authorized to approve (from `@userinfobot`)
 - `GITHUB_DISPATCH_PAT` — GitHub Personal Access Token (Fine-Grained `Contents: Read and write` or Classic `repo` scope)
 - `GITHUB_REPO_OWNER` — GitHub username or organization (e.g. `your-username`)
-- `GITHUB_REPO_NAME` — Repository name (e.g. `linkedin-hitl-agent`)
+- `GITHUB_REPO_NAME` — Repository name (e.g. `linkedaide`)
 - `DESKTOP_API_SECRET` — High-entropy secret authenticating Desktop Control Panel requests and WebSocket subscriptions
 - `NVIDIA_NIM_API_KEY` — NVIDIA NIM API Key (`nvapi-...`) used by `/api/rewrite` to power live comment draft tone adjustments and regeneration in the Desktop App
-- `LLM_BASE_URL` — *(Optional)* Base URL for custom LLM endpoint (defaults to `https://integrate.api.nvidia.com/v1`)
+- `LLM_BASE_URL` — _(Optional)_ Base URL for custom LLM endpoint (defaults to `https://integrate.api.nvidia.com/v1`)
 
 ## Deployment
 

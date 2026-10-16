@@ -16,13 +16,19 @@ import { UnsavedChangesBar } from "./settings/UnsavedChangesBar";
 import { getDefaultTimezone } from "../utils/datetime";
 import type { DesktopSettings } from "../types/api";
 
-export function areSettingsEqual(a: DesktopSettings, b: DesktopSettings): boolean {
-  const allKeys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof DesktopSettings>;
+export function areSettingsEqual(
+  a: DesktopSettings,
+  b: DesktopSettings,
+): boolean {
+  const allKeys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<
+    keyof DesktopSettings
+  >;
   for (const k of allKeys) {
     const valA = a[k];
     const valB = b[k];
     if (Array.isArray(valA) || Array.isArray(valB)) {
-      if (JSON.stringify(valA || []) !== JSON.stringify(valB || [])) return false;
+      if (JSON.stringify(valA || []) !== JSON.stringify(valB || []))
+        return false;
       continue;
     }
     const normalizedA = valA !== undefined ? valA : "";
@@ -39,7 +45,7 @@ const defaultSettings: DesktopSettings = {
   nimModel: "nvidia/nemotron-3-super-120b-a12b",
   nimApiKey: "",
   githubRepoOwner: "mahdi-behnam",
-  githubRepoName: "linkedin-hitl-agent",
+  githubRepoName: "linkedaide",
   githubDispatchPat: "",
   autoRefreshInterval: 600,
   executionMode: "cloud",
@@ -83,7 +89,8 @@ export const SettingsView: React.FC = () => {
     setDiscardSettingsHandler,
   } = useApp();
   const [settings, setSettings] = useState<DesktopSettings>(defaultSettings);
-  const [savedSettings, setSavedSettings] = useState<DesktopSettings>(defaultSettings);
+  const [savedSettings, setSavedSettings] =
+    useState<DesktopSettings>(defaultSettings);
   const [showSecret, setShowSecret] = useState(false);
   const [showNimKey, setShowNimKey] = useState(false);
   const [showGithubPat, setShowGithubPat] = useState(false);
@@ -107,7 +114,7 @@ export const SettingsView: React.FC = () => {
 
   const hasUnsavedChanges = useMemo(
     () => !areSettingsEqual(settings, savedSettings),
-    [settings, savedSettings]
+    [settings, savedSettings],
   );
 
   const handleDiscard = useCallback(() => {
@@ -155,18 +162,20 @@ export const SettingsView: React.FC = () => {
           return true;
         }
       } catch (err) {
-        setSaveError(err instanceof Error ? err.message : "Error saving settings");
+        setSaveError(
+          err instanceof Error ? err.message : "Error saving settings",
+        );
         return false;
       } finally {
         setIsSaving(false);
       }
     },
-    [settings, setAppTimezone, setAppInterval]
+    [settings, setAppTimezone, setAppInterval],
   );
 
   const handleChange = <K extends keyof DesktopSettings>(
     key: K,
-    value: DesktopSettings[K]
+    value: DesktopSettings[K],
   ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     if (key === "timezone" && typeof value === "string") {
@@ -187,7 +196,9 @@ export const SettingsView: React.FC = () => {
             setSavedSettings((prev) => ({ ...prev, ...loaded }));
             if (loaded.nimModel) {
               setModelsList((prev) =>
-                prev.includes(loaded.nimModel!) ? prev : [loaded.nimModel!, ...prev]
+                prev.includes(loaded.nimModel!)
+                  ? prev
+                  : [loaded.nimModel!, ...prev],
               );
             }
           }
@@ -214,7 +225,13 @@ export const SettingsView: React.FC = () => {
       setDiscardSettingsHandler(null);
       setHasUnsavedSettings(false);
     };
-  }, [handleSave, handleDiscard, setSaveSettingsHandler, setDiscardSettingsHandler, setHasUnsavedSettings]);
+  }, [
+    handleSave,
+    handleDiscard,
+    setSaveSettingsHandler,
+    setDiscardSettingsHandler,
+    setHasUnsavedSettings,
+  ]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -343,7 +360,9 @@ export const SettingsView: React.FC = () => {
             Agent Configuration &amp; Settings
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-            Configure execution architecture, Cloudflare Workers edge credentials, Fernet encryption keyrings, notification triggers, and autonomous safety boundaries.
+            Configure execution architecture, Cloudflare Workers edge
+            credentials, Fernet encryption keyrings, notification triggers, and
+            autonomous safety boundaries.
           </p>
         </div>
 
@@ -381,7 +400,9 @@ export const SettingsView: React.FC = () => {
           onToggleShowSecret={() => setShowSecret((prev) => !prev)}
           onWorkerUrlChange={(url) => handleChange("workerUrl", url)}
           onApiSecretChange={(secret) => handleChange("apiSecret", secret)}
-          onIntervalChange={(interval) => handleChange("autoRefreshInterval", interval)}
+          onIntervalChange={(interval) =>
+            handleChange("autoRefreshInterval", interval)
+          }
           isTesting={isTesting}
           testResult={testResult}
           onTestConnection={handleTestConnection}
@@ -429,15 +450,21 @@ export const SettingsView: React.FC = () => {
         <SafetyGuardrailsCard
           maxCommentsPerDay={settings.maxCommentsPerDay ?? quota.commentsMax}
           maxPostsPerDay={settings.maxPostsPerDay ?? quota.postsMax}
-          maxConnectionsPerDay={settings.maxConnectionsPerDay ?? quota.connectionsMax ?? 10}
+          maxConnectionsPerDay={
+            settings.maxConnectionsPerDay ?? quota.connectionsMax ?? 10
+          }
           maxSuggestionsPerRun={settings.maxSuggestionsPerRun ?? 10}
           actionTtlHours={settings.actionTtlHours ?? 24}
           autoRefreshInterval={settings.autoRefreshInterval ?? 600}
           headless={settings.headless ?? true}
           onCommentsChange={(val) => handleChange("maxCommentsPerDay", val)}
           onPostsChange={(val) => handleChange("maxPostsPerDay", val)}
-          onConnectionsChange={(val) => handleChange("maxConnectionsPerDay", val)}
-          onSuggestionsChange={(val) => handleChange("maxSuggestionsPerRun", val)}
+          onConnectionsChange={(val) =>
+            handleChange("maxConnectionsPerDay", val)
+          }
+          onSuggestionsChange={(val) =>
+            handleChange("maxSuggestionsPerRun", val)
+          }
           onTtlChange={(val) => handleChange("actionTtlHours", val)}
           onIntervalChange={(val) => handleChange("autoRefreshInterval", val)}
           onHeadlessChange={(val) => handleChange("headless", val)}
@@ -449,7 +476,9 @@ export const SettingsView: React.FC = () => {
           targetHashtags={settings.targetHashtags ?? []}
           scoutTargetUrls={settings.scoutTargetUrls ?? []}
           onFocusAreasChange={(areas) => handleChange("userFocusAreas", areas)}
-          onHashtagsChange={(hashtags) => handleChange("targetHashtags", hashtags)}
+          onHashtagsChange={(hashtags) =>
+            handleChange("targetHashtags", hashtags)
+          }
           onTargetUrlsChange={(urls) => handleChange("scoutTargetUrls", urls)}
         />
 
@@ -460,13 +489,25 @@ export const SettingsView: React.FC = () => {
           minTriageConfidence={settings.minTriageConfidence ?? 0.7}
           maxCommentWords={settings.maxCommentWords ?? 80}
           enablePreCommentReaction={settings.enablePreCommentReaction ?? false}
-          defaultReactionType={(settings.defaultReactionType as ReactionType) ?? "like"}
-          onScrollScreensChange={(screens) => handleChange("feedScrollScreens", screens)}
-          onMultiplierChange={(multiplier) => handleChange("candidatePoolMultiplier", multiplier)}
-          onConfidenceChange={(confidence) => handleChange("minTriageConfidence", confidence)}
+          defaultReactionType={
+            (settings.defaultReactionType as ReactionType) ?? "like"
+          }
+          onScrollScreensChange={(screens) =>
+            handleChange("feedScrollScreens", screens)
+          }
+          onMultiplierChange={(multiplier) =>
+            handleChange("candidatePoolMultiplier", multiplier)
+          }
+          onConfidenceChange={(confidence) =>
+            handleChange("minTriageConfidence", confidence)
+          }
           onMaxWordsChange={(words) => handleChange("maxCommentWords", words)}
-          onPreReactionToggle={(enabled) => handleChange("enablePreCommentReaction", enabled)}
-          onReactionTypeChange={(type) => handleChange("defaultReactionType", type)}
+          onPreReactionToggle={(enabled) =>
+            handleChange("enablePreCommentReaction", enabled)
+          }
+          onReactionTypeChange={(type) =>
+            handleChange("defaultReactionType", type)
+          }
         />
 
         {/* Section 9: Scout Schedule & Cadence */}
@@ -477,7 +518,9 @@ export const SettingsView: React.FC = () => {
           minimizeToTray={settings.minimizeToTray ?? true}
           notificationsEnabled={settings.notificationsEnabled ?? true}
           onMinimizeChange={(val) => handleChange("minimizeToTray", val)}
-          onNotificationsChange={(val) => handleChange("notificationsEnabled", val)}
+          onNotificationsChange={(val) =>
+            handleChange("notificationsEnabled", val)
+          }
         />
 
         {/* Section 8: Regional & Timezone Preferences */}
@@ -485,7 +528,6 @@ export const SettingsView: React.FC = () => {
           timezone={settings.timezone ?? getDefaultTimezone()}
           onChange={(tz) => handleChange("timezone", tz)}
         />
-
       </form>
 
       {hasUnsavedChanges && (

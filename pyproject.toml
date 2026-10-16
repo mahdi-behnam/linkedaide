@@ -1,5 +1,5 @@
 [project]
-name = "linkedin-hitl-agent"
+name = "linkedaide"
 version = "1.3.0"
 description = "Human-in-the-Loop LinkedIn AI Agent orchestrating scouting, LLM triage, Telegram approval, and Playwright execution."
 readme = "README.md"

@@ -16,7 +16,9 @@ import {
   triggerScoutAction,
 } from "./actions";
 
-export function buildAppMenuTemplate(options: AppMenuOptions): MenuItemConstructorOptions[] {
+export function buildAppMenuTemplate(
+  options: AppMenuOptions,
+): MenuItemConstructorOptions[] {
   const isMac = process.platform === "darwin";
   const getWin = options.getMainWindow;
   const template: MenuItemConstructorOptions[] = [];
@@ -87,7 +89,7 @@ export function buildAppMenuTemplate(options: AppMenuOptions): MenuItemConstruct
         click: () => navigateToTab(getWin, "settings"),
       },
       { type: "separator" },
-      { role: "quit", label: "Exit", accelerator: "Ctrl+Q" }
+      { role: "quit", label: "Exit", accelerator: "Ctrl+Q" },
     );
   } else {
     fileSubmenu.push({ role: "close" });
@@ -251,7 +253,7 @@ export function buildAppMenuTemplate(options: AppMenuOptions): MenuItemConstruct
       { type: "separator" },
       { role: "front" },
       { type: "separator" },
-      { role: "window" }
+      { role: "window" },
     );
   } else {
     windowSubmenu.push({ role: "close" });
@@ -279,13 +281,16 @@ export function buildAppMenuTemplate(options: AppMenuOptions): MenuItemConstruct
       {
         label: "Documentation & Setup Guide",
         click: () => {
-          shell.openExternal("https://github.com/mahdi-behnam/linkedin-hitl-agent#readme");
+          shell.openExternal(
+            "https://github.com/mahdi-behnam/linkedaide#readme",
+          );
         },
       },
       {
         label: "Cloudflare Relay Health",
         click: () => {
-          const workerUrl = options.workerUrl || "https://relay.hitl-agent.workers.dev";
+          const workerUrl =
+            options.workerUrl || "https://relay.hitl-agent.workers.dev";
           shell.openExternal(`${workerUrl}/health`);
         },
       },
