@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.7.0...v1.7.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **desktop:** resolve typescript compiler errors for deep navigation and search ([aa19732](https://github.com/mahdi-behnam/linkedaide/commit/aa19732d055150bd174734ec5f489eb190f8f829))
+
 ## [1.7.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.6.0...v1.7.0) (2026-10-16)
 
 
