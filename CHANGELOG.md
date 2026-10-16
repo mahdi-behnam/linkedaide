@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/mahdi-behnam/linkedin-hitl-agent/compare/v1.2.1...v1.3.0) (2026-10-16)
+
+
+### Features
+
+* **browser:** decode protobuf activity tokens in modern feed cards ([4abe176](https://github.com/mahdi-behnam/linkedin-hitl-agent/commit/4abe176c541a66c7e002523658421a8acb46ff42))
+
+
+### Bug Fixes
+
+* **browser:** resolve real post URNs from expanded containers and prevent invalid links ([5e17b1a](https://github.com/mahdi-behnam/linkedin-hitl-agent/commit/5e17b1aee89d9d0a2e47677e065512da5fdebced))
+
 ## [1.2.1](https://github.com/mahdi-behnam/linkedin-hitl-agent/compare/v1.2.0...v1.2.1) (2026-10-15)
 
 

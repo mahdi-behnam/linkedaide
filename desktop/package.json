@@ -1,6 +1,6 @@
 {
   "name": "linkedin-hitl-desktop",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Desktop Control Panel for LinkedIn Human-in-the-Loop AI Agent",
   "main": "dist-electron/main.js",
   "type": "module",
