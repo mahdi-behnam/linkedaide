@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from agent.browser.feed_parser import parse_feed_card
+from agent.browser.feed_parser import extract_valid_urn, parse_feed_card
 from agent.browser.scraper import FeedScraper
 from agent.browser.url_utils import hashtag_to_feed_url
 from agent.config import Settings
@@ -773,5 +773,204 @@ async def test_parse_feed_card_clicks_see_more_to_expand_post() -> None:
     assert record is not None
     assert record.post_text == expanded_text
     assert record.author_name == "Jane Developer"
+
+
+def test_extract_valid_urn() -> None:
+    """Test extract_valid_urn handles digits, permalinks, mocks, and rejects layout hashes."""
+    assert (
+        extract_valid_urn("urn:li:activity:7123456789012345678")
+        == "urn:li:activity:7123456789012345678"
+    )
+    assert extract_valid_urn("urn:li:ugcPost:123456789") == "urn:li:ugcPost:123456789"
+    assert extract_valid_urn("urn:li:share:987654321") == "urn:li:share:987654321"
+    assert (
+        extract_valid_urn("https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678/")
+        == "urn:li:activity:7123456789012345678"
+    )
+    assert (
+        extract_valid_urn(
+            "https://www.linkedin.com/posts/alice_headline-activity-7123456789012345678-abcd?utm_source=share"
+        )
+        == "urn:li:activity:7123456789012345678"
+    )
+    assert (
+        extract_valid_urn(
+            "expanded-desktop-feed-update-urn:li:activity:7999888777-MAIN_FEED_RELEVANCE"
+        )
+        == "urn:li:activity:7999888777"
+    )
+    # Reject opaque DOM layout container hash
+    assert (
+        extract_valid_urn("expandedwia6F-QsrTbyoUOQxmOTW4pERTjZUyQ2k50KXuJhs2EMAIN_FEED_RELEVANCE")
+        is None
+    )
+    assert extract_valid_urn("wia6F-QsrTbyoUOQxmOTW4pERTjZUyQ2k50KXuJhs2E") is None
+    assert extract_valid_urn("urn:li:activity:wia6F-QsrTbyoUOQxmOTW4pERTjZUyQ2k50KXuJhs2E") is None
+    assert extract_valid_urn("urn:li:activity:scraped_0_123456") is None
+    assert extract_valid_urn("") is None
+    assert extract_valid_urn(None) is None
+
+
+@pytest.mark.asyncio
+async def test_scraper_resolves_real_urn_when_expanded_container_has_opaque_hash() -> None:
+    """When outer card has an opaque expanded hash like wia6F-Qsr..., resolve real URN from inner elements."""
+    now = datetime.now(UTC)
+
+    card = MagicMock()
+    # Outer card has opaque layout hash ID reported by user
+    card.get_attribute = AsyncMock(
+        side_effect=lambda attr: (
+            "expandedwia6F-QsrTbyoUOQxmOTW4pERTjZUyQ2k50KXuJhs2EMAIN_FEED_RELEVANCE"
+            if attr == "id"
+            else None
+        )
+    )
+
+    comment_btn = MagicMock(count=AsyncMock(return_value=1))
+    actor_el = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Alice Engineer • 1st\nAI Architect"),
+    )
+    actor_link = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Alice Engineer • 1st"),
+        get_attribute=AsyncMock(return_value="https://www.linkedin.com/in/alice-engineer"),
+    )
+    actor_links = MagicMock(
+        count=AsyncMock(return_value=1),
+        nth=MagicMock(return_value=actor_link),
+    )
+    text_box = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(
+            return_value="Building high performance agents with LangGraph and Python 3.14 async runtime."
+        ),
+    )
+
+    # Inner element containing real LinkedIn activity URN
+    inner_urn_el = MagicMock()
+    inner_urn_el.get_attribute = AsyncMock(
+        side_effect=lambda attr: (
+            "urn:li:activity:7123456789012345678" if attr == "data-urn" else None
+        )
+    )
+    inner_urn_els = MagicMock(
+        count=AsyncMock(return_value=1),
+        nth=MagicMock(return_value=inner_urn_el),
+    )
+
+    def card_locator(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "Comment" in selector:
+            loc.first = comment_btn
+        elif "a[href*='/in/']" in selector:
+            return actor_links
+        elif "actor" in selector:
+            loc.first = actor_el
+        elif "expandable-text-box" in selector or "update-components-text" in selector:
+            loc.first = text_box
+        elif "data-urn" in selector:
+            return inner_urn_els
+        else:
+            unmatched = MagicMock(count=AsyncMock(return_value=0))
+            loc.first = unmatched
+            return loc
+        return loc
+
+    card.locator = MagicMock(side_effect=card_locator)
+
+    record, reason = await parse_feed_card(card, index=0, now=now, seen_hashes=set())
+
+    assert record is not None
+    # Must NOT have fabricated the fake wia6F... link
+    assert "wia6F" not in record.post_urn
+    assert "wia6F" not in record.post_url
+    # Must have resolved the real numeric activity URN and canonical post URL
+    assert record.post_urn == "urn:li:activity:7123456789012345678"
+    assert (
+        record.post_url
+        == "https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678/"
+    )
+
+
+@pytest.mark.asyncio
+async def test_scraper_resolves_urn_from_posts_permalink() -> None:
+    """When outer card has opaque hash and no data-urn, resolve URN from /posts/ permalink anchor."""
+    now = datetime.now(UTC)
+
+    card = MagicMock()
+    card.get_attribute = AsyncMock(
+        side_effect=lambda attr: (
+            "expandedwia6F-QsrTbyoUOQxmOTW4pERTjZUyQ2k50KXuJhs2EMAIN_FEED_RELEVANCE"
+            if attr == "id"
+            else None
+        )
+    )
+
+    comment_btn = MagicMock(count=AsyncMock(return_value=1))
+    actor_el = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Bob Developer • 1st"),
+    )
+    actor_link = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Bob Developer • 1st"),
+        get_attribute=AsyncMock(return_value="https://www.linkedin.com/in/bob-dev"),
+    )
+    actor_links = MagicMock(
+        count=AsyncMock(return_value=1),
+        nth=MagicMock(return_value=actor_link),
+    )
+    text_box = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(
+            return_value="Exploring the frontier of autonomous coding systems with Playwright."
+        ),
+    )
+
+    # Empty inner URN elements
+    empty_urn_els = MagicMock(count=AsyncMock(return_value=0))
+
+    # Inner link containing /posts/ permalink with activity ID
+    permalink_el = MagicMock()
+    permalink_el.get_attribute = AsyncMock(
+        return_value="https://www.linkedin.com/posts/bob-dev_coding-systems-activity-7987654321098765432-xyz?utm_source=share"
+    )
+    inner_links = MagicMock(
+        count=AsyncMock(return_value=1),
+        nth=MagicMock(return_value=permalink_el),
+    )
+
+    def card_locator(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "Comment" in selector:
+            loc.first = comment_btn
+        elif "a[href*='/in/']" in selector:
+            return actor_links
+        elif "actor" in selector:
+            loc.first = actor_el
+        elif "expandable-text-box" in selector or "update-components-text" in selector:
+            loc.first = text_box
+        elif "data-urn" in selector:
+            return empty_urn_els
+        elif "a[href*='/feed/update/']" in selector or "a[href*='/posts/']" in selector:
+            return inner_links
+        else:
+            unmatched = MagicMock(count=AsyncMock(return_value=0))
+            loc.first = unmatched
+            return loc
+        return loc
+
+    card.locator = MagicMock(side_effect=card_locator)
+
+    record, reason = await parse_feed_card(card, index=0, now=now, seen_hashes=set())
+
+    assert record is not None
+    assert record.post_urn == "urn:li:activity:7987654321098765432"
+    assert (
+        record.post_url
+        == "https://www.linkedin.com/feed/update/urn:li:activity:7987654321098765432/"
+    )
+
 
 

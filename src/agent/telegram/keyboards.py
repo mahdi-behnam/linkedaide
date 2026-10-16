@@ -85,7 +85,7 @@ def build_suggestion_keyboard(
             )
 
     rows: list[list[dict[str, str]]] = []
-    if post_url and post_url.strip().startswith("http"):
+    if post_url and post_url.strip().startswith("http") and "scraped_" not in post_url:
         rows.append([{"text": "🔗 View Post on LinkedIn", "url": post_url.strip()}])
 
     rows.append([
@@ -577,7 +577,7 @@ def format_suggestion_card(item: PendingAction, max_card_length: int = 3800) -> 
     elif author_headline:
         pre_lines.append(f"<b>Author Headline:</b> <i>{html.escape(author_headline)}</i>")
 
-    if item.post_url:
+    if item.post_url and "scraped_" not in item.post_url:
         pre_lines.append(
             f'<b>Post URL:</b> <a href="{html.escape(item.post_url)}">View on LinkedIn</a>'
         )
@@ -665,7 +665,7 @@ def format_rejection_card(item: PendingAction, reason: str | None = None) -> str
     if author_name:
         lines.append(f"<b>Author:</b> {html.escape(author_name)}")
 
-    if item.post_url:
+    if item.post_url and "scraped_" not in item.post_url:
         lines.append(f'<b>Target:</b> <a href="{html.escape(item.post_url)}">Original Post</a>')
 
     if item.draft_text and not is_reaction:
@@ -739,7 +739,7 @@ def build_outcome_message(
         lines.append(f"<b>Item:</b> <code>{html.escape(item.item_id)}</code> ({item_type})")
         if item.author_name and item.action_type not in ("approve_post", "post"):
             lines.append(f"<b>Author:</b> {html.escape(item.author_name)}")
-        if item.post_url:
+        if item.post_url and "scraped_" not in item.post_url:
             lines.append(f'<b>Target:</b> <a href="{html.escape(item.post_url)}">Original Post</a>')
         if verification_url:
             if item.action_type in ("approve_connection", "connection"):
