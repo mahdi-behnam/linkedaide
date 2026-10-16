@@ -1,6 +1,6 @@
 # Operational Troubleshooting & Diagnostics Guide
 
-This guide details common operational scenarios, diagnostic steps, and recovery procedures for the LinkedIn Human-in-the-Loop (HITL) AI Agent.
+This guide details common operational scenarios, diagnostic steps, and recovery procedures for LinkedAide.
 
 ---
 

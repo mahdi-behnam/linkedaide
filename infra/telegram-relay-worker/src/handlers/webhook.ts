@@ -531,7 +531,7 @@ export async function handleTelegramWebhook(
         );
       } else if (cmdToken === "help" || cmdToken === "start") {
         const helpMsg =
-          `🤖 <b>LinkedIn HITL Agent - Operator Commands</b>\n\n` +
+          `🤖 <b>LinkedAide - Operator Commands</b>\n\n` +
           `<b>Control &amp; Monitoring:</b>\n` +
           `• <code>/status</code> — Current system health, circuit breaker &amp; daily counts\n` +
           `• <code>/pending</code> — Summary list of actions waiting for approval\n` +

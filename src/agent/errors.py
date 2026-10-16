@@ -1,4 +1,4 @@
-"""Custom exception hierarchy for the LinkedIn HITL AI Agent.
+"""Custom exception hierarchy for LinkedAide.
 
 Architecture Invariants:
 - All agent exceptions inherit from AgentError.

@@ -1562,7 +1562,7 @@ wheels = [
 
 [[package]]
 name = "linkedaide"
-version = "1.0.0"
+version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },

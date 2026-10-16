@@ -1,4 +1,4 @@
-"""Persistence and state tracking schemas for the LinkedIn HITL Agent.
+"""Persistence and state tracking schemas for LinkedAide.
 
 Architecture Invariants:
 - All audit history entries and daily counters are typed Pydantic models.

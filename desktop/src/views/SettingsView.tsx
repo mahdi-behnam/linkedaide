@@ -39,7 +39,7 @@ export function areSettingsEqual(
 }
 
 const defaultSettings: DesktopSettings = {
-  workerUrl: "https://relay.hitl-agent.workers.dev",
+  workerUrl: "https://relay.linkedaide.workers.dev",
   apiSecret: "",
   encryptionKey: "",
   nimModel: "nvidia/nemotron-3-super-120b-a12b",

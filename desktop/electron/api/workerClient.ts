@@ -105,7 +105,7 @@ export class WorkerClient {
         headers: {
           Authorization: `Bearer ${targetSecret}`,
           Accept: "application/json",
-          "User-Agent": "LinkedInHITL-Desktop/1.0.0",
+          "User-Agent": "LinkedAide-Desktop/1.0.0",
         },
       });
     } catch (networkError) {
@@ -188,7 +188,7 @@ export class WorkerClient {
       Authorization: `Bearer ${this.apiSecret}`,
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "LinkedInHITL-Desktop/1.0.0",
+      "User-Agent": "LinkedAide-Desktop/1.0.0",
       ...options.headers,
     };
 

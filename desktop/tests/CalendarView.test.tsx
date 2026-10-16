@@ -18,8 +18,8 @@ const mockPosts: ScheduledPost[] = [
     media: [
       {
         media_type: "carousel_pdf",
-        file_name: "hitl-agent-architecture.pdf",
-        file_url: "mock://hitl-agent-architecture.pdf",
+        file_name: "linkedaide-architecture.pdf",
+        file_url: "mock://linkedaide-architecture.pdf",
         slide_count: 5,
       },
     ],
@@ -164,7 +164,7 @@ describe("CalendarView", () => {
     const modal = screen.getByTestId("post-detail-modal");
     expect(modal).toBeTruthy();
     expect(modal.textContent).toContain("Deterministic State Storage");
-    expect(modal.textContent).toContain("hitl-agent-architecture.pdf");
+    expect(modal.textContent).toContain("linkedaide-architecture.pdf");
     expect(screen.getByTestId("edit-in-composer-btn")).toBeTruthy();
 
     // Close modal

@@ -1,4 +1,4 @@
-"""CLI utility to generate cryptographic secrets for LinkedIn HITL AI Agent.
+"""CLI utility to generate cryptographic secrets for LinkedAide.
 
 Generates:
 1. SESSION_ENCRYPTION_KEY (Fernet 32-byte URL-safe base64 key for encrypting browser session state)
@@ -44,7 +44,7 @@ def print_full_guide(session_key: str, webhook_secret: str, desktop_secret: str)
     """Print an operator-friendly guide with generated credentials."""
     banner = "=" * 70
     print(banner)
-    print("  LINKEDIN HITL AGENT - AUTOMATED SECRET GENERATOR")
+    print("  LINKEDAIDE - AUTOMATED SECRET GENERATOR")
     print(banner)
     print("\n[1] SESSION ENCRYPTION KEY (For LinkedIn Storage State Encryption)")
     print("    Used to symmetrically encrypt/decrypt authenticated Playwright session state.")
@@ -88,7 +88,7 @@ def print_full_guide(session_key: str, webhook_secret: str, desktop_secret: str)
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate cryptographic secrets for LinkedIn HITL Agent setup."
+        description="Generate cryptographic secrets for LinkedAide setup."
     )
     parser.add_argument(
         "--type",

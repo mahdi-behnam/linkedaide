@@ -1,5 +1,5 @@
 /**
- * Background Polling Engine for LinkedIn HITL Desktop
+ * Background Polling Engine for LinkedAide Desktop
  *
  * Polls the Cloudflare Worker API at configurable intervals, tracks seen
  * pending actions, updates the system tray badge, and triggers native OS

@@ -1,4 +1,4 @@
-"""Doctor diagnostics package for the LinkedIn HITL Agent."""
+"""Doctor diagnostics package for LinkedAide."""
 
 from __future__ import annotations
 

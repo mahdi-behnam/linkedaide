@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Self-healing Electron binary verifier & installer for LinkedIn HITL Desktop.
+ * Self-healing Electron binary verifier & installer for LinkedAide Desktop.
  * 
  * Automatically ensures:
  * 1. The platform Electron binary (electron.exe / electron) exists and is executable.

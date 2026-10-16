@@ -31,7 +31,7 @@ mainApp.isQuitting = false;
 
 // Set Application User Model ID for Windows taskbar grouping and custom icon binding
 if (process.platform === "win32") {
-  app.setAppUserModelId("com.linkedin.hitl.agent");
+  app.setAppUserModelId("com.linkedaide.desktop");
 }
 
 let mainWindow: BrowserWindow | null = null;

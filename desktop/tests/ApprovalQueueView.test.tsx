@@ -45,7 +45,7 @@ const fixturePendingItems: PendingItem[] = [
     id: "act-2e5f8b",
     actionType: "post",
     author: "Operator (Self)",
-    headline: "Original HITL Agent Post",
+    headline: "Original LinkedAide Post",
     postUrl: "",
     postExcerpt:
       "Original thought leadership draft analyzing human-in-the-loop safety boundaries and session isolation.",

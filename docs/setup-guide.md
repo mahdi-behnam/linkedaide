@@ -1,6 +1,6 @@
 # End-to-End Setup & Deployment Guide
 
-This guide walks you through setting up the LinkedIn Human-in-the-Loop (HITL) AI Agent from scratch, including automated secret generation, credential extraction, Telegram bot configuration, Cloudflare Worker relay deployment, and GitHub Actions orchestration.
+This guide walks you through setting up LinkedAide from scratch, including automated secret generation, credential extraction, Telegram bot configuration, Cloudflare Worker relay deployment, and GitHub Actions orchestration.
 
 ---
 

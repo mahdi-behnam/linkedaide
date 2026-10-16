@@ -72,7 +72,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
   }, []);
 
   const effectiveWorkerUrl =
-    settings?.workerUrl || telemetry?.workerUrl || "https://relay.hitl-agent.workers.dev";
+    settings?.workerUrl || telemetry?.workerUrl || "https://relay.linkedaide.workers.dev";
   const effectiveSecret = settings?.apiSecret || "";
 
   const filteredEntries = useMemo(() => {

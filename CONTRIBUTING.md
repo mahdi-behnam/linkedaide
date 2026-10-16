@@ -1,4 +1,4 @@
-# Contributing to LinkedIn HITL AI Agent
+# Contributing to LinkedAide
 
 Thank you for your interest in contributing! We welcome contributions, bug fixes, enhancements, and documentation improvements.
 

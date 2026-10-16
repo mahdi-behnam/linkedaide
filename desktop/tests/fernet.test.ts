@@ -29,7 +29,7 @@ describe("Fernet Cryptography Engine", () => {
   describe("Round-trip Encryption & Decryption", () => {
     it("successfully encrypts and decrypts a simple message", () => {
       const key = generateFernetKey();
-      const message = "Hello from LinkedIn HITL Desktop!";
+      const message = "Hello from LinkedAide Desktop!";
       const token = encryptSession(message, key);
 
       expect(typeof token).toBe("string");
@@ -49,7 +49,7 @@ describe("Fernet Cryptography Engine", () => {
 
     it("handles multi-byte UTF-8 characters and emojis", () => {
       const key = generateFernetKey();
-      const message = "🚀 LinkedIn HITL Agent • 自动化测试 • 🔒 Encryption verified";
+      const message = "🚀 LinkedAide • 自动化测试 • 🔒 Encryption verified";
       const token = encryptSession(message, key);
       const decrypted = decryptSession(token, key);
       expect(decrypted).toBe(message);

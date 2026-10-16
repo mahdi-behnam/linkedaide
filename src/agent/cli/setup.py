@@ -108,7 +108,7 @@ def run_setup(
         dict[str, str]: Updated dictionary of environment variables written to .env.
     """
     print_func("==================================================")
-    print_func("   LinkedIn HITL Agent - Interactive Setup Wizard ")
+    print_func("   LinkedAide - Interactive Setup Wizard ")
     print_func("==================================================")
 
     existing = read_dotenv_vars(env_path)

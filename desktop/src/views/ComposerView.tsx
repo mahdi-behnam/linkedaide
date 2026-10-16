@@ -217,7 +217,7 @@ export const ComposerView: React.FC = () => {
     } else if (type === "list") {
       setPostText((prev) => (prev ? `${prev}\n- Key insight 1\n- Key insight 2` : "- Key insight 1\n- Key insight 2"));
     } else if (type === "code") {
-      setPostText((prev) => (prev ? `${prev}\n\`\`\`bash\nnpx create-hitl-agent@latest\n\`\`\`` : "```bash\nnpx create-hitl-agent@latest\n```"));
+      setPostText((prev) => (prev ? `${prev}\n\`\`\`bash\nnpx create-linkedaide@latest\n\`\`\`` : "```bash\nnpx create-linkedaide@latest\n```"));
     } else if (type === "tag") {
       setPostText((prev) => (prev ? `${prev}\n\n#AgentArchitecture #AIEngineering #HITL` : "#AgentArchitecture #AIEngineering #HITL"));
     }

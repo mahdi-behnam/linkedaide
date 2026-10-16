@@ -119,7 +119,7 @@ describe("RealtimePushClient & Instant Desktop Sync", () => {
     it("converts https to wss and trims trailing slashes", () => {
       const client = new RealtimePushClient(
         mockBrowserWindow,
-        "https://relay.hitl-agent.workers.dev/",
+        "https://relay.linkedaide.workers.dev/",
         "key-456",
         { WebSocketClass: MockWebSocketInstance }
       );
@@ -127,7 +127,7 @@ describe("RealtimePushClient & Instant Desktop Sync", () => {
       client.connect();
 
       const ws = MockWebSocketInstance.instances[0];
-      expect(ws.url).toBe("wss://relay.hitl-agent.workers.dev/api/ws?token=key-456");
+      expect(ws.url).toBe("wss://relay.linkedaide.workers.dev/api/ws?token=key-456");
     });
 
     it("does not connect if workerUrl or apiSecret is missing", () => {

@@ -469,7 +469,7 @@ export function formatHomeHub(
   const suggestionsSent = counters?.suggestions_sent || 0;
 
   const lines = [
-    "<b>🏠 LinkedIn HITL Agent — Command &amp; Control Hub</b>\n",
+    "<b>🏠 LinkedAide — Command &amp; Control Hub</b>\n",
     `• <b>System State:</b> ${systemState}`,
     `• <b>Circuit Breaker:</b> ${cbStatus}`,
     `• <b>Pending Queue:</b> <b>${pendingCount}</b> action(s) awaiting review\n`,

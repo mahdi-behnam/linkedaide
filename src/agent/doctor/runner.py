@@ -63,7 +63,7 @@ def run_doctor(
         Path(args.repo_root) if args and getattr(args, "repo_root", None) else None
     )
 
-    print("\n=== LinkedIn HITL Agent Doctor Diagnostics ===\n")
+    print("\n=== LinkedAide Doctor Diagnostics ===\n")
 
     results: list[CheckResult] = []
 

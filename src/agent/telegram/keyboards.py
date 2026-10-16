@@ -465,7 +465,7 @@ def format_home_hub(
     suggestions_sent = getattr(counters, "suggestions_sent", 0)
 
     lines = [
-        "<b>🏠 LinkedIn HITL Agent — Command & Control Hub</b>\n",
+        "<b>🏠 LinkedAide — Command & Control Hub</b>\n",
         f"• <b>System State:</b> {system_state}",
         f"• <b>Circuit Breaker:</b> {cb_status}",
         f"• <b>Pending Queue:</b> <b>{pending_count}</b> action(s) awaiting review\n",

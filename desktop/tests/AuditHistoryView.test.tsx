@@ -38,33 +38,33 @@ describe("AuditHistoryView & R2 Media Vault", () => {
     it("constructs full remote R2 media URL with token when screenshot begins with screenshots/", () => {
       const url = buildMediaUrl(
         "screenshots/success_comment_123.png",
-        "https://relay.hitl-agent.workers.dev",
+        "https://relay.linkedaide.workers.dev",
         "secret-token-456"
       );
       expect(url).toBe(
-        "https://relay.hitl-agent.workers.dev/api/media/screenshots/success_comment_123.png?token=secret-token-456"
+        "https://relay.linkedaide.workers.dev/api/media/screenshots/success_comment_123.png?token=secret-token-456"
       );
     });
 
     it("handles trailing slash in workerUrl cleanly", () => {
       const url = buildMediaUrl(
         "screenshots/success_post_789.png",
-        "https://relay.hitl-agent.workers.dev/",
+        "https://relay.linkedaide.workers.dev/",
         "secret-token-456"
       );
       expect(url).toBe(
-        "https://relay.hitl-agent.workers.dev/api/media/screenshots/success_post_789.png?token=secret-token-456"
+        "https://relay.linkedaide.workers.dev/api/media/screenshots/success_post_789.png?token=secret-token-456"
       );
     });
 
     it("omits token query param when secret is absent or empty", () => {
       const url = buildMediaUrl(
         "screenshots/success_comment_123.png",
-        "https://relay.hitl-agent.workers.dev",
+        "https://relay.linkedaide.workers.dev",
         ""
       );
       expect(url).toBe(
-        "https://relay.hitl-agent.workers.dev/api/media/screenshots/success_comment_123.png"
+        "https://relay.linkedaide.workers.dev/api/media/screenshots/success_comment_123.png"
       );
     });
 
@@ -72,15 +72,15 @@ describe("AuditHistoryView & R2 Media Vault", () => {
       const localPath = "debug/screenshots/local_screenshot.png";
       const url = buildMediaUrl(
         localPath,
-        "https://relay.hitl-agent.workers.dev",
+        "https://relay.linkedaide.workers.dev",
         "secret-token-456"
       );
       expect(url).toBe(localPath);
     });
 
     it("returns empty string when screenshotPath is null or undefined", () => {
-      expect(buildMediaUrl(null, "https://relay.hitl-agent.workers.dev")).toBe("");
-      expect(buildMediaUrl(undefined, "https://relay.hitl-agent.workers.dev")).toBe("");
+      expect(buildMediaUrl(null, "https://relay.linkedaide.workers.dev")).toBe("");
+      expect(buildMediaUrl(undefined, "https://relay.linkedaide.workers.dev")).toBe("");
     });
   });
 
@@ -137,7 +137,7 @@ describe("AuditHistoryView & R2 Media Vault", () => {
       const img = screen.getByTestId("screenshot-modal-image") as HTMLImageElement;
       expect(img).toBeTruthy();
       expect(img.src).toContain(
-        "https://relay.hitl-agent.workers.dev/api/media/screenshots/success_comment_act-8f4b1e.png"
+        "https://relay.linkedaide.workers.dev/api/media/screenshots/success_comment_act-8f4b1e.png"
       );
 
       // Check timestamp and key display
@@ -147,7 +147,7 @@ describe("AuditHistoryView & R2 Media Vault", () => {
       const downloadBtn = screen.getByTestId("download-screenshot-btn") as HTMLAnchorElement;
       expect(downloadBtn).toBeTruthy();
       expect(downloadBtn.href).toContain(
-        "https://relay.hitl-agent.workers.dev/api/media/screenshots/success_comment_act-8f4b1e.png"
+        "https://relay.linkedaide.workers.dev/api/media/screenshots/success_comment_act-8f4b1e.png"
       );
 
       // Close modal

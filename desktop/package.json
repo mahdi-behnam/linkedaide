@@ -1,7 +1,7 @@
 {
-  "name": "linkedin-hitl-desktop",
+  "name": "linkedaide-desktop",
   "version": "1.4.1",
-  "description": "Desktop Control Panel for LinkedIn Human-in-the-Loop AI Agent",
+  "description": "Desktop Control Panel for LinkedAide",
   "main": "dist-electron/main.js",
   "type": "module",
   "author": {
@@ -29,7 +29,7 @@
     "url": "git+https://github.com/mahdi-behnam/linkedaide.git"
   },
   "build": {
-    "appId": "com.linkedin.hitl.agent",
+    "appId": "com.linkedaide.desktop",
     "productName": "LinkedAide",
     "publish": {
       "provider": "github",

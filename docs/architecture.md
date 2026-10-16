@@ -1,6 +1,6 @@
 # System Architecture & Technical Design
 
-This document details the architectural design, workflow state machines, persistence model, and safety mechanisms of the LinkedIn Human-in-the-Loop (HITL) AI Agent.
+This document details the architectural design, workflow state machines, persistence model, and safety mechanisms of LinkedAide.
 
 ---
 

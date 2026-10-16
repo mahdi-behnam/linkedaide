@@ -290,7 +290,7 @@ export function buildAppMenuTemplate(
         label: "Cloudflare Relay Health",
         click: () => {
           const workerUrl =
-            options.workerUrl || "https://relay.hitl-agent.workers.dev";
+            options.workerUrl || "https://relay.linkedaide.workers.dev";
           shell.openExternal(`${workerUrl}/health`);
         },
       },

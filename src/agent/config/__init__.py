@@ -1,4 +1,4 @@
-"""Configuration package for the LinkedIn HITL Agent.
+"""Configuration package for LinkedAide.
 
 Exports Settings, load_settings, and configuration constants/sources.
 """

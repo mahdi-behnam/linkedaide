@@ -592,7 +592,7 @@ class TestCommandHandlerRouting:
 
             # Command formatted with @bot_username
             res = await cmd_handler.handle_command(
-                text="/status@linkedin_hitl_bot",
+                text="/status@linkedaide_bot",
                 chat_id=987654321,
                 sender_id=987654321,
             )

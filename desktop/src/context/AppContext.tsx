@@ -122,7 +122,7 @@ export const defaultCommentWindows: AutomatedCommentWindow[] = [
 ];
 
 const initialTelemetry: SystemTelemetry = {
-  workerUrl: "https://relay.hitl-agent.workers.dev",
+  workerUrl: "https://relay.linkedaide.workers.dev",
   workerStatus: "connected",
   kvBackend: "Cloudflare KV",
   sessionValid: false,

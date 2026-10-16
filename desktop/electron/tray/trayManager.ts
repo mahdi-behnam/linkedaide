@@ -1,5 +1,5 @@
 /**
- * System Tray Manager for LinkedIn HITL Desktop
+ * System Tray Manager for LinkedAide Desktop
  *
  * Manages the Electron Tray lifecycle, status badge tooltips,
  * context menu actions, and window visibility toggling.

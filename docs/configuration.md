@@ -1,6 +1,6 @@
 # Configuration Reference Guide
 
-All runtime settings in the LinkedIn Human-in-the-Loop (HITL) AI Agent are loaded and strictly validated via `pydantic-settings` in [`src/agent/config/settings.py`](../src/agent/config/settings.py).
+All runtime settings in LinkedAide are loaded and strictly validated via `pydantic-settings` in [`src/agent/config/settings.py`](../src/agent/config/settings.py).
 
 Settings can be provided via environment variables, a local `.env` file, or GitHub Actions Secrets / Variables.
 

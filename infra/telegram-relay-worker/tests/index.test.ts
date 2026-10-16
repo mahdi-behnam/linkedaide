@@ -1010,7 +1010,7 @@ describe("Telegram Relay Worker", () => {
         const sendCall = fetchMock.mock.calls.find(([url]) => url.includes("/sendMessage"));
         expect(sendCall).toBeDefined();
         const payload = JSON.parse(sendCall![1].body);
-        expect(payload.text).toContain("LinkedIn HITL Agent - Operator Commands");
+        expect(payload.text).toContain("LinkedAide - Operator Commands");
         expect(payload.text).toContain("/status");
         expect(payload.text).toContain("/pending");
         expect(payload.text).toContain("/stats");

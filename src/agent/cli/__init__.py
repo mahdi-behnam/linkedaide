@@ -1,4 +1,4 @@
-"""Unified CLI tool and entrypoints for the LinkedIn HITL agent.
+"""Unified CLI tool and entrypoints for LinkedAide.
 
 Provides diagnostic 'doctor', interactive 'setup' wizard,
 and flow execution commands (scout, execute, health).

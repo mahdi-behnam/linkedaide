@@ -42,7 +42,7 @@ from agent.errors import ConfigError
 
 
 class Settings(BaseSettings):
-    """Central configuration settings for the LinkedIn HITL Agent."""
+    """Central configuration settings for LinkedAide."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
