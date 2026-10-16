@@ -32,6 +32,14 @@ export function buildAppMenuTemplate(
           label: "About LinkedAide",
           click: () => showAboutDialog(getWin),
         },
+        {
+          label: "Check for Updates...",
+          click: async () => {
+            if (options.onCheckForUpdates) {
+              await options.onCheckForUpdates();
+            }
+          },
+        },
         { type: "separator" },
         {
           label: "Preferences...",
@@ -295,6 +303,14 @@ export function buildAppMenuTemplate(
         },
       },
       { type: "separator" },
+      {
+        label: "Check for Updates...",
+        click: async () => {
+          if (options.onCheckForUpdates) {
+            await options.onCheckForUpdates();
+          }
+        },
+      },
       {
         label: "About LinkedAide",
         click: () => showAboutDialog(getWin),

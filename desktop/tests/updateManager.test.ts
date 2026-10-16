@@ -103,6 +103,10 @@ describe("UpdateManager", () => {
       expect.any(Function),
     );
     expect(mocks.ipcMain.handle).toHaveBeenCalledWith(
+      "updater:checkForUpdates",
+      expect.any(Function),
+    );
+    expect(mocks.ipcMain.handle).toHaveBeenCalledWith(
       "updater:startDownload",
       expect.any(Function),
     );

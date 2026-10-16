@@ -351,7 +351,7 @@ describe("SettingsView", () => {
     ).toBeTruthy();
 
     const ownerInput = screen.getByPlaceholderText(
-      "e.g. mahdi-behnam",
+      "e.g. your-github-username",
     ) as HTMLInputElement;
     fireEvent.change(ownerInput, { target: { value: "my-github-user" } });
 

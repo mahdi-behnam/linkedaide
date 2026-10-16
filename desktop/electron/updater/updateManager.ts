@@ -148,10 +148,16 @@ export class UpdateManager {
     }
 
     try {
+      this.state.status = "checking";
+      this.state.error = null;
+      this.broadcastState();
       await autoUpdater.checkForUpdates();
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Failed to check for updates:", err);
+      this.state.status = "error";
+      this.state.error = err ? err.message || String(err) : "Unknown update error";
+      this.broadcastState();
       return false;
     }
   }
@@ -267,6 +273,10 @@ export class UpdateManager {
   private registerIpcHandlers(): void {
     ipcMain.handle("updater:getStatus", () => {
       return this.getState();
+    });
+
+    ipcMain.handle("updater:checkForUpdates", async () => {
+      return await this.checkForUpdates();
     });
 
     ipcMain.handle("updater:startDownload", async () => {

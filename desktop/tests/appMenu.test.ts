@@ -118,6 +118,25 @@ describe("Desktop Application Menu", () => {
     expect(onClearIncident).toHaveBeenCalled();
   });
 
+  it("invokes onCheckForUpdates when Check for Updates menu item is clicked", async () => {
+    const onCheckForUpdates = vi.fn().mockResolvedValue(true);
+    const options = {
+      getMainWindow: () => mocks.mockBrowserWindow as unknown as BrowserWindow,
+      onCheckForUpdates,
+    };
+    const template = buildAppMenuTemplate(options);
+    const helpMenu = template.find((m) => m.label === "Help");
+    expect(helpMenu).toBeDefined();
+    const updateItem = (helpMenu?.submenu as any[])?.find(
+      (item) => item.label === "Check for Updates..."
+    );
+    expect(updateItem).toBeDefined();
+    if (updateItem?.click) {
+      await updateItem.click();
+    }
+    expect(onCheckForUpdates).toHaveBeenCalled();
+  });
+
   it("sets up application menu via createAppMenu and setupAppMenu", () => {
     const options = {
       getMainWindow: () => mocks.mockBrowserWindow as unknown as BrowserWindow,

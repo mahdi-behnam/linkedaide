@@ -44,7 +44,7 @@ const defaultSettings: DesktopSettings = {
   encryptionKey: "",
   nimModel: "nvidia/nemotron-3-super-120b-a12b",
   nimApiKey: "",
-  githubRepoOwner: "mahdi-behnam",
+  githubRepoOwner: "",
   githubRepoName: "linkedaide",
   githubDispatchPat: "",
   autoRefreshInterval: 600,

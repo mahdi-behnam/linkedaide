@@ -147,6 +147,9 @@ const api: ElectronAPI = {
   setTitleBarTheme: (theme: "dark" | "light"): Promise<boolean> =>
     ipcRenderer.invoke("window:setTitleBarTheme", theme),
 
+  updaterCheckForUpdates: (): Promise<boolean> =>
+    ipcRenderer.invoke("updater:checkForUpdates"),
+
   updaterStartDownload: (): Promise<boolean> =>
     ipcRenderer.invoke("updater:startDownload"),
 

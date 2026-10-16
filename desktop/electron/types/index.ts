@@ -248,6 +248,7 @@ export interface ElectronAPI {
   closeWindow?: () => Promise<boolean>;
   isMaximized?: () => Promise<boolean>;
   setTitleBarTheme?: (theme: "dark" | "light") => Promise<boolean>;
+  updaterCheckForUpdates?: () => Promise<boolean>;
   updaterStartDownload?: () => Promise<boolean>;
   updaterCancelDownload?: () => Promise<boolean>;
   updaterQuitAndInstall?: () => Promise<boolean>;

@@ -1,5 +1,5 @@
 import React from "react";
-import { Lightning, Eye } from "../../components/icons";
+import { Lightning, Eye, ArrowSquareOut, WarningCircle, CheckCircle } from "../../components/icons";
 
 interface GitHubActionsCardProps {
   executionMode: "cloud" | "local";
@@ -42,9 +42,17 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
         </div>
 
         {executionMode === "cloud" && (
-          <span className="text-[11px] font-mono text-amber-500 font-medium self-start sm:self-auto">
-            Required for Cloud Mode
-          </span>
+          <div className="flex items-center gap-1.5 self-start sm:self-auto">
+            {!githubRepoOwner || !githubDispatchPat ? (
+              <span className="text-[11px] font-mono text-amber-500 font-medium flex items-center gap-1">
+                <WarningCircle size={12} weight="bold" /> Setup Needed
+              </span>
+            ) : (
+              <span className="text-[11px] font-mono text-emerald-500 font-medium flex items-center gap-1">
+                <CheckCircle size={12} weight="bold" /> Configured
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -61,6 +69,24 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
         repository coordinates and a Personal Access Token (PAT).
       </p>
 
+      {/* New User Onboarding Callout */}
+      <div className="flex items-start gap-2.5 p-2.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
+        <ArrowSquareOut size={16} className="shrink-0 mt-0.5 text-blue-500" />
+        <div className="flex-1">
+          <span className="font-semibold">New user setup: </span>
+          Each operator runs their own private cloud runner. First{" "}
+          <a
+            href="https://github.com/mahdi-behnam/linkedaide/fork"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-semibold hover:text-blue-600 dark:hover:text-blue-200"
+          >
+            fork the LinkedAide repository on GitHub
+          </a>
+          , then enter your GitHub username and forked repository name below.
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-0.5">
         {/* Repo Owner */}
         <div className="flex flex-col gap-1.5">
@@ -71,7 +97,7 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
             type="text"
             value={githubRepoOwner}
             onChange={(e) => onRepoOwnerChange(e.target.value)}
-            placeholder="e.g. mahdi-behnam"
+            placeholder="e.g. your-github-username"
             className="w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-outline-variant/30 focus:border-amber-500 outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
           />
           <span className="font-label-sm text-[11px] text-on-surface-variant">

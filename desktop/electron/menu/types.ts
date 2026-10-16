@@ -26,4 +26,5 @@ export interface AppMenuOptions {
   onTriggerScout?: () => Promise<void>;
   onTogglePause?: (nextState: boolean) => Promise<void>;
   onClearIncident?: () => Promise<void>;
+  onCheckForUpdates?: () => Promise<boolean> | boolean;
 }

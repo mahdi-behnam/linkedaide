@@ -53,7 +53,7 @@ function loadSettings(): DesktopSettings {
     nimModel:
       process.env.NIM_MODEL_PRIMARY || "nvidia/nemotron-3-super-120b-a12b",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
-    githubRepoOwner: process.env.GITHUB_REPO_OWNER || "mahdi-behnam",
+    githubRepoOwner: process.env.GITHUB_REPO_OWNER || "",
     githubRepoName: process.env.GITHUB_REPO_NAME || "linkedaide",
     githubDispatchPat: process.env.GITHUB_DISPATCH_PAT || "",
     autoRefreshInterval: 600,
@@ -967,6 +967,8 @@ app.whenReady().then(() => {
     getMainWindow: () => mainWindow,
     workerClient,
     workerUrl: settings.workerUrl,
+    onCheckForUpdates: () =>
+      updateManager?.checkForUpdates() ?? Promise.resolve(false),
   });
 
   registerIpcHandlers();

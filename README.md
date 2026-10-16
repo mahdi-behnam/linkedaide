@@ -24,6 +24,23 @@ An enterprise-grade, human-supervised LinkedIn automation agent orchestrating ca
 
 ---
 
+## ⚡ Quickstart for New Operators
+
+LinkedAide pairs your own private cloud runner with a cross-platform desktop control panel:
+
+```text
+1. Fork Repository  ──>  2. Download Desktop App  ──>  3. Connect Your Secrets
+```
+
+1. **Fork this Repository**: Click **[Fork](https://github.com/mahdi-behnam/linkedaide/fork)** at the top right to create your private copy for running GitHub Actions workflows.
+2. **Download the Desktop App**: Grab the installer for your OS ([Windows](https://github.com/mahdi-behnam/linkedaide/releases/latest/download/LinkedAide-Setup.exe) / [macOS](https://github.com/mahdi-behnam/linkedaide/releases/latest/download/LinkedAide.dmg) / [Linux](https://github.com/mahdi-behnam/linkedaide/releases/latest/download/LinkedAide.AppImage)).
+3. **Configure Settings**: Open Desktop **Settings**, enter your GitHub username & repository name, paste your GitHub PAT (with `workflow` and `repo` permissions), and add your API keys.
+4. **Customize Your Voice**: Copy [`persona/profile.example.yaml`](persona/profile.example.yaml) to `persona/profile.yaml` to tailor the LLM to your personal industry expertise and stances.
+
+👉 See the complete **[Setup Guide](docs/setup-guide.md)** for detailed instructions on extracting your encrypted session and setting up Telegram approval cards.
+
+---
+
 ## What This Assistant Does & How It Helps
 
 This agent helps you build and maintain a strong, consistent, high-value LinkedIn presence while keeping you in complete control:
