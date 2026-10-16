@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { useApp } from "../context/AppContext";
-import { ScheduledPost } from "../types";
+import { ScheduledPost, NavigationTarget } from "../types";
 import { useDeepNavigation } from "../hooks/useDeepNavigation";
 import {
   CalendarViewMode,
@@ -35,7 +35,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   useDeepNavigation(
     "calendar",
     useCallback(
-      (target) => {
+      (target: NavigationTarget) => {
         if (target.itemId) {
           const cleanId = target.itemId.replace(/^post-/, "");
           const matched = scheduledPosts.find(

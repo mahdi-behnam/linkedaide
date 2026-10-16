@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { ConnectionRequestAction } from "../types";
+import { ConnectionRequestAction, NavigationTarget } from "../types";
 import { UserPlus } from "@phosphor-icons/react";
 import { OutreachLeftPane } from "../components/outreach/OutreachLeftPane";
 import { OutreachProfileCard } from "../components/outreach/OutreachProfileCard";
@@ -26,7 +26,7 @@ export const OutreachQueueView: React.FC<OutreachQueueViewProps> = ({ initialIte
 
   useDeepNavigation(
     "outreach",
-    useCallback((target) => {
+    useCallback((target: NavigationTarget) => {
       if (target.itemId) {
         const cleanId = target.itemId.replace(/^outreach-/, "");
         const matched = items.find(

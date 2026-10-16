@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext";
-import { HistoryStatus, AuditEntry } from "../types";
+import { HistoryStatus, AuditEntry, NavigationTarget } from "../types";
 import { useDeepNavigation } from "../hooks/useDeepNavigation";
 import type { DesktopSettings } from "../types/api";
 import {
@@ -55,7 +55,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
   useDeepNavigation(
     "history",
     useCallback(
-      (target) => {
+      (target: NavigationTarget) => {
         if (target.itemId) {
           const cleanId = target.itemId.replace(/^history-/, "");
           const matched = auditEntries.find(

@@ -7,10 +7,9 @@ import {
 import { buildSearchIndex } from "../src/services/search/searchIndexBuilder";
 import {
   VIEW_SEARCH_DOCUMENTS,
-  SETTINGS_SECTION_DOCUMENTS,
 } from "../src/services/search/searchRegistry";
 import { SearchDocument } from "../src/services/search/types";
-import { House, Inbox, Sparkle } from "../src/components/icons";
+import { Sparkle } from "../src/components/icons";
 
 describe("Search Scorer & Ranking Algorithm", () => {
   const dummyDoc: SearchDocument = {
@@ -124,6 +123,7 @@ describe("Search Index Builder", () => {
     const mockOutreach = [
       {
         id: "conn-202",
+        profile_url: "https://linkedin.com/in/yann-lecun",
         target_name: "Yann LeCun",
         target_headline: "Chief AI Scientist at Meta",
         mutual_context: "Mutual interest in autonomous reasoning architectures",

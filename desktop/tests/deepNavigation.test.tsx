@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
-import React from "react";
 import { AppProvider, useApp } from "../src/context/AppContext";
 import { useDeepNavigation, highlightAndScrollTo } from "../src/hooks/useDeepNavigation";
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { NavigationTab } from "../types";
-import { MagnifyingGlass, IconProps } from "./icons";
+import { MagnifyingGlass } from "./icons";
 import { formatKeyCombo } from "../utils/platform";
 import { useApp } from "../context/AppContext";
 import { SearchCategory, SearchDocument } from "../services/search/types";

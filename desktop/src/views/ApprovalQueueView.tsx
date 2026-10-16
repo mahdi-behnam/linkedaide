@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext";
+import { NavigationTarget } from "../types";
 import {
   Check,
   ArrowClockwise,
@@ -84,7 +85,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
   useDeepNavigation(
     "queue",
-    useCallback((target) => {
+    useCallback((target: NavigationTarget) => {
       if (target.itemId) {
         const cleanId = target.itemId.replace(/^queue-/, "");
         const matched = itemsRef.current.find(

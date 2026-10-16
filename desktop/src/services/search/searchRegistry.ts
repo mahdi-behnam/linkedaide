@@ -11,19 +11,12 @@ import {
   ChartLineUp,
   Cpu,
   Globe,
-  Database,
   LockKey,
   Key,
   Sparkle,
   Target,
-  Hash,
   Clock,
   Pulse,
-  Sun,
-  Moon,
-  Play,
-  Pause,
-  ArrowClockwise,
 } from "../../components/icons";
 import { SearchDocument } from "./types";
 

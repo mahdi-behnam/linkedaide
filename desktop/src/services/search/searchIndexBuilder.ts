@@ -11,7 +11,6 @@ import {
   Moon,
   ArrowClockwise,
   WarningCircle,
-  Sparkle,
 } from "../../components/icons";
 import {
   ScheduledPost,

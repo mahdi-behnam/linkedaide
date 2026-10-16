@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
-import { AppProvider, useApp } from "../src/context/AppContext";
+import { AppProvider } from "../src/context/AppContext";
 import { ThemeProvider } from "../src/context/ThemeContext";
 import { CommandPalette } from "../src/components/CommandPalette";
 
