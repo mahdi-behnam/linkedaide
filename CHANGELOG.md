@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.0...v1.4.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **desktop:** resolve application, desktop shortcut, and taskbar icons ([befb4d9](https://github.com/mahdi-behnam/linkedaide/commit/befb4d91593d99f7abc1f393f2b488f07db8a82e))
+
 ## [1.4.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.3.0...v1.4.0) (2026-10-16)
 
 
