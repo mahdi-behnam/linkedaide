@@ -29,6 +29,11 @@ interface QuittableApp extends Electron.App {
 const mainApp = app as QuittableApp;
 mainApp.isQuitting = false;
 
+// Set Application User Model ID for Windows taskbar grouping and custom icon binding
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.linkedin.hitl.agent");
+}
+
 let mainWindow: BrowserWindow | null = null;
 let workerClient: WorkerClient;
 let realtimeClient: RealtimePushClient | null = null;
@@ -833,17 +838,41 @@ function registerIpcHandlers(): void {
 }
 
 function getAppIconPath(): string | undefined {
-  const possiblePaths = [
-    path.join(__dirname, "../build/icon.png"),
-    path.join(__dirname, "../public/icon.png"),
-    path.join(process.cwd(), "desktop/build/icon.png"),
-    path.join(process.cwd(), "assets/app-icon.png"),
+  const isWin = process.platform === "win32";
+  const primaryExt = isWin ? "ico" : "png";
+  const fallbackExt = isWin ? "png" : "ico";
+
+  const candidateFileNames = [
+    `icon.${primaryExt}`,
+    `icon.${fallbackExt}`,
+    "favicon.ico",
+    "app-icon.png",
   ];
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
-      return p;
+
+  const candidateDirs = [
+    // Production / packaged asar paths (inside dist, build, or public relative to dist-electron)
+    path.join(__dirname, "../build"),
+    path.join(__dirname, "../dist"),
+    path.join(__dirname, "../public"),
+    // Development directories relative to process.cwd()
+    path.join(process.cwd(), "desktop/build"),
+    path.join(process.cwd(), "desktop/dist"),
+    path.join(process.cwd(), "desktop/public"),
+    path.join(process.cwd(), "build"),
+    path.join(process.cwd(), "dist"),
+    path.join(process.cwd(), "public"),
+    path.join(process.cwd(), "assets"),
+  ];
+
+  for (const fileName of candidateFileNames) {
+    for (const dir of candidateDirs) {
+      const fullPath = path.join(dir, fileName);
+      if (fs.existsSync(fullPath)) {
+        return fullPath;
+      }
     }
   }
+
   return undefined;
 }
 
@@ -853,7 +882,7 @@ function createWindow(): BrowserWindow {
 
   const win = new BrowserWindow({
     title: "LinkedAide",
-    icon: iconPath,
+    ...(iconPath ? { icon: iconPath } : {}),
     width: 1280,
     height: 820,
     minWidth: 1000,
@@ -881,6 +910,14 @@ function createWindow(): BrowserWindow {
       webSecurity: true,
     },
   });
+
+  if (iconPath && typeof win.setIcon === "function") {
+    try {
+      win.setIcon(iconPath);
+    } catch (err) {
+      console.warn("Failed setting window icon explicitly:", err);
+    }
+  }
 
   win.once("ready-to-show", () => {
     win.show();

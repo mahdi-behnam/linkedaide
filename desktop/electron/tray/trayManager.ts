@@ -40,8 +40,12 @@ export function getTrayIcon(state: "active" | "standby" | "attention" = "active"
   const assetName = `tray-${state}.png`;
   const possiblePaths = [
     path.join(__dirname, "assets", assetName),
+    path.join(__dirname, "../tray/assets", assetName),
+    path.join(__dirname, "../electron/tray/assets", assetName),
     path.join(__dirname, "../assets/icons", `round-${state}.png`),
     path.join(process.cwd(), "desktop/electron/tray/assets", assetName),
+    path.join(process.cwd(), "electron/tray/assets", assetName),
+    path.join(process.cwd(), "desktop/dist-electron/tray/assets", assetName),
   ];
   if (typeof nativeImage.createFromPath === "function") {
     for (const p of possiblePaths) {

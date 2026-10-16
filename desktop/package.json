@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:electron": "tsc -p tsconfig.electron.json && node -e \"fs.writeFileSync('dist-electron/package.json', JSON.stringify({type: 'commonjs'}))\"",
+    "build:electron": "tsc -p tsconfig.electron.json && node -e \"fs.cpSync('electron/tray/assets', 'dist-electron/tray/assets', {recursive: true, force: true}); fs.writeFileSync('dist-electron/package.json', JSON.stringify({type: 'commonjs'}))\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "package": "npm run build && npm run build:electron",
@@ -38,16 +38,19 @@
       "releaseType": "release"
     },
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "build/**/*",
       "package.json"
     ],
     "mac": {
       "category": "public.app-category.productivity",
       "artifactName": "LinkedAide.${ext}",
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "dmg",
@@ -64,18 +67,26 @@
       ]
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis",
         "portable"
       ]
     },
     "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "LinkedAide",
       "artifactName": "LinkedAide-Setup.${ext}"
     },
     "portable": {
       "artifactName": "LinkedAide-Portable.${ext}"
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage",
         "deb"
