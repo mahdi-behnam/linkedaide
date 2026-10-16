@@ -113,6 +113,37 @@ export interface DesktopSettings {
   defaultReactionType?: "like" | "celebrate" | "support" | "love" | "insightful" | "funny";
 }
 
+export type UpdateStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+export interface UpdateInfo {
+  version: string;
+  releaseDate?: string;
+  releaseNotes?: string;
+  releaseName?: string;
+}
+
+export interface UpdateProgress {
+  percent: number;
+  bytesPerSecond: number;
+  transferred: number;
+  total: number;
+  remainingBytes: number;
+  etaSeconds: number;
+}
+
+export interface UpdateState {
+  status: UpdateStatus;
+  info?: UpdateInfo | null;
+  progress?: UpdateProgress | null;
+  error?: string | null;
+}
+
 export interface ElectronAPI {
   fetchState: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<AgentState>;
   testConnection?: (credentials?: { workerUrl?: string; apiSecret?: string }) => Promise<{ success: boolean; latencyMs?: number; error?: string }>;
@@ -160,6 +191,11 @@ export interface ElectronAPI {
   closeWindow?: () => Promise<boolean>;
   isMaximized?: () => Promise<boolean>;
   setTitleBarTheme?: (theme: "dark" | "light") => Promise<boolean>;
+  updaterStartDownload?: () => Promise<boolean>;
+  updaterCancelDownload?: () => Promise<boolean>;
+  updaterQuitAndInstall?: () => Promise<boolean>;
+  updaterGetStatus?: () => Promise<UpdateState>;
+  onUpdaterEvent?: (callback: (state: UpdateState) => void) => () => void;
 }
 
 export interface CliDoctorResult {
@@ -173,3 +209,4 @@ declare global {
     api: ElectronAPI;
   }
 }
+

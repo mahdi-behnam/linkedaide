@@ -14,6 +14,7 @@ import type {
   ScheduledPost,
   ConnectionRequestAction,
   AutomatedCommentWindow,
+  UpdateState,
 } from "./types";
 
 const api: ElectronAPI = {
@@ -145,6 +146,31 @@ const api: ElectronAPI = {
 
   setTitleBarTheme: (theme: "dark" | "light"): Promise<boolean> =>
     ipcRenderer.invoke("window:setTitleBarTheme", theme),
+
+  updaterStartDownload: (): Promise<boolean> =>
+    ipcRenderer.invoke("updater:startDownload"),
+
+  updaterCancelDownload: (): Promise<boolean> =>
+    ipcRenderer.invoke("updater:cancelDownload"),
+
+  updaterQuitAndInstall: (): Promise<boolean> =>
+    ipcRenderer.invoke("updater:quitAndInstall"),
+
+  updaterGetStatus: (): Promise<UpdateState> =>
+    ipcRenderer.invoke("updater:getStatus"),
+
+  onUpdaterEvent: (callback: (state: UpdateState) => void): (() => void) => {
+    const subscription = (
+      _event: Electron.IpcRendererEvent,
+      payload: UpdateState,
+    ) => {
+      callback(payload);
+    };
+    ipcRenderer.on("updater:event", subscription);
+    return () => {
+      ipcRenderer.removeListener("updater:event", subscription);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("api", api);
