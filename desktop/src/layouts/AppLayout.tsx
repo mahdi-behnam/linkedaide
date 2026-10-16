@@ -27,6 +27,7 @@ import {
 } from "../components/icons";
 import { CommandPalette } from "../components/CommandPalette";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
+import { UpdatePill } from "../components/updater/UpdatePill";
 import roundActiveIcon from "../assets/icons/round-active.png";
 import roundStandbyIcon from "../assets/icons/round-standby.png";
 import roundAttentionIcon from "../assets/icons/round-attention.png";
@@ -366,6 +367,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
           {/* Right Status & Controls */}
           <div className="flex items-center gap-2" style={noDragRegion}>
+            {/* Blue Update Pill (Shown when update available / downloading / downloaded) */}
+            <UpdatePill />
+
             {/* System Status Pill (Shown only when non-operational/tripped) */}
             {systemStatus !== "operational" && <StatusPill status={systemStatus} size="sm" />}
 
