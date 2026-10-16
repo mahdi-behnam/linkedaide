@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.3.0...v1.4.0) (2026-10-16)
+
+
+### Features
+
+* **desktop:** add electron-updater and IPC type contracts for auto-updates ([bd36f04](https://github.com/mahdi-behnam/linkedaide/commit/bd36f04e6df1304cf27d11819de0ef125ad1f9f0))
+* **desktop:** create Apple HIG UpdatePill and UpdatePopover UI components ([fe68a45](https://github.com/mahdi-behnam/linkedaide/commit/fe68a45db5f86634d96b91ddf7356d9c5563de5f))
+* **desktop:** implement UpdateManager with startup check and progress tracking ([c2429cd](https://github.com/mahdi-behnam/linkedaide/commit/c2429cdfaca913e6f8d69d2e15ea968c117bf81f))
+
+
+### Tests
+
+* **desktop:** add unit and component tests for update lifecycle and UI ([aa0c6c0](https://github.com/mahdi-behnam/linkedaide/commit/aa0c6c0e1dcb3d9b109a6c8deebdac9bc50a2415))
+
 ## [1.3.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.2.1...v1.3.0) (2026-10-16)
 
 ### Features
