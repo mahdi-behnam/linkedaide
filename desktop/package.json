@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:electron": "tsc -p tsconfig.electron.json && node -e \"fs.cpSync('electron/tray/assets', 'dist-electron/tray/assets', {recursive: true, force: true}); fs.writeFileSync('dist-electron/package.json', JSON.stringify({type: 'commonjs'}))\"",
+    "build:electron": "tsc -p tsconfig.electron.json && node -e \"fs.mkdirSync('build', {recursive: true}); if (fs.existsSync('public/icon.ico')) fs.copyFileSync('public/icon.ico', 'build/icon.ico'); if (fs.existsSync('public/icon.png')) fs.copyFileSync('public/icon.png', 'build/icon.png'); fs.cpSync('electron/tray/assets', 'dist-electron/tray/assets', {recursive: true, force: true}); fs.writeFileSync('dist-electron/package.json', JSON.stringify({type: 'commonjs'}))\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "package": "npm run build && npm run build:electron",
