@@ -81,7 +81,7 @@ describe("AnalyticsView", () => {
     expect(screen.getByText("LinkedIn Growth Analytics")).toBeTruthy();
     expect(screen.getByText("Live Analytics")).toBeTruthy();
     expect(
-      screen.getByText(/Real-time engagement telemetry, author reply conversions/i)
+      screen.getByText(/Real-time engagement telemetry/i)
     ).toBeTruthy();
   });
 
@@ -92,14 +92,14 @@ describe("AnalyticsView", () => {
       </AppProvider>
     );
 
-    // KPI 1: Estimated Reach / Impressions -> empty indicator
+    // KPI 1: Executed Actions -> empty indicator
     const reachCard = screen.getByTestId("kpi-reach");
-    expect(reachCard.textContent).toContain("Estimated Reach / Impressions");
+    expect(reachCard.textContent).toContain("Executed Actions");
     expect(reachCard.textContent).toContain("--");
 
-    // KPI 2: Author Reply Conversion Rate -> 0%
+    // KPI 2: Approval Rate -> 0%
     const replyCard = screen.getByTestId("kpi-reply-rate");
-    expect(replyCard.textContent).toContain("Author Reply Conversion Rate");
+    expect(replyCard.textContent).toContain("Approval Rate");
     expect(replyCard.textContent).toContain("0%");
 
     // KPI 3: Approval Velocity -> empty indicator
@@ -107,9 +107,9 @@ describe("AnalyticsView", () => {
     expect(velocityCard.textContent).toContain("Approval Velocity");
     expect(velocityCard.textContent).toContain("--");
 
-    // KPI 4: Topic Engagement Score -> empty indicator
+    // KPI 4: Active Focus Areas -> empty indicator
     const scoreCard = screen.getByTestId("kpi-engagement-score");
-    expect(scoreCard.textContent).toContain("Topic Engagement Score");
+    expect(scoreCard.textContent).toContain("Active Focus Areas");
     expect(scoreCard.textContent).toContain("--");
 
     // Empty state for heatmap

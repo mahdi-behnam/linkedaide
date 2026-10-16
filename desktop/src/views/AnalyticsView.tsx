@@ -3,7 +3,7 @@ import { useApp } from "../context/AppContext";
 import type { AuditEntry } from "../types";
 import {
   ChartLineUp,
-  Eye,
+  CheckCircle,
   ChatTeardropDots,
   Clock,
   Sparkle,
@@ -117,11 +117,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         headline: e.targetHeadline || "Engineering Leader",
         topic: deriveTopicPillar(e).name,
         commentExcerpt: e.draftExcerpt || "High-resonance architectural commentary.",
-        authorReplied: true,
-        reach: "~1.2k",
+        status: "Executed",
         timestamp: e.executedAt ? formatDate(e.executedAt) : "Recent",
       }));
-  }, [auditEntries]);
+  }, [auditEntries, formatDate]);
 
   const displayComments = useMemo(() => {
     if (initialComments !== undefined) return initialComments;
@@ -147,9 +146,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         name,
         tag,
         commentsCount: count,
-        replyRate: `${Math.round(25 + count * 3)}%`,
-        impressions: `${(count * 1.5).toFixed(1)}k`,
-        resonanceScore: Math.min(99, 70 + count * 5),
         percentage,
       };
     });
@@ -219,7 +215,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           rates[day][b] = "0%";
         } else {
           data[day][b] = maxCount <= 1 ? 1 : Math.min(3, Math.ceil((c / maxCount) * 3));
-          const pct = Math.min(98, Math.round(25 + (c / (maxCount || 1)) * 65));
+          const total = executedSuccessEntries.length;
+          const pct = Math.round((c / (total || 1)) * 100);
           rates[day][b] = `${pct}%`;
         }
       }
@@ -235,8 +232,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const heatmapData = initialHeatmapData ?? calculatedHeatmapData;
   const heatmapRates = initialHeatmapRates ?? calculatedHeatmapRates;
 
-  const kpiReach = hasExecutedData ? `${(executedSuccessEntries.length * 1.5).toFixed(1)}k` : "--";
-  const kpiReplyRate = hasExecutedData
+  const kpiExecuted = hasExecutedData ? `${executedSuccessEntries.length} Actions` : "--";
+  const kpiApprovalRate = hasExecutedData
     ? `${Math.round((executedSuccessEntries.length / auditEntries.length) * 100)}%`
     : "0%";
   const kpiVelocity = useMemo(() => {
@@ -245,7 +242,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       (e) => e.decidedAt && e.executedAt
     );
     if (withTimes.length === 0) {
-      return "42s";
+      return "--";
     }
     const diffsSec = withTimes.map((e) => {
       const diffMs = new Date(e.executedAt!).getTime() - new Date(e.decidedAt).getTime();
@@ -254,8 +251,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     const avgSec = Math.round(diffsSec.reduce((a, b) => a + b, 0) / diffsSec.length);
     return `${avgSec}s`;
   }, [hasExecutedData, executedSuccessEntries]);
-  const kpiTopicScore = hasExecutedData
-    ? `${Math.min(99, 80 + executedSuccessEntries.length * 3)}/100`
+  const kpiFocusAreas = hasExecutedData
+    ? `${topicPillars.length} Pillar${topicPillars.length === 1 ? "" : "s"}`
     : "--";
 
   return (
@@ -275,7 +272,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </span>
           </div>
           <p className="mt-1 text-[11px] text-on-surface-variant">
-            Real-time engagement telemetry, author reply conversions, and time-of-day peak algorithmic windows.
+            Real-time engagement telemetry, operator approval metrics, and time-of-day execution activity.
           </p>
         </div>
 
@@ -317,26 +314,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* Top Metrics Row: 4 KPI Cards */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: Estimated Reach / Impressions */}
+        {/* KPI 1: Executed Actions */}
         <KpiMetricCard
           testId="kpi-reach"
-          title="Estimated Reach / Impressions"
-          value={kpiReach}
-          trendText="+14.2%"
+          title="Executed Actions"
+          value={kpiExecuted}
+          trendText={hasExecutedData ? "100% verified" : undefined}
           hasData={hasExecutedData}
-          subtitle="Total views across target posts engaged"
-          icon={<Eye size={15} weight="bold" />}
+          subtitle="Approved & verified comments and posts"
+          icon={<CheckCircle size={15} weight="bold" />}
           iconColorClass="text-tertiary"
         />
 
-        {/* KPI 2: Author Reply Conversion Rate */}
+        {/* KPI 2: Approval Rate */}
         <KpiMetricCard
           testId="kpi-reply-rate"
-          title="Author Reply Conversion Rate"
-          value={kpiReplyRate}
-          trendText="+5.6%"
+          title="Approval Rate"
+          value={kpiApprovalRate}
+          trendText={hasExecutedData ? "Active gate" : undefined}
           hasData={hasExecutedData}
-          subtitle="% of agent comments that received an author response"
+          subtitle="% of suggestions approved vs rejected"
           icon={<ChatTeardropDots size={15} weight="bold" />}
           iconColorClass="text-primary"
         />
@@ -346,24 +343,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           testId="kpi-velocity"
           title="Approval Velocity"
           value={kpiVelocity}
-          trendText="8s faster"
+          trendText={hasExecutedData ? "Review speed" : undefined}
           hasData={hasExecutedData}
-          subtitle="Average time operator spent approving drafts"
+          subtitle="Average operator review-to-execution latency"
           icon={<Clock size={15} weight="bold" />}
           iconColorClass="text-secondary"
         />
 
-        {/* KPI 4: Topic Engagement Score */}
+        {/* KPI 4: Active Focus Areas */}
         <KpiMetricCard
           testId="kpi-engagement-score"
-          title="Topic Engagement Score"
-          value={kpiTopicScore}
-          trendText="Top 2%"
+          title="Active Focus Areas"
+          value={kpiFocusAreas}
+          trendText={hasExecutedData ? "Distribution" : undefined}
           hasData={hasExecutedData}
           subtitle={
             hasExecutedData
-              ? `${kpiTopicScore} high-signal score based on comment resonance`
-              : "High-signal score based on comment resonance"
+              ? `${topicPillars.length} distinct topic pillars targeted`
+              : "Topic pillars targeted by the agent"
           }
           icon={<Sparkle size={15} weight="bold" />}
           iconColorClass="text-amber-500"

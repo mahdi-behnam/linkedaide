@@ -5,10 +5,10 @@ export interface TopicPillarMetric {
   name: string;
   tag: string;
   commentsCount: number;
-  replyRate: string;
-  impressions: string;
-  resonanceScore: number;
   percentage: number;
+  replyRate?: string;
+  impressions?: string;
+  resonanceScore?: number;
 }
 
 export interface TopicPillarDistributionProps {
@@ -70,10 +70,10 @@ export const TopicPillarDistribution: React.FC<TopicPillarDistributionProps> = (
                 </div>
                 <div className="text-right">
                   <span className="font-mono text-xs font-bold text-tertiary tabular-nums">
-                    {pillar.replyRate}
+                    {pillar.replyRate ?? `${pillar.percentage}%`}
                   </span>
                   <p className="text-[10px] text-on-surface-variant/70">
-                    reply rate
+                    {pillar.replyRate ? "reply rate" : "share"}
                   </p>
                 </div>
               </div>
@@ -87,8 +87,8 @@ export const TopicPillarDistribution: React.FC<TopicPillarDistributionProps> = (
               </div>
 
               <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] text-on-surface-variant tabular-nums">
-                <span>{pillar.commentsCount} comments engaged</span>
-                <span>{pillar.impressions} impressions</span>
+                <span>{pillar.commentsCount} action{pillar.commentsCount === 1 ? "" : "s"}</span>
+                <span>{pillar.impressions ?? `${pillar.percentage}% volume`}</span>
               </div>
             </div>
           ))}

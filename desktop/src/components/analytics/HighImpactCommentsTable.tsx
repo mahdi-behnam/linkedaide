@@ -7,8 +7,9 @@ export interface HighImpactComment {
   headline: string;
   topic: string;
   commentExcerpt: string;
-  authorReplied: boolean;
-  reach: string;
+  status?: string;
+  authorReplied?: boolean;
+  reach?: string;
   timestamp: string;
 }
 
@@ -30,11 +31,11 @@ export const HighImpactCommentsTable: React.FC<HighImpactCommentsTableProps> = (
             <ChatTeardropDots size={15} weight="bold" />
           </div>
           <h2 className="text-xs font-semibold text-on-surface">
-            Recent High-Impact Comments
+            Executed Engagement Log
           </h2>
         </div>
         <span className="text-[11px] text-on-surface-variant">
-          Top performing executed comments with author responses
+          Approved and executed LinkedIn actions from durable history
         </span>
       </div>
 
@@ -45,15 +46,14 @@ export const HighImpactCommentsTable: React.FC<HighImpactCommentsTableProps> = (
               <th className="pb-2 font-medium">Target Author</th>
               <th className="pb-2 font-medium">Topic Tag</th>
               <th className="pb-2 font-medium">Comment Excerpt</th>
-              <th className="pb-2 font-medium">Response Status</th>
-              <th className="pb-2 font-medium">Reach</th>
+              <th className="pb-2 font-medium">Execution Status</th>
               <th className="pb-2 font-medium text-right">Timestamp</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-outline/40">
             {comments.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-on-surface-variant text-[11px]">
+                <td colSpan={5} className="px-4 py-8 text-center text-on-surface-variant text-[11px]">
                   No high-impact comments recorded yet. Comments will appear here once executed and engagement is tracked.
                 </td>
               </tr>
@@ -101,11 +101,8 @@ export const HighImpactCommentsTable: React.FC<HighImpactCommentsTableProps> = (
                     <td className="py-2.5 pr-3 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-tertiary">
                         <CheckCircle size={13} weight="bold" />
-                        Author Replied
+                        {comment.status || "Executed"}
                       </span>
-                    </td>
-                    <td className="py-2.5 pr-3 font-mono text-xs text-on-surface whitespace-nowrap font-medium tabular-nums">
-                      {comment.reach}
                     </td>
                     <td className="py-2.5 font-mono text-[11px] text-on-surface-variant text-right whitespace-nowrap">
                       {comment.timestamp}
