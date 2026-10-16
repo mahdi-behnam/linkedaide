@@ -9,7 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from agent.browser.feed_parser import extract_valid_urn, parse_feed_card
+from agent.browser.feed_parser import (
+    decode_linkedin_protobuf_token,
+    extract_valid_urn,
+    parse_feed_card,
+)
 from agent.browser.scraper import FeedScraper
 from agent.browser.url_utils import hashtag_to_feed_url
 from agent.config import Settings
@@ -799,6 +803,19 @@ def test_extract_valid_urn() -> None:
         )
         == "urn:li:activity:7999888777"
     )
+    # Protobuf-encoded activity tokens (modern LinkedIn feed DOM)
+    assert (
+        decode_linkedin_protobuf_token("CgsIgIDQiIfT+s/QAQ")
+        == "urn:li:activity:7516496010819534848"
+    )
+    assert decode_linkedin_protobuf_token("invalid_token") is None
+    assert (
+        extract_valid_urn(
+            "CgsIgIDQiIfT+s/QAQ-replaceableCommentToolsciHPui6PUlyHFZ4Xe1Cjg0P5fl95dRVYbDksSTVnNHsFeedType_MAIN_FEED_RELEVANCE"
+        )
+        == "urn:li:activity:7516496010819534848"
+    )
+    assert extract_valid_urn("CgsIgIDQiIfT+s/QAQ") == "urn:li:activity:7516496010819534848"
     # Reject opaque DOM layout container hash
     assert (
         extract_valid_urn("expandedwia6F-QsrTbyoUOQxmOTW4pERTjZUyQ2k50KXuJhs2EMAIN_FEED_RELEVANCE")
@@ -971,6 +988,99 @@ async def test_scraper_resolves_urn_from_posts_permalink() -> None:
         record.post_url
         == "https://www.linkedin.com/feed/update/urn:li:activity:7987654321098765432/"
     )
+
+
+@pytest.mark.asyncio
+async def test_scraper_resolves_urn_from_replaceable_comment_tools_protobuf() -> None:
+    """Resolve activity URN from modern LinkedIn card containing protobuf replaceableCommentTools."""
+    now = datetime.now(UTC)
+
+    card = MagicMock()
+    # Outer card has opaque tracking hash in expanded id
+    card.get_attribute = AsyncMock(
+        side_effect=lambda attr: (
+            "expandedciHPui6PUlyHFZ4Xe1Cjg0P5fl95dRVYbDksSTVnNHsFeedType_MAIN_FEED_RELEVANCE"
+            if attr == "id"
+            else None
+        )
+    )
+
+    comment_btn = MagicMock(count=AsyncMock(return_value=1))
+    actor_el = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Akhilesh C. • 3rd+"),
+    )
+    actor_link = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(return_value="Akhilesh C. • 3rd+"),
+        get_attribute=AsyncMock(return_value="https://www.linkedin.com/in/akhilesh-c-558b2813/"),
+    )
+    actor_links = MagicMock(
+        count=AsyncMock(return_value=1),
+        nth=MagicMock(return_value=actor_link),
+    )
+    text_box = MagicMock(
+        count=AsyncMock(return_value=1),
+        inner_text=AsyncMock(
+            return_value="For anyone using AI in software product development, you will encounter that your bottlenecks have moved..."
+        ),
+    )
+
+    # replaceableCommentTools element containing protobuf activity URN
+    comment_tools_el = MagicMock()
+    comment_tools_el.get_attribute = AsyncMock(
+        side_effect=lambda attr: (
+            "CgsIgIDQiIfT+s/QAQ-replaceableCommentToolsciHPui6PUlyHFZ4Xe1Cjg0P5fl95dRVYbDksSTVnNHsFeedType_MAIN_FEED_RELEVANCE"
+            if attr in ("id", "componentkey")
+            else None
+        )
+    )
+    comment_tools_loc = MagicMock(
+        count=AsyncMock(return_value=1),
+        nth=MagicMock(return_value=comment_tools_el),
+    )
+
+    # Empty locators for legacy selectors
+    empty_loc = MagicMock(count=AsyncMock(return_value=0))
+
+    def card_locator(selector: str) -> MagicMock:
+        loc = MagicMock()
+        if "Comment" in selector:
+            loc.first = comment_btn
+        elif "replaceableCommentTools" in selector or "CgsI" in selector:
+            return comment_tools_loc
+        elif "a[href*='/in/']" in selector:
+            return actor_links
+        elif "actor" in selector:
+            loc.first = actor_el
+        elif "expandable-text-box" in selector or "update-components-text" in selector:
+            loc.first = text_box
+        elif "data-urn" in selector:
+            return empty_loc
+        elif "a[href*='/feed/update/']" in selector or "a[href*='/posts/']" in selector:
+            return empty_loc
+        else:
+            loc.first = empty_loc
+            return loc
+        return loc
+
+    card.locator = MagicMock(side_effect=card_locator)
+
+    record, reason = await parse_feed_card(card, index=0, now=now, seen_hashes=set())
+
+    assert record is not None
+    # Must NOT have used the opaque tracking hash ciHPui6...
+    assert "ciHP" not in record.post_urn
+    assert "ciHP" not in record.post_url
+    # Must have decoded the protobuf activity ID 7516496010819534848
+    assert record.post_urn == "urn:li:activity:7516496010819534848"
+    assert (
+        record.post_url
+        == "https://www.linkedin.com/feed/update/urn:li:activity:7516496010819534848/"
+    )
+    assert record.author_name == "Akhilesh C."
+    assert record.author_profile_url == "https://www.linkedin.com/in/akhilesh-c-558b2813/"
+
 
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import logging
 import re
@@ -65,12 +66,80 @@ TEXT_SELECTORS: list[str] = [
 ]
 
 
+def decode_linkedin_protobuf_token(token: str) -> str | None:
+    """Decode a LinkedIn protobuf-encoded activity token into an activity URN.
+
+    LinkedIn feed DOMs frequently encode the 64-bit integer activity ID inside a protobuf
+    wire payload (often serialized as Base64/Base64URL in container IDs such as
+    `CgsI...-replaceableCommentTools...`).
+    """
+    token = token.replace("-", "+").replace("_", "/")
+    pad = "=" * (-len(token) % 4)
+    try:
+        raw = base64.b64decode(token + pad)
+    except Exception:
+        return None
+
+    def scan_bytes(data: bytes) -> str | None:
+        idx = 0
+        while idx < len(data):
+            tag = data[idx]
+            idx += 1
+            wire_type = tag & 0x07
+            if wire_type == 0:  # varint
+                val = 0
+                shift = 0
+                while idx < len(data):
+                    b = data[idx]
+                    idx += 1
+                    val |= (b & 0x7F) << shift
+                    shift += 7
+                    if not (b & 0x80):
+                        break
+                zigzag = (val >> 1) ^ (-(val & 1))
+                if 10**17 <= zigzag < 10**20:
+                    return f"urn:li:activity:{zigzag}"
+                if 10**17 <= val < 10**20:
+                    return f"urn:li:activity:{val}"
+            elif wire_type == 1:  # 64-bit fixed
+                if idx + 8 <= len(data):
+                    val = int.from_bytes(data[idx : idx + 8], "little")
+                    idx += 8
+                    if 10**17 <= val < 10**20:
+                        return f"urn:li:activity:{val}"
+                else:
+                    break
+            elif wire_type == 2:  # length-delimited
+                length = 0
+                shift = 0
+                while idx < len(data):
+                    b = data[idx]
+                    idx += 1
+                    length |= (b & 0x7F) << shift
+                    shift += 7
+                    if not (b & 0x80):
+                        break
+                sub_bytes = data[idx : idx + length]
+                idx += length
+                res = scan_bytes(sub_bytes)
+                if res:
+                    return res
+            elif wire_type == 5:  # 32-bit fixed
+                idx += 4
+            else:
+                break
+        return None
+
+    return scan_bytes(raw)
+
+
 def extract_valid_urn(text: str | None) -> str | None:
     """Extract a valid LinkedIn post/activity URN from a string or None.
 
     Matches:
       - Standard numeric URNs: urn:li:(activity|ugcPost|share):<digits>
       - Permalinks: /posts/...-activity-<digits>... or /feed/update/activity:<digits>
+      - Protobuf-encoded tokens: CgsI... in replaceableCommentTools or standalone
       - Test mock URNs while rejecting opaque DOM layout tokens (e.g. 30+ char hashes).
     """
     if not text:
@@ -83,7 +152,17 @@ def extract_valid_urn(text: str | None) -> str | None:
     match = re.search(r"(?:^|[\W_])(activity|ugcPost|share)[-:](\d{8,25})(?:[\W_]|$)", text)
     if match:
         return f"urn:li:{match.group(1)}:{match.group(2)}"
-    # 3. Allow unit-test mock URNs (e.g. urn:li:activity:good_card) while rejecting layout hashes
+    # 3. Modern LinkedIn protobuf-encoded activity ID (e.g. replaceableCommentTools container)
+    if "replaceableCommentTools" in text:
+        cand_token = text.split("-replaceableCommentTools")[0].strip()
+        decoded = decode_linkedin_protobuf_token(cand_token)
+        if decoded:
+            return decoded
+    for cand in re.findall(r"CgsI[A-Za-z0-9+/=_-]{10,24}", text):
+        decoded = decode_linkedin_protobuf_token(cand)
+        if decoded:
+            return decoded
+    # 4. Allow unit-test mock URNs (e.g. urn:li:activity:good_card) while rejecting layout hashes
     match = re.search(r"urn:li:(?:activity|ugcPost|share):([a-zA-Z0-9_-]+)", text)
     if match:
         val = match.group(1)
@@ -153,14 +232,16 @@ async def parse_feed_card(
         except Exception:
             pass
 
-    # Priority C: Check inner elements for data-urn / data-activity-urn / data-id
+    # Priority C: Check modern LinkedIn comment tools element (id / componentkey with protobuf activity URN)
     if not urn:
         try:
-            inner_urn_els = card.locator("[data-urn], [data-activity-urn], [data-id]")
-            count = await inner_urn_els.count()
-            for idx in range(min(count, 5)):
-                el = inner_urn_els.nth(idx)
-                for attr in ("data-urn", "data-activity-urn", "data-id"):
+            comment_tools = card.locator(
+                "[id*='replaceableCommentTools'], [componentkey*='replaceableCommentTools'], [id^='CgsI'], [componentkey^='CgsI']"
+            )
+            ct_count = await comment_tools.count()
+            for idx in range(min(ct_count, 3)):
+                el = comment_tools.nth(idx)
+                for attr in ("id", "componentkey"):
                     val = await el.get_attribute(attr)
                     cand = extract_valid_urn(val)
                     if cand:
@@ -171,7 +252,27 @@ async def parse_feed_card(
         except Exception:
             pass
 
-    # Priority D: Check inner anchor tags (post permalinks, timestamp links)
+    # Priority D: Check inner elements for data-urn / data-activity-urn / data-id / componentkey
+    if not urn:
+        try:
+            inner_urn_els = card.locator(
+                "[data-urn], [data-activity-urn], [data-id], [componentkey*='CgsI']"
+            )
+            count = await inner_urn_els.count()
+            for idx in range(min(count, 5)):
+                el = inner_urn_els.nth(idx)
+                for attr in ("data-urn", "data-activity-urn", "data-id", "componentkey"):
+                    val = await el.get_attribute(attr)
+                    cand = extract_valid_urn(val)
+                    if cand:
+                        urn = cand
+                        break
+                if urn:
+                    break
+        except Exception:
+            pass
+
+    # Priority E: Check inner anchor tags (post permalinks, timestamp links)
     if not urn:
         try:
             inner_links = card.locator(
