@@ -32,7 +32,7 @@ import { SearchDocument } from "./types";
  */
 export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
   {
-    id: "nav-dashboard",
+    id: "tab-dashboard",
     title: "Dashboard",
     subtitle: "Operations overview and realtime system telemetry",
     category: "Navigation",
@@ -42,7 +42,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "dashboard" },
   },
   {
-    id: "nav-queue",
+    id: "tab-queue",
     title: "Approval Queue",
     subtitle: "Review, edit, and approve pending comment suggestions",
     category: "Navigation",
@@ -52,7 +52,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "queue" },
   },
   {
-    id: "nav-outreach",
+    id: "tab-outreach",
     title: "Outreach Queue",
     subtitle: "Review personalized connection requests and custom invite notes",
     category: "Navigation",
@@ -62,7 +62,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "outreach" },
   },
   {
-    id: "nav-composer",
+    id: "tab-composer",
     title: "Post Composer Studio",
     subtitle: "Draft, craft viral hooks, inspect cutoffs, and schedule posts",
     category: "Navigation",
@@ -72,7 +72,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "composer" },
   },
   {
-    id: "nav-calendar",
+    id: "tab-calendar",
     title: "Content Calendar",
     subtitle: "Weekly and monthly scheduled content roadmap and scout cadence",
     category: "Navigation",
@@ -82,7 +82,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "calendar" },
   },
   {
-    id: "nav-analytics",
+    id: "tab-analytics",
     title: "Growth Analytics",
     subtitle: "Track impressions, engagements, and follower growth trends",
     category: "Navigation",
@@ -92,7 +92,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "analytics" },
   },
   {
-    id: "nav-vault",
+    id: "tab-vault",
     title: "LinkedIn Vault",
     subtitle: "Manage Playwright session credentials & Fernet keys",
     category: "Navigation",
@@ -102,7 +102,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "vault" },
   },
   {
-    id: "nav-history",
+    id: "tab-history",
     title: "Audit History",
     subtitle: "Immutable audit log of all executed and rejected actions",
     category: "Navigation",
@@ -112,7 +112,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "history" },
   },
   {
-    id: "nav-doctor",
+    id: "tab-doctor",
     title: "System Diagnostics",
     subtitle: "Subsystem health checks and Python CLI doctor suite",
     category: "Navigation",
@@ -122,7 +122,7 @@ export const VIEW_SEARCH_DOCUMENTS: SearchDocument[] = [
     target: { tab: "doctor" },
   },
   {
-    id: "nav-settings",
+    id: "tab-settings",
     title: "Settings",
     subtitle: "Configure runtime thresholds, quotas, and worker secrets",
     category: "Navigation",
