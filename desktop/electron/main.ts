@@ -20,6 +20,7 @@ import {
 import { TrayManager } from "./tray/trayManager";
 import { PollingEngine } from "./tray/pollingEngine";
 import { setupAppMenu } from "./menu";
+import { UpdateManager } from "./updater/updateManager";
 import type { ActionResult, DesktopSettings } from "./types";
 
 interface QuittableApp extends Electron.App {
@@ -33,6 +34,7 @@ let workerClient: WorkerClient;
 let realtimeClient: RealtimePushClient | null = null;
 let trayManager: TrayManager | null = null;
 let pollingEngine: PollingEngine | null = null;
+let updateManager: UpdateManager | null = null;
 
 function getSettingsPath(): string {
   return path.join(app.getPath("userData"), "settings.json");
@@ -949,6 +951,11 @@ app.whenReady().then(() => {
   );
   realtimeClient.connect();
 
+  updateManager = new UpdateManager({ mainWindow });
+  updateManager.checkForUpdates().catch((err) => {
+    console.warn("Startup update check failed:", err);
+  });
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createWindow();
@@ -960,6 +967,9 @@ app.whenReady().then(() => {
       }
       if (realtimeClient) {
         realtimeClient.setMainWindow(mainWindow);
+      }
+      if (updateManager) {
+        updateManager.setMainWindow(mainWindow);
       }
     } else if (mainWindow) {
       if (mainWindow.isMinimized()) {
@@ -973,6 +983,10 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   mainApp.isQuitting = true;
+  if (updateManager) {
+    updateManager.destroy();
+    updateManager = null;
+  }
   if (pollingEngine) {
     pollingEngine.stop();
     pollingEngine = null;
