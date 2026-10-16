@@ -33,6 +33,7 @@ export interface AppContextType {
   togglePause: () => void;
   pendingCount: number;
   setPendingCount: (count: number) => void;
+  pendingItems: any[];
   telemetry: SystemTelemetry;
   quota: DailyQuota;
   isScouting: boolean;
@@ -150,6 +151,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentTab, setCurrentTab] = useState<NavigationTab>("dashboard");
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [pendingItems, setPendingItems] = useState<any[]>([]);
   const [telemetry, setTelemetry] = useState<SystemTelemetry>(initialTelemetry);
   const [quota, setQuota] = useState<DailyQuota>(initialQuota);
   const [isScouting, setIsScouting] = useState<boolean>(false);
@@ -310,6 +312,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       state.pending ||
       [];
     const newPendingCount = rawPending.length;
+    setPendingItems(rawPending);
 
     setPendingCount((prev) => {
       if (newPendingCount > prev) {
@@ -617,6 +620,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       togglePause,
       pendingCount,
       setPendingCount,
+      pendingItems,
       telemetry,
       quota,
       isScouting,
@@ -664,6 +668,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isPaused,
       togglePause,
       pendingCount,
+      pendingItems,
       telemetry,
       quota,
       isScouting,

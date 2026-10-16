@@ -1,14 +1,16 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { TelemetryCard } from "../components/dashboard/TelemetryCard";
 import { RateLimitBurnDown } from "../components/dashboard/RateLimitBurnDown";
 import { EdgeDispatcherStatus } from "../components/dashboard/EdgeDispatcherStatus";
-import { PendingApprovalQueuePreview } from "../components/dashboard/PendingApprovalQueuePreview";
+import {
+  PendingApprovalQueuePreview,
+  PreviewPendingItem,
+} from "../components/dashboard/PendingApprovalQueuePreview";
 import {
   ArrowClockwise,
   ShieldCheck,
   Cpu,
-  Database,
   ClockCounterClockwise,
   CheckCircle,
   WarningCircle,
@@ -24,9 +26,60 @@ export const DashboardView: React.FC = () => {
     clearIncident,
     setCurrentTab,
     lastTriggerMessage,
+    formatTimeAgo,
+    doctorChecks,
+    pendingItems,
   } = useApp();
 
+  const [settings, setSettings] = useState<any>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    if (typeof window !== "undefined" && window.api?.getSettings) {
+      window.api.getSettings().then((s) => {
+        if (mounted && s) setSettings(s);
+      });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const pendingCount = telemetry?.pendingCount ?? 0;
+
+  const previewItems: PreviewPendingItem[] = useMemo(() => {
+    return (pendingItems || []).map((p: any) => {
+      const isPost = (p.action_type || "").toLowerCase().includes("post");
+      const author = p.author_name || (isPost ? "You (Draft)" : "LinkedIn Member");
+      const initials =
+        author
+          .split(" ")
+          .map((n: string) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase() || "LI";
+      return {
+        id: p.item_id || p.id,
+        author,
+        initials,
+        avatarBg: isPost ? "bg-primary/15" : "bg-secondary/15",
+        avatarText: isPost ? "text-primary" : "text-secondary",
+        headline:
+          p.author_headline ||
+          (isPost ? "Original Post Suggestion" : "LinkedIn Member"),
+        verified: false,
+        type: isPost ? "Original Post" : "Comment",
+        confidence: p.confidence
+          ? `${Math.round(p.confidence * 100)}% Confidence`
+          : "85% Confidence",
+        timeAgo: p.created_at ? formatTimeAgo(p.created_at) : "Pending",
+        quote: p.post_excerpt ? `“${p.post_excerpt.slice(0, 100)}...”` : undefined,
+        draft: p.draft_text || (p.reaction_type ? `Reaction: ${p.reaction_type}` : ""),
+        primaryAction: isPost ? "Edit Draft" : "Approve",
+        secondaryAction: isPost ? "Dismiss" : "Reject",
+      };
+    });
+  }, [pendingItems, formatTimeAgo]);
 
   return (
     <div className="space-y-7 max-w-7xl mx-auto">
@@ -96,20 +149,9 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* 4 Quick Telemetry Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: State Persistence */}
-        <TelemetryCard
-          title="State Persistence"
-          value={telemetry.kvBackend || "Cloudflare KV"}
-          subLeft="Global Edge · 14ms"
-          subRight="Edge Connected"
-          icon={<Database size={16} />}
-          iconColorClass="text-primary"
-          subRightColorClass="text-tertiary"
-        />
-
-        {/* Card 2: Model Inference */}
+      {/* 3 Quick Telemetry Cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Card 1: Model Inference */}
         <TelemetryCard
           title="NVIDIA NIM Model"
           value={
@@ -117,21 +159,21 @@ export const DashboardView: React.FC = () => {
               ? telemetry.nimModel.replace(/^meta\//, "")
               : "Not configured"
           }
-          subLeft="NVIDIA NIM FP8 TensorRT"
-          subRight="0 Errors"
+          subLeft="api.nim.nvidia.com"
+          subRight={telemetry.nimModel ? "Active" : "Unset"}
           icon={<Cpu size={16} />}
           iconColorClass="text-secondary"
-          subRightColorClass="text-tertiary"
+          subRightColorClass={telemetry.nimModel ? "text-tertiary" : "text-on-surface-variant"}
         />
 
-        {/* Card 3: LinkedIn Session */}
+        {/* Card 2: LinkedIn Session */}
         <TelemetryCard
           title="LinkedIn Session"
           value={
             telemetry.sessionValid ? "Active & Encrypted" : "No Active Session"
           }
           subLeft="Fernet AES-128-CBC"
-          subRight={telemetry.sessionValid ? "18 days left" : "Session Expired"}
+          subRight={telemetry.sessionValid ? "Valid" : "Session Expired"}
           icon={<ShieldCheck size={16} />}
           iconColorClass={telemetry.sessionValid ? "text-tertiary" : "text-amber-500"}
           subRightColorClass={
@@ -139,19 +181,21 @@ export const DashboardView: React.FC = () => {
           }
         />
 
-        {/* Card 4: Last Scout Run */}
+        {/* Card 3: Last Scout Run */}
         <TelemetryCard
           title="Last Scout Run"
           value={
             telemetry.lastScanAt && telemetry.lastScanAt !== "Never"
               ? telemetry.lastScanAt
-              : "10 mins ago"
+              : "No recent runs"
           }
-          subLeft="Next run in 20m"
-          subRight="6 evaluated"
+          subLeft="Automated Schedule"
+          subRight={telemetry.circuitBreakerTripped ? "Circuit Paused" : "Active"}
           icon={<ClockCounterClockwise size={16} />}
           iconColorClass="text-on-surface-variant"
-          subRightColorClass="text-on-surface-variant"
+          subRightColorClass={
+            telemetry.circuitBreakerTripped ? "text-error" : "text-on-surface-variant"
+          }
         />
       </section>
 
@@ -164,13 +208,20 @@ export const DashboardView: React.FC = () => {
 
         {/* RIGHT (5 cols): Edge Dispatcher Status */}
         <div className="lg:col-span-5">
-          <EdgeDispatcherStatus workerUrl={telemetry.workerUrl} />
+          <EdgeDispatcherStatus
+            workerUrl={telemetry.workerUrl}
+            workerStatus={telemetry.workerStatus}
+            latencyMs={doctorChecks?.find((c) => c.id === "relay-health" || c.id === "kv-access")?.latencyMs}
+            executionMode={settings?.executionMode ?? "cloud"}
+            hasTelegramWebhook={Boolean(telemetry.workerUrl && telemetry.workerStatus === "connected")}
+          />
         </div>
       </div>
 
       {/* Bottom Section: Pending Approval Queue Preview */}
       <PendingApprovalQueuePreview
         pendingCount={pendingCount}
+        items={previewItems}
         onOpenQueue={() => setCurrentTab("queue")}
       />
     </div>

@@ -20,8 +20,6 @@ describe("DashboardView", () => {
 
   it("renders telemetry status metrics", () => {
     renderDashboard();
-    expect(screen.getByText("State Persistence")).toBeTruthy();
-    expect(screen.getByText("Cloudflare KV")).toBeTruthy();
     expect(screen.getByText("NVIDIA NIM Model")).toBeTruthy();
     expect(screen.getByText("No Active Session")).toBeTruthy();
     expect(screen.getByText("Not configured")).toBeTruthy();

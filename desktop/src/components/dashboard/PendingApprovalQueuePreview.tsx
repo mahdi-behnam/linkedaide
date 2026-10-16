@@ -26,56 +26,6 @@ export interface PreviewPendingItem {
   secondaryAction: string;
 }
 
-const DEFAULT_PREVIEW_ITEMS: PreviewPendingItem[] = [
-  {
-    id: "sn-1",
-    author: "Satya Nadella",
-    initials: "SN",
-    avatarBg: "bg-secondary/15",
-    avatarText: "text-secondary",
-    headline: "Chairman & CEO at Microsoft",
-    verified: true,
-    type: "Comment",
-    confidence: "94% Confidence",
-    timeAgo: "15m ago",
-    quote: "“Autonomous AI systems in the enterprise require reliable verification architectures...”",
-    draft: "The compounding returns on autonomous verification pipelines highlight why deterministic guardrails matter more than raw model scale...",
-    primaryAction: "Approve",
-    secondaryAction: "Reject",
-  },
-  {
-    id: "hc-2",
-    author: "Harrison Chase",
-    initials: "HC",
-    avatarBg: "bg-surface-container-high",
-    avatarText: "text-on-surface-variant",
-    headline: "Co-founder & CEO at LangChain",
-    verified: false,
-    type: "Comment",
-    confidence: "91% Confidence",
-    timeAgo: "35m ago",
-    quote: "“Separating workflow orchestration state from transient LLM checkpoints is the key architectural leap...”",
-    draft: "Stateful graphs prevent hallucinated cascading failures across tool-use agents by keeping state transitions reproducible...",
-    primaryAction: "Approve",
-    secondaryAction: "Reject",
-  },
-  {
-    id: "op-3",
-    author: "Operator (Self)",
-    initials: "OP",
-    avatarBg: "bg-primary/15",
-    avatarText: "text-primary",
-    headline: "Original Thought Leadership Post",
-    verified: false,
-    type: "Original Post",
-    confidence: "88% Match",
-    timeAgo: "1h ago",
-    draft: "Why human-in-the-loop is the prerequisite for enterprise agent deployment: an architectural deep-dive into safe asynchronous queues...",
-    primaryAction: "Edit Draft",
-    secondaryAction: "Dismiss",
-  },
-];
-
 export interface PendingApprovalQueuePreviewProps {
   pendingCount: number;
   onOpenQueue: () => void;
@@ -87,7 +37,7 @@ export const PendingApprovalQueuePreview: React.FC<PendingApprovalQueuePreviewPr
   pendingCount,
   onOpenQueue,
   onActionClick,
-  items = DEFAULT_PREVIEW_ITEMS,
+  items = [],
 }) => {
   const displayItems = pendingCount > 0 ? items.slice(0, Math.max(1, Math.min(3, pendingCount))) : [];
 
