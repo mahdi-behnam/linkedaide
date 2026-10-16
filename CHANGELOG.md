@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.2...v1.4.3) (2026-10-16)
+
+
+### Bug Fixes
+
+* **ci:** track desktop build icon assets and synchronize during packaging ([cb2bd27](https://github.com/mahdi-behnam/linkedaide/commit/cb2bd2773f768db78eb2d9739be4d6314bbf4c4d))
+
 ## [1.4.2](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.1...v1.4.2) (2026-10-16)
 
 
