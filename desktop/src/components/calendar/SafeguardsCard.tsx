@@ -1,7 +1,37 @@
 import React from "react";
+import { useApp } from "../../context/AppContext";
 import { ShieldCheck } from "../icons";
 
 export const SafeguardsCard: React.FC = () => {
+  const { quota } = useApp();
+
+  const postsMax = quota?.postsMax ?? 3;
+  const postsExecuted = quota?.postsExecuted ?? 0;
+  const commentsMax = quota?.commentsMax ?? 15;
+  const commentsExecuted = quota?.commentsExecuted ?? 0;
+
+  const totalCap = postsMax + commentsMax;
+  const totalUsed = postsExecuted + commentsExecuted;
+  const ratio = totalCap > 0 ? Math.min(1, Math.max(0, totalUsed / totalCap)) : 0;
+  const circumference = 88;
+  const strokeDashoffset = Math.round(circumference * (1 - ratio));
+
+  const statusLabel =
+    ratio >= 1
+      ? "Capped"
+      : ratio > 0.8
+      ? "Near Cap"
+      : ratio > 0
+      ? "Active"
+      : "Nominal";
+
+  const statusColor =
+    ratio >= 1
+      ? "text-error"
+      : ratio > 0.8
+      ? "text-amber-500"
+      : "text-tertiary";
+
   return (
     <div className="flex flex-col justify-between gap-3.5 bg-surface-container-lowest p-4 rounded-lg border border-outline/70 shadow-2xs">
       <div className="flex flex-col gap-2.5">
@@ -16,8 +46,8 @@ export const SafeguardsCard: React.FC = () => {
 
         <p className="text-xs text-on-surface-variant leading-relaxed">
           Deterministic rate limits guarantee maximum{" "}
-          <span className="text-on-surface font-medium">3 posts</span> and{" "}
-          <span className="text-on-surface font-medium">15 comments</span> per 24 hours. Automated scouting triggers drafts directly to the{" "}
+          <span className="text-on-surface font-medium">{postsMax} posts</span> and{" "}
+          <span className="text-on-surface font-medium">{commentsMax} comments</span> per 24 hours. Automated scouting triggers drafts directly to the{" "}
           <span className="text-primary font-medium">Approval Queue</span> for strict human verification.
         </p>
 
@@ -40,8 +70,8 @@ export const SafeguardsCard: React.FC = () => {
                 fill="none"
                 r="14"
                 stroke="currentColor"
-                strokeDasharray="88"
-                strokeDashoffset="56"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
                 strokeWidth="3"
                 transform="rotate(-90 18 18)"
@@ -52,12 +82,12 @@ export const SafeguardsCard: React.FC = () => {
                 Daily Quota Velocity
               </span>
               <span className="font-mono text-[10px] text-on-surface-variant tabular-nums">
-                1 of 3 Posts · 8 of 15 Comments
+                {postsExecuted} of {postsMax} Posts · {commentsExecuted} of {commentsMax} Comments
               </span>
             </div>
           </div>
-          <span className="text-[11px] text-tertiary font-medium">
-            Optimal
+          <span className={`text-[11px] font-medium ${statusColor}`}>
+            {statusLabel}
           </span>
         </div>
       </div>
