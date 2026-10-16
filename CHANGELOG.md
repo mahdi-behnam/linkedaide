@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.5.0...v1.6.0) (2026-10-16)
+
+
+### Features
+
+* **desktop:** add fork drift detection and document 1-click sync ([2f4d39d](https://github.com/mahdi-behnam/linkedaide/commit/2f4d39d13b82ce72678f2778aff33a0bb208648a))
+* **safety:** prepare repository and desktop app for public release ([d8ba5b6](https://github.com/mahdi-behnam/linkedaide/commit/d8ba5b6db8e917a03bf49d391ddcc543eed3249d))
+
 ## [1.5.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.3...v1.5.0) (2026-10-16)
 
 
