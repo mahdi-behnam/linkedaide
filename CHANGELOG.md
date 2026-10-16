@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.5.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.3...v1.5.0) (2026-10-16)
+
+
+### Features
+
+* **analytics:** replace fabricated reach and engagement formulas with real execution telemetry ([9290d7f](https://github.com/mahdi-behnam/linkedaide/commit/9290d7f7d35427ba5c3d523fc28fd5a98cd0629b))
+* **calendar:** connect safeguards card to real quota and add pillar editorial guidelines ([06622a1](https://github.com/mahdi-behnam/linkedaide/commit/06622a1a6d6a663c3aff0e1623fc0f6115c46f75))
+* **dashboard:** replace simulated dispatcher charts and mock queue with live telemetry ([8a34785](https://github.com/mahdi-behnam/linkedaide/commit/8a347851368c5dfd3788a2c0a2bfd06d626209db))
+
+
+### Bug Fixes
+
+* **doctor:** eliminate mock secrets and fake telemetry metrics ([02845b9](https://github.com/mahdi-behnam/linkedaide/commit/02845b946ad96eb0f1228d559e58093e228a20c9))
+* **vault:** remove fabricated fingerprint, mock blob sizes, and simulated PoPs ([a14e14c](https://github.com/mahdi-behnam/linkedaide/commit/a14e14c0afd7f2f01c1b9b5dc958868d4d88ee2b))
+
 ## [1.4.3](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.2...v1.4.3) (2026-10-16)
 
 
