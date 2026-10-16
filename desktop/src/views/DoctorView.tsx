@@ -3,7 +3,7 @@ import { useApp } from "../context/AppContext";
 import { StatusPill } from "../components/StatusPill";
 import { ArrowClockwise, CheckCircle, Cpu } from "../components/icons";
 import { DiagnosticCard } from "./doctor/DiagnosticCard";
-import { EnvSecretsAudit } from "./doctor/EnvSecretsAudit";
+import { EnvSecretsAudit, type EnvVarItem } from "./doctor/EnvSecretsAudit";
 import type { DesktopSettings } from "../types/api";
 
 export const DoctorView: React.FC = () => {
@@ -29,40 +29,117 @@ export const DoctorView: React.FC = () => {
   }, []);
 
   const envAuditList = useMemo(() => {
-    const hasKey = Boolean(settings?.encryptionKey);
-    const hasSecret = Boolean(settings?.apiSecret);
-    const hasWorker = Boolean(settings?.workerUrl);
-    const hasNimModel = Boolean(settings?.nimModel || telemetry?.nimModel);
-    const hasNimApiKey = Boolean(settings?.nimApiKey || settings?.nimModel || telemetry?.nimModel);
+    const isCloud = (settings?.executionMode ?? "cloud") === "cloud";
     const isSessionHealthy = Boolean(
       telemetry?.sessionValid ||
       doctorChecks.some((c) => c.category === "session" && c.status === "pass")
     );
-    const isCloud = (settings?.executionMode ?? "cloud") === "cloud";
+    const isKvActive = doctorChecks.some((c) => c.category === "state" && c.status === "pass");
+    const hasNimKey = Boolean(settings?.nimApiKey);
+    const hasNimModel = Boolean(settings?.nimModel || telemetry?.nimModel);
+    const hasKey = Boolean(settings?.encryptionKey);
+    const hasSecret = Boolean(settings?.apiSecret);
+    const hasWorker = Boolean(settings?.workerUrl);
     const hasGithubPat = Boolean(settings?.githubDispatchPat);
     const hasRepoOwner = Boolean(settings?.githubRepoOwner);
     const hasRepoName = Boolean(settings?.githubRepoName);
 
-    const baseList = [
-      { key: "NVIDIA_NIM_API_KEY", loaded: hasNimApiKey },
-      { key: "NIM_MODEL_PRIMARY", loaded: hasNimModel },
-      { key: "TELEGRAM_BOT_TOKEN", loaded: Boolean(settings?.notificationsEnabled) },
-      { key: "TELEGRAM_CHAT_ID", loaded: Boolean(settings?.notificationsEnabled) },
-      { key: "SESSION_ENCRYPTION_KEY", loaded: hasKey },
-      { key: "LINKEDIN_SESSION_STATE_ENC", loaded: isSessionHealthy },
-      { key: "CF_ACCOUNT_ID", loaded: hasWorker },
-      { key: "CF_KV_NAMESPACE_ID", loaded: Boolean(telemetry?.kvBackend) },
-      { key: "CF_API_TOKEN", loaded: hasSecret },
-      { key: "MAX_COMMENTS_PER_DAY", loaded: Boolean(settings?.maxCommentsPerDay) },
-      { key: "DRY_RUN", loaded: true },
+    const mask = (val?: string) => {
+      if (!val) return "";
+      if (val.length <= 8) return "••••••••";
+      return `${val.slice(0, 4)}••••${val.slice(-4)}`;
+    };
+
+    const baseList: EnvVarItem[] = [
+      {
+        key: "NVIDIA_NIM_API_KEY",
+        loaded: hasNimKey,
+        valueDisplay: hasNimKey ? mask(settings?.nimApiKey) : "Missing Token",
+        statusTag: hasNimKey ? "Configured" : "Missing",
+      },
+      {
+        key: "NIM_MODEL_PRIMARY",
+        loaded: hasNimModel,
+        valueDisplay: (settings?.nimModel || telemetry?.nimModel || "Not configured").replace(/^meta\//, ""),
+        statusTag: hasNimModel ? "Configured" : "Unset",
+      },
+      {
+        key: "TELEGRAM_BOT_TOKEN",
+        loaded: isKvActive,
+        valueDisplay: isKvActive ? "Worker Secret on Cloudflare Edge" : (hasWorker ? "Awaiting Worker Connection" : "Unconfigured"),
+        statusTag: isKvActive ? "Edge Verified" : (hasWorker ? "Awaiting Worker" : "Missing"),
+      },
+      {
+        key: "TELEGRAM_CHAT_ID",
+        loaded: isKvActive,
+        valueDisplay: isKvActive ? "Worker Secret on Cloudflare Edge" : (hasWorker ? "Awaiting Worker Connection" : "Unconfigured"),
+        statusTag: isKvActive ? "Edge Verified" : (hasWorker ? "Awaiting Worker" : "Missing"),
+      },
+      {
+        key: "SESSION_ENCRYPTION_KEY",
+        loaded: hasKey,
+        valueDisplay: hasKey ? mask(settings?.encryptionKey) : "Key Missing",
+        statusTag: hasKey ? "In Keyring" : "Missing",
+      },
+      {
+        key: "LINKEDIN_SESSION_STATE_ENC",
+        loaded: isSessionHealthy,
+        valueDisplay: isSessionHealthy ? "Fernet Encrypted in KV" : "Awaiting Login",
+        statusTag: isSessionHealthy ? "Active" : "Missing",
+      },
+      {
+        key: "CF_ACCOUNT_ID",
+        loaded: hasWorker && isKvActive,
+        valueDisplay: hasWorker ? "Cloudflare Worker Account Binding" : "Worker URL Unset",
+        statusTag: isKvActive ? "Bound" : "Awaiting Worker",
+      },
+      {
+        key: "CF_KV_NAMESPACE_ID",
+        loaded: isKvActive,
+        valueDisplay: "LINKEDIN_AGENT_KV (Worker Edge)",
+        statusTag: isKvActive ? "Bound" : "Awaiting Worker",
+      },
+      {
+        key: "CF_API_TOKEN",
+        loaded: hasSecret,
+        valueDisplay: hasSecret ? mask(settings?.apiSecret) : "API Secret Unset",
+        statusTag: hasSecret ? "Authorized" : "Missing",
+      },
+      {
+        key: "MAX_COMMENTS_PER_DAY",
+        loaded: Boolean(settings?.maxCommentsPerDay),
+        valueDisplay: `${settings?.maxCommentsPerDay ?? 15} / day`,
+        statusTag: "Enforced",
+      },
+      {
+        key: "DRY_RUN",
+        loaded: true,
+        valueDisplay: "false (Production)",
+        statusTag: "Production",
+      },
     ];
 
     if (isCloud) {
       return [
         ...baseList,
-        { key: "GITHUB_DISPATCH_PAT", loaded: hasGithubPat },
-        { key: "GITHUB_REPO_OWNER", loaded: hasRepoOwner },
-        { key: "GITHUB_REPO_NAME", loaded: hasRepoName },
+        {
+          key: "GITHUB_DISPATCH_PAT",
+          loaded: hasGithubPat,
+          valueDisplay: hasGithubPat ? mask(settings?.githubDispatchPat) : "Missing PAT",
+          statusTag: hasGithubPat ? "Configured" : "Missing",
+        },
+        {
+          key: "GITHUB_REPO_OWNER",
+          loaded: hasRepoOwner,
+          valueDisplay: settings?.githubRepoOwner || "Unset",
+          statusTag: hasRepoOwner ? "Configured" : "Missing",
+        },
+        {
+          key: "GITHUB_REPO_NAME",
+          loaded: hasRepoName,
+          valueDisplay: settings?.githubRepoName || "Unset",
+          statusTag: hasRepoName ? "Configured" : "Missing",
+        },
       ];
     }
     return baseList;
@@ -228,9 +305,6 @@ export const DoctorView: React.FC = () => {
         <div className="flex items-center justify-between px-1">
           <span className="font-label-md text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">
             Monitored Subsystems
-          </span>
-          <span className="font-label-sm text-[11px] text-on-surface-variant font-code-sm">
-            P99 TARGET &lt; 350ms
           </span>
         </div>
 

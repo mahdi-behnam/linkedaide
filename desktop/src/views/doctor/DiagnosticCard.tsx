@@ -23,9 +23,9 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
           icon: <Database size={16} className="text-emerald-500" />,
           label: "State Persistence",
           footer: [
-            { label: "Read", val: "14ms" },
-            { label: "Write", val: "42ms" },
-            { label: "Namespace", val: "hitl-state" },
+            ...(check.latencyMs !== undefined
+              ? [{ label: "Latency", val: `${check.latencyMs}ms` }]
+              : []),
             { label: "Mode", val: "Edge-replicated" },
           ],
         };
@@ -46,8 +46,8 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
           label: "Human Interaction",
           footer: [
             { label: "Relay", val: "Workers Edge" },
+            { label: "Protocol", val: "Webhook" },
             { label: "Auth", val: "HMAC-SHA256" },
-            { label: "Drops", val: "0" },
           ],
         };
       case "session":
@@ -57,7 +57,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
           footer: [
             { label: "Auth Cookie", val: "li_at" },
             { label: "CSRF", val: "JSESSIONID" },
-            { label: "Security Challenge", val: "None" },
+            { label: "Storage", val: "Fernet AES-128" },
           ],
         };
       case "llm":
@@ -67,7 +67,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
           footer: [
             { label: "Host", val: "api.nim.nvidia.com" },
             { label: "Schema", val: "Strict Pydantic" },
-            { label: "TTFT", val: "190ms" },
+            { label: "Provider", val: "NVIDIA NIM" },
           ],
         };
       case "safety":
@@ -75,8 +75,8 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
           icon: <CheckCircle size={16} className="text-amber-500" />,
           label: "Safety Invariants",
           footer: [
-            { label: "Bot Flagging", val: "0" },
-            { label: "Anti-Entropy", val: "Enforced" },
+            { label: "Breaker", val: check.status === "pass" ? "Intact" : "Tripped" },
+            { label: "Policy", val: "HITL Gate" },
             { label: "Idempotency", val: "Strict" },
           ],
         };

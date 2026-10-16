@@ -121,9 +121,11 @@ export function useDoctorDiagnostics(
             id: "chk-relay",
             category: "relay",
             title: "Telegram Relay Worker",
-            status: "pass",
-            latencyMs: kvLatency ? Math.round(kvLatency * 1.2) : undefined,
-            detail: "Webhook operational on Cloudflare Workers edge. HMAC signature validation active.",
+            status: kvPass ? "pass" : "fail",
+            latencyMs: kvLatency,
+            detail: kvPass
+              ? "Webhook operational on Cloudflare Workers edge. HMAC signature validation active."
+              : "Cloudflare Worker unreachable. Cannot verify Telegram webhook relay status.",
           },
           ...(isCloud
             ? [

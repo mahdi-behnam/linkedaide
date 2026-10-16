@@ -1,9 +1,11 @@
 import React from "react";
 import { CheckCircle, WarningCircle, ShieldCheck } from "../../components/icons";
 
-interface EnvVarItem {
+export interface EnvVarItem {
   key: string;
   loaded: boolean;
+  valueDisplay?: string;
+  statusTag?: string;
 }
 
 interface EnvSecretsAuditProps {
@@ -15,84 +17,17 @@ export const EnvSecretsAudit: React.FC<EnvSecretsAuditProps> = ({
   envAuditList,
   loadedVarsCount,
 }) => {
-  const getVarDetails = (key: string, loaded: boolean) => {
-    switch (key) {
-      case "NVIDIA_NIM_API_KEY":
-        return {
-          masked: loaded ? "nvapi-******9a8f" : "Missing Token",
-          tag: loaded ? "Validated" : "Missing",
-        };
-      case "NIM_MODEL_PRIMARY":
-        return {
-          masked: loaded ? "meta/llama-3.1-70b" : "Not Set",
-          tag: loaded ? "Configured" : "Unset",
-        };
-      case "TELEGRAM_BOT_TOKEN":
-        return {
-          masked: loaded ? "7192******:AAH..." : "Unconfigured",
-          tag: loaded ? "Verified" : "Missing",
-        };
-      case "TELEGRAM_CHAT_ID":
-        return {
-          masked: loaded ? "-10029381203" : "Unconfigured",
-          tag: loaded ? "Verified" : "Missing",
-        };
-      case "SESSION_ENCRYPTION_KEY":
-        return {
-          masked: loaded ? "Fernet 32-byte Key" : "Key Missing",
-          tag: loaded ? "In-Memory" : "Missing",
-        };
-      case "LINKEDIN_SESSION_STATE_ENC":
-        return {
-          masked: loaded ? "CF KV Edge Blob" : "Awaiting Login",
-          tag: loaded ? "Synced" : "Missing",
-        };
-      case "CF_ACCOUNT_ID":
-        return {
-          masked: loaded ? "8a7b******" : "Unset",
-          tag: loaded ? "Connected" : "Missing",
-        };
-      case "CF_KV_NAMESPACE_ID":
-        return {
-          masked: loaded ? "92fc******" : "Unset",
-          tag: loaded ? "Bound" : "Missing",
-        };
-      case "CF_API_TOKEN":
-        return {
-          masked: loaded ? "vO3b******" : "Unset",
-          tag: loaded ? "Authorized" : "Missing",
-        };
-      case "MAX_COMMENTS_PER_DAY":
-        return {
-          masked: "15 / day",
-          tag: loaded ? "Enforced" : "Default",
-        };
-      case "DRY_RUN":
-        return {
-          masked: "false (Production)",
-          tag: loaded ? "Production" : "Unset",
-        };
-      case "GITHUB_DISPATCH_PAT":
-        return {
-          masked: loaded ? "ghp_******381a" : "Missing PAT",
-          tag: loaded ? "Validated" : "Missing",
-        };
-      case "GITHUB_REPO_OWNER":
-        return {
-          masked: loaded ? "Repository Owner" : "Missing",
-          tag: loaded ? "Configured" : "Missing",
-        };
-      case "GITHUB_REPO_NAME":
-        return {
-          masked: loaded ? "Repository Target" : "Missing",
-          tag: loaded ? "Configured" : "Missing",
-        };
-      default:
-        return {
-          masked: loaded ? "Configured" : "Missing",
-          tag: loaded ? "Valid" : "Missing",
-        };
+  const getVarDetails = (item: EnvVarItem) => {
+    if (item.valueDisplay) {
+      return {
+        masked: item.valueDisplay,
+        tag: item.statusTag || (item.loaded ? "Configured" : "Missing"),
+      };
     }
+    return {
+      masked: item.loaded ? "Configured" : "Missing",
+      tag: item.loaded ? "Configured" : "Missing",
+    };
   };
 
   return (
@@ -113,7 +48,7 @@ export const EnvSecretsAudit: React.FC<EnvSecretsAuditProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {envAuditList.map((item) => {
-          const detail = getVarDetails(item.key, item.loaded);
+          const detail = getVarDetails(item);
           return (
             <div
               key={item.key}

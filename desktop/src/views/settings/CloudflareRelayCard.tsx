@@ -150,29 +150,8 @@ export const CloudflareRelayCard: React.FC<CloudflareRelayCardProps> = ({
           </span>
         </div>
 
-        {/* KV Namespace */}
-        <div className="flex flex-col gap-1.5">
-          <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
-            Cloudflare KV Namespace
-          </label>
-          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30">
-            <input
-              type="text"
-              readOnly
-              value="hitl-state"
-              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 cursor-default text-[12px]"
-            />
-            <span className="font-mono text-[11px] text-on-surface-variant ml-2 font-medium">
-              ENV.STATE_KV
-            </span>
-          </div>
-          <span className="font-label-sm text-[11px] text-on-surface-variant">
-            Direct key-value store identifier for triage queues
-          </span>
-        </div>
-
         {/* Sync Frequency */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="font-body-strong text-body-strong text-on-surface text-[12px]">
             Edge Sync Frequency
           </label>
