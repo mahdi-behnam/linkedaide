@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.1...v1.4.2) (2026-10-16)
+
+
+### Code Refactoring
+
+* replace remaining linkedin-hitl-agent references with linkedaide ([bc6c017](https://github.com/mahdi-behnam/linkedaide/commit/bc6c0171acf6d44186172594cfabaf63ae783be7))
+
 ## [1.4.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.4.0...v1.4.1) (2026-10-16)
 
 
