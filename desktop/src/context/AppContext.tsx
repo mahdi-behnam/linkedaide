@@ -9,6 +9,7 @@ import {
   ScheduledPost,
   AutomatedCommentWindow,
   ConnectionRequestAction,
+  NavigationTarget,
 } from "../types";
 import { ActionResult } from "../types/api";
 import { ToastNotification } from "../components/toast/types";
@@ -28,6 +29,9 @@ import { useDoctorDiagnostics } from "../hooks/useDoctorDiagnostics";
 export interface AppContextType {
   currentTab: NavigationTab;
   setCurrentTab: (tab: NavigationTab) => void;
+  activeNavTarget: NavigationTarget | null;
+  navigateTo: (target: NavigationTab | NavigationTarget) => void;
+  clearNavTarget: () => void;
   systemStatus: SystemStatusType;
   isPaused: boolean;
   togglePause: () => void;
@@ -149,6 +153,22 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentTab, setCurrentTab] = useState<NavigationTab>("dashboard");
+  const [activeNavTarget, setActiveNavTarget] = useState<NavigationTarget | null>(null);
+
+  const clearNavTarget = useCallback(() => {
+    setActiveNavTarget(null);
+  }, []);
+
+  const navigateTo = useCallback((target: NavigationTab | NavigationTarget) => {
+    if (typeof target === "string") {
+      setCurrentTab(target);
+      setActiveNavTarget(null);
+    } else {
+      setCurrentTab(target.tab);
+      setActiveNavTarget({ ...target, timestamp: Date.now() });
+    }
+  }, []);
+
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [pendingItems, setPendingItems] = useState<any[]>([]);
@@ -615,6 +635,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     () => ({
       currentTab,
       setCurrentTab,
+      activeNavTarget,
+      navigateTo,
+      clearNavTarget,
       systemStatus,
       isPaused,
       togglePause,
@@ -664,6 +687,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }),
     [
       currentTab,
+      activeNavTarget,
+      navigateTo,
+      clearNavTarget,
       systemStatus,
       isPaused,
       togglePause,

@@ -115,3 +115,5 @@ export interface SystemTelemetry {
   circuitBreakerTripped: boolean;
   pendingCount: number;
 }
+
+export type { NavigationTarget, SearchCategory, SearchDocument } from "../services/search/types";
