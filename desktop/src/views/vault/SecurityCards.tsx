@@ -45,7 +45,7 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
       {/* Card 1: Cookie Health Card */}
-      <div className="rounded-lg bg-surface-container-lowest p-4.5 border border-outline-variant/30 flex flex-col justify-between gap-3.5 transition-all">
+      <div id="vault-session-health" className="rounded-lg bg-surface-container-lowest p-4.5 border border-outline-variant/30 flex flex-col justify-between gap-3.5 transition-all">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between pb-2 border-b border-surface-container-high">
             <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
       </div>
 
       {/* Card 2: Fernet Encryption Key Card */}
-      <div className="rounded-lg bg-surface-container-lowest p-4.5 border border-outline-variant/30 flex flex-col justify-between gap-3.5 transition-all">
+      <div id="vault-encryption-keyring" className="rounded-lg bg-surface-container-lowest p-4.5 border border-outline-variant/30 flex flex-col justify-between gap-3.5 transition-all">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between pb-2 border-b border-surface-container-high">
             <div className="flex items-center gap-2">

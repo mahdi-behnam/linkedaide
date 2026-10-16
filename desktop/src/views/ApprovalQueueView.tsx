@@ -8,6 +8,7 @@ import {
   Sparkle,
 } from "@phosphor-icons/react";
 import { useQueueShortcuts } from "../hooks/useQueueShortcuts";
+import { useDeepNavigation, highlightAndScrollTo } from "../hooks/useDeepNavigation";
 import { KeyboardShortcutsModal } from "../components/KeyboardShortcutsModal";
 import { QueueLeftPane, FilterType } from "../components/queue/QueueLeftPane";
 import { QueueWorkspaceHeader } from "../components/queue/QueueWorkspaceHeader";
@@ -80,6 +81,26 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
   const isRewritingRef = useRef<boolean>(false);
   const itemsRef = useRef<PendingItem[]>(items);
   itemsRef.current = items;
+
+  useDeepNavigation(
+    "queue",
+    useCallback((target) => {
+      if (target.itemId) {
+        const cleanId = target.itemId.replace(/^queue-/, "");
+        const matched = itemsRef.current.find(
+          (i) => i.id === cleanId || i.id === target.itemId
+        );
+        if (matched) {
+          setSelectedId(matched.id);
+          setTimeout(() => {
+            highlightAndScrollTo(`queue-item-${matched.id}`);
+            highlightAndScrollTo(`pending-card-${matched.id}`);
+            textareaRef.current?.focus();
+          }, 120);
+        }
+      }
+    }, [])
+  );
 
   const loadQueue = useCallback(async () => {
     if (initialItems !== undefined) return;

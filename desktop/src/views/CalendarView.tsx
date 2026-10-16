@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useApp } from "../context/AppContext";
 import { ScheduledPost } from "../types";
+import { useDeepNavigation } from "../hooks/useDeepNavigation";
 import {
   CalendarViewMode,
   StatusFilter,
@@ -30,6 +31,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
+
+  useDeepNavigation(
+    "calendar",
+    useCallback(
+      (target) => {
+        if (target.itemId) {
+          const cleanId = target.itemId.replace(/^post-/, "");
+          const matched = scheduledPosts.find(
+            (p) => p.id === cleanId || p.id === target.itemId
+          );
+          if (matched) {
+            setSelectedPost(matched);
+          }
+        }
+      },
+      [scheduledPosts]
+    )
+  );
 
   // Reference base date initialized to current date
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
@@ -157,7 +176,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* Bottom Section: Automated Comment Scout Schedule & Safeguards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-0.5">
         {/* Left Column (7 cols): Automated Comment Scout Schedule */}
-        <div className="lg:col-span-7">
+        <div id="scout-schedule" className="lg:col-span-7">
           <ScoutScheduleCard commentWindows={commentWindows} />
         </div>
 

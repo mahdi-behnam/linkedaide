@@ -18,6 +18,7 @@ import { CutoffInspector } from "../components/composer/CutoffInspector";
 import { MediaStudio } from "../components/composer/MediaStudio";
 import { PillarBenchmarkCard } from "../components/composer/PillarBenchmarkCard";
 import { ScheduleDispatcher } from "../components/composer/ScheduleDispatcher";
+import { useDeepNavigation } from "../hooks/useDeepNavigation";
 
 export const ComposerView: React.FC = () => {
   const {
@@ -26,6 +27,8 @@ export const ComposerView: React.FC = () => {
     setActivePostForEditing,
     setCurrentTab,
   } = useApp();
+
+  useDeepNavigation("composer");
 
   const [headline, setHeadline] = useState("");
   const [postText, setPostText] = useState("");
@@ -340,10 +343,12 @@ export const ComposerView: React.FC = () => {
           </div>
 
           {/* 2. AI Hook Studio Pill Bar */}
-          <HookStudio
-            appliedHookName={appliedHookName}
-            onApplyHook={handleApplyHook}
-          />
+          <div id="composer-hook-studio">
+            <HookStudio
+              appliedHookName={appliedHookName}
+              onApplyHook={handleApplyHook}
+            />
+          </div>
 
           {/* 3. Post Text Editor Canvas */}
           <div className="p-4 rounded-lg bg-surface-container-lowest border border-outline/70 shadow-2xs flex flex-col gap-3 transition-shadow">
@@ -453,32 +458,38 @@ export const ComposerView: React.FC = () => {
           </div>
 
           {/* 4. Above-the-Fold 140-Character Mobile Cutoff Inspector */}
-          <CutoffInspector postText={postText} />
+          <div id="composer-cutoff-inspector">
+            <CutoffInspector postText={postText} />
+          </div>
         </div>
 
         {/* RIGHT PANE (390px): Media Studio, Pillar Benchmark & Dispatch */}
         <div className="w-full lg:w-[390px] shrink-0 flex flex-col gap-5">
           {/* Media Studio */}
-          <MediaStudio
-            mediaList={mediaList}
-            currentSlideIndex={currentSlideIndex}
-            setCurrentSlideIndex={setCurrentSlideIndex}
-            onFileUpload={handleFileUpload}
-            onRemoveMedia={handleRemoveMedia}
-          />
+          <div id="composer-media-studio">
+            <MediaStudio
+              mediaList={mediaList}
+              currentSlideIndex={currentSlideIndex}
+              setCurrentSlideIndex={setCurrentSlideIndex}
+              onFileUpload={handleFileUpload}
+              onRemoveMedia={handleRemoveMedia}
+            />
+          </div>
 
           {/* Content Pillar & Reach Benchmark */}
           <PillarBenchmarkCard topicPillar={topicPillar} />
 
           {/* Schedule Dispatcher */}
-          <ScheduleDispatcher
-            scheduledDate={scheduledDate}
-            setScheduledDate={setScheduledDate}
-            scheduledTime={scheduledTime}
-            setScheduledTime={setScheduledTime}
-            onSaveDraft={handleSaveDraft}
-            onSchedulePost={handleSchedulePost}
-          />
+          <div id="composer-schedule-dispatcher">
+            <ScheduleDispatcher
+              scheduledDate={scheduledDate}
+              setScheduledDate={setScheduledDate}
+              scheduledTime={scheduledTime}
+              setScheduledTime={setScheduledTime}
+              onSaveDraft={handleSaveDraft}
+              onSchedulePost={handleSchedulePost}
+            />
+          </div>
         </div>
       </div>
     </div>

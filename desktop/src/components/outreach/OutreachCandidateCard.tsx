@@ -26,6 +26,7 @@ export const OutreachCandidateCard: React.FC<OutreachCandidateCardProps> = ({
 
   return (
     <article
+      id={`candidate-card-${candidate.id}`}
       data-testid={`candidate-card-${candidate.id}`}
       onClick={onSelect}
       className={`group relative p-2.5 rounded-md cursor-pointer transition-colors text-left ${

@@ -4,10 +4,13 @@ import { StatusPill } from "../components/StatusPill";
 import { ArrowClockwise, CheckCircle, Cpu } from "../components/icons";
 import { DiagnosticCard } from "./doctor/DiagnosticCard";
 import { EnvSecretsAudit, type EnvVarItem } from "./doctor/EnvSecretsAudit";
+import { useDeepNavigation } from "../hooks/useDeepNavigation";
 import type { DesktopSettings } from "../types/api";
 
 export const DoctorView: React.FC = () => {
   const { doctorChecks, isCheckingDoctor, runDoctorCheck, telemetry } = useApp();
+
+  useDeepNavigation("doctor");
   const [settings, setSettings] = useState<DesktopSettings | null>(null);
   const [cliOutput, setCliOutput] = useState<string | null>(null);
   const [isCliRunning, setIsCliRunning] = useState<boolean>(false);
@@ -267,6 +270,7 @@ export const DoctorView: React.FC = () => {
       {/* CLI Doctor Terminal Log Card */}
       {cliOutput && (
         <div
+          id="doctor-cli-terminal"
           data-testid="cli-doctor-output"
           className="flex flex-col gap-2 p-4 rounded-lg bg-surface-container-lowest border border-outline-variant/30"
         >
@@ -301,7 +305,7 @@ export const DoctorView: React.FC = () => {
       )}
 
       {/* Diagnostic Subsystems Grid */}
-      <div className="flex flex-col gap-2.5">
+      <div id="doctor-subsystems" className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between px-1">
           <span className="font-label-md text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">
             Monitored Subsystems
@@ -327,10 +331,12 @@ export const DoctorView: React.FC = () => {
       </div>
 
       {/* Environment Secrets & Config Audit Card */}
-      <EnvSecretsAudit
-        envAuditList={envAuditList}
-        loadedVarsCount={loadedVarsCount}
-      />
+      <div id="doctor-secrets-audit">
+        <EnvSecretsAudit
+          envAuditList={envAuditList}
+          loadedVarsCount={loadedVarsCount}
+        />
+      </div>
     </div>
   );
 };

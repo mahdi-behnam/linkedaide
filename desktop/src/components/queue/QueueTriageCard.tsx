@@ -53,6 +53,7 @@ export const QueueTriageCard: React.FC<QueueTriageCardProps> = ({
 
   return (
     <article
+      id={`queue-item-${item.id}`}
       data-testid={`pending-card-${item.id}`}
       onClick={onSelect}
       className={`group relative p-2.5 rounded-md cursor-pointer transition-colors text-left ${

@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext";
 import { HistoryStatus, AuditEntry } from "../types";
+import { useDeepNavigation } from "../hooks/useDeepNavigation";
 import type { DesktopSettings } from "../types/api";
 import {
   MagnifyingGlass,
@@ -50,6 +51,28 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ initialEntri
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedScreenshotKey, setCopiedScreenshotKey] = useState<boolean>(false);
   const [imgLoadError, setImgLoadError] = useState<boolean>(false);
+
+  useDeepNavigation(
+    "history",
+    useCallback(
+      (target) => {
+        if (target.itemId) {
+          const cleanId = target.itemId.replace(/^history-/, "");
+          const matched = auditEntries.find(
+            (e) =>
+              e.id === cleanId ||
+              e.itemId === cleanId ||
+              e.id === target.itemId ||
+              e.itemId === target.itemId
+          );
+          if (matched) {
+            setSelectedEntry(matched);
+          }
+        }
+      },
+      [auditEntries]
+    )
+  );
 
   useEffect(() => {
     let isMounted = true;

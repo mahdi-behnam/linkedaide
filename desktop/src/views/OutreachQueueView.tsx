@@ -6,6 +6,7 @@ import { OutreachLeftPane } from "../components/outreach/OutreachLeftPane";
 import { OutreachProfileCard } from "../components/outreach/OutreachProfileCard";
 import { OutreachNoteStudio, OutreachToneType } from "../components/outreach/OutreachNoteStudio";
 import { OutreachSafetyFooter } from "../components/outreach/OutreachSafetyFooter";
+import { useDeepNavigation, highlightAndScrollTo } from "../hooks/useDeepNavigation";
 
 export interface OutreachQueueViewProps {
   initialItems?: ConnectionRequestAction[];
@@ -21,6 +22,24 @@ export const OutreachQueueView: React.FC<OutreachQueueViewProps> = ({ initialIte
 
   const [items, setItems] = useState<ConnectionRequestAction[]>(
     () => initialItems || contextQueue || []
+  );
+
+  useDeepNavigation(
+    "outreach",
+    useCallback((target) => {
+      if (target.itemId) {
+        const cleanId = target.itemId.replace(/^outreach-/, "");
+        const matched = items.find(
+          (i) => i.id === cleanId || i.id === target.itemId
+        );
+        if (matched) {
+          setSelectedId(matched.id);
+          setTimeout(() => {
+            highlightAndScrollTo(`candidate-card-${matched.id}`);
+          }, 120);
+        }
+      }
+    }, [items])
   );
 
   const [isRefreshing, setIsRefreshing] = useState(false);

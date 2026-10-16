@@ -14,6 +14,7 @@ import { NotificationsCard } from "./settings/NotificationsCard";
 import { TimezoneCard } from "./settings/TimezoneCard";
 import { UnsavedChangesBar } from "./settings/UnsavedChangesBar";
 import { getDefaultTimezone } from "../utils/datetime";
+import { useDeepNavigation } from "../hooks/useDeepNavigation";
 import type { DesktopSettings } from "../types/api";
 
 export function areSettingsEqual(
@@ -111,6 +112,8 @@ export const SettingsView: React.FC = () => {
     message: string;
   } | null>(null);
   const [isCustomModel, setIsCustomModel] = useState(false);
+
+  useDeepNavigation("settings");
 
   const hasUnsavedChanges = useMemo(
     () => !areSettingsEqual(settings, savedSettings),
@@ -386,148 +389,170 @@ export const SettingsView: React.FC = () => {
 
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         {/* Section 1: Execution Mode */}
-        <ExecutionModeCard
-          executionMode={settings.executionMode ?? "cloud"}
-          onChange={(mode) => handleChange("executionMode", mode)}
-        />
+        <div id="setting-execution-mode">
+          <ExecutionModeCard
+            executionMode={settings.executionMode ?? "cloud"}
+            onChange={(mode) => handleChange("executionMode", mode)}
+          />
+        </div>
 
         {/* Section 2: Cloudflare Relay */}
-        <CloudflareRelayCard
-          workerUrl={settings.workerUrl}
-          apiSecret={settings.apiSecret}
-          autoRefreshInterval={settings.autoRefreshInterval ?? 600}
-          showSecret={showSecret}
-          onToggleShowSecret={() => setShowSecret((prev) => !prev)}
-          onWorkerUrlChange={(url) => handleChange("workerUrl", url)}
-          onApiSecretChange={(secret) => handleChange("apiSecret", secret)}
-          onIntervalChange={(interval) =>
-            handleChange("autoRefreshInterval", interval)
-          }
-          isTesting={isTesting}
-          testResult={testResult}
-          onTestConnection={handleTestConnection}
-        />
+        <div id="setting-cloudflare-relay">
+          <CloudflareRelayCard
+            workerUrl={settings.workerUrl}
+            apiSecret={settings.apiSecret}
+            autoRefreshInterval={settings.autoRefreshInterval ?? 600}
+            showSecret={showSecret}
+            onToggleShowSecret={() => setShowSecret((prev) => !prev)}
+            onWorkerUrlChange={(url) => handleChange("workerUrl", url)}
+            onApiSecretChange={(secret) => handleChange("apiSecret", secret)}
+            onIntervalChange={(interval) =>
+              handleChange("autoRefreshInterval", interval)
+            }
+            isTesting={isTesting}
+            testResult={testResult}
+            onTestConnection={handleTestConnection}
+          />
+        </div>
 
         {/* Section 3: GitHub Actions Cloud Runner Dispatch */}
-        <GitHubActionsCard
-          executionMode={settings.executionMode ?? "cloud"}
-          githubRepoOwner={settings.githubRepoOwner || ""}
-          githubRepoName={settings.githubRepoName || ""}
-          githubDispatchPat={settings.githubDispatchPat || ""}
-          showGithubPat={showGithubPat}
-          onToggleShowPat={() => setShowGithubPat((prev) => !prev)}
-          onRepoOwnerChange={(owner) => handleChange("githubRepoOwner", owner)}
-          onRepoNameChange={(name) => handleChange("githubRepoName", name)}
-          onDispatchPatChange={(pat) => handleChange("githubDispatchPat", pat)}
-        />
+        <div id="setting-github-actions">
+          <GitHubActionsCard
+            executionMode={settings.executionMode ?? "cloud"}
+            githubRepoOwner={settings.githubRepoOwner || ""}
+            githubRepoName={settings.githubRepoName || ""}
+            githubDispatchPat={settings.githubDispatchPat || ""}
+            showGithubPat={showGithubPat}
+            onToggleShowPat={() => setShowGithubPat((prev) => !prev)}
+            onRepoOwnerChange={(owner) => handleChange("githubRepoOwner", owner)}
+            onRepoNameChange={(name) => handleChange("githubRepoName", name)}
+            onDispatchPatChange={(pat) => handleChange("githubDispatchPat", pat)}
+          />
+        </div>
 
         {/* Section 4: Vault Encryption */}
-        <VaultEncryptionCard
-          encryptionKey={settings.encryptionKey || ""}
-          onKeyChange={(key) => handleChange("encryptionKey", key)}
-          onGenerateKey={handleGenerateKey}
-          onCopyKey={handleCopyKey}
-          copiedKey={copiedKey}
-        />
+        <div id="setting-vault-encryption">
+          <VaultEncryptionCard
+            encryptionKey={settings.encryptionKey || ""}
+            onKeyChange={(key) => handleChange("encryptionKey", key)}
+            onGenerateKey={handleGenerateKey}
+            onCopyKey={handleCopyKey}
+            copiedKey={copiedKey}
+          />
+        </div>
 
         {/* Section 5: NVIDIA NIM Intelligence */}
-        <NimIntelligenceCard
-          nimModel={settings.nimModel || "nvidia/nemotron-3-super-120b-a12b"}
-          nimApiKey={settings.nimApiKey || ""}
-          modelsList={modelsList}
-          isCustomModel={isCustomModel}
-          isFetchingModels={isFetchingModels}
-          modelFetchFeedback={modelFetchFeedback}
-          showNimKey={showNimKey}
-          onToggleShowNimKey={() => setShowNimKey((prev) => !prev)}
-          onModelChange={(model) => handleChange("nimModel", model)}
-          onCustomModelToggle={(custom) => setIsCustomModel(custom)}
-          onApiKeyChange={(key) => handleChange("nimApiKey", key)}
-          onFetchModels={handleFetchModels}
-        />
+        <div id="setting-nim-intelligence">
+          <NimIntelligenceCard
+            nimModel={settings.nimModel || "nvidia/nemotron-3-super-120b-a12b"}
+            nimApiKey={settings.nimApiKey || ""}
+            modelsList={modelsList}
+            isCustomModel={isCustomModel}
+            isFetchingModels={isFetchingModels}
+            modelFetchFeedback={modelFetchFeedback}
+            showNimKey={showNimKey}
+            onToggleShowNimKey={() => setShowNimKey((prev) => !prev)}
+            onModelChange={(model) => handleChange("nimModel", model)}
+            onCustomModelToggle={(custom) => setIsCustomModel(custom)}
+            onApiKeyChange={(key) => handleChange("nimApiKey", key)}
+            onFetchModels={handleFetchModels}
+          />
+        </div>
 
         {/* Section 6: Safety Guardrails */}
-        <SafetyGuardrailsCard
-          maxCommentsPerDay={settings.maxCommentsPerDay ?? quota.commentsMax}
-          maxPostsPerDay={settings.maxPostsPerDay ?? quota.postsMax}
-          maxConnectionsPerDay={
-            settings.maxConnectionsPerDay ?? quota.connectionsMax ?? 10
-          }
-          maxSuggestionsPerRun={settings.maxSuggestionsPerRun ?? 10}
-          actionTtlHours={settings.actionTtlHours ?? 24}
-          autoRefreshInterval={settings.autoRefreshInterval ?? 600}
-          headless={settings.headless ?? true}
-          onCommentsChange={(val) => handleChange("maxCommentsPerDay", val)}
-          onPostsChange={(val) => handleChange("maxPostsPerDay", val)}
-          onConnectionsChange={(val) =>
-            handleChange("maxConnectionsPerDay", val)
-          }
-          onSuggestionsChange={(val) =>
-            handleChange("maxSuggestionsPerRun", val)
-          }
-          onTtlChange={(val) => handleChange("actionTtlHours", val)}
-          onIntervalChange={(val) => handleChange("autoRefreshInterval", val)}
-          onHeadlessChange={(val) => handleChange("headless", val)}
-        />
+        <div id="setting-safety-guardrails">
+          <SafetyGuardrailsCard
+            maxCommentsPerDay={settings.maxCommentsPerDay ?? quota.commentsMax}
+            maxPostsPerDay={settings.maxPostsPerDay ?? quota.postsMax}
+            maxConnectionsPerDay={
+              settings.maxConnectionsPerDay ?? quota.connectionsMax ?? 10
+            }
+            maxSuggestionsPerRun={settings.maxSuggestionsPerRun ?? 10}
+            actionTtlHours={settings.actionTtlHours ?? 24}
+            autoRefreshInterval={settings.autoRefreshInterval ?? 600}
+            headless={settings.headless ?? true}
+            onCommentsChange={(val) => handleChange("maxCommentsPerDay", val)}
+            onPostsChange={(val) => handleChange("maxPostsPerDay", val)}
+            onConnectionsChange={(val) =>
+              handleChange("maxConnectionsPerDay", val)
+            }
+            onSuggestionsChange={(val) =>
+              handleChange("maxSuggestionsPerRun", val)
+            }
+            onTtlChange={(val) => handleChange("actionTtlHours", val)}
+            onIntervalChange={(val) => handleChange("autoRefreshInterval", val)}
+            onHeadlessChange={(val) => handleChange("headless", val)}
+          />
+        </div>
 
         {/* Section 7: Scout Targets & Focus Topics */}
-        <ScoutTargetingCard
-          userFocusAreas={settings.userFocusAreas ?? []}
-          targetHashtags={settings.targetHashtags ?? []}
-          scoutTargetUrls={settings.scoutTargetUrls ?? []}
-          onFocusAreasChange={(areas) => handleChange("userFocusAreas", areas)}
-          onHashtagsChange={(hashtags) =>
-            handleChange("targetHashtags", hashtags)
-          }
-          onTargetUrlsChange={(urls) => handleChange("scoutTargetUrls", urls)}
-        />
+        <div id="setting-scout-targeting">
+          <ScoutTargetingCard
+            userFocusAreas={settings.userFocusAreas ?? []}
+            targetHashtags={settings.targetHashtags ?? []}
+            scoutTargetUrls={settings.scoutTargetUrls ?? []}
+            onFocusAreasChange={(areas) => handleChange("userFocusAreas", areas)}
+            onHashtagsChange={(hashtags) =>
+              handleChange("targetHashtags", hashtags)
+            }
+            onTargetUrlsChange={(urls) => handleChange("scoutTargetUrls", urls)}
+          />
+        </div>
 
         {/* Section 8: Scout Engine & Scraping Parameters */}
-        <ScoutEngineCard
-          feedScrollScreens={settings.feedScrollScreens ?? 2}
-          candidatePoolMultiplier={settings.candidatePoolMultiplier ?? 3}
-          minTriageConfidence={settings.minTriageConfidence ?? 0.7}
-          maxCommentWords={settings.maxCommentWords ?? 80}
-          enablePreCommentReaction={settings.enablePreCommentReaction ?? false}
-          defaultReactionType={
-            (settings.defaultReactionType as ReactionType) ?? "like"
-          }
-          onScrollScreensChange={(screens) =>
-            handleChange("feedScrollScreens", screens)
-          }
-          onMultiplierChange={(multiplier) =>
-            handleChange("candidatePoolMultiplier", multiplier)
-          }
-          onConfidenceChange={(confidence) =>
-            handleChange("minTriageConfidence", confidence)
-          }
-          onMaxWordsChange={(words) => handleChange("maxCommentWords", words)}
-          onPreReactionToggle={(enabled) =>
-            handleChange("enablePreCommentReaction", enabled)
-          }
-          onReactionTypeChange={(type) =>
-            handleChange("defaultReactionType", type)
-          }
-        />
+        <div id="setting-scout-engine">
+          <ScoutEngineCard
+            feedScrollScreens={settings.feedScrollScreens ?? 2}
+            candidatePoolMultiplier={settings.candidatePoolMultiplier ?? 3}
+            minTriageConfidence={settings.minTriageConfidence ?? 0.7}
+            maxCommentWords={settings.maxCommentWords ?? 80}
+            enablePreCommentReaction={settings.enablePreCommentReaction ?? false}
+            defaultReactionType={
+              (settings.defaultReactionType as ReactionType) ?? "like"
+            }
+            onScrollScreensChange={(screens) =>
+              handleChange("feedScrollScreens", screens)
+            }
+            onMultiplierChange={(multiplier) =>
+              handleChange("candidatePoolMultiplier", multiplier)
+            }
+            onConfidenceChange={(confidence) =>
+              handleChange("minTriageConfidence", confidence)
+            }
+            onMaxWordsChange={(words) => handleChange("maxCommentWords", words)}
+            onPreReactionToggle={(enabled) =>
+              handleChange("enablePreCommentReaction", enabled)
+            }
+            onReactionTypeChange={(type) =>
+              handleChange("defaultReactionType", type)
+            }
+          />
+        </div>
 
         {/* Section 9: Scout Schedule & Cadence */}
-        <ScoutScheduleCard />
+        <div id="setting-scout-schedule">
+          <ScoutScheduleCard />
+        </div>
 
         {/* Section 10: Notifications & Desktop Integration */}
-        <NotificationsCard
-          minimizeToTray={settings.minimizeToTray ?? true}
-          notificationsEnabled={settings.notificationsEnabled ?? true}
-          onMinimizeChange={(val) => handleChange("minimizeToTray", val)}
-          onNotificationsChange={(val) =>
-            handleChange("notificationsEnabled", val)
-          }
-        />
+        <div id="setting-notifications">
+          <NotificationsCard
+            minimizeToTray={settings.minimizeToTray ?? true}
+            notificationsEnabled={settings.notificationsEnabled ?? true}
+            onMinimizeChange={(val) => handleChange("minimizeToTray", val)}
+            onNotificationsChange={(val) =>
+              handleChange("notificationsEnabled", val)
+            }
+          />
+        </div>
 
-        {/* Section 8: Regional & Timezone Preferences */}
-        <TimezoneCard
-          timezone={settings.timezone ?? getDefaultTimezone()}
-          onChange={(tz) => handleChange("timezone", tz)}
-        />
+        {/* Section 11: Regional & Timezone Preferences */}
+        <div id="setting-timezone">
+          <TimezoneCard
+            timezone={settings.timezone ?? getDefaultTimezone()}
+            onChange={(tz) => handleChange("timezone", tz)}
+          />
+        </div>
       </form>
 
       {hasUnsavedChanges && (

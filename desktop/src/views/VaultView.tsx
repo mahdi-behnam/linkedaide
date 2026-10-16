@@ -10,6 +10,7 @@ import {
 import { SecurityCards } from "./vault/SecurityCards";
 import { ArchitectureDiagram } from "./vault/ArchitectureDiagram";
 import { ManualCookieFallback } from "./vault/ManualCookieFallback";
+import { useDeepNavigation } from "../hooks/useDeepNavigation";
 
 interface CookieHealthState {
   valid: boolean;
@@ -18,6 +19,7 @@ interface CookieHealthState {
 }
 
 export const VaultView: React.FC = () => {
+  useDeepNavigation("vault");
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
   const [captureSuccess, setCaptureSuccess] = useState<string | null>(null);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -331,21 +333,23 @@ export const VaultView: React.FC = () => {
       />
 
       {/* Manual Cookie Fallback Component */}
-      <ManualCookieFallback
-        onSuccess={(msg) => {
-          showToast(msg);
-          setHealthStatus((prev) => ({
-            ...prev,
-            valid: true,
-            daysRemaining: 18,
-            details: "Active li_at cookie (manually supplied)",
-          }));
-          setLastVerifiedAt("Just now");
-        }}
-        onError={(err) => {
-          showToast(`Error: ${err}`);
-        }}
-      />
+      <div id="vault-manual-cookie">
+        <ManualCookieFallback
+          onSuccess={(msg) => {
+            showToast(msg);
+            setHealthStatus((prev) => ({
+              ...prev,
+              valid: true,
+              daysRemaining: 18,
+              details: "Active li_at cookie (manually supplied)",
+            }));
+            setLastVerifiedAt("Just now");
+          }}
+          onError={(err) => {
+            showToast(`Error: ${err}`);
+          }}
+        />
+      </div>
 
       {/* Architecture & Invariants Native SVG/HTML Diagram */}
       <ArchitectureDiagram />
