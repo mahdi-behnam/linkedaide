@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.6.0...v1.7.0) (2026-10-16)
+
+
+### Features
+
+* **desktop:** add deep navigation target state and dom highlight hook ([0a458a1](https://github.com/mahdi-behnam/linkedaide/commit/0a458a1d737e71faf42050c307b77e1d674bcde2))
+* **desktop:** implement search indexing and relevance scoring service ([8dcdcb2](https://github.com/mahdi-behnam/linkedaide/commit/8dcdcb2e804cca075fd1a4c67962173647637b98))
+* **desktop:** integrate deep navigation in settings, queue, outreach, and history views ([2edb526](https://github.com/mahdi-behnam/linkedaide/commit/2edb526b8123b72ca1ec21a1eff8f5b86f01429c))
+* **desktop:** upgrade command palette with universal search and deep navigation ([1a25942](https://github.com/mahdi-behnam/linkedaide/commit/1a25942459560932577340d67ed102d484f58fb7))
+
+
+### Bug Fixes
+
+* **desktop:** render rich HTML in update release notes and increase popover height ([2780c4f](https://github.com/mahdi-behnam/linkedaide/commit/2780c4f7749c3caeb06b49c2fdcabf2257fddfa2))
+
 ## [1.6.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.5.0...v1.6.0) (2026-10-16)
 
 
