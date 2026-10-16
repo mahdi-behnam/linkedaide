@@ -137,7 +137,7 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
 
         {/* Footer Fingerprint */}
         <div className="pt-2 border-t border-surface-container-high flex items-center justify-between font-code-sm text-code-sm text-on-surface-variant">
-          <span className="truncate">sha256:7f4c91...b801</span>
+          <span className="truncate">{healthStatus.valid ? "Enclave: Fernet AES-128" : "No Session Enclave"}</span>
           <span className={`font-medium ${healthStatus.valid ? "text-tertiary" : "text-on-surface-variant"}`}>
             {healthStatus.valid ? "Valid" : "Inactive"}
           </span>
@@ -276,27 +276,21 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
             </div>
             <span className="font-label-sm text-[11px] text-on-surface-variant">
               {healthStatus.valid
-                ? "Encrypted payload in KV · Blob: 1.84 KB"
+                ? "Fernet encrypted session payload synced to edge"
                 : "No encrypted session state stored"}
             </span>
           </div>
 
-          {/* Namespace and PoP Details */}
+          {/* Edge Details */}
           <div className="flex flex-col gap-1 text-label-sm text-[12px]">
             <div className="flex items-center justify-between">
-              <span className="text-on-surface-variant">KV Namespace:</span>
-              <span className="font-body-strong text-on-surface font-mono text-[11px]">
-                hitl-state (Protected Edge)
-              </span>
+              <span className="text-on-surface-variant">Edge Storage:</span>
+              <span className="text-on-surface">Global Workers KV</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-on-surface-variant">Edge Coverage:</span>
-              <span className="text-on-surface">275 PoPs · 14ms avg</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-on-surface-variant">Sync Frequency:</span>
+              <span className="text-on-surface-variant">Sync Policy:</span>
               <span className="text-on-surface font-code-sm text-code-sm">
-                1/min (Write Ops)
+                Write-on-capture / Replicated
               </span>
             </div>
           </div>
@@ -310,8 +304,8 @@ export const SecurityCards: React.FC<SecurityCardsProps> = ({
 
         {/* Footer */}
         <div className="pt-2 border-t border-surface-container-high flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
-          <span>Worker #cf-worker-9a84</span>
-          <span className="font-code-sm text-code-sm">2m ago</span>
+          <span>Worker Binding</span>
+          <span className="font-code-sm text-code-sm">{healthStatus.valid ? "Active" : "Standby"}</span>
         </div>
       </div>
     </div>

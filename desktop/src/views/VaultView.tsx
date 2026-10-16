@@ -218,7 +218,7 @@ export const VaultView: React.FC = () => {
 
   const maskedKeyDisplay = useMemo(() => {
     if (!encryptionKey) {
-      return "k_v1:•g7Q8...tY7aQ==";
+      return "Unconfigured";
     }
     const start = encryptionKey.slice(0, 6);
     const end = encryptionKey.slice(-6);
@@ -367,15 +367,16 @@ export const VaultView: React.FC = () => {
         </div>
         <div className="flex items-center gap-3 self-end sm:self-auto">
           <span className="font-code-sm text-code-sm text-on-surface-variant">
-            Edge TTL: 28 days remaining
+            {healthStatus.valid ? "Session Keyring Active" : "No Session in Keyring"}
           </span>
           <button
             type="button"
             id="flush-cache-btn"
-            onClick={() => showToast("Security audit invariants verified against Cloudflare Worker binding.")}
-            className="px-2.5 py-1 rounded-md bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-label-md text-[12px] transition-colors cursor-pointer border border-outline-variant/30"
+            onClick={handleVerifyHealth}
+            disabled={isVerifyingHealth}
+            className="px-2.5 py-1 rounded-md bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-label-md text-[12px] transition-colors cursor-pointer border border-outline-variant/30 disabled:opacity-50"
           >
-            Audit Rule
+            Verify Health
           </button>
         </div>
       </footer>
