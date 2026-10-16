@@ -137,6 +137,126 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Release Notes rich HTML styling */
+  .release-notes-prose {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--on-surface-variant);
+  }
+
+  .release-notes-prose h1,
+  .release-notes-prose h2 {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--on-surface);
+    margin-top: 6px;
+    margin-bottom: 3px;
+  }
+
+  .release-notes-prose h1:first-child,
+  .release-notes-prose h2:first-child {
+    margin-top: 0;
+  }
+
+  .release-notes-prose h3,
+  .release-notes-prose h4 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--on-surface);
+    margin-top: 6px;
+    margin-bottom: 2px;
+  }
+
+  .release-notes-prose h3:first-child,
+  .release-notes-prose h4:first-child {
+    margin-top: 0;
+  }
+
+  .release-notes-prose p {
+    margin-top: 3px;
+    margin-bottom: 3px;
+  }
+
+  .release-notes-prose ul {
+    list-style-type: disc;
+    padding-left: 14px;
+    margin-top: 3px;
+    margin-bottom: 5px;
+  }
+
+  .release-notes-prose ol {
+    list-style-type: decimal;
+    padding-left: 14px;
+    margin-top: 3px;
+    margin-bottom: 5px;
+  }
+
+  .release-notes-prose li {
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--on-surface-variant);
+    margin-top: 2px;
+    margin-bottom: 2px;
+  }
+
+  .release-notes-prose li > p {
+    margin: 0;
+    display: inline;
+  }
+
+  .release-notes-prose strong,
+  .release-notes-prose b {
+    font-weight: 600;
+    color: var(--on-surface);
+  }
+
+  .release-notes-prose a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .release-notes-prose a:hover {
+    opacity: 0.8;
+  }
+
+  .release-notes-prose code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    padding: 1px 3px;
+    border-radius: 3px;
+    background-color: var(--surface-container);
+    color: var(--on-surface);
+  }
+
+  .release-notes-prose pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background-color: var(--surface-container-low);
+    color: var(--on-surface);
+    overflow-x: auto;
+    margin: 4px 0;
+  }
+
+  .release-notes-prose blockquote {
+    border-left: 2px solid var(--outline-variant);
+    padding-left: 8px;
+    margin: 4px 0;
+    font-style: italic;
+    color: var(--on-surface-variant);
+  }
+
+  .release-notes-prose hr {
+    border: 0;
+    border-top: 1px solid var(--outline);
+    margin: 6px 0;
+  }
 }
 
 @layer base {

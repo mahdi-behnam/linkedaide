@@ -118,4 +118,60 @@ describe("UpdatePill and UpdatePopover", () => {
 
     expect(mockApi.updaterQuitAndInstall).toHaveBeenCalled();
   });
+
+  it("renders rich HTML release notes with external links and proper popover min-height", async () => {
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    mockApi.updaterGetStatus.mockResolvedValueOnce({
+      status: "available",
+      info: {
+        version: "1.6.0",
+        releaseName: "v1.6.0",
+        releaseNotes: `<h2><a href="https://github.com/mahdi-behnam/linkedaide/compare/v1.5.0...v1.6.0">1.6.0</a> (2026-10-16)</h2>
+<h3>Features</h3>
+<ul>
+<li><strong>desktop:</strong> add fork drift detection (<a href="https://github.com/mahdi-behnam/linkedaide/commit/1234567">1234567</a>)</li>
+</ul>`,
+      },
+      progress: null,
+      error: null,
+    });
+
+    render(<UpdatePill />);
+
+    const pill = await screen.findByTestId("update-pill-button");
+    fireEvent.click(pill);
+
+    // Verify popover container has increased min-height
+    const popover = screen.getByTestId("update-popover");
+    expect(popover.className).toContain("min-h-[270px]");
+
+    // Verify release notes element
+    const notesContainer = screen.getByTestId("update-release-notes");
+    expect(notesContainer.className).toContain("min-h-[130px]");
+    expect(notesContainer.className).toContain("release-notes-prose");
+
+    // Verify rendered DOM elements, not escaped HTML strings
+    expect(notesContainer.querySelector("h2")).toBeTruthy();
+    expect(notesContainer.querySelector("h3")?.textContent).toBe("Features");
+    expect(notesContainer.querySelector("ul")).toBeTruthy();
+    expect(notesContainer.querySelector("li")).toBeTruthy();
+    expect(notesContainer.querySelector("strong")?.textContent).toBe("desktop:");
+
+    // Verify links have target="_blank" and rel="noopener noreferrer"
+    const compareLink = notesContainer.querySelector('a[href="https://github.com/mahdi-behnam/linkedaide/compare/v1.5.0...v1.6.0"]') as HTMLAnchorElement;
+    expect(compareLink).toBeTruthy();
+    expect(compareLink.getAttribute("target")).toBe("_blank");
+    expect(compareLink.getAttribute("rel")).toBe("noopener noreferrer");
+
+    // Click link and verify external browser opening
+    fireEvent.click(compareLink);
+    expect(windowOpenSpy).toHaveBeenCalledWith(
+      "https://github.com/mahdi-behnam/linkedaide/compare/v1.5.0...v1.6.0",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    windowOpenSpy.mockRestore();
+  });
 });
