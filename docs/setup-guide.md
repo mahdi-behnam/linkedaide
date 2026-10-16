@@ -537,3 +537,16 @@ npm run dist:linux  # Linux AppImage & .deb package
 ```
 
 The compiled binaries are generated in `desktop/dist-electron/`.
+
+---
+
+## Keeping Your Fork Up to Date (1-Click Sync)
+
+When upstream releases new versions, bug fixes, or updated DOM selectors for LinkedIn layout changes, your desktop application will auto-update. To ensure your cloud runner workflows on GitHub Actions stay in lockstep with the desktop app:
+
+1. Open your forked repository on GitHub (`https://github.com/<your-username>/linkedaide`).
+2. Directly below the repository navigation bar, check GitHub's sync status banner:
+   > *"This branch is X commit(s) behind mahdi-behnam/linkedaide:main."*
+3. Click **Sync fork** ▾ and select **Update branch**.
+
+GitHub will immediately fast-forward your cloud runner workflows and backend logic to match the latest upstream release—no Git commands, terminal, or local cloning required!

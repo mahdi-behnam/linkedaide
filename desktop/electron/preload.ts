@@ -15,6 +15,7 @@ import type {
   ConnectionRequestAction,
   AutomatedCommentWindow,
   UpdateState,
+  ForkSyncResult,
 } from "./types";
 
 const api: ElectronAPI = {
@@ -174,6 +175,13 @@ const api: ElectronAPI = {
       ipcRenderer.removeListener("updater:event", subscription);
     };
   },
+
+  checkForkSync: (
+    owner?: string,
+    repo?: string,
+    pat?: string,
+  ): Promise<ForkSyncResult> =>
+    ipcRenderer.invoke("api:checkForkSync", owner, repo, pat),
 };
 
 contextBridge.exposeInMainWorld("api", api);

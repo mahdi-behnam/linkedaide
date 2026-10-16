@@ -30,6 +30,17 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({ check }) => {
           ],
         };
       case "relay":
+        if (title.includes("Upstream") || title.includes("Sync")) {
+          return {
+            icon: <Globe size={16} className="text-blue-500" />,
+            label: "Upstream Tracking",
+            footer: [
+              { label: "Upstream", val: "mahdi-behnam/linkedaide" },
+              { label: "Branch", val: "main" },
+              { label: "Sync", val: check.status === "pass" ? "Current" : "Drifted" },
+            ],
+          };
+        }
         if (title.includes("GitHub")) {
           return {
             icon: <Lightning size={16} className="text-amber-500" />,

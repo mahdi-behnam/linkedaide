@@ -36,8 +36,9 @@ LinkedAide pairs your own private cloud runner with a cross-platform desktop con
 2. **Download the Desktop App**: Grab the installer for your OS ([Windows](https://github.com/mahdi-behnam/linkedaide/releases/latest/download/LinkedAide-Setup.exe) / [macOS](https://github.com/mahdi-behnam/linkedaide/releases/latest/download/LinkedAide.dmg) / [Linux](https://github.com/mahdi-behnam/linkedaide/releases/latest/download/LinkedAide.AppImage)).
 3. **Configure Settings**: Open Desktop **Settings**, enter your GitHub username & repository name, paste your GitHub PAT (with `workflow` and `repo` permissions), and add your API keys.
 4. **Customize Your Voice**: Copy [`persona/profile.example.yaml`](persona/profile.example.yaml) to `persona/profile.yaml` to tailor the LLM to your personal industry expertise and stances.
+5. **Keep Up to Date (1-Click Sync)**: Whenever a new version is released, open your forked repository on GitHub, click **Sync fork** ▾, and select **Update branch** to instantly keep your cloud runner in sync with your desktop app.
 
-👉 See the complete **[Setup Guide](docs/setup-guide.md)** for detailed instructions on extracting your encrypted session and setting up Telegram approval cards.
+👉 See the complete **[Setup Guide](docs/setup-guide.md)** for detailed instructions on extracting your encrypted session, syncing forks, and setting up Telegram approval cards.
 
 ---
 

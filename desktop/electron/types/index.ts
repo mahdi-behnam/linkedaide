@@ -254,6 +254,19 @@ export interface ElectronAPI {
   updaterQuitAndInstall?: () => Promise<boolean>;
   updaterGetStatus?: () => Promise<UpdateState>;
   onUpdaterEvent?: (callback: (state: UpdateState) => void) => () => void;
+  checkForkSync?: (
+    owner?: string,
+    repo?: string,
+    pat?: string,
+  ) => Promise<ForkSyncResult>;
+}
+
+export interface ForkSyncResult {
+  isFork: boolean;
+  behindBy: number;
+  aheadBy: number;
+  status: string;
+  error?: string;
 }
 
 export interface CliDoctorResult {

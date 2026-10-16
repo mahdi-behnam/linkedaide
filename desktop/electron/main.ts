@@ -5,7 +5,7 @@
  * settings persistence, and forwards Worker API requests.
  */
 
-import { app, BrowserWindow, ipcMain, Menu, session } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, session, shell } from "electron";
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -530,6 +530,66 @@ function registerIpcHandlers(): void {
     return await workerClient.fetchConnectionQueue();
   });
 
+  ipcMain.handle(
+    "api:checkForkSync",
+    async (_event, owner?: string, repo?: string, pat?: string) => {
+      const settings = loadSettings();
+      const targetOwner = (owner || settings.githubRepoOwner || "").trim();
+      const targetRepo = (
+        repo ||
+        settings.githubRepoName ||
+        "linkedaide"
+      ).trim();
+      const targetPat = (pat || settings.githubDispatchPat || "").trim();
+
+      if (!targetOwner || targetOwner.toLowerCase() === "mahdi-behnam") {
+        return { isFork: false, behindBy: 0, aheadBy: 0, status: "identical" };
+      }
+
+      try {
+        const headers: Record<string, string> = {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "LinkedAide-Desktop",
+        };
+        if (targetPat) {
+          headers["Authorization"] = `Bearer ${targetPat}`;
+        }
+
+        const url = `https://api.github.com/repos/${targetOwner}/${targetRepo}/compare/main...mahdi-behnam:main`;
+        const resp = await fetch(url, { headers });
+        if (!resp.ok) {
+          return {
+            isFork: true,
+            behindBy: 0,
+            aheadBy: 0,
+            status: "unknown",
+            error: `HTTP ${resp.status}`,
+          };
+        }
+        const data = (await resp.json()) as {
+          status?: string;
+          behind_by?: number;
+          ahead_by?: number;
+        };
+        return {
+          isFork: true,
+          behindBy: data.behind_by ?? 0,
+          aheadBy: data.ahead_by ?? 0,
+          status: data.status ?? "identical",
+        };
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err.message : String(err);
+        return {
+          isFork: true,
+          behindBy: 0,
+          aheadBy: 0,
+          status: "error",
+          error,
+        };
+      }
+    },
+  );
+
   // Local Settings Handlers
   ipcMain.handle("settings:get", async () => {
     return loadSettings();
@@ -909,6 +969,13 @@ function createWindow(): BrowserWindow {
       sandbox: true,
       webSecurity: true,
     },
+  });
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("http:") || url.startsWith("https:")) {
+      shell.openExternal(url);
+    }
+    return { action: "deny" };
   });
 
   if (iconPath && typeof win.setIcon === "function") {

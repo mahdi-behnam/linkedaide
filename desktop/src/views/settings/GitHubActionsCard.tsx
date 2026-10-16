@@ -1,5 +1,12 @@
-import React from "react";
-import { Lightning, Eye, ArrowSquareOut, WarningCircle, CheckCircle } from "../../components/icons";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Lightning,
+  Eye,
+  ArrowSquareOut,
+  WarningCircle,
+  CheckCircle,
+} from "../../components/icons";
+import type { ForkSyncResult } from "../../types/api";
 
 interface GitHubActionsCardProps {
   executionMode: "cloud" | "local";
@@ -24,6 +31,48 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
   onRepoNameChange,
   onDispatchPatChange,
 }) => {
+  const [forkSync, setForkSync] = useState<{
+    checking: boolean;
+    result: ForkSyncResult | null;
+  }>({ checking: false, result: null });
+
+  const isUpstreamOwner =
+    !githubRepoOwner || githubRepoOwner.trim().toLowerCase() === "mahdi-behnam";
+
+  const checkSync = useCallback(async () => {
+    if (isUpstreamOwner || !window.api?.checkForkSync) {
+      setForkSync({ checking: false, result: null });
+      return;
+    }
+    setForkSync((prev) => ({ ...prev, checking: true }));
+    try {
+      const res = await window.api.checkForkSync(
+        githubRepoOwner.trim(),
+        (githubRepoName || "linkedaide").trim(),
+        githubDispatchPat?.trim(),
+      );
+      setForkSync({ checking: false, result: res });
+    } catch (err: unknown) {
+      setForkSync({
+        checking: false,
+        result: {
+          isFork: true,
+          behindBy: 0,
+          aheadBy: 0,
+          status: "error",
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
+    }
+  }, [githubRepoOwner, githubRepoName, githubDispatchPat, isUpstreamOwner]);
+
+  useEffect(() => {
+    if (executionMode === "cloud" && !isUpstreamOwner && githubRepoOwner.trim()) {
+      checkSync();
+    } else {
+      setForkSync({ checking: false, result: null });
+    }
+  }, [executionMode, githubRepoOwner, isUpstreamOwner, checkSync]);
   return (
     <div className="flex flex-col gap-3.5 p-4.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-surface-container-high">
@@ -86,6 +135,50 @@ export const GitHubActionsCard: React.FC<GitHubActionsCardProps> = ({
           , then enter your GitHub username and forked repository name below.
         </div>
       </div>
+
+      {/* Upstream Sync Alert Banner */}
+      {forkSync.result && forkSync.result.behindBy > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs">
+          <div className="flex items-start gap-2.5">
+            <WarningCircle size={18} className="text-amber-500 shrink-0 mt-0.5" weight="bold" />
+            <div>
+              <div className="font-semibold text-amber-500">
+                Fork Outdated: {forkSync.result.behindBy} commit{forkSync.result.behindBy === 1 ? "" : "s"} behind upstream
+              </div>
+              <div className="text-on-surface-variant text-[11px] mt-0.5">
+                New updates or bug fixes were published to the primary repository. Sync your fork on GitHub to keep your cloud workflows current.
+              </div>
+            </div>
+          </div>
+          <a
+            href={`https://github.com/${githubRepoOwner}/${githubRepoName || "linkedaide"}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs shrink-0 transition-colors"
+          >
+            <span>1-Click Sync on GitHub</span>
+            <ArrowSquareOut size={14} weight="bold" />
+          </a>
+        </div>
+      )}
+
+      {/* Upstream Up-To-Date Indicator */}
+      {forkSync.result && forkSync.result.isFork && forkSync.result.behindBy === 0 && !forkSync.result.error && (
+        <div className="flex items-center justify-between p-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center gap-2">
+            <CheckCircle size={15} weight="bold" />
+            <span>Fork is up to date with upstream (mahdi-behnam/linkedaide).</span>
+          </div>
+          <button
+            type="button"
+            onClick={checkSync}
+            disabled={forkSync.checking}
+            className="text-[11px] text-on-surface-variant hover:text-on-surface underline cursor-pointer"
+          >
+            {forkSync.checking ? "Checking..." : "Recheck"}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-0.5">
         {/* Repo Owner */}

@@ -80,11 +80,11 @@ jobs:
         run: rm -f /tmp/runner_storage_state.json
 
       - name: Upload debug artifacts
-        if: failure()
+        if: failure() && vars.UPLOAD_DEBUG_ARTIFACTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: thread-monitor-debug-${{ github.run_id }}
           path: |
             debug/screenshots/**
             debug/traces/**
-          retention-days: 7
+          retention-days: 1

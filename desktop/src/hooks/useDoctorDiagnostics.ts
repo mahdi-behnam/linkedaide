@@ -56,6 +56,10 @@ export function useDoctorDiagnostics(
         let isCloud = true;
         let githubDispatchStatus: "pass" | "warn" | "fail" = "pass";
         let githubDispatchDetail = "GitHub Actions cloud runner dispatch configured.";
+        let forkSyncStatus: "pass" | "warn" | "fail" = "pass";
+        let forkSyncDetail = "Upstream synchronization verified.";
+        let forkSyncRecommendation: string | undefined = undefined;
+        let showForkSyncCheck = false;
 
         if (window.api.getSettings) {
           try {
@@ -84,6 +88,34 @@ export function useDoctorDiagnostics(
                 ].filter(Boolean);
                 githubDispatchStatus = "fail";
                 githubDispatchDetail = `Cloud runner dispatch credentials missing: ${missing.join(", ")}. Please configure them in Settings.`;
+              }
+            }
+
+            if (isCloud && settings?.githubRepoOwner && window.api.checkForkSync) {
+              const owner = settings.githubRepoOwner.trim();
+              if (owner.toLowerCase() !== "mahdi-behnam") {
+                showForkSyncCheck = true;
+                try {
+                  const forkRes = await window.api.checkForkSync(
+                    owner,
+                    settings.githubRepoName,
+                    settings.githubDispatchPat,
+                  );
+                  if (forkRes.error) {
+                    forkSyncStatus = "warn";
+                    forkSyncDetail = `Unable to verify upstream sync status: ${forkRes.error}`;
+                  } else if (forkRes.behindBy > 0) {
+                    forkSyncStatus = "warn";
+                    forkSyncDetail = `Your fork is ${forkRes.behindBy} commit${forkRes.behindBy === 1 ? "" : "s"} behind upstream (mahdi-behnam/linkedaide).`;
+                    forkSyncRecommendation = `Go to your fork on GitHub (https://github.com/${owner}/${settings.githubRepoName || "linkedaide"}) and click "Sync fork" to update your agent workflows.`;
+                  } else {
+                    forkSyncStatus = "pass";
+                    forkSyncDetail = "Your fork is completely up to date with upstream (mahdi-behnam/linkedaide).";
+                  }
+                } catch (forkErr: any) {
+                  forkSyncStatus = "warn";
+                  forkSyncDetail = `Upstream sync check failed: ${forkErr?.message || "error"}`;
+                }
               }
             }
 
@@ -139,6 +171,18 @@ export function useDoctorDiagnostics(
                     githubDispatchStatus !== "pass"
                       ? "Configure GITHUB_DISPATCH_PAT, repo owner, and repo name in Settings to enable cloud scouting and actions."
                       : undefined,
+                },
+              ]
+            : []),
+          ...(isCloud && showForkSyncCheck
+            ? [
+                {
+                  id: "chk-fork-sync",
+                  category: "relay" as const,
+                  title: "Upstream Repository Sync",
+                  status: forkSyncStatus,
+                  detail: forkSyncDetail,
+                  recommendation: forkSyncRecommendation,
                 },
               ]
             : []),
