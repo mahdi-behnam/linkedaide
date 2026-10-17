@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.2](https://github.com/mahdi-behnam/linkedaide/compare/v1.7.1...v1.7.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ci:** resolve python and typescript typecheck, lint, and test errors ([100e310](https://github.com/mahdi-behnam/linkedaide/commit/100e310084e5b47b8164597711d34907de4272ac))
+* **execute:** fix session verification navigation and reaction handling ([76653ce](https://github.com/mahdi-behnam/linkedaide/commit/76653ce157220483e1331fdab6fcaf0f97b28053))
+
 ## [1.7.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.7.0...v1.7.1) (2026-10-16)
 
 
