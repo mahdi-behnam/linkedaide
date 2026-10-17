@@ -63,7 +63,7 @@ describe("Scout Schedule Handlers & Edge Cron", () => {
       });
       const res = await handleScoutSchedule(req, env);
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
       expect(data.success).toBe(true);
       expect(data.schedule).toEqual(defaultScoutWindows);
     });
@@ -92,7 +92,7 @@ describe("Scout Schedule Handlers & Edge Cron", () => {
 
       const postRes = await handleScoutSchedule(postReq, env);
       expect(postRes.status).toBe(200);
-      const postData = await postRes.json();
+      const postData = (await postRes.json()) as any;
       expect(postData.success).toBe(true);
       expect(postData.schedule).toHaveLength(1);
       expect(postData.schedule[0].title).toBe("Early Bird Scout");
@@ -102,7 +102,7 @@ describe("Scout Schedule Handlers & Edge Cron", () => {
         method: "GET",
       });
       const getRes = await handleScoutSchedule(getReq, env);
-      const getData = await getRes.json();
+      const getData = (await getRes.json()) as any;
       expect(getData.schedule).toHaveLength(1);
       expect(getData.schedule[0].id).toBe("custom-run-1");
     });
@@ -146,7 +146,7 @@ describe("Scout Schedule Handlers & Edge Cron", () => {
       });
       const res = await worker.fetch(req, env, {} as any);
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
       expect(data.state).toHaveProperty("scout_schedule");
       expect(data.state.scout_schedule[0].title).toBe("Test Window");
     });
@@ -278,7 +278,7 @@ describe("Scout Schedule Handlers & Edge Cron", () => {
         status: 204,
         text: async () => "",
       });
-      global.fetch = fetchMock;
+      globalThis.fetch = fetchMock;
 
       const res = await handleScoutScheduleCron(env, testDate);
       expect(res.checked).toBe(1);

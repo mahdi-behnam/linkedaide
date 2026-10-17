@@ -51,6 +51,7 @@ export interface TelegramUpdate {
     };
     text?: string;
     reply_to_message?: unknown;
+    voice?: unknown;
   };
 }
 

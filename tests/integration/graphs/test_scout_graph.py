@@ -249,6 +249,7 @@ async def test_scout_graph_preserves_full_post_excerpt_without_200_char_truncati
     assert pending_items[0].post_excerpt == long_post_text
     assert len(pending_items[0].post_excerpt) > 400
 
+    assert mock_context.state_store is not None
     persisted = mock_context.state_store.read_pending(pending_items[0].item_id)
     assert persisted is not None
     assert persisted.post_excerpt == long_post_text

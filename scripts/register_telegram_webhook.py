@@ -24,13 +24,18 @@ def _get_bot_token(provided_token: str | None = None) -> str:
     if token:
         return token
     try:
-        from agent.config import Settings
+        from pydantic import SecretStr
+
+        from agent.config import load_settings
 
         repo_root = Path(__file__).resolve().parent.parent
         env_path = repo_root / ".env"
-        s = Settings(_env_file=env_path) if env_path.exists() else Settings()
+        s = load_settings(_env_file=env_path) if env_path.exists() else load_settings()
         if s.telegram_bot_token:
-            return s.telegram_bot_token.get_secret_value()
+            raw_token = s.telegram_bot_token
+            return (
+                raw_token.get_secret_value() if isinstance(raw_token, SecretStr) else str(raw_token)
+            )
     except Exception:
         pass
     raise ValueError("TELEGRAM_BOT_TOKEN is required.")
@@ -122,7 +127,8 @@ def get_webhook_info(bot_token: str | None = None) -> dict[str, Any]:
     resp = httpx.get(api_url, timeout=15.0)
     resp.raise_for_status()
     data = resp.json()
-    return data.get("result", {})
+    res = data.get("result", {})
+    return res if isinstance(res, dict) else {}
 
 
 def main() -> None:
@@ -133,8 +139,12 @@ def main() -> None:
         "--bot-token", type=str, default=None, help="Telegram bot token (or via env)"
     )
     parser.add_argument("--delete", action="store_true", help="Delete existing webhook")
-    parser.add_argument("--set-commands", action="store_true", help="Register Telegram bot commands menu only")
-    parser.add_argument("--info", action="store_true", help="Inspect current Telegram webhook status")
+    parser.add_argument(
+        "--set-commands", action="store_true", help="Register Telegram bot commands menu only"
+    )
+    parser.add_argument(
+        "--info", action="store_true", help="Inspect current Telegram webhook status"
+    )
     args = parser.parse_args()
 
     try:

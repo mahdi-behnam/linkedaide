@@ -30,6 +30,7 @@ from agent.telegram.callbacks import (
 from agent.telegram.client import TelegramClient
 from agent.telegram.draft_editor import handle_draft_edit, handle_edit_callback
 from agent.telegram.keyboards import (
+    _format_safe_excerpt,
     build_editing_keyboard,
     build_help_keyboard,
     build_home_keyboard,
@@ -46,7 +47,6 @@ from agent.telegram.keyboards import (
     format_home_hub,
     format_rejection_card,
     format_suggestion_card,
-    _format_safe_excerpt,
 )
 from agent.telegram.reply_keyboards import build_docked_reply_keyboard
 
@@ -164,12 +164,17 @@ class TestKeyboardsAndMessages:
 
     def test_build_suggestion_keyboard_with_post_url(self) -> None:
         keyboard = build_suggestion_keyboard(
-            "item_url_test", "approve_comment", post_url="https://linkedin.com/feed/update/urn:li:activity:123"
+            "item_url_test",
+            "approve_comment",
+            post_url="https://linkedin.com/feed/update/urn:li:activity:123",
         )
         assert len(keyboard["inline_keyboard"]) == 4
         # First row is LinkedIn URL button
         assert keyboard["inline_keyboard"][0][0]["text"] == "🔗 View Post on LinkedIn"
-        assert keyboard["inline_keyboard"][0][0]["url"] == "https://linkedin.com/feed/update/urn:li:activity:123"
+        assert (
+            keyboard["inline_keyboard"][0][0]["url"]
+            == "https://linkedin.com/feed/update/urn:li:activity:123"
+        )
         # Second row is Approve / Reject
         assert keyboard["inline_keyboard"][1][0]["text"] == "✅ Approve"
         assert keyboard["inline_keyboard"][1][1]["text"] == "❌ Reject"
@@ -596,7 +601,9 @@ class TestKeyboardsAndMessages:
     def test_format_home_hub(self, mock_settings: Settings) -> None:
         from agent.models import DailyCounters
 
-        counters = DailyCounters(date="2026-10-07", comments_executed=3, posts_executed=1, suggestions_sent=5)
+        counters = DailyCounters(
+            date="2026-10-07", comments_executed=3, posts_executed=1, suggestions_sent=5
+        )
         text = format_home_hub(
             system_state="🟢 <b>Operational</b>",
             cb_status="🟢 <b>Normal</b>",
@@ -1766,7 +1773,9 @@ class TestTelegramCallbacks:
 
             assert handled is True
             feedbacks = test_state_store.load_rejection_feedbacks()
-            assert any(f.get("item_id") == "item_fb_01" and f.get("reason") == "boring" for f in feedbacks)
+            assert any(
+                f.get("item_id") == "item_fb_01" and f.get("reason") == "boring" for f in feedbacks
+            )
 
             assert len(recorded_requests) == 2
             answer_req = next(r for r in recorded_requests if "answerCallbackQuery" in r["path"])
@@ -1883,7 +1892,9 @@ class TestTelegramCallbacks:
             return httpx.Response(200, json={"ok": True, "result": True})
 
         class MockLLMService:
-            async def rewrite_draft(self, draft_text: str, tone: str, post_excerpt: str = "") -> str:
+            async def rewrite_draft(
+                self, draft_text: str, tone: str, post_excerpt: str = ""
+            ) -> str:
                 return f"Rewritten in {tone} style: {draft_text[:30]}"
 
         transport = httpx.MockTransport(handler)
@@ -2036,7 +2047,9 @@ class TestTelegramCallbacks:
         mock_settings: Settings,
         test_state_store: GitStateStore,
     ) -> None:
-        test_state_store.save_incident({"reason": "Test trip", "tripped_at": "2026-10-07T00:00:00Z"})
+        test_state_store.save_incident(
+            {"reason": "Test trip", "tripped_at": "2026-10-07T00:00:00Z"}
+        )
         recorded_requests: list[dict[str, Any]] = []
 
         def handler(request: httpx.Request) -> httpx.Response:
@@ -2229,10 +2242,7 @@ class TestTelegramPhotoSuggestions:
             assert msg_id == 9992
             assert len(sent_requests) == 1
             assert "sendPhoto" in sent_requests[0]["path"]
-            assert (
-                sent_requests[0]["payload"]["photo"]
-                == "https://media.licdn.com/infographic.png"
-            )
+            assert sent_requests[0]["payload"]["photo"] == "https://media.licdn.com/infographic.png"
 
     @pytest.mark.asyncio
     async def test_send_suggestion_with_post_image_fallback_to_send_message(
@@ -2258,4 +2268,3 @@ class TestTelegramPhotoSuggestions:
             assert len(sent_requests) == 2
             assert "sendPhoto" in sent_requests[0]["path"]
             assert "sendMessage" in sent_requests[1]["path"]
-

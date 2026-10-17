@@ -187,11 +187,11 @@ class CommandHandler:
             await self.handle_clear_incident(chat_id=chat_id, message_id=message_id)
             return True
         elif command_name == "post":
-            idea_text = stripped[len(parts[0]):].strip() if parts else ""
+            idea_text = stripped[len(parts[0]) :].strip() if parts else ""
             await self.handle_post(chat_id=chat_id, idea_text=idea_text, message_id=message_id)
             return True
         elif command_name == "scout":
-            target_url = stripped[len(parts[0]):].strip() if parts else ""
+            target_url = stripped[len(parts[0]) :].strip() if parts else ""
             await self.handle_scout(chat_id=chat_id, target_url=target_url, message_id=message_id)
             return True
         elif command_name in ("help", "start"):
@@ -273,9 +273,7 @@ class CommandHandler:
             settings=self.settings,
         )
 
-    async def handle_post(
-        self, chat_id: int, idea_text: str, message_id: int | None = None
-    ) -> str:
+    async def handle_post(self, chat_id: int, idea_text: str, message_id: int | None = None) -> str:
         """Handle /post command: drafts an original LinkedIn post from concept note."""
         return await execute_post_command(
             settings=self.settings,

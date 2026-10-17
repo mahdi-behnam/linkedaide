@@ -1577,13 +1577,24 @@ class TestCommandHandlerCallbackQueries:
             assert cb_answers[0]["callback_query_id"] == "cb_edit_test"
             assert "Reply to this suggestion with your revised draft text" in cb_answers[0]["text"]
 
-            edit_markups = [a for a in answered if "reply_markup" in a and "inline_keyboard" in a["reply_markup"]]
+            edit_markups = [
+                a
+                for a in answered
+                if "reply_markup" in a and "inline_keyboard" in a["reply_markup"]
+            ]
             assert len(edit_markups) == 1
-            assert edit_markups[0]["reply_markup"]["inline_keyboard"][0][0]["text"] == "❌ Cancel Edit"
+            assert (
+                edit_markups[0]["reply_markup"]["inline_keyboard"][0][0]["text"] == "❌ Cancel Edit"
+            )
 
-            force_replies = [a for a in answered if "reply_markup" in a and a["reply_markup"].get("force_reply")]
+            force_replies = [
+                a for a in answered if "reply_markup" in a and a["reply_markup"].get("force_reply")
+            ]
             assert len(force_replies) == 1
-            assert force_replies[0]["reply_markup"]["input_field_placeholder"] == "Enter revised draft text..."
+            assert (
+                force_replies[0]["reply_markup"]["input_field_placeholder"]
+                == "Enter revised draft text..."
+            )
 
     @pytest.mark.asyncio
     async def test_callback_reg_tone_guidance(

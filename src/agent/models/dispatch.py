@@ -127,9 +127,13 @@ class CallbackDataPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    action_code: str = Field(description="Compact action code (e.g. ac, rc, ap, rp, ed, tone, cf_rej)")
+    action_code: str = Field(
+        description="Compact action code (e.g. ac, rc, ap, rp, ed, tone, cf_rej)"
+    )
     item_id: str = Field(description="Unique item identifier")
-    arg: str | None = Field(default=None, description="Optional secondary parameter (e.g. tone or feedback slug)")
+    arg: str | None = Field(
+        default=None, description="Optional secondary parameter (e.g. tone or feedback slug)"
+    )
 
     @field_validator("action_code")
     @classmethod

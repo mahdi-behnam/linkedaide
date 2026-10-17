@@ -552,4 +552,3 @@ class TestSettings:
         assert custom.scout_scroll_screens == 4
         assert custom.candidate_pool_multiplier == 5
         assert custom.min_triage_confidence == 0.85
-

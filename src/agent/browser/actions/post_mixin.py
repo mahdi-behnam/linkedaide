@@ -318,7 +318,9 @@ class PostMixin:
                 if await view_link.count() > 0:
                     href = await view_link.first.get_attribute("href")
                     if href:
-                        published_url = href if href.startswith("http") else f"https://www.linkedin.com{href}"
+                        published_url = (
+                            href if href.startswith("http") else f"https://www.linkedin.com{href}"
+                        )
                 elif "/feed/update/" in (self.page.url or ""):
                     published_url = self.page.url
             except Exception as e:

@@ -21,6 +21,7 @@ from agent.config import Settings
 from agent.models import PendingAction, PostIdeationContext
 from agent.safety.circuit_breaker import is_halted
 from agent.state.base import BaseStateStore
+from agent.telegram.client import TelegramClient
 from agent.telegram.keyboards import (
     build_help_keyboard,
     build_home_keyboard,
@@ -273,7 +274,6 @@ async def execute_pending_command(
     Returns:
         str: The rendered HTML pending list message sent to Telegram.
     """
-    is_paused = bool(state_store.is_paused() or (settings and settings.agent_paused))
     pending_items = state_store.list_pending()
     if not pending_items:
         empty_msg = "📋 <b>Pending Actions</b>\n\nNo actions currently awaiting approval."
@@ -525,7 +525,11 @@ async def execute_post_command(
             idea_obj = await llm_service.draft_post_idea(ctx)
             if idea_obj and idea_obj.draft_post_text:
                 draft_content = idea_obj.draft_post_text
-                reasoning = getattr(idea_obj, "headline", "") or getattr(idea_obj, "reasoning", "") or reasoning
+                reasoning = (
+                    getattr(idea_obj, "headline", "")
+                    or getattr(idea_obj, "reasoning", "")
+                    or reasoning
+                )
         except Exception as err:
             logger.warning("LLM drafting failed for /post, using raw note: %s", err)
 
@@ -588,7 +592,7 @@ async def execute_scout_command(
     url_esc = html.escape(clean_url, quote=True)
     confirm_msg = (
         "🧭 <b>Target Received:</b>\n\n"
-        f"Queued for on-demand scouting:\n<a href=\"{url_esc}\">{url_esc}</a>\n\n"
+        f'Queued for on-demand scouting:\n<a href="{url_esc}">{url_esc}</a>\n\n'
         "<i>The agent will evaluate this target against your focus areas and deliver a draft comment card for your review.</i>"
     )
     await telegram.send_message(

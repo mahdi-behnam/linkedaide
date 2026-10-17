@@ -487,8 +487,12 @@ class TestTargetSourcesIntegrationAndVulnerabilities:
 
     @pytest.mark.asyncio
     async def test_scout_graph_calculates_max_total_posts_with_candidate_multiplier(self) -> None:
+        from typing import cast
+
+        from langchain_core.runnables import RunnableConfig
+
         from agent.graphs.scout_graph import scrape_feed
-        from agent.graphs.state import GraphContext
+        from agent.graphs.state import GraphContext, ScoutState
 
         mock_scraper = MagicMock()
         mock_scraper.scrape_feed = AsyncMock(return_value=[])
@@ -503,9 +507,9 @@ class TestTargetSourcesIntegrationAndVulnerabilities:
         )
 
         context = GraphContext(settings=settings, scraper=mock_scraper)
-        config = {"configurable": {"context": context}}
+        config = cast(RunnableConfig, {"configurable": {"context": context}})
 
-        state = {"seen_hashes": []}
+        state: ScoutState = {"seen_hashes": set()}
         result = await scrape_feed(state, config)
 
         assert result["status"] == "scraped"
@@ -520,8 +524,12 @@ class TestTargetSourcesIntegrationAndVulnerabilities:
     @pytest.mark.asyncio
     async def test_scout_graph_draft_batch_skips_below_min_triage_confidence(self) -> None:
         from datetime import UTC, datetime
+        from typing import cast
+
+        from langchain_core.runnables import RunnableConfig
+
         from agent.graphs.scout_graph import draft_batch
-        from agent.graphs.state import GraphContext
+        from agent.graphs.state import GraphContext, ScoutState
         from agent.models.browser import PostRecord
         from agent.models.llm import CommentDraft, TriageResult
 
@@ -538,7 +546,7 @@ class TestTargetSourcesIntegrationAndVulnerabilities:
         )
 
         context = GraphContext(settings=settings, llm=mock_llm)
-        config = {"configurable": {"context": context}}
+        config = cast(RunnableConfig, {"configurable": {"context": context}})
 
         post1 = PostRecord(
             post_urn="urn:li:activity:1",
@@ -568,7 +576,7 @@ class TestTargetSourcesIntegrationAndVulnerabilities:
             reasoning="Strong relevance",
         )
 
-        state = {
+        state: ScoutState = {
             "triage_results": [(post1, triage_low), (post2, triage_high)],
         }
 
@@ -579,4 +587,3 @@ class TestTargetSourcesIntegrationAndVulnerabilities:
         assert len(drafts) == 1
         assert drafts[0][0].post_urn == "urn:li:activity:2"
         mock_llm.draft_comment.assert_awaited_once_with(post2, triage_high)
-

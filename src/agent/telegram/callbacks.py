@@ -327,7 +327,9 @@ async def execute_feedback_callback(
     if reason != "skip":
         state_store.append_rejection_feedback(item_id, reason)
 
-    toast_msg = "Feedback dismissed." if reason == "skip" else f"Feedback saved ({reason}). Thank you!"
+    toast_msg = (
+        "Feedback dismissed." if reason == "skip" else f"Feedback saved ({reason}). Thank you!"
+    )
 
     if callback_query_id:
         await telegram.answer_callback_query(
@@ -616,9 +618,7 @@ async def execute_close_callback(
 ) -> bool:
     """Handle close:menu callback by removing or collapsing the interactive menu."""
     if callback_query_id:
-        await telegram.answer_callback_query(
-            callback_query_id, text="Closed.", show_alert=False
-        )
+        await telegram.answer_callback_query(callback_query_id, text="Closed.", show_alert=False)
 
     if chat_id is not None and message_id is not None:
         try:
@@ -669,9 +669,17 @@ async def execute_refresh_callback(
                 action_label = "Comment" if "comment" in item.action_type.lower() else "Post"
                 author_esc = html.escape(item.author_name or "Unknown", quote=True)
                 url = (item.post_url or "").strip()
-                target_link = f'<a href="{html.escape(url, quote=True)}">LinkedIn Post</a>' if url else "<i>No URL</i>"
-                draft_snippet = item.draft_text[:100] + ("..." if len(item.draft_text) > 100 else "")
-                conf_str = f"{int(item.confidence * 100)}%" if item.confidence is not None else "N/A"
+                target_link = (
+                    f'<a href="{html.escape(url, quote=True)}">LinkedIn Post</a>'
+                    if url
+                    else "<i>No URL</i>"
+                )
+                draft_snippet = item.draft_text[:100] + (
+                    "..." if len(item.draft_text) > 100 else ""
+                )
+                conf_str = (
+                    f"{int(item.confidence * 100)}%" if item.confidence is not None else "N/A"
+                )
                 lines.append(
                     f"{idx}. <b>{action_label}</b> (<code>{item.item_id}</code>)\n"
                     f"   • <b>Target:</b> {target_link}\n"
@@ -700,7 +708,9 @@ async def execute_refresh_callback(
         counters = state_store.load_daily_counters()
         pending_items = state_store.list_pending()
         pending_count = len(pending_items)
-        focus_areas_str = ", ".join(settings.user_focus_areas) if settings.user_focus_areas else "General"
+        focus_areas_str = (
+            ", ".join(settings.user_focus_areas) if settings.user_focus_areas else "General"
+        )
         focus_areas_esc = html.escape(focus_areas_str, quote=True)
 
         report = (
@@ -727,21 +737,28 @@ async def execute_refresh_callback(
     elif view == "stats":
         history_entries = state_store.read_history()
         total_actions = len(history_entries)
-        approved_count = sum(1 for e in history_entries if e.final_status in ("approved", "executed_success"))
+        approved_count = sum(
+            1 for e in history_entries if e.final_status in ("approved", "executed_success")
+        )
         rejected_count = sum(1 for e in history_entries if e.final_status == "rejected")
         expired_count = sum(1 for e in history_entries if e.final_status == "expired")
         failed_count = sum(
-            1 for e in history_entries
+            1
+            for e in history_entries
             if e.final_status in ("failed", "error", "executed_failed", "halted")
             or (e.error and e.final_status not in ("expired", "rejected"))
         )
         comments_posted = sum(
-            1 for e in history_entries
-            if "comment" in e.action_type.lower() and e.final_status in ("approved", "executed_success")
+            1
+            for e in history_entries
+            if "comment" in e.action_type.lower()
+            and e.final_status in ("approved", "executed_success")
         )
         posts_published = sum(
-            1 for e in history_entries
-            if "post" in e.action_type.lower() and e.final_status in ("approved", "executed_success")
+            1
+            for e in history_entries
+            if "post" in e.action_type.lower()
+            and e.final_status in ("approved", "executed_success")
         )
         counters = state_store.load_daily_counters()
         history_summary = (

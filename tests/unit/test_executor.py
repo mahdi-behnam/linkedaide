@@ -1793,7 +1793,7 @@ async def test_post_comment_returns_comment_url(base_settings: Settings) -> None
     page.screenshot = AsyncMock()
 
     executor = ActionExecutor(page, base_settings)
-    executor.verify_post_exists = AsyncMock(return_value=True)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
 
     result = await executor.post_comment(
         post_url=page.url,
@@ -1812,7 +1812,7 @@ async def test_post_thread_reply_returns_comment_url_with_anchor(base_settings: 
     page.screenshot = AsyncMock()
 
     executor = ActionExecutor(page, base_settings)
-    executor.verify_post_exists = AsyncMock(return_value=True)
+    executor.verify_post_exists = AsyncMock(return_value=True)  # type: ignore[method-assign]
 
     result = await executor.post_thread_reply(
         post_url=page.url,

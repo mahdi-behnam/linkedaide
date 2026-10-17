@@ -356,7 +356,9 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
                     min_confidence,
                 )
                 continue
-            item_id = hashlib.sha256(f"{post.post_urn}:react:{now.isoformat()}".encode()).hexdigest()[:8]
+            item_id = hashlib.sha256(
+                f"{post.post_urn}:react:{now.isoformat()}".encode()
+            ).hexdigest()[:8]
             rx_type = (triage.reaction_type or "like").strip().lower()
             pending_rx = PendingAction(
                 item_id=item_id,

@@ -88,19 +88,25 @@ def build_suggestion_keyboard(
     if post_url and post_url.strip().startswith("http") and "scraped_" not in post_url:
         rows.append([{"text": "🔗 View Post on LinkedIn", "url": post_url.strip()}])
 
-    rows.append([
-        {"text": "✅ Approve", "callback_data": approve_cb},
-        {"text": "❌ Reject", "callback_data": reject_cb},
-    ])
+    rows.append(
+        [
+            {"text": "✅ Approve", "callback_data": approve_cb},
+            {"text": "❌ Reject", "callback_data": reject_cb},
+        ]
+    )
     if not is_reaction:
-        rows.append([
-            {"text": "🔄 Regenerate", "callback_data": reg_cb},
-            {"text": "✏️ Edit", "callback_data": edit_cb},
-        ])
+        rows.append(
+            [
+                {"text": "🔄 Regenerate", "callback_data": reg_cb},
+                {"text": "✏️ Edit", "callback_data": edit_cb},
+            ]
+        )
     if include_home:
-        rows.append([
-            {"text": "🏠 Home Menu", "callback_data": home_cb},
-        ])
+        rows.append(
+            [
+                {"text": "🏠 Home Menu", "callback_data": home_cb},
+            ]
+        )
 
     return {"inline_keyboard": rows}
 
@@ -192,9 +198,7 @@ def build_rejection_feedback_keyboard(item_id: str) -> dict[str, Any]:
     }
 
 
-def build_tone_keyboard(
-    item_id: str, action_type: str = "approve_comment"
-) -> dict[str, Any]:
+def build_tone_keyboard(item_id: str, action_type: str = "approve_comment") -> dict[str, Any]:
     """Construct dynamic inline tone picker keyboard aligned with desktop app.
 
     Args:
@@ -216,7 +220,10 @@ def build_tone_keyboard(
         buttons = [
             [
                 {"text": "☕ Casual", "callback_data": f"{ACTION_CODE_TONE}:casual:{clean_id}"},
-                {"text": "🔬 Technical", "callback_data": f"{ACTION_CODE_TONE}:technical:{clean_id}"},
+                {
+                    "text": "🔬 Technical",
+                    "callback_data": f"{ACTION_CODE_TONE}:technical:{clean_id}",
+                },
             ],
             [
                 {"text": "✂️ Concise", "callback_data": f"{ACTION_CODE_TONE}:concise:{clean_id}"},
@@ -229,11 +236,20 @@ def build_tone_keyboard(
     else:
         buttons = [
             [
-                {"text": "🔬 Technical", "callback_data": f"{ACTION_CODE_TONE}:technical:{clean_id}"},
-                {"text": "❓ Inquisitive", "callback_data": f"{ACTION_CODE_TONE}:inquisitive:{clean_id}"},
+                {
+                    "text": "🔬 Technical",
+                    "callback_data": f"{ACTION_CODE_TONE}:technical:{clean_id}",
+                },
+                {
+                    "text": "❓ Inquisitive",
+                    "callback_data": f"{ACTION_CODE_TONE}:inquisitive:{clean_id}",
+                },
             ],
             [
-                {"text": "⚡ Contrarian", "callback_data": f"{ACTION_CODE_TONE}:contrarian:{clean_id}"},
+                {
+                    "text": "⚡ Contrarian",
+                    "callback_data": f"{ACTION_CODE_TONE}:contrarian:{clean_id}",
+                },
                 {"text": "✂️ Shorter", "callback_data": f"{ACTION_CODE_TONE}:shorter:{clean_id}"},
             ],
             [
@@ -326,14 +342,16 @@ def build_pending_list_keyboard(
                 action_sym = "🤝"
             else:
                 action_sym = "💬"
-            rows.append([
-                {"text": f"{action_sym} Review #{idx} ({clean_id[:6]})", "callback_data": cb}
-            ])
+            rows.append(
+                [{"text": f"{action_sym} Review #{idx} ({clean_id[:6]})", "callback_data": cb}]
+            )
     if include_nav:
-        rows.append([
-            {"text": "🔄 Refresh Queue", "callback_data": f"{ACTION_CODE_REFRESH}:pending"},
-            {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
-        ])
+        rows.append(
+            [
+                {"text": "🔄 Refresh Queue", "callback_data": f"{ACTION_CODE_REFRESH}:pending"},
+                {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
+            ]
+        )
     return {"inline_keyboard": rows}
 
 
@@ -352,18 +370,30 @@ def build_status_keyboard(
     """
     rows: list[list[dict[str, str]]] = []
     if is_tripped:
-        rows.append([
-            {"text": "🔄 Reset Circuit Breaker", "callback_data": f"{ACTION_CODE_RESET_CB}:global"}
-        ])
+        rows.append(
+            [
+                {
+                    "text": "🔄 Reset Circuit Breaker",
+                    "callback_data": f"{ACTION_CODE_RESET_CB}:global",
+                }
+            ]
+        )
     if pending_count > 0:
-        rows.append([
-            {"text": f"📋 Review Pending ({pending_count})", "callback_data": f"{ACTION_CODE_REVIEW}:list"}
-        ])
+        rows.append(
+            [
+                {
+                    "text": f"📋 Review Pending ({pending_count})",
+                    "callback_data": f"{ACTION_CODE_REVIEW}:list",
+                }
+            ]
+        )
     if include_nav:
-        rows.append([
-            {"text": "🔄 Refresh Status", "callback_data": f"{ACTION_CODE_REFRESH}:status"},
-            {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
-        ])
+        rows.append(
+            [
+                {"text": "🔄 Refresh Status", "callback_data": f"{ACTION_CODE_REFRESH}:status"},
+                {"text": "🏠 Home Menu", "callback_data": f"{ACTION_CODE_HOME}:menu"},
+            ]
+        )
     return {"inline_keyboard": rows}
 
 
@@ -416,26 +446,39 @@ def build_home_keyboard(
     """
     rows: list[list[dict[str, str]]] = []
     if is_tripped:
-        rows.append([
-            {"text": "🔄 Reset Circuit Breaker", "callback_data": f"{ACTION_CODE_RESET_CB}:global"}
-        ])
+        rows.append(
+            [
+                {
+                    "text": "🔄 Reset Circuit Breaker",
+                    "callback_data": f"{ACTION_CODE_RESET_CB}:global",
+                }
+            ]
+        )
 
-    review_cb = f"{ACTION_CODE_REVIEW}:list" if pending_count > 0 else f"{ACTION_CODE_REFRESH}:pending"
+    review_cb = (
+        f"{ACTION_CODE_REVIEW}:list" if pending_count > 0 else f"{ACTION_CODE_REFRESH}:pending"
+    )
     pause_text = "▶️ Resume Agent" if is_paused else "⏸️ Pause Agent"
     pause_cb = f"{ACTION_CODE_HOME}:resume" if is_paused else f"{ACTION_CODE_HOME}:pause"
 
-    rows.append([
-        {"text": f"📋 Pending ({pending_count})", "callback_data": review_cb},
-        {"text": "📊 Status", "callback_data": f"{ACTION_CODE_REFRESH}:status"},
-    ])
-    rows.append([
-        {"text": "📈 Stats", "callback_data": f"{ACTION_CODE_REFRESH}:stats"},
-        {"text": pause_text, "callback_data": pause_cb},
-    ])
-    rows.append([
-        {"text": "🔄 Refresh Hub", "callback_data": f"{ACTION_CODE_REFRESH}:home"},
-        {"text": "❌ Close Menu", "callback_data": f"{ACTION_CODE_CLOSE}:menu"},
-    ])
+    rows.append(
+        [
+            {"text": f"📋 Pending ({pending_count})", "callback_data": review_cb},
+            {"text": "📊 Status", "callback_data": f"{ACTION_CODE_REFRESH}:status"},
+        ]
+    )
+    rows.append(
+        [
+            {"text": "📈 Stats", "callback_data": f"{ACTION_CODE_REFRESH}:stats"},
+            {"text": pause_text, "callback_data": pause_cb},
+        ]
+    )
+    rows.append(
+        [
+            {"text": "🔄 Refresh Hub", "callback_data": f"{ACTION_CODE_REFRESH}:home"},
+            {"text": "❌ Close Menu", "callback_data": f"{ACTION_CODE_CLOSE}:menu"},
+        ]
+    )
     return {"inline_keyboard": rows}
 
 
@@ -670,7 +713,9 @@ def format_rejection_card(item: PendingAction, reason: str | None = None) -> str
 
     if item.draft_text and not is_reaction:
         draft_snippet = item.draft_text[:200] + ("..." if len(item.draft_text) > 200 else "")
-        lines.append(f"<b>Draft Excerpt:</b>\n<blockquote expandable>{html.escape(draft_snippet)}</blockquote>")
+        lines.append(
+            f"<b>Draft Excerpt:</b>\n<blockquote expandable>{html.escape(draft_snippet)}</blockquote>"
+        )
 
     if reason and reason != "skip":
         lines.append(f"<b>Feedback:</b> <i>{html.escape(reason)}</i>")
@@ -758,7 +803,11 @@ def build_outcome_message(
                 lines.append(
                     f'<b>Proof:</b> <a href="{html.escape(verification_url)}">View Your Comment on LinkedIn ↗</a>'
                 )
-        elif item.draft_text and status_lower not in ("executed_success", "success") and item.action_type not in ("approve_reaction", "reaction"):
+        elif (
+            item.draft_text
+            and status_lower not in ("executed_success", "success")
+            and item.action_type not in ("approve_reaction", "reaction")
+        ):
             lines.append(
                 f"<b>Draft:</b> <blockquote expandable>{html.escape(item.draft_text[:200])}</blockquote>"
             )

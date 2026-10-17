@@ -133,9 +133,7 @@ class TelegramClient:
             TelegramAPIError: If the API call fails or returns an error.
         """
         message_text = build_suggestion_message(item)
-        keyboard = build_suggestion_keyboard(
-            item.item_id, item.action_type, post_url=item.post_url
-        )
+        keyboard = build_suggestion_keyboard(item.item_id, item.action_type, post_url=item.post_url)
 
         image_url = getattr(item, "post_image_url", None)
         if not image_url and item.media_attachments:
@@ -349,7 +347,9 @@ class TelegramClient:
             logger.info("Deleted Telegram message %s in chat %s.", message_id, chat_id)
             return True
         except Exception as e:
-            logger.warning("Failed to delete Telegram message %s in chat %s: %s", message_id, chat_id, e)
+            logger.warning(
+                "Failed to delete Telegram message %s in chat %s: %s", message_id, chat_id, e
+            )
             return False
 
     async def answer_callback_query(
@@ -436,14 +436,23 @@ class TelegramClient:
             TelegramAPIError: If the API call fails.
         """
         bot_commands = commands or [
-            {"command": "status", "description": "Check system health, breaker, and daily counters"},
+            {
+                "command": "status",
+                "description": "Check system health, breaker, and daily counters",
+            },
             {"command": "pending", "description": "List all actions awaiting operator approval"},
             {"command": "stats", "description": "Performance metrics, counters, and approval rate"},
-            {"command": "pause", "description": "Suspend automated scouting and execution workflows"},
+            {
+                "command": "pause",
+                "description": "Suspend automated scouting and execution workflows",
+            },
             {"command": "resume", "description": "Resume automated agent operations"},
             {"command": "clear_incident", "description": "Safely reset tripped circuit breaker"},
             {"command": "post", "description": "Draft an original LinkedIn post from a quick note"},
-            {"command": "scout", "description": "Triage and draft a comment for a specific LinkedIn URL"},
+            {
+                "command": "scout",
+                "description": "Triage and draft a comment for a specific LinkedIn URL",
+            },
             {"command": "help", "description": "View operator command manual and usage guide"},
         ]
         data = await self._post("setMyCommands", {"commands": bot_commands})

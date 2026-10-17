@@ -284,6 +284,7 @@ class BaseStateStore(ABC):
         """Retrieve the configured automated scout schedule."""
         return []
 
+    @abstractmethod
     def save_scout_schedule(self, schedule: list[dict[str, Any]]) -> None:
         """Persist the configured automated scout schedule."""
         pass
@@ -400,19 +401,20 @@ class BaseStateStore(ABC):
     def append_rejection_feedback(self, item_id: str, reason: str) -> None:
         """Record operator rejection feedback tag."""
         raw = self.get_key("rejection_feedback")
-        feedbacks: list[dict[str, Any]] = []
+        parsed: Any = []
         if raw:
             try:
-                feedbacks = json.loads(raw) if isinstance(raw, str) else raw
-                if not isinstance(feedbacks, list):
-                    feedbacks = []
+                parsed = json.loads(raw) if isinstance(raw, str) else raw
             except Exception:
-                feedbacks = []
-        feedbacks.append({
-            "item_id": item_id,
-            "reason": reason,
-            "created_at": datetime.now(UTC).isoformat(),
-        })
+                parsed = []
+        feedbacks: list[dict[str, Any]] = parsed if isinstance(parsed, list) else []
+        feedbacks.append(
+            {
+                "item_id": item_id,
+                "reason": reason,
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+        )
         if len(feedbacks) > 200:
             feedbacks = feedbacks[-200:]
         self.put_key("rejection_feedback", json.dumps(feedbacks))

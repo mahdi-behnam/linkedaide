@@ -788,7 +788,9 @@ def test_extract_valid_urn() -> None:
     assert extract_valid_urn("urn:li:ugcPost:123456789") == "urn:li:ugcPost:123456789"
     assert extract_valid_urn("urn:li:share:987654321") == "urn:li:share:987654321"
     assert (
-        extract_valid_urn("https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678/")
+        extract_valid_urn(
+            "https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678/"
+        )
         == "urn:li:activity:7123456789012345678"
     )
     assert (
@@ -1080,7 +1082,3 @@ async def test_scraper_resolves_urn_from_replaceable_comment_tools_protobuf() ->
     )
     assert record.author_name == "Akhilesh C."
     assert record.author_profile_url == "https://www.linkedin.com/in/akhilesh-c-558b2813/"
-
-
-
-

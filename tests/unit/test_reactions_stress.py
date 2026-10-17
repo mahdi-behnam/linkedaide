@@ -62,6 +62,7 @@ async def test_react_to_post_dry_run_guarantees_zero_dom_calls(
 ) -> None:
     page = MagicMock()
     page.url = "https://www.linkedin.com/feed/update/urn:li:activity:123456/"
+    page.screenshot = AsyncMock()
     executor = ActionExecutor(page, base_settings)
 
     result = await executor.react_to_post(
@@ -69,7 +70,7 @@ async def test_react_to_post_dry_run_guarantees_zero_dom_calls(
     )
     assert result is True
     page.locator.assert_not_called()
-    page.screenshot.assert_not_called()
+    page.screenshot.assert_awaited_once()
 
 
 @pytest.mark.asyncio
