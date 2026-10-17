@@ -1912,14 +1912,16 @@ export async function handleTelegramWebhook(
     actionCode === "ap" ||
     actionCode === "ar" ||
     actionCode === "apv" ||
-    actionCode === "acon";
+    actionCode === "acon" ||
+    actionCode === "areact";
   const isRejection =
     actionCode === "cf_rej" ||
     actionCode === "rc" ||
     actionCode === "rp" ||
     actionCode === "rr" ||
     actionCode === "rej" ||
-    actionCode === "rcon";
+    actionCode === "rcon" ||
+    actionCode === "rreact";
 
   if (!isApproval && !isRejection) {
     return new Response("Unknown action code", { status: 400 });
@@ -1937,6 +1939,8 @@ export async function handleTelegramWebhook(
       actionType = "approve_reply";
     } else if (actionCode === "rcon") {
       actionType = "approve_connection";
+    } else if (actionCode === "rreact") {
+      actionType = "approve_reaction";
     }
     let tgMsgId: number | null = null;
     let pendingObj: any = null;
@@ -2013,7 +2017,9 @@ export async function handleTelegramWebhook(
     const rejectionLabel =
       actionType === "approve_connection"
         ? "❌ Connection request rejected"
-        : "❌ Suggestion rejected";
+        : actionType === "approve_reaction"
+          ? "❌ Reaction suggestion rejected"
+          : "❌ Suggestion rejected";
 
     // 5. Answer callback query
     ctx.waitUntil(

@@ -298,6 +298,7 @@ describe("Telegram Relay Worker", () => {
         ["ar", "approve"],
         ["apv", "approve"],
         ["acon", "approve"],
+        ["areact", "approve"],
       ])("handles approval action prefix '%s' -> '%s'", async (prefix, expectedAction) => {
         const fetchMock = vi.fn().mockImplementation(async (url: string) => {
           if (url.includes("answerCallbackQuery")) {
@@ -359,6 +360,7 @@ describe("Telegram Relay Worker", () => {
         ["rr", "reject"],
         ["rej", "reject"],
         ["rcon", "reject"],
+        ["rreact", "reject"],
       ])("handles rejection action prefix '%s' -> '%s'", async (prefix, expectedAction) => {
         const fetchMock = vi.fn().mockImplementation(async (url: string) => {
           if (url.includes("answerCallbackQuery")) {

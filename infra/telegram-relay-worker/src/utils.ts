@@ -137,11 +137,16 @@ export function formatPendingCardHtml(item: Record<string, any>, editNote?: stri
   const isPost = item.action_type === "approve_post" || item.action_type === "post";
   const isReply = item.action_type === "approve_reply" || item.action_type === "reply";
   const isConn = item.action_type === "approve_connection" || item.action_type === "connection";
+  const isReaction = item.action_type === "approve_reaction" || item.action_type === "reaction";
 
   let actionLabel = "💬 Feed Comment";
   if (isPost) actionLabel = "📝 Original Post";
   else if (isReply) actionLabel = "💬 Thread Reply";
   else if (isConn) actionLabel = "🤝 Connection Invitation";
+  else if (isReaction) {
+    const rx = (item.reaction_type || "like").toUpperCase();
+    actionLabel = `👍 Reaction (${rx})`;
+  }
 
   const lines: string[] = [
     "<b>🚀 LinkedIn Action Suggestion</b>",
@@ -161,12 +166,17 @@ export function formatPendingCardHtml(item: Record<string, any>, editNote?: stri
     lines.push(`<b>Context:</b>\n<blockquote expandable>${escapeHtml(item.post_excerpt)}</blockquote>`);
   }
 
-  const content = item.draft_text || item.note || item.text || "";
-  lines.push(`<b>Drafted Content:</b>\n<blockquote expandable>${escapeHtml(content)}</blockquote>`);
+  if (isReaction) {
+    const rx = (item.reaction_type || "like").toUpperCase();
+    lines.push(`<b>Proposed Reaction:</b> ${escapeHtml(rx)}`);
+  } else {
+    const content = item.draft_text || item.note || item.text || "";
+    lines.push(`<b>Drafted Content:</b>\n<blockquote expandable>${escapeHtml(content)}</blockquote>`);
 
-  const charCount = content.length;
-  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-  lines.push(`<b>Metrics:</b> ${charCount} chars • ${wordCount} words`);
+    const charCount = content.length;
+    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+    lines.push(`<b>Metrics:</b> ${charCount} chars • ${wordCount} words`);
+  }
 
   if (editNote) {
     lines.push(`<i>✏️ Note: ${escapeHtml(editNote)}</i>`);
@@ -184,6 +194,7 @@ export function getSuggestionKeyboard(
   includeHome: boolean = true
 ) {
   const cleanId = itemId.trim();
+  const isReaction = actionType === "approve_reaction" || actionType === "reaction";
   let approveCode = "ac";
   if (actionType === "approve_post" || actionType === "post") {
     approveCode = "ap";
@@ -191,6 +202,8 @@ export function getSuggestionKeyboard(
     approveCode = "ar";
   } else if (actionType === "approve_connection" || actionType === "connection") {
     approveCode = "acon";
+  } else if (isReaction) {
+    approveCode = "areact";
   }
 
   const rows: Array<Array<{ text: string; callback_data?: string; url?: string }>> = [];
@@ -202,10 +215,12 @@ export function getSuggestionKeyboard(
     { text: "✅ Approve", callback_data: `${approveCode}:${cleanId}` },
     { text: "❌ Reject", callback_data: `ask_rej:${cleanId}` },
   ]);
-  rows.push([
-    { text: "🔄 Regenerate", callback_data: `reg:${cleanId}` },
-    { text: "✏️ Edit", callback_data: `edit:${cleanId}` },
-  ]);
+  if (!isReaction) {
+    rows.push([
+      { text: "🔄 Regenerate", callback_data: `reg:${cleanId}` },
+      { text: "✏️ Edit", callback_data: `edit:${cleanId}` },
+    ]);
+  }
   if (includeHome) {
     rows.push([{ text: "🏠 Home Menu", callback_data: "home:menu" }]);
   }
@@ -248,7 +263,10 @@ export function getPendingListKeyboard(
     const cleanId = (item.item_id || item.id || "").trim();
     if (!cleanId) continue;
     const actionType = item.action_type || "";
-    const sym = actionType.includes("post") ? "📝" : "💬";
+    let sym = "💬";
+    if (actionType.includes("post")) sym = "📝";
+    else if (actionType.includes("reaction")) sym = "👍";
+    else if (actionType.includes("connection")) sym = "🤝";
     rows.push([
       {
         text: `${sym} Review #${i + 1} (${cleanId.slice(0, 6)})`,
@@ -293,10 +311,12 @@ export function formatRejectionCard(item?: any, reason?: string): string {
   const isPost = safeItem.action_type === "approve_post" || safeItem.action_type === "post";
   const isReply = safeItem.action_type === "approve_reply" || safeItem.action_type === "reply";
   const isConn = safeItem.action_type === "approve_connection" || safeItem.action_type === "connection";
+  const isReaction = safeItem.action_type === "approve_reaction" || safeItem.action_type === "reaction";
   let actionLabel = "Feed Comment";
   if (isPost) actionLabel = "Original Post";
   else if (isReply) actionLabel = "Thread Reply";
   else if (isConn) actionLabel = "Connection Request";
+  else if (isReaction) actionLabel = "Post Reaction";
 
   const lines = [
     "<b>❌ Suggestion rejected by operator</b>",

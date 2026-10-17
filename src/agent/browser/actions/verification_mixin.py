@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
@@ -129,8 +130,18 @@ class VerificationMixin:
             pass
         return None
 
-    async def verify_login(self) -> bool:
+    async def verify_login(self, target_url: str | None = None) -> bool:
         """Verify the current browser session is authenticated."""
+        nav_target = target_url or "https://www.linkedin.com/feed/"
+        current_url = self.page.url if isinstance(self.page.url, str) else ""
+        if not current_url.startswith("https://www.linkedin.com"):
+            try:
+                res = self.page.goto(nav_target, wait_until="domcontentloaded", timeout=30000)
+                if hasattr(res, "__await__"):
+                    await res
+            except Exception as err:
+                logger.warning("Navigation during verify_login to %s failed: %s", nav_target, err)
+
         if stealth.detect_challenge_page(self.page):
             raise BotDetectionError(f"Challenge page detected during login check: {self.page.url}")
 
@@ -146,8 +157,27 @@ class VerificationMixin:
 
     async def verify_post_exists(self, post_url: str) -> bool:
         """Check whether the target post still exists and is accessible."""
+        if not post_url:
+            return False
+
+        current_url = self.page.url if isinstance(self.page.url, str) else ""
+        if not current_url or post_url not in current_url:
+            try:
+                res = self.page.goto(post_url, wait_until="domcontentloaded", timeout=30000)
+                if hasattr(res, "__await__"):
+                    await res
+                await asyncio.sleep(1.0)
+            except Exception as err:
+                logger.warning("Navigation to post %s failed: %s", post_url, err)
+                return False
+
         if stealth.detect_challenge_page(self.page):
             raise BotDetectionError(f"Challenge page on post navigation: {self.page.url}")
+
+        if stealth.is_authwall_or_login(self.page):
+            raise SessionExpiredError(
+                f"LinkedIn session expired navigating to post: {self.page.url}"
+            )
 
         # Check for deleted / unavailable markers
         error_container = self.page.locator(

@@ -36,9 +36,20 @@ class ReactionMixin:
         reaction_type: str = "like",
         item_id: str = "item_action",
         dry_run: bool | None = None,
+        post_url: str | None = None,
     ) -> bool:
         """React to a LinkedIn post with humanized dwell and graceful degradation."""
         is_dry_run = dry_run if dry_run is not None else self.settings.dry_run
+
+        current_url = self.page.url if isinstance(self.page.url, str) else ""
+        if post_url and (not current_url or post_url not in current_url):
+            try:
+                res = self.page.goto(post_url, wait_until="domcontentloaded", timeout=30000)
+                if hasattr(res, "__await__"):
+                    await res
+                await stealth.humanized_dwell(1.0, 2.0)
+            except Exception as err:
+                logger.warning("Navigation to post %s during reaction failed: %s", post_url, err)
 
         if stealth.detect_challenge_page(self.page):
             await self._capture_screenshot(f"challenge_react_{item_id}")
@@ -51,6 +62,7 @@ class ReactionMixin:
 
         if is_dry_run:
             logger.info("DRY_RUN: Simulated reaction '%s' on %s", reaction_type, self.page.url)
+            await self._capture_screenshot(f"dryrun_react_{item_id}")
             return True
 
         try:
@@ -82,11 +94,14 @@ class ReactionMixin:
                 logger.info(
                     "Post %s already reacted (%s); skipping click", self.page.url, aria_label
                 )
+                await self._capture_screenshot(f"react_{item_id}")
                 return True
 
             norm_type = reaction_type.strip().lower()
             if norm_type in ("", "like"):
                 await self.biometrics.click_element(react_btn)
+                await asyncio.sleep(0.5)
+                await self._capture_screenshot(f"react_{item_id}")
                 return True
 
             # Non-default reaction (e.g. insightful, celebrate, etc.)
@@ -111,12 +126,16 @@ class ReactionMixin:
                         candidates=reaction_menu_candidates,
                     )
                     await self.biometrics.click_element(reaction_menu_item)
+                    await asyncio.sleep(0.5)
+                    await self._capture_screenshot(f"react_{item_id}")
                     return True
                 except SelectorDriftError:
                     logger.warning(
                         "Specific reaction button '%s' not found, falling back to Like", norm_type
                     )
                     await self.biometrics.click_element(react_btn)
+                    await asyncio.sleep(0.5)
+                    await self._capture_screenshot(f"react_{item_id}")
                     return True
             except Exception as e:
                 logger.warning(
@@ -125,6 +144,8 @@ class ReactionMixin:
                     e,
                 )
                 await self.biometrics.click_element(react_btn)
+                await asyncio.sleep(0.5)
+                await self._capture_screenshot(f"react_{item_id}")
                 return True
 
         except (BotDetectionError, SessionExpiredError):

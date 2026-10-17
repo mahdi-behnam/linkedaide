@@ -218,7 +218,12 @@ async def verify_target(state: ExecuteState, config: RunnableConfig) -> dict[str
             pass
 
     try:
-        logged_in = await context.executor.verify_login()
+        target_nav_url = (
+            pending.post_url
+            if pending.post_url and pending.post_url.strip().startswith("http")
+            else None
+        )
+        logged_in = await context.executor.verify_login(target_url=target_nav_url)
         if not logged_in:
             return {"error": "LinkedIn session is not authenticated", "status": "session_error"}
 
@@ -296,12 +301,29 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
                 reaction_type=rx_type,
                 item_id=pending.item_id,
             )
+            react_screenshot = None
+            if hasattr(context.executor, "debug_dir") and context.executor.debug_dir:
+                pattern = f"react_{pending.item_id}_*.png"
+                matches = list(context.executor.debug_dir.glob(pattern))
+                if matches:
+                    react_screenshot = str(matches[-1])
+                    if hasattr(context.executor, "_upload_screenshot_to_r2"):
+                        try:
+                            upload_res = context.executor._upload_screenshot_to_r2(
+                                react_screenshot, f"success_react_{pending.item_id}"
+                            )
+                            if hasattr(upload_res, "__await__"):
+                                react_screenshot = await upload_res
+                            elif isinstance(upload_res, str):
+                                react_screenshot = upload_res
+                        except Exception:
+                            pass
             result = ExecutionResult(
                 success=rx_success,
                 action_type="approve_reaction",
                 item_id=pending.item_id,
                 post_url=pending.post_url,
-                screenshot_path=None,
+                screenshot_path=react_screenshot,
                 error=None if rx_success else f"Reaction '{rx_type}' execution failed",
                 executed_at=datetime.now(UTC),
             )

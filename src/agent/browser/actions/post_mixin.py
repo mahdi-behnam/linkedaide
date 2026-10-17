@@ -210,6 +210,17 @@ class PostMixin:
 
         temp_media_files: list[Path] = []
         try:
+            feed_url = "https://www.linkedin.com/feed/"
+            current_url = self.page.url if isinstance(self.page.url, str) else ""
+            if not current_url or "linkedin.com/feed" not in current_url:
+                try:
+                    res = self.page.goto(feed_url, wait_until="domcontentloaded", timeout=30000)
+                    if hasattr(res, "__await__"):
+                        await res
+                    await stealth.humanized_dwell(1.0, 2.0)
+                except Exception as err:
+                    logger.warning("Navigation to feed during create_post failed: %s", err)
+
             start_post_selector = (
                 "div[role='button']:has-text('Start a post'), "
                 "button:has-text('Start a post'), "
