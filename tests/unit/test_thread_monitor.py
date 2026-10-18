@@ -124,8 +124,9 @@ async def test_run_thread_monitor_flow_success_execution(
         assert result["queued_actions"] == ["pending_reply_001"]
 
 
-def test_thread_monitor_flow_main_success() -> None:
+def test_thread_monitor_flow_main_success(mock_settings: Settings) -> None:
     with (
+        patch("agent.orchestration.thread_monitor_flow.load_settings", return_value=mock_settings),
         patch("sys.argv", ["thread_monitor_flow"]),
         patch(
             "agent.orchestration.thread_monitor_flow.run_thread_monitor_flow",
@@ -138,8 +139,9 @@ def test_thread_monitor_flow_main_success() -> None:
     assert exc_info.value.code == 0
 
 
-def test_thread_monitor_flow_main_halted() -> None:
+def test_thread_monitor_flow_main_halted(mock_settings: Settings) -> None:
     with (
+        patch("agent.orchestration.thread_monitor_flow.load_settings", return_value=mock_settings),
         patch("sys.argv", ["thread_monitor_flow"]),
         patch(
             "agent.orchestration.thread_monitor_flow.run_thread_monitor_flow",
@@ -162,14 +164,18 @@ def test_cli_thread_monitor_parser() -> None:
     assert args.repo_root == "/tmp/repo"
 
 
-def test_cli_run_thread_monitor_exit_code() -> None:
+def test_cli_run_thread_monitor_exit_code(mock_settings: Settings) -> None:
     from agent.cli import build_parser, run_thread_monitor
 
     parser = build_parser()
     args = parser.parse_args(["thread-monitor"])
-    with patch(
-        "agent.orchestration.thread_monitor_flow.run_thread_monitor_flow", new_callable=AsyncMock
-    ) as mock_flow:
+    with (
+        patch("agent.cli.load_settings", return_value=mock_settings),
+        patch(
+            "agent.orchestration.thread_monitor_flow.run_thread_monitor_flow",
+            new_callable=AsyncMock,
+        ) as mock_flow,
+    ):
         mock_flow.return_value = {
             "status": "completed",
             "queued_count": 2,

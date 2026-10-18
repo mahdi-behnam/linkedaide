@@ -1072,8 +1072,15 @@ def test_build_parser_scout_connections() -> None:
     assert args.dry_run is True
 
 
-def test_run_scout_connections_success() -> None:
+def test_run_scout_connections_success(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent.cli import run_scout_connections
+
+    settings = Settings(
+        telegram_bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+        telegram_authorized_chat_id=123456789,
+        nvidia_nim_api_key="nvapi-valid",
+    )
+    monkeypatch.setattr("agent.cli.load_settings", lambda: settings)
 
     args = argparse.Namespace(
         role="Principal AI Architect",

@@ -15,6 +15,7 @@ from agent.orchestration.worker_notifier import notify_worker_event
 @pytest.fixture
 def base_settings() -> Settings:
     return Settings(
+        nvidia_nim_api_key="nvapi-test-key",
         telegram_bot_token="dummy:token",
         telegram_authorized_chat_id=123456,
         worker_url="https://relay-worker.test",
@@ -25,6 +26,7 @@ def base_settings() -> Settings:
 @pytest.mark.asyncio
 async def test_notify_worker_event_skips_when_url_missing() -> None:
     settings = Settings(
+        nvidia_nim_api_key="nvapi-test-key",
         telegram_bot_token="dummy:token",
         telegram_authorized_chat_id=123456,
         worker_url=None,
@@ -37,6 +39,7 @@ async def test_notify_worker_event_skips_when_url_missing() -> None:
 @pytest.mark.asyncio
 async def test_notify_worker_event_skips_when_secret_missing() -> None:
     settings = Settings(
+        nvidia_nim_api_key="nvapi-test-key",
         telegram_bot_token="dummy:token",
         telegram_authorized_chat_id=123456,
         worker_url="https://relay-worker.test",
