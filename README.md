@@ -314,6 +314,9 @@ The `agent` CLI provides access to all agent workflows:
 ## Development & Testing
 
 ```bash
+# Install & activate Git pre-commit & pre-push hooks (required for contributors)
+./scripts/setup_hooks.sh  # or: uv run python scripts/setup_hooks.py
+
 # Run unit and integration tests
 uv run pytest
 

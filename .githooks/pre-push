@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# LinkedAide Git pre-push hook
+# Verifies linting, formatting, static types, and unit tests before pushing to remote.
+
+set -e
+
+echo "🚀 [pre-push] Verifying code quality before pushing to remote..."
+
+echo "1/4 Checking linting..."
+uv run ruff check .
+
+echo "2/4 Checking formatting..."
+uv run ruff format --check .
+
+echo "3/4 Checking static types..."
+uv run mypy src tests scripts
+
+echo "4/4 Running fast unit test verification..."
+uv run pytest tests/unit/test_cli.py tests/unit/test_config.py tests/unit/test_schemas.py
+
+echo "✅ [pre-push] All pre-push checks passed successfully. Proceeding with push."

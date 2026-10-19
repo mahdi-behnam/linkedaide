@@ -678,10 +678,14 @@ Before creating a commit:
 1. inspect `git status`,
 2. inspect the staged and unstaged diff,
 3. ensure no secrets, credentials, session files, or unrelated artifacts are included,
-4. run the relevant focused tests,
-5. ensure the change is internally coherent.
+4. run the pre-flight static analysis suite to guarantee clean CI:
+   - `uv run ruff check .`
+   - `uv run ruff format --check .`
+   - `uv run mypy src tests scripts`
+5. run the relevant focused tests (or `uv run pytest`),
+6. ensure the change is internally coherent.
 
-For a phase-completion commit, also run the broader applicable test/lint suite.
+For a phase-completion commit, also run the broader applicable test suite.
 
 Do not knowingly commit broken code unless the user explicitly requests a WIP
 checkpoint.

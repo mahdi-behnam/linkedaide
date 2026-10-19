@@ -227,6 +227,17 @@ def run_setup(
     # Write updates
     update_dotenv_file(env_path, new_vars)
     print_func(f"\nConfiguration successfully saved to {env_path.resolve()}")
+
+    # Configure git hooks if running inside a Git repository
+    if (Path.cwd() / ".git").exists() and (Path.cwd() / ".githooks").exists():
+        try:
+            import subprocess
+
+            subprocess.run(["git", "config", "core.hooksPath", ".githooks"], check=False)
+            print_func("Configured Git hooks path (.githooks) for local quality checks.")
+        except Exception:
+            pass
+
     print_func("\nNext Steps:")
     print_func("  1. Verify diagnostics:  uv run agent doctor")
     print_func("  2. Extract session:     uv run python scripts/extract_linkedin_session.py")

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# LinkedAide Git pre-commit hook
+# Validates linting, formatting, and static typing before allowing commits.
+
+set -e
+
+echo "🔍 [pre-commit] Checking code formatting and linting with Ruff..."
+uv run ruff check --fix .
+uv run ruff format .
+
+# Automatically re-stage any files that were already staged but modified by Ruff
+staged_files=$(git diff --name-only --cached || true)
+if [ -n "$staged_files" ]; then
+    echo "$staged_files" | while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            git add "$file"
+        fi
+    done
+fi
+
+echo "🔬 [pre-commit] Running Mypy static type analysis..."
+uv run mypy src tests scripts
+
+echo "✅ [pre-commit] All static checks passed."
