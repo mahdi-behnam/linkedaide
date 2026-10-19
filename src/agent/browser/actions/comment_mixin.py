@@ -242,7 +242,9 @@ class CommentMixin:
                 "div[role='textbox'][contenteditable='true'], "
                 "div.ql-editor, textarea[name='comment']"
             )
-            await _safe_wait_for(self.page.locator(comment_box_selector).first, state="visible", timeout=3000)
+            await _safe_wait_for(
+                self.page.locator(comment_box_selector).first, state="visible", timeout=3000
+            )
 
             try:
                 comment_box, _ = await self.selector_engine.resolve_locator(

@@ -175,7 +175,9 @@ class ConnectionMixin:
 
             if stealth.is_authwall_or_login(self.page):
                 if not await stealth.wait_for_login_redirect(self.page, timeout=5.0):
-                    raise SessionExpiredError(f"LinkedIn session expired navigating to {profile_url}")
+                    raise SessionExpiredError(
+                        f"LinkedIn session expired navigating to {profile_url}"
+                    )
 
             # 5. Detect "Connect" button directly or via "More actions"
             connect_selector = (
@@ -325,10 +327,7 @@ class ConnectionMixin:
             # 7. Handle Invitation modal
             await asyncio.sleep(0.5)
             if note_text:
-                add_note_selector = (
-                    "button[aria-label='Add a note'], "
-                    "button:has-text('Add a note')"
-                )
+                add_note_selector = "button[aria-label='Add a note'], button:has-text('Add a note')"
                 try:
                     add_note_btn, _ = await self.selector_engine.resolve_locator(
                         self.page,
@@ -419,7 +418,10 @@ class ConnectionMixin:
         except Exception as err:
             if isinstance(
                 err,
-                BotDetectionError | SessionExpiredError | SubmissionVerificationError | ExecutionError,
+                BotDetectionError
+                | SessionExpiredError
+                | SubmissionVerificationError
+                | ExecutionError,
             ):
                 raise
             screenshot = await self._capture_screenshot(f"failed_connect_{item_id}")

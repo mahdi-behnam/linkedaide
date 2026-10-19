@@ -318,7 +318,9 @@ class SelfHealingSelectorEngine:
         async def _is_available(loc: Any) -> bool:
             try:
                 # In unit test mock environments, loc is a Mock/MagicMock
-                if type(loc).__name__ in ("MagicMock", "AsyncMock", "Mock") or hasattr(loc, "_mock_return_value"):
+                if type(loc).__name__ in ("MagicMock", "AsyncMock", "Mock") or hasattr(
+                    loc, "_mock_return_value"
+                ):
                     if hasattr(loc, "count"):
                         cnt = loc.count()
                         if inspect.isawaitable(cnt):
@@ -344,7 +346,7 @@ class SelfHealingSelectorEngine:
                     cnt = loc.count()
                     if inspect.isawaitable(cnt):
                         cnt = await cnt
-                    return cnt > 0
+                    return bool(cnt > 0)
                 return True
             except Exception:
                 return False

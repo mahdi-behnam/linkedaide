@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-
 import inspect
+from typing import Any
 
 
 async def _safe_count(locator: Any) -> int:
