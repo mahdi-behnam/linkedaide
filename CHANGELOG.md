@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.7.2...v1.8.0) (2026-10-19)
+
+
+### Features
+
+* **ci:** add version-controlled git pre-commit and pre-push quality hooks ([d4a62ab](https://github.com/mahdi-behnam/linkedaide/commit/d4a62ab95f361ba2ccd8daf54d240cec6c4d9530))
+
+
+### Bug Fixes
+
+* **browser:** ground execution selectors and DOM handlers against live LinkedIn ([4d44638](https://github.com/mahdi-behnam/linkedaide/commit/4d4463815349948b90f9387f81267ccf63d694bd))
+* **ci:** fix ruff import sorting, formatting, and mypy return type in browser actions ([060bf79](https://github.com/mahdi-behnam/linkedaide/commit/060bf79d78d130091fa983d63844768a8b8b7949))
+
+
+### Tests
+
+* **graphs:** update execute reaction test assertion to verify post_url ([8f29ab7](https://github.com/mahdi-behnam/linkedaide/commit/8f29ab70a0855b9ac9d5e5ab43acdbb5fdd994b7))
+
 ## [1.7.2](https://github.com/mahdi-behnam/linkedaide/compare/v1.7.1...v1.7.2) (2026-10-18)
 
 
