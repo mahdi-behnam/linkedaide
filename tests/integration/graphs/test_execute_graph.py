@@ -640,6 +640,7 @@ async def test_execute_graph_approve_reaction(
     mock_context.executor.react_to_post.assert_awaited_once_with(  # type: ignore[union-attr]
         reaction_type="insightful",
         item_id="item_react_1",
+        post_url="https://www.linkedin.com/feed/update/urn:li:activity:8888/",
     )
     # Check that pending action was removed
     assert mock_context.state_store.read_pending("item_react_1") is None
