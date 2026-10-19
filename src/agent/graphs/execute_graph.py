@@ -300,6 +300,7 @@ async def execute_browser_action(state: ExecuteState, config: RunnableConfig) ->
             rx_success = await context.executor.react_to_post(
                 reaction_type=rx_type,
                 item_id=pending.item_id,
+                post_url=pending.post_url,
             )
             react_screenshot = None
             if hasattr(context.executor, "debug_dir") and context.executor.debug_dir:

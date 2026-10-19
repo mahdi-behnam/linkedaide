@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 from agent.browser import stealth
+from agent.browser.actions.base import _safe_scroll
 from agent.browser.selectors import LINKEDIN_SELECTORS
 from agent.errors import (
     BotDetectionError,
@@ -223,6 +224,7 @@ class PostMixin:
 
             start_post_selector = (
                 "div[role='button']:has-text('Start a post'), "
+                "div[role='button'][aria-label*='Start a post'], "
                 "button:has-text('Start a post'), "
                 "button.share-box-feed-entry__trigger, "
                 "[data-view-name*='share-box'] [role='button']"
@@ -233,6 +235,7 @@ class PostMixin:
                     "post_input",
                     candidates=[start_post_selector, *LINKEDIN_SELECTORS.get("post_input", [])],
                 )
+                await _safe_scroll(start_post_btn)
             except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="create_post_ui_drift",
@@ -242,6 +245,7 @@ class PostMixin:
                 raise ExecutionError("Start a post button not found in DOM") from err
 
             await self.biometrics.click_element(start_post_btn)
+            await asyncio.sleep(1.2)
 
             try:
                 modal_loc, _ = await self.selector_engine.resolve_locator(
@@ -250,16 +254,24 @@ class PostMixin:
                 )
             except SelectorDriftError:
                 modal_loc = self.page.locator(
-                    "div.share-box-modal, div.artdeco-modal[role='dialog'], div.share-creation-state"
+                    "div[role='dialog'], div.share-box-modal, div.artdeco-modal[role='dialog'], div.share-creation-state"
                 ).first
 
-            editor_selector = "div.tiptap.ProseMirror, div.ql-editor, div[role='textbox']"
+            editor_selector = (
+                "div.tiptap.ProseMirror[contenteditable='true'], "
+                "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror, "
+                "div[componentkey='ShareBox_textEditor'], "
+                "div.tiptap.ProseMirror, "
+                "div[role='textbox'], "
+                "div.ql-editor"
+            )
             try:
                 editor, _ = await self.selector_engine.resolve_locator(
                     self.page,
                     "post_editor",
                     candidates=[editor_selector, *LINKEDIN_SELECTORS.get("post_editor", [])],
                 )
+                await _safe_scroll(editor)
             except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="create_post_ui_drift",
@@ -284,13 +296,18 @@ class PostMixin:
                             await self.biometrics.click_element(next_btn)
                             await asyncio.sleep(0.5)
 
-            post_btn_selector = "button.share-actions__primary-action, button:has-text('Post')"
+            post_btn_selector = (
+                "button:has-text('Post'), "
+                "button.share-actions__primary-action, "
+                "button[aria-label='Post']"
+            )
             try:
                 post_btn, _ = await self.selector_engine.resolve_locator(
                     self.page,
                     "post_submit",
                     candidates=[post_btn_selector, *LINKEDIN_SELECTORS.get("post_submit", [])],
                 )
+                await _safe_scroll(post_btn)
             except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="create_post_ui_drift",

@@ -7,6 +7,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
+from agent.browser.actions.base import _safe_mouse_move, _safe_scroll
 from agent.browser.selectors import LINKEDIN_SELECTORS
 from agent.errors import BotDetectionError, SelectorDriftError, SessionExpiredError
 
@@ -77,6 +78,7 @@ class ReactionMixin:
                     "like_btn",
                     candidates=[like_selector, *LINKEDIN_SELECTORS.get("like_btn", [])],
                 )
+                await _safe_scroll(react_btn)
             except SelectorDriftError:
                 logger.warning("Reaction button not found on %s", self.page.url)
                 return False
@@ -108,14 +110,10 @@ class ReactionMixin:
             try:
                 await react_btn.hover()
                 await asyncio.sleep(0.4)
-                canonical_reaction = (
-                    f"button[data-test-reaction-type='{norm_type}'], "
-                    f"button[aria-label*='{norm_type.capitalize()}' i], "
-                    f"div.reactions-menu button:has-text('{norm_type.capitalize()}')"
-                )
+                canonical_reaction = f"button[data-test-reaction-type='{norm_type}']"
                 reaction_menu_candidates = [
                     canonical_reaction,
-                    f"button[data-test-reaction-type='{norm_type}']",
+                    f"button[aria-label='{norm_type.capitalize()}']",
                     f"button[aria-label*='{norm_type.capitalize()}' i]",
                     f"div.reactions-menu button:has-text('{norm_type.capitalize()}')",
                 ]
@@ -126,6 +124,7 @@ class ReactionMixin:
                         candidates=reaction_menu_candidates,
                     )
                     await self.biometrics.click_element(reaction_menu_item)
+                    await _safe_mouse_move(self.page, 0, 0)
                     await asyncio.sleep(0.5)
                     await self._capture_screenshot(f"react_{item_id}")
                     return True
@@ -133,6 +132,7 @@ class ReactionMixin:
                     logger.warning(
                         "Specific reaction button '%s' not found, falling back to Like", norm_type
                     )
+                    await _safe_mouse_move(self.page, 0, 0)
                     await self.biometrics.click_element(react_btn)
                     await asyncio.sleep(0.5)
                     await self._capture_screenshot(f"react_{item_id}")
@@ -143,6 +143,7 @@ class ReactionMixin:
                     norm_type,
                     e,
                 )
+                await _safe_mouse_move(self.page, 0, 0)
                 await self.biometrics.click_element(react_btn)
                 await asyncio.sleep(0.5)
                 await self._capture_screenshot(f"react_{item_id}")

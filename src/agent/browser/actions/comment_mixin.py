@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
+from agent.browser.actions.base import _safe_count, _safe_scroll, _safe_wait_for
 from agent.browser.selectors import LINKEDIN_SELECTORS
 from agent.errors import (
     BotDetectionError,
@@ -82,6 +83,7 @@ class CommentMixin:
             # Signal 1: Comment text rendered in thread / comments list
             if snippet:
                 comment_loc = self.page.locator(
+                    "div[componentkey*='Comment'], div[id*='replaceableComment'], "
                     "article.comments-comment-item, div.comments-comment-item, "
                     "div.comments-comment-item__main-content, div.feed-shared-update-v2__comments-container, "
                     ".comments-comments-list, div.comments-comments-list__comment-item"
@@ -213,36 +215,42 @@ class CommentMixin:
                 if simulate_dwell:
                     await stealth.humanized_dwell(1.0, 2.5)
 
-            # Locate comment button
+            # Locate and click comment button
             try:
                 comment_btn, _ = await self.selector_engine.resolve_locator(
                     self.page,
                     "comment_btn",
                 )
+                await _safe_scroll(comment_btn)
                 await self.biometrics.click_element(comment_btn)
             except Exception:
                 comment_btn = self.page.locator(
-                    "button[aria-label*='Comment'], button[aria-label*='comment' i], "
+                    "button[aria-label='Comment'], button[aria-label*='comment' i], "
                     "button.comment-button, "
                     "button.feed-shared-social-action-bar__action-button:has-text('Comment'), "
                     "button:has-text('Comment')"
                 ).first
-                if await comment_btn.count() > 0:
+                if await _safe_count(comment_btn) > 0:
+                    await _safe_scroll(comment_btn)
                     await self.biometrics.click_element(comment_btn)
 
             comment_box_selector = (
-                "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror, "
+                "div.tiptap.ProseMirror[contenteditable='true'], "
                 "div.tiptap.ProseMirror, "
                 "div[role='textbox'][aria-label*='comment' i], "
+                "div[data-testid='ui-core-tiptap-text-editor-wrapper'] div.tiptap.ProseMirror, "
                 "div[role='textbox'][contenteditable='true'], "
                 "div.ql-editor, textarea[name='comment']"
             )
+            await _safe_wait_for(self.page.locator(comment_box_selector).first, state="visible", timeout=3000)
+
             try:
                 comment_box, _ = await self.selector_engine.resolve_locator(
                     self.page,
                     "comment_box",
                     candidates=[comment_box_selector, *LINKEDIN_SELECTORS.get("comment_box", [])],
                 )
+                await _safe_scroll(comment_box)
             except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="comment_box_drift",
@@ -254,12 +262,13 @@ class CommentMixin:
             await self.biometrics.type_text(comment_box, comment_text)
 
             submit_btn_selector = (
+                "button.comments-comment-box__submit-button, "
+                "button[type='submit']:has-text('Comment'), "
                 "button[componentkey*='commentButtonSection'], "
                 "div[id*='commentButtonSection'] button, "
-                "button.comments-comment-box__submit-button, "
                 "div.comments-comment-box button[type='submit'], "
-                "button[type='submit']:has-text('Comment'), "
-                "button[type='submit']:has-text('Post')"
+                "button[type='submit']:has-text('Post'), "
+                "button:has-text('Post')"
             )
             try:
                 submit_btn, _ = await self.selector_engine.resolve_locator(
@@ -267,6 +276,7 @@ class CommentMixin:
                     "comment_submit",
                     candidates=[submit_btn_selector, *LINKEDIN_SELECTORS.get("comment_submit", [])],
                 )
+                await _safe_scroll(submit_btn)
             except SelectorDriftError as err:
                 await self._capture_telemetry(
                     trigger="comment_submit_btn_drift",

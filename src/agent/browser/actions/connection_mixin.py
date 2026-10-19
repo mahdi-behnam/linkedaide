@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
+from agent.browser.actions.base import _safe_scroll
 from agent.browser.selectors import LINKEDIN_SELECTORS
 from agent.errors import (
     BotDetectionError,
@@ -74,7 +75,7 @@ class ConnectionMixin:
 
             # Signal 1: "Pending" button appears on profile
             pending_loc = self.page.locator(
-                "button:has-text('Pending'), button[aria-label*='Pending'], button[aria-label*='Invitation sent']"
+                "button:has-text('Pending'), button[aria-label*='Pending'], button[aria-label*='Invitation sent'], a:has-text('Pending'), a[aria-label*='Pending']"
             )
             try:
                 if await pending_loc.count() > 0:
@@ -115,8 +116,10 @@ class ConnectionMixin:
         item_id: str = "conn_action",
         dry_run: bool | None = None,
         verification_timeout: float = 6.0,
+        note: str | None = None,
     ) -> ExecutionResult:
         """Send a personalized LinkedIn connection invitation request."""
+        note_text = note_text if note_text is not None else note
         is_dry_run = dry_run if dry_run is not None else self.settings.dry_run
         now = datetime.now(UTC)
 
@@ -156,8 +159,14 @@ class ConnectionMixin:
 
         try:
             # 4. Navigate to profile URL if not already there
-            if self.page.url != profile_url:
-                await self.page.goto(profile_url, wait_until="domcontentloaded")
+            clean_profile = profile_url.split("?")[0].rstrip("/")
+            clean_page_url = self.page.url.split("?")[0].rstrip("/")
+            if clean_page_url != clean_profile:
+                await self.page.goto(
+                    profile_url,
+                    referer="https://www.linkedin.com/feed/",
+                    wait_until="domcontentloaded",
+                )
                 await stealth.humanized_dwell(1.0, 2.0)
 
             if stealth.detect_challenge_page(self.page):
@@ -165,14 +174,24 @@ class ConnectionMixin:
                 raise BotDetectionError(f"Bot detection challenge on {self.page.url}")
 
             if stealth.is_authwall_or_login(self.page):
-                raise SessionExpiredError(f"LinkedIn session expired navigating to {profile_url}")
+                if not await stealth.wait_for_login_redirect(self.page, timeout=5.0):
+                    raise SessionExpiredError(f"LinkedIn session expired navigating to {profile_url}")
 
             # 5. Detect "Connect" button directly or via "More actions"
             connect_selector = (
-                "button:has-text('Connect'), "
+                "main section[aria-label='Primary content'] a[aria-label*='to connect' i], "
+                "main section[aria-label='Primary content'] button[aria-label*='to connect' i], "
+                "main section[aria-label='Primary content'] button:has-text('Connect'), "
+                "main div[id*='Topcard'] a[aria-label*='to connect' i], "
+                "main div[id*='Topcard'] button:has-text('Connect'), "
+                "button[data-control-name='connect'], "
+                "button.pvs-profile-actions__action[data-test-connect-button], "
                 "button[aria-label*='Invite'][aria-label*='to connect'], "
+                "a[aria-label*='Invite'][aria-label*='to connect'], "
                 "button.pvs-profile-actions__action:has-text('Connect'), "
-                "div.ph5 button:has-text('Connect')"
+                "div.ph5 button:has-text('Connect'), "
+                "button:has-text('Connect'), "
+                "a:has-text('Connect')"
             )
             found_connect = False
             try:
@@ -181,6 +200,7 @@ class ConnectionMixin:
                     "connect_btn",
                     candidates=[connect_selector, *LINKEDIN_SELECTORS.get("connect_btn", [])],
                 )
+                await _safe_scroll(connect_btn)
                 found_connect = True
                 await self.biometrics.click_element(connect_btn)
             except SelectorDriftError:
@@ -189,9 +209,17 @@ class ConnectionMixin:
             if not found_connect:
                 # Try "More actions" dropdown
                 more_selector = (
+                    "main section[aria-label='Primary content'] button:has-text('More'), "
+                    "main div[id*='Topcard'] button:has-text('More'), "
+                    "main section[aria-label='Primary content'] button[aria-label='More actions'], "
+                    "main div[id*='Topcard'] button[aria-label='More actions'], "
+                    "div.pvs-profile-actions button:has-text('More'), "
+                    "main button[aria-label='More actions'], "
+                    "main button[aria-label='More'], "
+                    "main button:has-text('More'), "
                     "button[aria-label='More actions'], "
-                    "button:has-text('More'), "
-                    "div.pvs-profile-actions button:has-text('More')"
+                    "button[aria-label='More'], "
+                    "button:has-text('More')"
                 )
                 try:
                     more_btn, _ = await self.selector_engine.resolve_locator(
@@ -199,10 +227,14 @@ class ConnectionMixin:
                         "more_actions_btn",
                         candidates=[more_selector, *LINKEDIN_SELECTORS.get("more_actions_btn", [])],
                     )
+                    await _safe_scroll(more_btn)
                     await self.biometrics.click_element(more_btn)
                     await asyncio.sleep(0.5)
 
                     dropdown_connect_selector = (
+                        "div[role='menu'] [aria-label*='to connect'], "
+                        "div[role='menu'] :has-text('Connect'), "
+                        "[role='menuitem']:has-text('Connect'), "
                         "div[role='button']:has-text('Connect'), "
                         "li:has-text('Connect'), "
                         "div.artdeco-dropdown__item:has-text('Connect'), "
@@ -263,10 +295,40 @@ class ConnectionMixin:
                 )
                 raise ExecutionError(f"Connect button not found on profile {profile_url}")
 
-            # 6. Handle Invitation modal
+            # 6. Check for Premium paywall modal
+            await asyncio.sleep(0.8)
+            paywall_selector = (
+                "dialog[open]:has-text('Grow your career'), "
+                "dialog[open]:has-text('Try 1 month of Premium'), "
+                "dialog[open]:has-text('Try Premium'), "
+                "[data-testid='dialog']:has-text('Grow your career'), "
+                "[data-testid='dialog']:has-text('Try 1 month of Premium')"
+            )
+            paywall = self.page.locator(paywall_selector).first
+            try:
+                if await paywall.count() > 0:
+                    logger.warning("LinkedIn Premium paywall encountered for %s", profile_url)
+                    dismiss_btn = paywall.locator("button[aria-label='Dismiss']").first
+                    if await dismiss_btn.count() > 0:
+                        await dismiss_btn.click()
+                    else:
+                        await self.page.keyboard.press("Escape")
+                    screenshot = await self._capture_screenshot(f"premium_required_{item_id}")
+                    raise ExecutionError(
+                        f"LinkedIn requires Premium subscription to connect with this profile: {profile_url}"
+                    )
+            except ExecutionError:
+                raise
+            except Exception:
+                pass
+
+            # 7. Handle Invitation modal
             await asyncio.sleep(0.5)
             if note_text:
-                add_note_selector = "button:has-text('Add a note'), button[aria-label='Add a note']"
+                add_note_selector = (
+                    "button[aria-label='Add a note'], "
+                    "button:has-text('Add a note')"
+                )
                 try:
                     add_note_btn, _ = await self.selector_engine.resolve_locator(
                         self.page,
@@ -282,8 +344,8 @@ class ConnectionMixin:
                     pass
 
                 textarea_selector = (
-                    "textarea[name='message'], "
                     "textarea#custom-message, "
+                    "textarea[name='message'], "
                     "textarea[id*='custom-message'], "
                     "textarea"
                 )
@@ -294,9 +356,10 @@ class ConnectionMixin:
                     logger.warning("Add note textarea not found; proceeding to send invitation")
 
                 send_selector = (
-                    "button:has-text('Send'), "
                     "button[aria-label='Send invitation'], "
-                    "button[aria-label='Send now']"
+                    "button[aria-label='Send now'], "
+                    "button:has-text('Send invitation'), "
+                    "button:has-text('Send')"
                 )
                 try:
                     send_btn, _ = await self.selector_engine.resolve_locator(
@@ -312,11 +375,11 @@ class ConnectionMixin:
                     raise ExecutionError("Send invitation button not found in modal") from err
             else:
                 send_selector = (
-                    "button:has-text('Send without a note'), "
                     "button[aria-label='Send without a note'], "
-                    "button:has-text('Send'), "
+                    "button:has-text('Send without a note'), "
                     "button[aria-label='Send invitation'], "
-                    "button[aria-label='Send now']"
+                    "button[aria-label='Send now'], "
+                    "button:has-text('Send')"
                 )
                 try:
                     send_btn, _ = await self.selector_engine.resolve_locator(
@@ -331,7 +394,7 @@ class ConnectionMixin:
                 except SelectorDriftError as err:
                     raise ExecutionError("Send invitation button not found in modal") from err
 
-            # 7. DOM verification of sent invitation
+            # 8. DOM verification of sent invitation
             await self._verify_connection_sent(
                 item_id=item_id,
                 timeout=verification_timeout,
@@ -356,7 +419,7 @@ class ConnectionMixin:
         except Exception as err:
             if isinstance(
                 err,
-                BotDetectionError | SessionExpiredError | SubmissionVerificationError,
+                BotDetectionError | SessionExpiredError | SubmissionVerificationError | ExecutionError,
             ):
                 raise
             screenshot = await self._capture_screenshot(f"failed_connect_{item_id}")

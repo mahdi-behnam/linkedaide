@@ -181,13 +181,21 @@ class VerificationMixin:
 
         # Check for deleted / unavailable markers
         error_container = self.page.locator(
-            "div.artdeco-empty-state, h1:has-text('This post is no longer available')"
+            "div.artdeco-empty-state, "
+            "h1:has-text('This post is no longer available'), "
+            ":has-text('Post not found'), "
+            ":has-text('This post was deleted or removed'), "
+            ":has-text('This post is no longer available')"
         )
         if await error_container.count() > 0:
             return False
 
         post_article = self.page.locator(
-            "article, div[id^='expanded'][id*='FEED'], div.feed-shared-update-v2, "
-            "div.feed-shared-update-v2__content, div[componentkey], a[href*='/in/']"
+            "button[aria-label*='Reaction button state' i], "
+            "button[aria-label*='Like' i], "
+            "button.react-button__trigger, "
+            "article, div.feed-shared-update-v2, "
+            "div[id^='expanded'][id*='FEED'], "
+            "div[data-testid='mainFeed'] > div"
         )
         return await post_article.count() > 0

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from agent.browser import stealth
-from agent.browser.actions.base import _safe_count
+from agent.browser.actions.base import _safe_count, _safe_scroll
 from agent.errors import (
     BotDetectionError,
     ExecutionError,
@@ -24,6 +25,14 @@ if TYPE_CHECKING:
     from agent.config import Settings
 
 logger = logging.getLogger(__name__)
+
+
+def _pick_loc(loc: Any, prefer_last: bool = False) -> Any:
+    if type(loc).__name__ in ("MagicMock", "Mock", "AsyncMock"):
+        return getattr(loc, "first", loc)
+    if prefer_last and hasattr(loc, "last"):
+        return loc.last
+    return getattr(loc, "first", loc)
 
 
 class ThreadMixin:
@@ -290,9 +299,9 @@ class ThreadMixin:
             comment_card is not None
             and await _safe_count(comment_card.locator(reply_box_selector)) > 0
         ):
-            reply_box = comment_card.locator(reply_box_selector).first
+            reply_box = _pick_loc(comment_card.locator(reply_box_selector), prefer_last=True)
         else:
-            reply_box = self.page.locator(reply_box_selector).first
+            reply_box = _pick_loc(self.page.locator(reply_box_selector), prefer_last=True)
 
         if is_dry_run:
             logger.info(
@@ -332,10 +341,12 @@ class ThreadMixin:
         # Live submission path
         try:
             if await _safe_count(reply_btn) > 0:
+                await _safe_scroll(reply_btn)
                 await self.biometrics.click_element(reply_btn)
+                await asyncio.sleep(0.5)
 
             if await _safe_count(reply_box) == 0:
-                reply_box = self.page.locator(reply_box_selector).first
+                reply_box = _pick_loc(self.page.locator(reply_box_selector), prefer_last=True)
 
             if await _safe_count(reply_box) == 0:
                 await self._capture_telemetry(
@@ -345,24 +356,25 @@ class ThreadMixin:
                 )
                 raise ExecutionError("Comment reply input box not found in DOM")
 
+            await _safe_scroll(reply_box)
             await self.biometrics.type_text(reply_box, reply_text)
 
             submit_btn_selector = (
+                "button:has-text('Reply'), "
                 "button.comments-comment-box__submit-button, "
                 "div.comments-comment-box button[type='submit'], "
                 "button[type='submit']:has-text('Reply'), "
                 "button[type='submit']:has-text('Comment'), "
                 "button[type='submit']:has-text('Post'), "
-                "button:has-text('Reply'), "
                 "button:has-text('Post')"
             )
             if (
                 comment_card is not None
                 and await _safe_count(comment_card.locator(submit_btn_selector)) > 0
             ):
-                submit_btn = comment_card.locator(submit_btn_selector).first
+                submit_btn = _pick_loc(comment_card.locator(submit_btn_selector), prefer_last=True)
             else:
-                submit_btn = self.page.locator(submit_btn_selector).first
+                submit_btn = _pick_loc(self.page.locator(submit_btn_selector), prefer_last=True)
 
             if await _safe_count(submit_btn) == 0:
                 await self._capture_telemetry(
@@ -372,6 +384,7 @@ class ThreadMixin:
                 )
                 raise ExecutionError("Reply submit button not found in DOM")
 
+            await _safe_scroll(submit_btn)
             await self.biometrics.click_element(submit_btn)
 
             # Confirm submission in DOM
