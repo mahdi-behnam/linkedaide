@@ -104,6 +104,15 @@ export interface DoctorCheck {
   recommendation?: string;
 }
 
+export interface LLMHealthRecord {
+  status: "healthy" | "degraded";
+  primary_model?: string;
+  fallback_model?: string;
+  last_primary_error?: string;
+  error?: string;
+  timestamp?: string;
+}
+
 export interface SystemTelemetry {
   workerUrl: string;
   workerStatus: "connected" | "disconnected" | "checking";
@@ -114,6 +123,7 @@ export interface SystemTelemetry {
   isPaused: boolean;
   circuitBreakerTripped: boolean;
   pendingCount: number;
+  llmHealth?: LLMHealthRecord;
 }
 
 export type { NavigationTarget, SearchCategory, SearchDocument } from "../services/search/types";

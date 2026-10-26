@@ -14,6 +14,7 @@ from agent.graphs.ideation_graph import build_ideation_graph
 from agent.graphs.state import GraphContext, IdeationState
 from agent.llm.service import LLMService
 from agent.logging import setup_logging
+from agent.orchestration.llm_alert import check_and_notify_llm_health
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
 from agent.state import get_state_store
@@ -75,6 +76,12 @@ async def run_ideation_flow(
         len(result.get("pending_items", [])),
         len(result.get("errors", [])),
     )
+
+    try:
+        await check_and_notify_llm_health(cfg, llm, state_store, telegram)
+    except Exception as health_err:
+        logger.warning("LLM health monitoring completed with warning: %s", health_err)
+
     return cast(dict[str, Any], result)
 
 

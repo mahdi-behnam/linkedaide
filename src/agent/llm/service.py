@@ -113,6 +113,15 @@ class LLMService:
         return self._resilience
 
     @property
+    def fallback_used(self) -> bool:
+        """Check if fallback model was invoked during operations."""
+        return self._resilience.fallback_used
+
+    def get_health_report(self) -> dict[str, Any]:
+        """Compile a dynamic health and resilience report."""
+        return self._resilience.get_health_report()
+
+    @property
     def comment_drafter(self) -> CommentDrafter:
         """Access the comment drafting orchestrator."""
         return self._comment_drafter

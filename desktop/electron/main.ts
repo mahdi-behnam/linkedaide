@@ -51,7 +51,7 @@ function loadSettings(): DesktopSettings {
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
     nimModel:
-      process.env.NIM_MODEL_PRIMARY || "nvidia/nemotron-3-super-120b-a12b",
+      process.env.NIM_MODEL_PRIMARY || "meta/llama-3.3-70b-instruct",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
     githubRepoOwner: process.env.GITHUB_REPO_OWNER || "",
     githubRepoName: process.env.GITHUB_REPO_NAME || "linkedaide",

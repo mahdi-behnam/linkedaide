@@ -12,7 +12,7 @@ SUPPORTED_LLM_PROVIDERS: frozenset[str] = frozenset(
 
 PROVIDER_DEFAULT_MODELS: dict[str, dict[str, str]] = {
     "nvidia": {
-        "primary": "nvidia/nemotron-3-super-120b-a12b",
+        "primary": "meta/llama-3.3-70b-instruct",
         "fallback": "openai/gpt-oss-20b",
         "triage": "openai/gpt-oss-20b",
     },

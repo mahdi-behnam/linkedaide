@@ -23,6 +23,7 @@ from agent.graphs.scout_graph import build_scout_graph
 from agent.graphs.state import GraphContext, ScoutState
 from agent.llm.service import LLMService
 from agent.logging import setup_logging
+from agent.orchestration.llm_alert import check_and_notify_llm_health
 from agent.orchestration.worker_notifier import notify_worker_event
 from agent.safety.circuit_breaker import is_halted
 from agent.safety.rate_limiter import DailyCapEnforcer
@@ -145,6 +146,13 @@ async def run_scout_flow(
                     "suggestions_count": len(dict_result.get("pending_items", [])),
                 },
             )
+
+            # Check LLM health and dispatch debounced multi-channel alerts if degraded
+            try:
+                await check_and_notify_llm_health(cfg, llm, state_store, telegram)
+            except Exception as health_err:
+                logger.warning("LLM health monitoring completed with warning: %s", health_err)
+
             return dict_result
         finally:
             await browser.close()

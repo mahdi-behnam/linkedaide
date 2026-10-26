@@ -179,6 +179,35 @@ class ResilienceRunner:
         self.max_attempts = max_attempts
         self.semaphore = asyncio.Semaphore(settings.nim_max_concurrency)
 
+        # Operational telemetry and health tracking
+        self.primary_failure_count: int = 0
+        self.last_primary_error: str | None = None
+        self.has_primary_404: bool = False
+        self.fallback_invocations: int = 0
+
+    @property
+    def has_primary_failure(self) -> bool:
+        """Return True if the primary model failed at least once during this runner's lifecycle."""
+        return self.primary_failure_count > 0
+
+    @property
+    def fallback_used(self) -> bool:
+        """Return True if the fallback model was invoked at least once."""
+        return self.fallback_invocations > 0
+
+    def get_health_report(self) -> dict[str, Any]:
+        """Compile a dynamic health report for the LLM runner without hardcoded model strings."""
+        is_degraded = self.has_primary_failure
+        return {
+            "status": "degraded" if is_degraded else "healthy",
+            "primary_model": self.settings.effective_primary_model,
+            "fallback_model": self.settings.effective_fallback_model,
+            "primary_failure_count": self.primary_failure_count,
+            "fallback_invocations": self.fallback_invocations,
+            "has_primary_404": self.has_primary_404,
+            "last_primary_error": self.last_primary_error,
+        }
+
     async def execute(
         self,
         chain_name: str,
@@ -201,12 +230,17 @@ class ResilienceRunner:
                     target_schema,
                 )
             except Exception as primary_err:
+                self.primary_failure_count += 1
+                self.last_primary_error = str(primary_err)
+                if "404" in str(primary_err).lower():
+                    self.has_primary_404 = True
                 logger.warning(
                     f"Primary chain '{chain_name}' failed ({type(primary_err).__name__}: {primary_err}). "
                     "Attempting fallback model..."
                 )
 
             # Step 2: Attempt fallback chain
+            self.fallback_invocations += 1
             try:
                 fallback_chain = get_chain(
                     self.fallback_chains,

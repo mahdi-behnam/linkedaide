@@ -57,7 +57,7 @@ export async function rewriteDraftWithLlm(
     : `Original Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`;
 
   const modelName =
-    env.NIM_MODEL_PRIMARY || env.LLM_MODEL || "nvidia/nemotron-3-super-120b-a12b";
+    env.NIM_MODEL_PRIMARY || env.LLM_MODEL || "meta/llama-3.3-70b-instruct";
 
   const llmResp = await fetch(llmUrl, {
     method: "POST",

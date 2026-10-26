@@ -8,9 +8,9 @@ Architecture Invariants:
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EngagementStyle(StrEnum):
@@ -108,7 +108,7 @@ class ReplyTriageResult(BaseModel):
 class CommentDraft(BaseModel):
     """Structured LLM draft for engaging on a target LinkedIn post."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     draft_comment: str = Field(
         min_length=1,
@@ -124,6 +124,20 @@ class CommentDraft(BaseModel):
         default=None,
         description="Engagement style applied in the drafted comment",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_draft_fields(cls, data: Any) -> Any:
+        """Allow models returning synonymous fields (e.g. content, comment, text) to validate cleanly."""
+        if isinstance(data, dict):
+            # If draft_comment is missing or empty, search common LLM aliases
+            if not data.get("draft_comment"):
+                for candidate_key in ("comment", "content", "draft", "text", "comment_text"):
+                    val = data.get(candidate_key)
+                    if isinstance(val, str) and val.strip():
+                        data["draft_comment"] = val.strip()
+                        break
+        return data
 
     @property
     def comment_text(self) -> str:

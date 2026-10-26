@@ -304,6 +304,13 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
     candidates: list[tuple[float, PendingAction, ConnectionRequestAction | None]] = []
 
     # 1. Comment candidates from drafted comments
+    fallback_active = bool(context.llm and getattr(context.llm, "fallback_used", False))
+    active_model = (
+        context.settings.effective_fallback_model
+        if fallback_active
+        else context.settings.effective_primary_model
+    )
+
     for post, triage, draft in drafts:
         item_id = hashlib.sha256(f"{post.post_urn}:{now.isoformat()}".encode()).hexdigest()[:8]
         pending = PendingAction(
@@ -319,6 +326,8 @@ async def rank_and_build_pending(state: ScoutState, config: RunnableConfig) -> d
             reasoning=triage.reasoning,
             engagement_style=draft.engagement_style or triage.engagement_style,
             post_image_url=post.image_url,
+            fallback_used=fallback_active,
+            model_used=active_model,
             telegram_chat_id=context.settings.telegram_authorized_chat_id,
             telegram_message_id=0,
         )

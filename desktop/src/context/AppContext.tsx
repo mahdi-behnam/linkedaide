@@ -346,12 +346,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsPaused(state.paused);
     }
 
+    let parsedLlmHealth = telemetry.llmHealth;
+    const llmHealthRaw = state.llm_health || state.llmHealth;
+    if (typeof llmHealthRaw === "string") {
+      try {
+        parsedLlmHealth = JSON.parse(llmHealthRaw);
+      } catch {}
+    } else if (llmHealthRaw && typeof llmHealthRaw === "object") {
+      parsedLlmHealth = llmHealthRaw;
+    }
+
     setTelemetry((prev) => ({
       ...prev,
       isPaused: typeof state.paused === "boolean" ? state.paused : prev.isPaused,
       circuitBreakerTripped: Boolean(state.incident),
       pendingCount: newPendingCount,
       lastScanAt: state.last_updated || state.lastUpdated || "Just now",
+      llmHealth: parsedLlmHealth || prev.llmHealth,
     }));
 
     if (state.connection_queue || state.connectionQueue) {
@@ -531,6 +542,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (eventType === "scout_schedule_updated" && Array.isArray(event.schedule)) {
         setCommentWindows(event.schedule);
         handleSetLastTriggerMessage("⚡ Realtime: Scout schedule synchronized");
+      } else if (eventType === "system_warning" && event.code === "LLM_PRIMARY_DEGRADED") {
+        setTelemetry((prev) => ({
+          ...prev,
+          llmHealth: {
+            status: "degraded",
+            primary_model: event.model,
+            fallback_model: event.fallback,
+            error: event.error,
+          },
+        }));
+        handleSetLastTriggerMessage(
+          `⚠️ Realtime: Primary model ${event.model || "primary"} degraded; routed to fallback ${event.fallback || "fallback"}`
+        );
+      } else if (eventType === "system_recovered" && event.code === "LLM_HEALTHY") {
+        setTelemetry((prev) => ({
+          ...prev,
+          llmHealth: {
+            status: "healthy",
+            primary_model: event.model,
+          },
+        }));
+        handleSetLastTriggerMessage(`✅ Realtime: Primary model ${event.model || "primary"} restored to healthy`);
       }
     });
 

@@ -42,7 +42,7 @@ def mock_settings() -> Settings:
     """Create test settings fixture."""
     return Settings(
         nvidia_nim_api_key="nvapi-mock-key-12345",
-        nim_model_primary="nvidia/nemotron-3-super-120b-a12b",
+        nim_model_primary="meta/llama-3.3-70b-instruct",
         nim_model_fallback="openai/gpt-oss-20b",
         nim_model_triage="openai/gpt-oss-20b-triage",
         nim_temperature=0.2,
@@ -92,7 +92,7 @@ class TestChatModelFactory:
 
         # Generation role
         build_chat_model(mock_settings, role="generation")
-        assert mock_chat_nvidia.call_args[1]["model"] == "nvidia/nemotron-3-super-120b-a12b"
+        assert mock_chat_nvidia.call_args[1]["model"] == "meta/llama-3.3-70b-instruct"
 
         # Fallback role
         build_chat_model(mock_settings, role="fallback")

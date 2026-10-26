@@ -22,6 +22,7 @@ from agent.graphs import (
 )
 from agent.llm.service import LLMService
 from agent.logging import setup_logging
+from agent.orchestration.llm_alert import check_and_notify_llm_health
 from agent.safety.circuit_breaker import is_halted
 from agent.state import get_state_store
 from agent.telegram.client import TelegramClient
@@ -102,6 +103,12 @@ async def run_thread_monitor_flow(
                 config={"configurable": {"context": graph_context}},
             )
             pending_items = result.get("pending_items", [])
+
+            try:
+                await check_and_notify_llm_health(cfg, llm, state_store, telegram)
+            except Exception as health_err:
+                logger.warning("LLM health monitoring completed with warning: %s", health_err)
+
             return {
                 "status": result.get("status", "completed"),
                 "queued_count": len(pending_items),

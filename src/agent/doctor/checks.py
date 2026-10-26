@@ -157,8 +157,8 @@ def check_configuration(
         )
 
 
-def check_llm_provider(settings: Settings | None) -> CheckResult:
-    """Verify LLM provider configuration and test chat model instantiation."""
+def check_llm_provider(settings: Settings | None, probe_connectivity: bool = True) -> CheckResult:
+    """Verify LLM provider configuration and test chat model instantiation and connectivity."""
     if settings is None:
         return CheckResult(
             name="LLM Provider",
@@ -184,10 +184,26 @@ def check_llm_provider(settings: Settings | None) -> CheckResult:
         )
 
     try:
+        from langchain_core.messages import HumanMessage
+
         from agent.llm.models import build_chat_model
 
         model = build_chat_model(settings)
         model_name = settings.effective_primary_model
+
+        if probe_connectivity:
+            try:
+                # Active probe to verify model existence and endpoint credentials
+                model.invoke([HumanMessage(content="ping")])
+            except Exception as probe_err:
+                err_str = str(probe_err)
+                return CheckResult(
+                    name="LLM Provider",
+                    status="FAIL",
+                    message=f"Model '{model_name}' failed probe on provider '{provider}': {err_str}",
+                    details=f"The configured model returned an error ({err_str}). Please verify the model identifier and your API credentials in settings.",
+                )
+
         return CheckResult(
             name="LLM Provider",
             status="PASS",

@@ -63,6 +63,14 @@ class PendingAction(BaseModel):
         default=None,
         description="Direct URL of image attached to target post",
     )
+    fallback_used: bool = Field(
+        default=False,
+        description="Whether fallback model was used to draft this action",
+    )
+    model_used: str | None = Field(
+        default=None,
+        description="Identifier of model used to draft this action",
+    )
 
 
 class MediaAttachment(BaseModel):

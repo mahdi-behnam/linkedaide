@@ -149,6 +149,30 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
+      {/* Model Degradation Alert Banner */}
+      {telemetry.llmHealth?.status === "degraded" && (
+        <div
+          data-testid="llm-health-warning"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-xs text-on-surface shadow-2xs"
+        >
+          <div className="flex items-center gap-2.5">
+            <WarningCircle size={16} weight="bold" className="text-amber-500 shrink-0" />
+            <span>
+              <strong>Primary Model Degraded:</strong>{" "}
+              <code>{telemetry.llmHealth.primary_model || telemetry.nimModel || "Primary Model"}</code> encountered errors. The agent is currently operating on fallback{" "}
+              <code>{telemetry.llmHealth.fallback_model || "Fallback Model"}</code>.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCurrentTab("settings")}
+            className="self-end sm:self-auto px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-medium text-[11px] transition-colors cursor-pointer shrink-0"
+          >
+            Change Model in Settings
+          </button>
+        </div>
+      )}
+
       {/* 3 Quick Telemetry Cards */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Card 1: Model Inference */}

@@ -644,6 +644,11 @@ def format_suggestion_card(item: PendingAction, max_card_length: int = 3800) -> 
     if item.reasoning:
         post_lines.append(f"<b>Reasoning:</b> {html.escape(item.reasoning)}")
 
+    if getattr(item, "fallback_used", False):
+        used_model = getattr(item, "model_used", None)
+        model_label = f" ({html.escape(used_model)})" if used_model else ""
+        post_lines.append(f"💡 <i>Drafted using fallback model{model_label}</i>")
+
     post_lines.append(f"<i>ID: {html.escape(item.item_id)}</i>")
 
     # Combine with budget-managed post excerpt

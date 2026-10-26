@@ -119,7 +119,7 @@ This generates:
 ## Step 2: NVIDIA NIM Setup
 
 1. Log into the [NVIDIA API Catalog](https://build.nvidia.com/).
-2. Select your desired primary model (e.g., `nvidia/nemotron-3-super-120b-a12b`).
+2. Select your desired primary model (e.g., `meta/llama-3.3-70b-instruct`).
 3. Generate and copy your API key (starts with `nvapi-`). This is your `NVIDIA_NIM_API_KEY`.
 
 ---
@@ -344,7 +344,7 @@ Configure operational preferences:
 
 | Variable Name              | Default / Example Value                               | Description                                         |
 | -------------------------- | ----------------------------------------------------- | --------------------------------------------------- |
-| `NIM_MODEL_PRIMARY`        | `nvidia/nemotron-3-super-120b-a12b`                   | Primary model for drafting comments/posts           |
+| `NIM_MODEL_PRIMARY`        | `meta/llama-3.3-70b-instruct`                         | Primary model for drafting comments/posts           |
 | `NIM_MODEL_FALLBACK`       | `openai/gpt-oss-20b`                                  | Fallback model if primary encounters errors         |
 | `USER_FOCUS_AREAS`         | `["AI Agents", "Python", "Distributed Systems"]`      | Topics of interest for post triage                  |
 | `USER_PERSONA`             | `Principal AI Engineer sharing technical insights...` | Custom tone and background prompt                   |

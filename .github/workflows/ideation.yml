@@ -46,7 +46,7 @@ jobs:
       - name: Execute Ideation Flow
         env:
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
-          NIM_MODEL_PRIMARY: ${{ vars.NIM_MODEL_PRIMARY || 'nvidia/nemotron-3-super-120b-a12b' }}
+          NIM_MODEL_PRIMARY: ${{ vars.NIM_MODEL_PRIMARY || 'meta/llama-3.3-70b-instruct' }}
           NIM_MODEL_FALLBACK: ${{ vars.NIM_MODEL_FALLBACK || 'openai/gpt-oss-20b' }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
