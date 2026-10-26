@@ -301,6 +301,7 @@ The `agent` CLI provides access to all agent workflows:
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `uv run agent setup`                                             | Interactive onboarding wizard for keys, providers, Telegram, and state.                 |
 | `uv run agent doctor`                                            | Diagnostic suite testing Python, Chromium, settings, LLM, Telegram, and session.        |
+| `uv run agent config {show\|set\|set-secret\|init-from-env}`     | Manages centralized Cloudflare KV runtime settings and encrypted secrets vault.         |
 | `uv run agent scout [--dry-run] [--headed]`                      | Scrapes feed, triages relevance, drafts comments, and sends Telegram cards.             |
 | `uv run agent ideate [--dry-run]`                                | Generates original standalone post ideas based on your focus areas.                     |
 | `uv run agent thread-monitor [--headed]`                         | Inspects active comment threads for new replies and drafts follow-up responses.         |

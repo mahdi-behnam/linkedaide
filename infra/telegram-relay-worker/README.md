@@ -16,6 +16,11 @@ Configure these secrets via `wrangler secret put <NAME>`:
 - `NVIDIA_NIM_API_KEY` — NVIDIA NIM API Key (`nvapi-...`) used by `/api/rewrite` to power live comment draft tone adjustments and regeneration in the Desktop App
 - `LLM_BASE_URL` — _(Optional)_ Base URL for custom LLM endpoint (defaults to `https://integrate.api.nvidia.com/v1`)
 
+## Dynamic Model Resolution & Configuration API
+
+- **Dynamic Model Resolution**: The worker's `/api/rewrite` endpoint dynamically queries Cloudflare KV key `config:runtime` for `nim_model_primary`. When you update the primary model via `uv run agent config set nim_model_primary <model>` or the Desktop App, the worker uses the new model immediately without requiring redeployment.
+- **Configuration API (`/api/config`)**: Authenticated GET and PUT endpoints (protected by `DESKTOP_API_SECRET`) allow the Desktop Control Panel and clients to inspect and update runtime operational configuration directly in Cloudflare KV.
+
 ## Deployment
 
 ```bash

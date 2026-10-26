@@ -23,23 +23,47 @@ This guide walks you through setting up LinkedAide from scratch, including autom
 
 ## Credentials & Secrets Directory
 
-Before proceeding, here is a quick map of all secrets used in the system, where they come from, and where they are placed:
+LinkedAide uses a **centralized configuration architecture** backed by Cloudflare Workers KV (`STATE_BACKEND=kv`). Instead of synchronizing dozens of variables across multiple dashboards, you only configure a minimal set of **Bootstrap Secrets** in GitHub Secrets and local `.env`. All operational configuration (`config:runtime`) and encrypted provider keys (`secrets:vault_enc`) are managed authoritatively in Cloudflare KV.
 
-| Secret / Variable Name        | What It Is & Where It Comes From                                                                                                                  | Where It Is Configured                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `NVIDIA_NIM_API_KEY`          | API key from [NVIDIA API Catalog](https://build.nvidia.com/) (`nvapi-...`).                                                                       | Local `.env`, GitHub Secrets, Cloudflare Worker Secret _(powers Desktop App draft tone rewrites)_ |
-| `TELEGRAM_BOT_TOKEN`          | Bot token created via [`@BotFather`](https://t.me/BotFather).                                                                                     | Local `.env`, GitHub Secrets, Cloudflare Worker Secret                                            |
-| `TELEGRAM_AUTHORIZED_CHAT_ID` | Your numeric Telegram User ID retrieved from [`@userinfobot`](https://t.me/userinfobot).                                                          | Local `.env`, GitHub Secrets, Cloudflare Worker Secret                                            |
-| `SESSION_ENCRYPTION_KEY`      | 32-byte Fernet key generated via `scripts/generate_secrets.py`.                                                                                   | Local `.env`, GitHub Secrets                                                                      |
-| `LINKEDIN_SESSION_STATE_ENC`  | Encrypted LinkedIn cookies extracted via `scripts/extract_linkedin_session.py`.                                                                   | Local `.env`, GitHub Secrets                                                                      |
-| `TELEGRAM_WEBHOOK_SECRET`     | Custom random secret generated via `scripts/generate_secrets.py` (used by Telegram to sign webhooks and verified by Cloudflare Worker).           | Cloudflare Worker Secret, Telegram Webhook Registration                                           |
-| `GITHUB_DISPATCH_PAT`         | GitHub Personal Access Token created by you (with `repo` / `Contents: Read and write` permissions).                                               | Cloudflare Worker Secret                                                                          |
-| `GITHUB_REPO_OWNER`           | Your GitHub username or organization name.                                                                                                        | Cloudflare Worker Secret                                                                          |
-| `GITHUB_REPO_NAME`            | Your GitHub repository name (e.g., `linkedaide`).                                                                                                 | Cloudflare Worker Secret                                                                          |
-| `DESKTOP_API_SECRET`          | High-entropy URL-safe token generated via `scripts/generate_secrets.py` (or `uv run agent setup`) to authenticate Desktop app & Worker API calls. | Local `.env`, Cloudflare Worker Secret, Desktop App Settings                                      |
-| `CLOUDFLARE_ACCOUNT_ID`       | Your 32-character Cloudflare Account ID (found on Cloudflare dashboard URL or Workers overview).                                                  | Local `.env`, GitHub Secrets                                                                      |
-| `CLOUDFLARE_KV_NAMESPACE_ID`  | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (generated via Wrangler).                                                            | Local `.env`, GitHub Secrets, `wrangler.toml`                                                     |
-| `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token with `Account.Workers KV Storage: Edit` permission to allow GitHub Actions to read/write state in KV.                        | Local `.env`, GitHub Secrets                                                                      |
+### Bootstrap Secrets (Configured in GitHub Secrets & Local `.env`)
+
+| Bootstrap Secret Name         | What It Is & Where It Comes From                                                                                   | Where It Is Configured       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID`       | Your 32-character Cloudflare Account ID (found on Cloudflare dashboard URL or Workers overview).                   | Local `.env`, GitHub Secrets |
+| `CLOUDFLARE_KV_NAMESPACE_ID`  | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (generated via Wrangler).                             | Local `.env`, GitHub Secrets |
+| `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token with `Account.Workers KV Storage: Edit` permission to allow runners to read/write state & KV. | Local `.env`, GitHub Secrets |
+| `SESSION_ENCRYPTION_KEY`      | 32-byte Fernet key generated via `scripts/generate_secrets.py` (decrypts storage state & KV secrets vault).        | Local `.env`, GitHub Secrets |
+| `LINKEDIN_SESSION_STATE_ENC`  | Encrypted LinkedIn cookies extracted via `scripts/extract_linkedin_session.py`.                                    | Local `.env`, GitHub Secrets |
+
+### Centralized KV Configuration & Secrets (Stored in Cloudflare KV)
+
+These are populated automatically with `uv run agent config init-from-env` and managed anytime via `uv run agent config set <key> <value>`:
+
+| Variable / Secret Name        | Purpose                                                                                                                                           | Storage in Cloudflare KV     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `NVIDIA_NIM_API_KEY`          | NVIDIA NIM API key (`nvapi-...`).                                                                                                                 | `secrets:vault_enc` (Vault)  |
+| `OPENAI_API_KEY`              | OpenAI API key (`sk-...`).                                                                                                                        | `secrets:vault_enc` (Vault)  |
+| `ANTHROPIC_API_KEY`           | Anthropic API key (`sk-ant-...`).                                                                                                                 | `secrets:vault_enc` (Vault)  |
+| `GEMINI_API_KEY`              | Google Gemini API key (`AIza...`).                                                                                                                | `secrets:vault_enc` (Vault)  |
+| `TELEGRAM_BOT_TOKEN`          | Bot token created via [`@BotFather`](https://t.me/BotFather).                                                                                     | `secrets:vault_enc` (Vault)  |
+| `TELEGRAM_AUTHORIZED_CHAT_ID` | Numeric Telegram User ID from [`@userinfobot`](https://t.me/userinfobot).                                                                         | `secrets:vault_enc` (Vault)  |
+| `NIM_MODEL_PRIMARY`           | Primary LLM model for drafting (e.g. `meta/llama-3.3-70b-instruct`).                                                                               | `config:runtime` (Plain JSON)|
+| `NIM_MODEL_FALLBACK`          | Fallback LLM model if primary encounters rate limit.                                                                                              | `config:runtime` (Plain JSON)|
+| `USER_FOCUS_AREAS`            | Topics of interest for post triage (e.g. `["AI Agents", "Python"]`).                                                                               | `config:runtime` (Plain JSON)|
+| `USER_PERSONA`                | Custom tone and background prompt guidelines.                                                                                                     | `config:runtime` (Plain JSON)|
+| `MAX_COMMENTS_PER_DAY`        | Hard safety limit on approved comments posted daily (e.g. `5`).                                                                                    | `config:runtime` (Plain JSON)|
+| `MAX_POSTS_PER_DAY`           | Hard safety limit on daily original posts (e.g. `1`).                                                                                             | `config:runtime` (Plain JSON)|
+
+### Cloudflare Relay Worker Secrets (Configured via `wrangler secret put`)
+
+| Secret Name                   | Purpose                                                                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `TELEGRAM_WEBHOOK_SECRET`     | Random secret used by Telegram to sign webhooks and verified by Cloudflare Worker.                                                |
+| `GITHUB_DISPATCH_PAT`         | GitHub Personal Access Token (`repo` / `Contents: Read and write`) to trigger `repository_dispatch`.                              |
+| `GITHUB_REPO_OWNER`           | Your GitHub username or organization name.                                                                                        |
+| `GITHUB_REPO_NAME`            | Your GitHub repository name (e.g., `linkedaide`).                                                                                  |
+| `DESKTOP_API_SECRET`          | High-entropy token to authenticate Desktop app & Worker API calls.                                                                 |
+| `NVIDIA_NIM_API_KEY`          | NIM API key allowing the worker's `/api/rewrite` endpoint to rewrite drafts into different tones.                                 |
 
 ---
 
@@ -94,6 +118,21 @@ The diagnostic suite checks and reports a checklist (🟢 Pass, 🟡 Warning, �
 - **Telegram Bot**: Calls `getMe` via HTTP to verify bot token and display bot handle.
 - **State Backend**: Verifies Cloudflare KV namespace access via REST API, or checks local `state/` directory write access.
 - **LinkedIn Session**: Verifies that `storage_state.json` or encrypted credentials exist and are decryptable.
+
+### 3. Initialize Remote Cloudflare KV Configuration
+
+Once your Cloudflare KV credentials (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_KV_NAMESPACE_ID`, `CLOUDFLARE_API_TOKEN`) and `SESSION_ENCRYPTION_KEY` are configured, initialize your centralized remote store:
+
+```bash
+uv run agent config init-from-env
+```
+
+This pushes all operational configuration (`nim_model_primary`, rate limits, focus areas) to KV key `config:runtime`, and encrypts your provider keys into `secrets:vault_enc`.
+
+Inspect your active remote configuration at any time with:
+```bash
+uv run agent config show
+```
 
 ---
 
@@ -320,40 +359,37 @@ In your GitHub repository, navigate to **Settings** -> **Secrets and variables**
 
 ### 1. Repository Secrets (`Secrets` tab)
 
-Add the following repository secrets (8 secrets total when using Cloudflare KV):
+With Cloudflare KV centralized configuration, you only need to configure the **5 Bootstrap Secrets** below. All operational settings (`config:runtime`) and provider API keys (`secrets:vault_enc`) are retrieved and decrypted directly from Cloudflare KV:
 
 | Secret Name                   | Value                                                                | Required For                    |
 | ----------------------------- | -------------------------------------------------------------------- | ------------------------------- |
-| `NVIDIA_NIM_API_KEY`          | NVIDIA NIM API key (`nvapi-...`) from Step 2                         | All workflows                   |
-| `TELEGRAM_BOT_TOKEN`          | Telegram Bot Token from Step 3                                       | All workflows                   |
-| `TELEGRAM_AUTHORIZED_CHAT_ID` | Numeric Telegram user ID from Step 3                                 | All workflows                   |
 | `SESSION_ENCRYPTION_KEY`      | Fernet AES encryption key from Step 1                                | All workflows                   |
 | `LINKEDIN_SESSION_STATE_ENC`  | Encrypted session state token from Step 4                            | All workflows                   |
 | `CLOUDFLARE_ACCOUNT_ID`       | 32-character Cloudflare Account ID from Step 5.2.A                   | Cloud mode (`STATE_BACKEND=kv`) |
 | `CLOUDFLARE_KV_NAMESPACE_ID`  | 32-character KV namespace ID (`LINKEDIN_AGENT_KV`) from Step 5.2.A   | Cloud mode (`STATE_BACKEND=kv`) |
 | `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token with Workers KV Edit permission from Step 5.2.A | Cloud mode (`STATE_BACKEND=kv`) |
 
-> [!NOTE]
-> **Why does GitHub Actions need Cloudflare KV secrets?**
-> In production (`STATE_BACKEND=kv`), GitHub Actions runs the Scout and Execute workflows on remote runners and synchronizes pending posts, seen items, and daily counters directly with your Cloudflare KV namespace using Cloudflare's REST API. This keeps the Telegram Relay Worker, Desktop App, and GitHub Actions completely in sync with zero Git merge conflicts.
-> _(If you want to run completely without Cloudflare KV in GitHub Actions, set `STATE_BACKEND=git` under Repository Variables below to fall back to Git-as-Database)._
+> [!TIP]
+> **Zero Duplicate Secret Hopping:**
+> You do **not** need to maintain `NVIDIA_NIM_API_KEY`, `OPENAI_API_KEY`, or `TELEGRAM_BOT_TOKEN` in GitHub Secrets. They are loaded authoritatively from your encrypted KV vault (`secrets:vault_enc`).
 
-### 2. Repository Variables (`Variables` tab)
+### 2. Repository Variables (`Variables` tab) — Optional Overrides Only
 
-Configure operational preferences:
+**No mandatory repository variables are required.**
 
-| Variable Name              | Default / Example Value                               | Description                                         |
-| -------------------------- | ----------------------------------------------------- | --------------------------------------------------- |
-| `NIM_MODEL_PRIMARY`        | `meta/llama-3.3-70b-instruct`                         | Primary model for drafting comments/posts           |
-| `NIM_MODEL_FALLBACK`       | `openai/gpt-oss-20b`                                  | Fallback model if primary encounters errors         |
-| `USER_FOCUS_AREAS`         | `["AI Agents", "Python", "Distributed Systems"]`      | Topics of interest for post triage                  |
-| `USER_PERSONA`             | `Principal AI Engineer sharing technical insights...` | Custom tone and background prompt                   |
-| `MAX_COMMENTS_PER_DAY`     | `5`                                                   | Hard safety limit on approved comments posted daily |
-| `MAX_POSTS_PER_DAY`        | `1`                                                   | Hard safety limit on daily original posts           |
-| `MAX_SUGGESTIONS_PER_RUN`  | `3`                                                   | Maximum suggestions sent to Telegram per scout run  |
-| `PENDING_ACTION_TTL_HOURS` | `12`                                                  | Approval expiration window (hours)                  |
-| `AGENT_PAUSED`             | `false`                                               | Global pause switch (`true` stops all workflows)    |
-| `DRY_RUN`                  | `false`                                               | Set `true` to disable real LinkedIn writes          |
+All operational settings (`nim_model_primary`, `user_focus_areas`, `max_suggestions_per_run`, rate limits, etc.) are managed dynamically in Cloudflare KV. When a model updates or rate limits change, update them once using the CLI:
+
+```bash
+# Check current remote settings:
+uv run agent config show
+
+# Update any setting across all workflows instantly:
+uv run agent config set nim_model_primary meta/llama-3.3-70b-instruct
+uv run agent config set max_comments_per_day 10
+uv run agent config set user_focus_areas '["AI Agents", "Python", "Distributed Systems"]'
+```
+
+_(Optional: If you wish to force a temporary override on GitHub Actions without touching KV, you may still optionally define `DRY_RUN` or `UPLOAD_DEBUG_ARTIFACTS` under Repository Variables)._
 
 ---
 
@@ -474,6 +510,10 @@ The `scripts/` directory provides utilities for setup and maintenance:
 | Command                                                                                  | Purpose                                                                                  |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `uv run python scripts/generate_secrets.py`                                              | Generates `SESSION_ENCRYPTION_KEY`, `TELEGRAM_WEBHOOK_SECRET`, and `DESKTOP_API_SECRET`. |
+| `uv run agent config show`                                                               | Displays remote operational settings and masked secrets stored in Cloudflare KV.         |
+| `uv run agent config set <key> <value>`                                                  | Updates an operational setting (e.g. `nim_model_primary`) across all runners instantly.   |
+| `uv run agent config set-secret <key> <value>`                                           | Encrypts and saves an API key or token into the Cloudflare KV secrets vault.             |
+| `uv run agent config init-from-env`                                                      | One-time initialization of Cloudflare KV configuration & secrets from local environment. |
 | `uv run python scripts/extract_linkedin_session.py`                                      | Opens interactive browser to log into LinkedIn and extracts encrypted session state.     |
 | `uv run python scripts/register_telegram_webhook.py --worker-url ... --secret-token ...` | Registers Cloudflare Worker webhook URL and secret with Telegram Bot API.                |
 | `uv run python scripts/register_telegram_webhook.py --delete`                            | Removes Telegram webhook (useful if switching to local polling mode).                    |
