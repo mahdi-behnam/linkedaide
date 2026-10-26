@@ -328,7 +328,7 @@ class SelfHealingSelectorEngine:
                         if cnt == 0:
                             return False
                     if hasattr(loc, "is_visible"):
-                        vis = loc.is_visible(timeout=timeout_ms)
+                        vis = loc.is_visible()
                         if inspect.isawaitable(vis):
                             return bool(await vis)
                         elif type(vis).__name__ in ("MagicMock", "AsyncMock", "Mock"):
@@ -336,9 +336,14 @@ class SelfHealingSelectorEngine:
                         return bool(vis)
                     return True
 
-                # Real Playwright Locator: auto-wait using is_visible
+                # Real Playwright Locator: auto-wait using wait_for, fallback to is_visible
+                if hasattr(loc, "wait_for"):
+                    res = loc.wait_for(state="visible", timeout=timeout_ms)
+                    if inspect.isawaitable(res):
+                        await res
+                    return True
                 if hasattr(loc, "is_visible"):
-                    vis = loc.is_visible(timeout=timeout_ms)
+                    vis = loc.is_visible()
                     if inspect.isawaitable(vis):
                         return bool(await vis)
                     return bool(vis)

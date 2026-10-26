@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -277,3 +278,60 @@ def test_selector_tier_and_catalog() -> None:
     assert "post_editor" in LINKEDIN_SELECTORS
     assert "post_submit" in LINKEDIN_SELECTORS
     assert len(LINKEDIN_SELECTORS["comment_box"]) >= 3
+
+
+class _RealPlaywrightLocatorStub:
+    """Simulates real Playwright Locator (non-mock class) to verify the live execution path."""
+
+    def __init__(self, visible: bool, raises_timeout: bool = False):
+        self.visible = visible
+        self.raises_timeout = raises_timeout
+        self.first = self
+        self.wait_for_called_with: dict[str, Any] = {}
+
+    async def wait_for(self, state: str = "visible", timeout: float | None = None) -> None:
+        self.wait_for_called_with = {"state": state, "timeout": timeout}
+        if self.raises_timeout or not self.visible:
+            raise TimeoutError(f"Timeout {timeout}ms waiting for element")
+
+    async def is_visible(self) -> bool:
+        return self.visible
+
+    async def count(self) -> int:
+        return 1 if self.visible else 0
+
+
+class _RealPlaywrightPageStub:
+    """Page stub returning _RealPlaywrightLocatorStub."""
+
+    def __init__(self, visibility_map: dict[str, bool]):
+        self.visibility_map = visibility_map
+
+    def locator(self, selector: str) -> _RealPlaywrightLocatorStub:
+        return _RealPlaywrightLocatorStub(
+            visible=self.visibility_map.get(selector, False),
+            raises_timeout=not self.visibility_map.get(selector, False),
+        )
+
+
+@pytest.mark.asyncio
+async def test_real_playwright_locator_wait_for_resolution() -> None:
+    """Ensure non-mock real Playwright Locators use wait_for and resolve correctly."""
+    candidates = [
+        "button.fails-first",
+        "button.succeeds-second",
+    ]
+    page = _RealPlaywrightPageStub(
+        {
+            candidates[0]: False,
+            candidates[1]: True,
+        }
+    )
+    engine = SelfHealingSelectorEngine()
+    loc, sel = await engine.resolve_locator(page, "like_btn", candidates, timeout_ms=1200)  # type: ignore[arg-type]
+
+    assert sel == candidates[1]
+    assert cast(_RealPlaywrightLocatorStub, loc).wait_for_called_with == {
+        "state": "visible",
+        "timeout": 1200,
+    }
