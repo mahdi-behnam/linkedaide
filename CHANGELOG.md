@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.8.0...v1.8.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **browser:** use wait_for for real Playwright locator availability checks ([b12fa98](https://github.com/mahdi-behnam/linkedaide/commit/b12fa984804679a92e7e0fe78a5b865903662ecb))
+
 ## [1.8.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.7.2...v1.8.0) (2026-10-19)
 
 
