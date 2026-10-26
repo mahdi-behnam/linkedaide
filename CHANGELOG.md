@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/mahdi-behnam/linkedaide/compare/v1.8.1...v1.8.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **llm:** resolve primary model 404 and implement multi-channel alerting ([59f162a](https://github.com/mahdi-behnam/linkedaide/commit/59f162acc442837ce68174d306129f74af431be7))
+
 ## [1.8.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.8.0...v1.8.1) (2026-10-26)
 
 

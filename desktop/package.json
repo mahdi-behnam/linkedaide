@@ -1,6 +1,6 @@
 {
   "name": "linkedaide-desktop",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Desktop Control Panel for LinkedAide",
   "main": "dist-electron/main.js",
   "type": "module",
