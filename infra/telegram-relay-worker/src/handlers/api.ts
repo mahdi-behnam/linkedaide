@@ -926,6 +926,42 @@ export async function handlePostEvent(request: Request, _env: Env): Promise<Resp
   });
 }
 
+async function handleConfig(request: Request, env: Env): Promise<Response> {
+  if (!env.LINKEDIN_AGENT_KV) {
+    return jsonResponse({ error: "LINKEDIN_AGENT_KV is not bound" }, 500);
+  }
+
+  if (request.method === "GET") {
+    const raw = await env.LINKEDIN_AGENT_KV.get("config:runtime");
+    let config = {};
+    if (raw) {
+      try {
+        config = JSON.parse(raw);
+      } catch {
+        config = {};
+      }
+    }
+    return jsonResponse({ config });
+  }
+
+  if (request.method === "PUT" || request.method === "POST") {
+    try {
+      const body = (await request.json()) as { config?: Record<string, unknown> };
+      if (!body || typeof body !== "object") {
+        return jsonResponse({ error: "Invalid JSON body" }, 400);
+      }
+      const newConfig = body.config || body;
+      await env.LINKEDIN_AGENT_KV.put("config:runtime", JSON.stringify(newConfig, null, 2));
+      return jsonResponse({ success: true, config: newConfig });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update config";
+      return jsonResponse({ error: msg }, 400);
+    }
+  }
+
+  return jsonResponse({ error: "Method Not Allowed" }, 405);
+}
+
 export async function handleApiRequest(
   request: Request,
   env: Env,
@@ -990,6 +1026,9 @@ export async function handleApiRequest(
   }
   if (pathname === "/api/scout-schedule") {
     return handleScoutSchedule(request, env);
+  }
+  if (pathname === "/api/config") {
+    return handleConfig(request, env);
   }
 
   return jsonResponse({ error: "Not Found" }, 404);

@@ -56,8 +56,28 @@ export async function rewriteDraftWithLlm(
     ? `Context Post:\n"${postExcerpt}"\n\nOriginal Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`
     : `Original Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`;
 
-  const modelName =
-    env.NIM_MODEL_PRIMARY || env.LLM_MODEL || "meta/llama-3.3-70b-instruct";
+  let modelName = env.NIM_MODEL_PRIMARY || env.LLM_MODEL;
+  if (env.LINKEDIN_AGENT_KV) {
+    try {
+      const rawConfig = await env.LINKEDIN_AGENT_KV.get("config:runtime");
+      if (rawConfig) {
+        const parsed = JSON.parse(rawConfig);
+        if (parsed && typeof parsed === "object") {
+          if (parsed.nim_model_primary) {
+            modelName = String(parsed.nim_model_primary);
+          } else if (parsed.llm_model_primary) {
+            modelName = String(parsed.llm_model_primary);
+          }
+        }
+      }
+    } catch {
+      // In case of parsing error, proceed with fallback
+    }
+  }
+
+  if (!modelName) {
+    modelName = "meta/llama-3.3-70b-instruct";
+  }
 
   const llmResp = await fetch(llmUrl, {
     method: "POST",

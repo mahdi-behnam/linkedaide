@@ -60,18 +60,19 @@ jobs:
 
       - name: Execute Scout Flow
         env:
+          SESSION_ENCRYPTION_KEY: ${{ secrets.SESSION_ENCRYPTION_KEY }}
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
-          NIM_MODEL_PRIMARY: ${{ vars.NIM_MODEL_PRIMARY || 'meta/llama-3.3-70b-instruct' }}
-          NIM_MODEL_FALLBACK: ${{ vars.NIM_MODEL_FALLBACK || 'openai/gpt-oss-20b' }}
+          NIM_MODEL_PRIMARY: ${{ vars.NIM_MODEL_PRIMARY }}
+          NIM_MODEL_FALLBACK: ${{ vars.NIM_MODEL_FALLBACK }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_AUTHORIZED_CHAT_ID: ${{ secrets.TELEGRAM_AUTHORIZED_CHAT_ID }}
           LINKEDIN_STORAGE_STATE_PATH: /tmp/runner_storage_state.json
-          USER_FOCUS_AREAS: ${{ vars.USER_FOCUS_AREAS || '["AI Agents", "Python", "Distributed Systems"]' }}
+          USER_FOCUS_AREAS: ${{ vars.USER_FOCUS_AREAS }}
           SCOUT_TARGET_URLS: ${{ vars.SCOUT_TARGET_URLS || '' }}
           TARGET_HASHTAGS: ${{ vars.TARGET_HASHTAGS || '' }}
           USER_PERSONA: ${{ vars.USER_PERSONA || '' }}
-          MAX_SUGGESTIONS_PER_RUN: ${{ vars.MAX_SUGGESTIONS_PER_RUN || 3 }}
-          MAX_CONNECTIONS_PER_DAY: ${{ vars.MAX_CONNECTIONS_PER_DAY || 10 }}
+          MAX_SUGGESTIONS_PER_RUN: ${{ vars.MAX_SUGGESTIONS_PER_RUN }}
+          MAX_CONNECTIONS_PER_DAY: ${{ vars.MAX_CONNECTIONS_PER_DAY }}
           DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || false }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID || vars.CLOUDFLARE_KV_NAMESPACE_ID }}

@@ -29,6 +29,7 @@ from agent.config.constants import (
     PROVIDER_DEFAULT_MODELS,
 )
 from agent.config.sources import (
+    AuthoritativeKVSettingsSource,
     FlexibleDotEnvSettingsSource,
     FlexibleEnvSettingsSource,
     _parse_raw_string_list,
@@ -373,6 +374,7 @@ class Settings(BaseSettings):
         return (
             init_settings,
             FlexibleEnvSettingsSource(settings_cls),
+            AuthoritativeKVSettingsSource(settings_cls),
             FlexibleDotEnvSettingsSource(
                 settings_cls,
                 env_file=env_file,

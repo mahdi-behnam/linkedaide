@@ -50,8 +50,7 @@ function loadSettings(): DesktopSettings {
     workerUrl: process.env.WORKER_URL || "",
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
-    nimModel:
-      process.env.NIM_MODEL_PRIMARY || "meta/llama-3.3-70b-instruct",
+    nimModel: process.env.NIM_MODEL_PRIMARY || "",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
     githubRepoOwner: process.env.GITHUB_REPO_OWNER || "",
     githubRepoName: process.env.GITHUB_REPO_NAME || "linkedaide",

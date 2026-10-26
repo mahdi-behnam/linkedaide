@@ -12,6 +12,7 @@ import logging
 import sys
 from pathlib import Path
 
+from agent.cli.config import add_config_subparsers, run_config_cli
 from agent.cli.outreach import run_outreach
 from agent.cli.setup import run_setup
 from agent.config import load_settings
@@ -341,6 +342,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scout_conn_parser.add_argument("--repo-root", default=None, help="Root repository path")
 
+    # config
+    add_config_subparsers(subparsers)
+
     return parser
 
 
@@ -375,6 +379,8 @@ def main(argv: list[str] | None = None) -> None:
         exit_code = run_outreach(args)
     elif args.command == "scout-connections":
         exit_code = run_scout_connections(args)
+    elif args.command == "config":
+        exit_code = run_config_cli(args)
     else:
         parser.print_help()
         exit_code = 1
@@ -385,6 +391,7 @@ def main(argv: list[str] | None = None) -> None:
 __all__ = [
     "build_parser",
     "main",
+    "run_config_cli",
     "run_doctor",
     "run_execute",
     "run_health",
