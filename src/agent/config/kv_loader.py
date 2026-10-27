@@ -217,10 +217,23 @@ def load_central_kv_settings(
             )
         secrets_data = decrypt_secrets_payload(raw_secrets_enc, encryption_key)
     elif strict:
-        raise ConfigError(
-            f"Missing required Cloudflare KV secrets vault '{SECRETS_KV_KEY}'. "
-            "Run 'python -m agent.cli.config init-from-env' to populate encrypted secrets."
+        # If secrets are stored directly in config:runtime (Approach A), don't require secrets:vault_enc
+        has_direct_secrets = any(
+            k in config_data
+            for k in (
+                "nvidia_nim_api_key",
+                "openai_api_key",
+                "anthropic_api_key",
+                "gemini_api_key",
+                "groq_api_key",
+                "telegram_bot_token",
+            )
         )
+        if not has_direct_secrets:
+            raise ConfigError(
+                f"Missing required Cloudflare KV secrets vault '{SECRETS_KV_KEY}' or direct credentials in '{CONFIG_KV_KEY}'. "
+                "Run 'python -m agent.cli.config init-from-env' to populate configuration and credentials."
+            )
 
     # Combine config and secrets (secrets override or supply provider keys)
     combined: dict[str, Any] = {**config_data, **secrets_data}

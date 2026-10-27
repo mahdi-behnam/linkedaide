@@ -12,6 +12,8 @@ import { ScoutEngineCard, type ReactionType } from "./settings/ScoutEngineCard";
 import { ScoutScheduleCard } from "./settings/ScoutScheduleCard";
 import { NotificationsCard } from "./settings/NotificationsCard";
 import { TimezoneCard } from "./settings/TimezoneCard";
+import { TelegramApprovalCard } from "./settings/TelegramApprovalCard";
+import { SystemDiagnosticsCard } from "./settings/SystemDiagnosticsCard";
 import { UnsavedChangesBar } from "./settings/UnsavedChangesBar";
 import { getDefaultTimezone } from "../utils/datetime";
 import { useDeepNavigation } from "../hooks/useDeepNavigation";
@@ -72,6 +74,21 @@ const defaultSettings: DesktopSettings = {
   targetHashtags: [],
   scoutTargetUrls: [],
   timezone: getDefaultTimezone(),
+  telegramBotToken: "",
+  telegramAuthorizedChatId: "",
+  openaiApiKey: "",
+  anthropicApiKey: "",
+  geminiApiKey: "",
+  groqApiKey: "",
+  ollamaBaseUrl: "http://localhost:11434",
+  nimModelTriage: "",
+  nimModelVision: "meta/llama-3.2-11b-vision-instruct",
+  nimTemperature: 0.2,
+  nimTimeoutSeconds: 60,
+  nimMaxTokens: 1024,
+  nimBaseUrl: "",
+  residentialProxyUrl: "",
+  logLevel: "INFO",
 };
 
 const DEFAULT_NIM_MODELS = [
@@ -394,7 +411,9 @@ export const SettingsView: React.FC = () => {
         <div id="setting-execution-mode">
           <ExecutionModeCard
             executionMode={settings.executionMode ?? "cloud"}
+            residentialProxyUrl={settings.residentialProxyUrl || ""}
             onChange={(mode) => handleChange("executionMode", mode)}
+            onProxyUrlChange={(url) => handleChange("residentialProxyUrl", url)}
           />
         </div>
 
@@ -414,6 +433,18 @@ export const SettingsView: React.FC = () => {
             isTesting={isTesting}
             testResult={testResult}
             onTestConnection={handleTestConnection}
+          />
+        </div>
+
+        {/* Section 3: Telegram Approval Gateway */}
+        <div id="setting-telegram-approval">
+          <TelegramApprovalCard
+            telegramBotToken={settings.telegramBotToken || ""}
+            telegramAuthorizedChatId={settings.telegramAuthorizedChatId || ""}
+            onTokenChange={(token) => handleChange("telegramBotToken", token)}
+            onChatIdChange={(chatId) =>
+              handleChange("telegramAuthorizedChatId", chatId)
+            }
           />
         </div>
 
@@ -443,13 +474,26 @@ export const SettingsView: React.FC = () => {
           />
         </div>
 
-        {/* Section 5: NVIDIA NIM Intelligence */}
+        {/* Section 5: AI Intelligence & Model Architecture */}
         <div id="setting-nim-intelligence">
           <NimIntelligenceCard
             nimModel={settings.nimModel || "nvidia/nemotron-3-ultra-550b-a55b"}
             nimModelFallback={settings.nimModelFallback || "openai/gpt-oss-20b"}
             llmProvider={settings.llmProvider || "nvidia"}
             nimApiKey={settings.nimApiKey || ""}
+            openaiApiKey={settings.openaiApiKey || ""}
+            anthropicApiKey={settings.anthropicApiKey || ""}
+            geminiApiKey={settings.geminiApiKey || ""}
+            groqApiKey={settings.groqApiKey || ""}
+            ollamaBaseUrl={settings.ollamaBaseUrl || "http://localhost:11434"}
+            nimModelTriage={settings.nimModelTriage || ""}
+            nimModelVision={
+              settings.nimModelVision || "meta/llama-3.2-11b-vision-instruct"
+            }
+            nimTemperature={settings.nimTemperature ?? 0.2}
+            nimTimeoutSeconds={settings.nimTimeoutSeconds ?? 60}
+            nimMaxTokens={settings.nimMaxTokens ?? 1024}
+            nimBaseUrl={settings.nimBaseUrl || ""}
             modelsList={modelsList}
             isCustomModel={isCustomModel}
             isFetchingModels={isFetchingModels}
@@ -457,10 +501,27 @@ export const SettingsView: React.FC = () => {
             showNimKey={showNimKey}
             onToggleShowNimKey={() => setShowNimKey((prev) => !prev)}
             onModelChange={(model) => handleChange("nimModel", model)}
-            onModelFallbackChange={(model) => handleChange("nimModelFallback", model)}
+            onModelFallbackChange={(model) =>
+              handleChange("nimModelFallback", model)
+            }
             onProviderChange={(provider) => handleChange("llmProvider", provider)}
             onCustomModelToggle={(custom) => setIsCustomModel(custom)}
             onApiKeyChange={(key) => handleChange("nimApiKey", key)}
+            onOpenaiApiKeyChange={(key) => handleChange("openaiApiKey", key)}
+            onAnthropicApiKeyChange={(key) => handleChange("anthropicApiKey", key)}
+            onGeminiApiKeyChange={(key) => handleChange("geminiApiKey", key)}
+            onGroqApiKeyChange={(key) => handleChange("groqApiKey", key)}
+            onOllamaBaseUrlChange={(url) => handleChange("ollamaBaseUrl", url)}
+            onModelTriageChange={(model) => handleChange("nimModelTriage", model)}
+            onModelVisionChange={(model) => handleChange("nimModelVision", model)}
+            onTemperatureChange={(temp) => handleChange("nimTemperature", temp)}
+            onTimeoutChange={(timeout) =>
+              handleChange("nimTimeoutSeconds", timeout)
+            }
+            onMaxTokensChange={(maxTokens) =>
+              handleChange("nimMaxTokens", maxTokens)
+            }
+            onBaseUrlChange={(url) => handleChange("nimBaseUrl", url)}
             onFetchModels={handleFetchModels}
           />
         </div>
@@ -561,6 +622,14 @@ export const SettingsView: React.FC = () => {
           <TimezoneCard
             timezone={settings.timezone ?? getDefaultTimezone()}
             onChange={(tz) => handleChange("timezone", tz)}
+          />
+        </div>
+
+        {/* Section 12: System Diagnostics & Telemetry */}
+        <div id="setting-diagnostics">
+          <SystemDiagnosticsCard
+            logLevel={settings.logLevel ?? "INFO"}
+            onLogLevelChange={(level) => handleChange("logLevel", level)}
           />
         </div>
       </form>

@@ -745,4 +745,70 @@ export class WorkerClient {
 
     return true;
   }
+
+  /**
+   * Verifies the Telegram bot token via Worker or direct Telegram API.
+   */
+  public async verifyTelegramBot(
+    token?: string
+  ): Promise<{ success: boolean; username?: string; firstName?: string; error?: string }> {
+    // If worker is configured, verify through worker endpoint /api/telegram/verify
+    if (this.baseUrl && this.apiSecret) {
+      try {
+        const endpoint = `${this.baseUrl}/api/telegram/verify`;
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiSecret}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token: token || undefined }),
+        });
+        if (response.ok) {
+          const data = (await response.json()) as {
+            success: boolean;
+            username?: string;
+            first_name?: string;
+            error?: string;
+          };
+          return {
+            success: Boolean(data.success),
+            username: data.username,
+            firstName: data.first_name,
+            error: data.error,
+          };
+        }
+      } catch {
+        // Fallback to direct telegram API check if worker endpoint is unavailable
+      }
+    }
+
+    // Direct Telegram API check fallback
+    if (token) {
+      try {
+        const resp = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        const json = (await resp.json()) as {
+          ok: boolean;
+          result?: { username?: string; first_name?: string };
+          description?: string;
+        };
+        if (json.ok && json.result) {
+          return {
+            success: true,
+            username: json.result.username,
+            firstName: json.result.first_name,
+          };
+        }
+        return {
+          success: false,
+          error: json.description || "Invalid Telegram Bot Token",
+        };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, error: msg };
+      }
+    }
+
+    return { success: false, error: "Please enter a Telegram Bot Token to verify." };
+  }
 }

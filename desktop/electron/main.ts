@@ -154,6 +154,39 @@ async function saveSettings(settings: Partial<DesktopSettings>): Promise<boolean
     if (updated.timezone !== undefined) {
       updated.timezone = updated.timezone.trim();
     }
+    if (updated.telegramBotToken !== undefined) {
+      updated.telegramBotToken = updated.telegramBotToken.trim();
+    }
+    if (updated.telegramAuthorizedChatId !== undefined) {
+      updated.telegramAuthorizedChatId = String(updated.telegramAuthorizedChatId).trim();
+    }
+    if (updated.openaiApiKey !== undefined) {
+      updated.openaiApiKey = updated.openaiApiKey.trim();
+    }
+    if (updated.anthropicApiKey !== undefined) {
+      updated.anthropicApiKey = updated.anthropicApiKey.trim();
+    }
+    if (updated.geminiApiKey !== undefined) {
+      updated.geminiApiKey = updated.geminiApiKey.trim();
+    }
+    if (updated.groqApiKey !== undefined) {
+      updated.groqApiKey = updated.groqApiKey.trim();
+    }
+    if (updated.ollamaBaseUrl !== undefined) {
+      updated.ollamaBaseUrl = updated.ollamaBaseUrl.trim();
+    }
+    if (updated.nimModelTriage !== undefined) {
+      updated.nimModelTriage = updated.nimModelTriage.trim();
+    }
+    if (updated.nimModelVision !== undefined) {
+      updated.nimModelVision = updated.nimModelVision.trim();
+    }
+    if (updated.nimBaseUrl !== undefined) {
+      updated.nimBaseUrl = updated.nimBaseUrl.trim();
+    }
+    if (updated.residentialProxyUrl !== undefined) {
+      updated.residentialProxyUrl = updated.residentialProxyUrl.trim();
+    }
     if (Array.isArray(updated.userFocusAreas)) {
       updated.userFocusAreas = updated.userFocusAreas
         .map((s) => (typeof s === "string" ? s.trim() : ""))
@@ -234,6 +267,13 @@ function registerIpcHandlers(): void {
         }
       }
       return result;
+    },
+  );
+
+  ipcMain.handle(
+    "api:verifyTelegramBot",
+    async (_event, token?: string) => {
+      return await workerClient.verifyTelegramBot(token);
     },
   );
 

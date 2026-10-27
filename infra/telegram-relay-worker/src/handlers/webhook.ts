@@ -27,6 +27,7 @@ import {
   getStatsKeyboard,
   getStatusKeyboard,
   getSuggestionKeyboard,
+  getTelegramCredentials,
   getTonePickerKeyboard,
   notifyTelegramFailure,
   sendTelegramMessage,
@@ -55,6 +56,14 @@ export async function handleTelegramWebhook(
   } catch {
     return new Response("Invalid JSON Payload", { status: 400 });
   }
+
+  // Resolve dynamic Telegram credentials from Cloudflare KV (config:runtime) with env fallback
+  const creds = await getTelegramCredentials(env);
+  env = {
+    ...env,
+    TELEGRAM_BOT_TOKEN: creds.token || env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_AUTHORIZED_CHAT_ID: creds.authorizedChatId || env.TELEGRAM_AUTHORIZED_CHAT_ID,
+  };
 
   if (update.message) {
     const msg = update.message;

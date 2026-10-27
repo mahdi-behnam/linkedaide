@@ -83,6 +83,11 @@ const api: ElectronAPI = {
   ): Promise<{ success: boolean; models: string[]; error?: string }> =>
     ipcRenderer.invoke("llm:fetchNimModels", apiKey),
 
+  verifyTelegramBot: (
+    token?: string
+  ): Promise<{ success: boolean; username?: string; firstName?: string; error?: string }> =>
+    ipcRenderer.invoke("api:verifyTelegramBot", token),
+
   onRealtimeEvent: (callback: (event: any) => void): (() => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, payload: any) => {
       callback(payload);

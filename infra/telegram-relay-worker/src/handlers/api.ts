@@ -972,6 +972,66 @@ async function handleConfig(request: Request, env: Env): Promise<Response> {
   return jsonResponse({ error: "Method Not Allowed" }, 405);
 }
 
+async function handleVerifyTelegram(request: Request, env: Env): Promise<Response> {
+  let token = "";
+  if (request.method === "POST") {
+    try {
+      const body = (await request.json()) as { token?: string };
+      token = body?.token?.trim() || "";
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!token && env.LINKEDIN_AGENT_KV) {
+    try {
+      const raw = await env.LINKEDIN_AGENT_KV.get("config:runtime");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.telegram_bot_token) {
+          token = String(parsed.telegram_bot_token).trim();
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  if (!token && env.TELEGRAM_BOT_TOKEN) {
+    token = env.TELEGRAM_BOT_TOKEN.trim();
+  }
+
+  if (!token) {
+    return jsonResponse({ success: false, error: "Telegram bot token is not configured" }, 400);
+  }
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const data = (await res.json()) as {
+      ok: boolean;
+      result?: { username?: string; first_name?: string; id?: number };
+      description?: string;
+    };
+    if (data.ok && data.result) {
+      return jsonResponse({
+        success: true,
+        username: data.result.username,
+        first_name: data.result.first_name,
+        bot_id: data.result.id,
+      });
+    }
+    return jsonResponse(
+      {
+        success: false,
+        error: data.description || "Telegram API rejected the bot token",
+      },
+      400
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to connect to Telegram API";
+    return jsonResponse({ success: false, error: msg }, 502);
+  }
+}
+
 export async function handleApiRequest(
   request: Request,
   env: Env,
@@ -1039,6 +1099,9 @@ export async function handleApiRequest(
   }
   if (pathname === "/api/config") {
     return handleConfig(request, env);
+  }
+  if (pathname === "/api/telegram/verify") {
+    return handleVerifyTelegram(request, env);
   }
 
   return jsonResponse({ error: "Not Found" }, 404);

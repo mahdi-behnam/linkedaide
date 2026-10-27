@@ -57,6 +57,9 @@ export async function rewriteDraftWithLlm(
     : `Original Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`;
 
   let modelName = env.NIM_MODEL_PRIMARY || env.LLM_MODEL;
+  let apiKey = env.NVIDIA_NIM_API_KEY || "";
+  let llmUrl = env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1/chat/completions";
+
   if (env.LINKEDIN_AGENT_KV) {
     try {
       const rawConfig = await env.LINKEDIN_AGENT_KV.get("config:runtime");
@@ -67,6 +70,13 @@ export async function rewriteDraftWithLlm(
             modelName = String(parsed.nim_model_primary);
           } else if (parsed.llm_model_primary) {
             modelName = String(parsed.llm_model_primary);
+          }
+          if (parsed.nvidia_nim_api_key) {
+            apiKey = String(parsed.nvidia_nim_api_key).trim();
+          }
+          if (parsed.nim_base_url) {
+            const base = String(parsed.nim_base_url).replace(/\/+$/, "");
+            llmUrl = base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
           }
         }
       }
@@ -83,7 +93,7 @@ export async function rewriteDraftWithLlm(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${env.NVIDIA_NIM_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: modelName,

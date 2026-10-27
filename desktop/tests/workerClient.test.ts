@@ -588,4 +588,58 @@ describe("WorkerClient", () => {
       expect(success).toBe(true);
     });
   });
+
+  describe("verifyTelegramBot", () => {
+    it("verifies telegram bot via worker endpoint", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          username: "MeitiLinkedInBot",
+          first_name: "LinkedIn Manager",
+        }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const res = await client.verifyTelegramBot("123456:ABC-token");
+      expect(res.success).toBe(true);
+      expect(res.username).toBe("MeitiLinkedInBot");
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/telegram/verify",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer super-secret-key-12345",
+          }),
+        })
+      );
+    });
+
+    it("falls back to direct Telegram API if worker endpoint returns error", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          text: async () => "Not Found",
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            result: {
+              username: "DirectBot",
+              first_name: "Direct Bot",
+            },
+          }),
+        });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const res = await client.verifyTelegramBot("123456:direct-token");
+      expect(res.success).toBe(true);
+      expect(res.username).toBe("DirectBot");
+    });
+  });
 });

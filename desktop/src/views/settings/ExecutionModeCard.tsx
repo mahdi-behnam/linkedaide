@@ -1,25 +1,36 @@
-import React from "react";
-import { Globe, ShieldCheck, Check } from "../../components/icons";
+import React, { useState } from "react";
+import { Globe, ShieldCheck, Check, Eye } from "../../components/icons";
 
 interface ExecutionModeCardProps {
   executionMode: "cloud" | "local";
+  residentialProxyUrl?: string;
   onChange: (mode: "cloud" | "local") => void;
+  onProxyUrlChange?: (url: string) => void;
 }
 
 export const ExecutionModeCard: React.FC<ExecutionModeCardProps> = ({
   executionMode,
+  residentialProxyUrl = "",
   onChange,
+  onProxyUrlChange,
 }) => {
+  const [showProxy, setShowProxy] = useState(false);
+
   return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="font-headline-sm text-headline-sm text-on-surface text-[14px]">
-            Execution Architecture Mode
-          </h2>
-          <span className="font-label-sm text-[11px] text-on-surface-variant font-normal">
-            Primary engine dispatch model
-          </span>
+    <div className="flex flex-col gap-3.5 p-4.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30">
+      <div className="flex items-center justify-between pb-1 border-b border-surface-container-high">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Globe size={16} weight="bold" />
+          </div>
+          <div>
+            <h2 className="font-headline-sm text-headline-sm text-on-surface text-[14px]">
+              Execution Architecture Mode
+            </h2>
+            <p className="font-label-sm text-[11px] text-on-surface-variant">
+              Primary browser automation engine and network routing dispatch
+            </p>
+          </div>
         </div>
       </div>
 
@@ -119,6 +130,44 @@ export const ExecutionModeCard: React.FC<ExecutionModeCardProps> = ({
             Executes browser actions directly on this machine using local Playwright and Python agent CLI. Ideal for desktop-first control and debugging.
           </p>
         </label>
+      </div>
+
+      {/* Network Proxy Tunnel */}
+      <div className="pt-2.5 border-t border-surface-container-high flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor="residential-proxy-url-input"
+            className="font-body-strong text-body-strong text-on-surface text-[12px] flex items-center gap-1.5"
+          >
+            <span>Residential Proxy Tunnel</span>
+            <span className="font-label-sm text-[10px] text-on-surface-variant font-normal">
+              (Optional)
+            </span>
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowProxy((prev) => !prev)}
+            aria-label="Toggle proxy URL visibility"
+            className="text-xs text-on-surface-variant hover:text-on-surface flex items-center gap-1 cursor-pointer"
+          >
+            <Eye size={13} />
+            <span>{showProxy ? "Hide" : "Show"}</span>
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-md bg-surface-container-low focus-within:bg-surface-container-lowest border border-outline-variant/30 focus-within:border-primary transition-all">
+          <input
+            id="residential-proxy-url-input"
+            type={showProxy ? "text" : "password"}
+            value={residentialProxyUrl}
+            onChange={(e) => onProxyUrlChange?.(e.target.value)}
+            placeholder="http://user:pass@proxy.provider.com:8000 or socks5://..."
+            className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
+          />
+        </div>
+        <span className="font-label-sm text-[11px] text-on-surface-variant">
+          Routes Playwright scraping through a residential or datacenter proxy to mitigate rate limits and geofencing.
+        </span>
       </div>
     </div>
   );

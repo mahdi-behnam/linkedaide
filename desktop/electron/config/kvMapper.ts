@@ -74,6 +74,59 @@ export function desktopToKvConfig(
   if (settings.timezone !== undefined) {
     kv.timezone = settings.timezone;
   }
+  // Telegram Human Approval Gateway
+  if (settings.telegramBotToken !== undefined) {
+    kv.telegram_bot_token = settings.telegramBotToken;
+  }
+  if (settings.telegramAuthorizedChatId !== undefined) {
+    kv.telegram_authorized_chat_id = settings.telegramAuthorizedChatId;
+  }
+  // Multi-Provider Credentials
+  if (settings.nimApiKey !== undefined) {
+    kv.nvidia_nim_api_key = settings.nimApiKey;
+  }
+  if (settings.openaiApiKey !== undefined) {
+    kv.openai_api_key = settings.openaiApiKey;
+  }
+  if (settings.anthropicApiKey !== undefined) {
+    kv.anthropic_api_key = settings.anthropicApiKey;
+  }
+  if (settings.geminiApiKey !== undefined) {
+    kv.gemini_api_key = settings.geminiApiKey;
+  }
+  if (settings.groqApiKey !== undefined) {
+    kv.groq_api_key = settings.groqApiKey;
+  }
+  if (settings.ollamaBaseUrl !== undefined) {
+    kv.ollama_base_url = settings.ollamaBaseUrl;
+  }
+  // Advanced Inference Hyperparameters
+  if (settings.nimModelTriage !== undefined) {
+    kv.nim_model_triage = settings.nimModelTriage;
+  }
+  if (settings.nimModelVision !== undefined) {
+    kv.nim_model_vision = settings.nimModelVision;
+  }
+  if (settings.nimTemperature !== undefined) {
+    kv.nim_temperature = settings.nimTemperature;
+  }
+  if (settings.nimTimeoutSeconds !== undefined) {
+    kv.nim_timeout_seconds = settings.nimTimeoutSeconds;
+  }
+  if (settings.nimMaxTokens !== undefined) {
+    kv.nim_max_tokens = settings.nimMaxTokens;
+  }
+  if (settings.nimBaseUrl !== undefined) {
+    kv.nim_base_url = settings.nimBaseUrl;
+  }
+  // Network & Stealth Proxy
+  if (settings.residentialProxyUrl !== undefined) {
+    kv.residential_proxy_url = settings.residentialProxyUrl;
+  }
+  // Diagnostics & Telemetry
+  if (settings.logLevel !== undefined) {
+    kv.log_level = settings.logLevel;
+  }
 
   return kv;
 }
@@ -169,6 +222,66 @@ export function kvConfigToDesktop(
 
   if (typeof kv.timezone === "string") {
     settings.timezone = kv.timezone;
+  }
+
+  // Telegram Human Approval Gateway
+  if (kv.telegram_bot_token !== undefined && kv.telegram_bot_token !== null) {
+    settings.telegramBotToken = String(kv.telegram_bot_token);
+  }
+  if (kv.telegram_authorized_chat_id !== undefined && kv.telegram_authorized_chat_id !== null) {
+    settings.telegramAuthorizedChatId = String(kv.telegram_authorized_chat_id);
+  }
+
+  // Multi-Provider Credentials
+  if (kv.nvidia_nim_api_key !== undefined && kv.nvidia_nim_api_key !== null) {
+    settings.nimApiKey = String(kv.nvidia_nim_api_key);
+  }
+  if (kv.openai_api_key !== undefined && kv.openai_api_key !== null) {
+    settings.openaiApiKey = String(kv.openai_api_key);
+  }
+  if (kv.anthropic_api_key !== undefined && kv.anthropic_api_key !== null) {
+    settings.anthropicApiKey = String(kv.anthropic_api_key);
+  }
+  if (kv.gemini_api_key !== undefined && kv.gemini_api_key !== null) {
+    settings.geminiApiKey = String(kv.gemini_api_key);
+  }
+  if (kv.groq_api_key !== undefined && kv.groq_api_key !== null) {
+    settings.groqApiKey = String(kv.groq_api_key);
+  }
+  if (kv.ollama_base_url !== undefined && kv.ollama_base_url !== null) {
+    settings.ollamaBaseUrl = String(kv.ollama_base_url);
+  }
+
+  // Advanced Inference Hyperparameters
+  const triageModel = kv.nim_model_triage || kv.llm_model_triage;
+  if (triageModel !== undefined && triageModel !== null) {
+    settings.nimModelTriage = String(triageModel);
+  }
+  const visionModel = kv.nim_model_vision || kv.llm_model_vision;
+  if (visionModel !== undefined && visionModel !== null) {
+    settings.nimModelVision = String(visionModel);
+  }
+  if (typeof kv.nim_temperature === "number") {
+    settings.nimTemperature = kv.nim_temperature;
+  }
+  if (typeof kv.nim_timeout_seconds === "number") {
+    settings.nimTimeoutSeconds = kv.nim_timeout_seconds;
+  }
+  if (typeof kv.nim_max_tokens === "number") {
+    settings.nimMaxTokens = kv.nim_max_tokens;
+  }
+  if (kv.nim_base_url !== undefined && kv.nim_base_url !== null) {
+    settings.nimBaseUrl = String(kv.nim_base_url);
+  }
+
+  // Network & Stealth Proxy
+  if (kv.residential_proxy_url !== undefined && kv.residential_proxy_url !== null) {
+    settings.residentialProxyUrl = String(kv.residential_proxy_url);
+  }
+
+  // Diagnostics & Telemetry
+  if (typeof kv.log_level === "string") {
+    settings.logLevel = kv.log_level as "DEBUG" | "INFO" | "WARNING" | "ERROR";
   }
 
   return settings;

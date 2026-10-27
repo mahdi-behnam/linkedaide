@@ -43,11 +43,20 @@ describe("SettingsView", () => {
         llmProvider: "nvidia",
         nimModelFallback: "openai/gpt-oss-20b",
         dryRun: false,
+        telegramBotToken: "123456:ABC-token-xyz",
+        telegramAuthorizedChatId: "987654321",
+        residentialProxyUrl: "http://proxy.test:8000",
+        logLevel: "INFO",
       }),
       saveSettings: vi.fn().mockResolvedValue(true),
       encryptSession: vi.fn().mockResolvedValue("encrypted"),
       decryptSession: vi.fn().mockResolvedValue("decrypted"),
       generateFernetKey: vi.fn().mockResolvedValue("generated-fernet-key=="),
+      verifyTelegramBot: vi.fn().mockResolvedValue({
+        success: true,
+        username: "MeitiLinkedInBot",
+        firstName: "LinkedIn Manager",
+      }),
       fetchNimModels: vi.fn().mockResolvedValue({
         success: true,
         models: [
@@ -680,6 +689,96 @@ describe("SettingsView", () => {
       expect(window.api.saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           dryRun: true,
+        }),
+      );
+    });
+  });
+
+  it("renders TelegramApprovalCard and allows editing and verifying bot credentials", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("Telegram Approval Gateway")).toBeTruthy();
+
+    const tokenInput = screen.getByPlaceholderText(
+      "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
+    ) as HTMLInputElement;
+    fireEvent.change(tokenInput, {
+      target: { value: "999888:NEW-TELEGRAM-TOKEN" },
+    });
+
+    const chatIdInput = screen.getByPlaceholderText("e.g. 123456789") as HTMLInputElement;
+    fireEvent.change(chatIdInput, {
+      target: { value: "555444333" },
+    });
+
+    // Test verify bot button
+    const verifyBtn = screen.getByRole("button", { name: /Verify Bot/i });
+    fireEvent.click(verifyBtn);
+
+    await waitFor(() => {
+      expect(window.api.verifyTelegramBot).toHaveBeenCalledWith("999888:NEW-TELEGRAM-TOKEN");
+      expect(screen.getByText(/Connected successfully to @MeitiLinkedInBot/i)).toBeTruthy();
+    });
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          telegramBotToken: "999888:NEW-TELEGRAM-TOKEN",
+          telegramAuthorizedChatId: "555444333",
+        }),
+      );
+    });
+  });
+
+  it("allows configuring residential proxy URL in ExecutionModeCard", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const proxyInput = screen.getByPlaceholderText(
+      /http:\/\/user:pass@proxy\.provider\.com:8000/i,
+    ) as HTMLInputElement;
+    fireEvent.change(proxyInput, {
+      target: { value: "http://user:pass@residential.proxy.io:9000" },
+    });
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          residentialProxyUrl: "http://user:pass@residential.proxy.io:9000",
+        }),
+      );
+    });
+  });
+
+  it("renders SystemDiagnosticsCard and allows switching logging verbosity level", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("System Diagnostics & Telemetry")).toBeTruthy();
+
+    const debugBtn = screen.getByRole("button", { name: "DEBUG" });
+    fireEvent.click(debugBtn);
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          logLevel: "DEBUG",
         }),
       );
     });

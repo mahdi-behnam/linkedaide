@@ -172,6 +172,26 @@ export interface DesktopSettings {
   maxCommentWords?: number;
   enablePreCommentReaction?: boolean;
   defaultReactionType?: "like" | "celebrate" | "support" | "love" | "insightful" | "funny";
+  // Telegram Human Approval Gateway
+  telegramBotToken?: string;
+  telegramAuthorizedChatId?: string | number;
+  // Multi-Provider LLM Credentials
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  geminiApiKey?: string;
+  groqApiKey?: string;
+  ollamaBaseUrl?: string;
+  // Advanced Inference Hyperparameters
+  nimModelTriage?: string;
+  nimModelVision?: string;
+  nimTemperature?: number;
+  nimTimeoutSeconds?: number;
+  nimMaxTokens?: number;
+  nimBaseUrl?: string;
+  // Network & Stealth Proxy
+  residentialProxyUrl?: string;
+  // Diagnostics & Telemetry
+  logLevel?: "DEBUG" | "INFO" | "WARNING" | "ERROR";
 }
 
 export type UpdateStatus =
@@ -232,6 +252,7 @@ export interface ElectronAPI {
   captureSession?: () => Promise<{ success: boolean; error?: string }>;
   checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
   fetchNimModels?: (apiKey?: string) => Promise<{ success: boolean; models: string[]; error?: string }>;
+  verifyTelegramBot?: (token?: string) => Promise<{ success: boolean; username?: string; firstName?: string; error?: string }>;
   onRealtimeEvent?: (callback: (event: any) => void) => () => void;
   fetchScheduledPosts?: () => Promise<ScheduledPost[]>;
   saveScheduledPost?: (post: ScheduledPost) => Promise<ScheduledPost>;

@@ -519,3 +519,35 @@ export function getDockedReplyKeyboard(
     input_field_placeholder: inputPlaceholder.slice(0, 64),
   };
 }
+
+/**
+ * Resolves Telegram Bot Token and Authorized Chat ID, preferring dynamic
+ * Cloudflare KV config:runtime and falling back to env variables.
+ */
+export async function getTelegramCredentials(
+  env: Env
+): Promise<{ token: string; authorizedChatId: string }> {
+  let token = env.TELEGRAM_BOT_TOKEN || "";
+  let authorizedChatId = env.TELEGRAM_AUTHORIZED_CHAT_ID || "";
+
+  if (env.LINKEDIN_AGENT_KV) {
+    try {
+      const raw = await env.LINKEDIN_AGENT_KV.get("config:runtime");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          if (parsed.telegram_bot_token) {
+            token = String(parsed.telegram_bot_token).trim();
+          }
+          if (parsed.telegram_authorized_chat_id) {
+            authorizedChatId = String(parsed.telegram_authorized_chat_id).trim();
+          }
+        }
+      }
+    } catch {
+      // In case of error, fall back to environment variables
+    }
+  }
+
+  return { token, authorizedChatId };
+}

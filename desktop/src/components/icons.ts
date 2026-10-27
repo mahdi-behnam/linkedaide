@@ -62,6 +62,7 @@ import {
   Hash,
   ThumbsUp,
   Tag,
+  PaperPlaneTilt,
   IconProps,
 } from "@phosphor-icons/react";
 
@@ -131,4 +132,5 @@ export {
   Hash,
   ThumbsUp,
   Tag,
+  PaperPlaneTilt,
 };
