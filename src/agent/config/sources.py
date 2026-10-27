@@ -44,11 +44,23 @@ class ComplexValueDecoderMixin:
 
 
 class FlexibleEnvSettingsSource(ComplexValueDecoderMixin, EnvSettingsSource):
-    """Env source supporting flexible list formats."""
+    """Env source supporting flexible list formats and ignoring empty string values."""
+
+    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
+        val, key, is_complex = super().get_field_value(field, field_name)
+        if isinstance(val, str) and not val.strip():
+            return None, key, is_complex
+        return val, key, is_complex
 
 
 class FlexibleDotEnvSettingsSource(ComplexValueDecoderMixin, DotEnvSettingsSource):
-    """DotEnv source supporting flexible list formats."""
+    """DotEnv source supporting flexible list formats and ignoring empty string values."""
+
+    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
+        val, key, is_complex = super().get_field_value(field, field_name)
+        if isinstance(val, str) and not val.strip():
+            return None, key, is_complex
+        return val, key, is_complex
 
 
 class AuthoritativeKVSettingsSource(ComplexValueDecoderMixin, PydanticBaseSettingsSource):
