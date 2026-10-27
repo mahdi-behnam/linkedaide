@@ -17,7 +17,7 @@ class TestSettings:
     def test_valid_settings_explicit(self) -> None:
         settings = Settings(
             nvidia_nim_api_key="nvapi-test-key",
-            nim_model_primary="meta/llama-3.3-70b-instruct",
+            nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
             nim_model_fallback="openai/gpt-oss-20b",
             nim_model_triage=None,
             nim_temperature=0.3,
@@ -40,9 +40,9 @@ class TestSettings:
 
         assert isinstance(settings.nvidia_nim_api_key, SecretStr)
         assert settings.nvidia_nim_api_key.get_secret_value() == "nvapi-test-key"
-        assert settings.nim_model_primary == "meta/llama-3.3-70b-instruct"
+        assert settings.nim_model_primary == "nvidia/nemotron-3-ultra-550b-a55b"
         assert settings.nim_model_fallback == "openai/gpt-oss-20b"
-        assert settings.effective_triage_model == "meta/llama-3.3-70b-instruct"
+        assert settings.effective_triage_model == "nvidia/nemotron-3-ultra-550b-a55b"
         assert settings.telegram_authorized_chat_id == 987654321
         assert settings.dry_run is True
         assert len(settings.user_focus_areas) == 2
@@ -54,9 +54,9 @@ class TestSettings:
             telegram_bot_token="123456:ABC",
             telegram_authorized_chat_id=123,
         )
-        assert settings.nim_model_primary == "meta/llama-3.3-70b-instruct"
+        assert settings.nim_model_primary == "nvidia/nemotron-3-ultra-550b-a55b"
         assert settings.nim_model_fallback == "openai/gpt-oss-20b"
-        assert settings.effective_triage_model == "meta/llama-3.3-70b-instruct"
+        assert settings.effective_triage_model == "nvidia/nemotron-3-ultra-550b-a55b"
 
     def test_effective_triage_model_override(self) -> None:
         settings = Settings(

@@ -246,7 +246,7 @@ def test_cli_config_commands(
     monkeypatch.setenv("NVIDIA_NIM_API_KEY", "nvapi-1234567890")
 
     mock_kv = {
-        CONFIG_KV_KEY: json.dumps({"nim_model_primary": "meta/llama-3.3-70b-instruct"}),
+        CONFIG_KV_KEY: json.dumps({"nim_model_primary": "nvidia/nemotron-3-ultra-550b-a55b"}),
         SECRETS_KV_KEY: encrypt_secrets_payload(
             {"nvidia_nim_api_key": "nvapi-1234567890"}, enc_key
         ),

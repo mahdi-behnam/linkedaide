@@ -27,7 +27,7 @@ from agent.telegram.keyboards import format_suggestion_card
 def test_settings() -> Settings:
     return Settings(
         nvidia_nim_api_key="nvapi-test-key",
-        nim_model_primary="meta/llama-3.3-70b-instruct",
+        nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
         nim_model_fallback="openai/gpt-oss-20b",
         telegram_bot_token="123456:MOCK_TOKEN",
         telegram_authorized_chat_id=123456789,
@@ -234,7 +234,7 @@ class TestSuggestionCardFormatting:
             confidence=0.95,
             author_name="Bob Developer",
             fallback_used=False,
-            model_used="meta/llama-3.3-70b-instruct",
+            model_used="nvidia/nemotron-3-ultra-550b-a55b",
         )
         card = format_suggestion_card(action)
         assert "Drafted using fallback model" not in card

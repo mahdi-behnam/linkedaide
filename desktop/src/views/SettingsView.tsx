@@ -43,7 +43,7 @@ const defaultSettings: DesktopSettings = {
   workerUrl: "https://relay.linkedaide.workers.dev",
   apiSecret: "",
   encryptionKey: "",
-  nimModel: "meta/llama-3.3-70b-instruct",
+  nimModel: "nvidia/nemotron-3-ultra-550b-a55b",
   nimApiKey: "",
   githubRepoOwner: "",
   githubRepoName: "linkedaide",
@@ -71,8 +71,7 @@ const defaultSettings: DesktopSettings = {
 };
 
 const DEFAULT_NIM_MODELS = [
-  "meta/llama-3.3-70b-instruct",
-  "meta/llama-3.1-70b-instruct",
+  "nvidia/nemotron-3-ultra-550b-a55b",
   "nvidia/llama-3.1-nemotron-70b-instruct",
   "mistralai/mistral-large-2-instruct",
   "deepseek-ai/deepseek-r1",
@@ -443,7 +442,7 @@ export const SettingsView: React.FC = () => {
         {/* Section 5: NVIDIA NIM Intelligence */}
         <div id="setting-nim-intelligence">
           <NimIntelligenceCard
-            nimModel={settings.nimModel || "meta/llama-3.3-70b-instruct"}
+            nimModel={settings.nimModel || "nvidia/nemotron-3-ultra-550b-a55b"}
             nimApiKey={settings.nimApiKey || ""}
             modelsList={modelsList}
             isCustomModel={isCustomModel}

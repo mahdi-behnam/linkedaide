@@ -330,7 +330,7 @@ def check_state_backend(
 
         url = (
             f"https://api.cloudflare.com/client/v4/accounts/{account_id}"
-            f"/storage/kv/namespaces/{namespace_id}/keys?limit=1"
+            f"/storage/kv/namespaces/{namespace_id}/keys?limit=10"
         )
         headers = {
             "Authorization": f"Bearer {token_str}",

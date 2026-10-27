@@ -47,8 +47,8 @@ describe("SettingsView", () => {
       fetchNimModels: vi.fn().mockResolvedValue({
         success: true,
         models: [
-          "meta/llama-3.1-70b-instruct",
-          "meta/llama-3.3-70b-instruct",
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/llama-3.1-nemotron-70b-instruct",
           "mistralai/mistral-large-2-instruct",
           "deepseek-ai/deepseek-r1",
         ],
@@ -249,7 +249,7 @@ describe("SettingsView", () => {
       "Primary NIM Model",
     ) as HTMLSelectElement;
     fireEvent.change(modelSelect, {
-      target: { value: "meta/llama-3.3-70b-instruct" },
+      target: { value: "nvidia/nemotron-3-ultra-550b-a55b" },
     });
 
     const keyInput = screen.getByPlaceholderText(
@@ -263,7 +263,7 @@ describe("SettingsView", () => {
     await waitFor(() => {
       expect(window.api.saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          nimModel: "meta/llama-3.3-70b-instruct",
+          nimModel: "nvidia/nemotron-3-ultra-550b-a55b",
           nimApiKey: "nvapi-test-token",
         }),
       );

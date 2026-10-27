@@ -32,7 +32,7 @@ A clear and concise description of what you expected to happen.
 - **Python Version**: [e.g. 3.14.0]
 - **uv Version**: [e.g. 0.5.0]
 - **Execution Mode**: [e.g. GitHub Actions, Local CLI, Docker]
-- **LLM Model**: [e.g. meta/llama-3.3-70b-instruct]
+- **LLM Model**: [e.g. nvidia/nemotron-3-ultra-550b-a55b]
 
 ## Additional Context
 Add any other context about the problem here (e.g. selector changes on LinkedIn, Telegram webhook responses, etc.).

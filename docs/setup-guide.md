@@ -47,7 +47,7 @@ These are populated automatically with `uv run agent config init-from-env` and m
 | `GEMINI_API_KEY`              | Google Gemini API key (`AIza...`).                                                                                                                | `secrets:vault_enc` (Vault)  |
 | `TELEGRAM_BOT_TOKEN`          | Bot token created via [`@BotFather`](https://t.me/BotFather).                                                                                     | `secrets:vault_enc` (Vault)  |
 | `TELEGRAM_AUTHORIZED_CHAT_ID` | Numeric Telegram User ID from [`@userinfobot`](https://t.me/userinfobot).                                                                         | `secrets:vault_enc` (Vault)  |
-| `NIM_MODEL_PRIMARY`           | Primary LLM model for drafting (e.g. `meta/llama-3.3-70b-instruct`).                                                                               | `config:runtime` (Plain JSON)|
+| `NIM_MODEL_PRIMARY`           | Primary LLM model for drafting (e.g. `nvidia/nemotron-3-ultra-550b-a55b`).                                                                        | `config:runtime` (Plain JSON)|
 | `NIM_MODEL_FALLBACK`          | Fallback LLM model if primary encounters rate limit.                                                                                              | `config:runtime` (Plain JSON)|
 | `USER_FOCUS_AREAS`            | Topics of interest for post triage (e.g. `["AI Agents", "Python"]`).                                                                               | `config:runtime` (Plain JSON)|
 | `USER_PERSONA`                | Custom tone and background prompt guidelines.                                                                                                     | `config:runtime` (Plain JSON)|
@@ -158,7 +158,7 @@ This generates:
 ## Step 2: NVIDIA NIM Setup
 
 1. Log into the [NVIDIA API Catalog](https://build.nvidia.com/).
-2. Select your desired primary model (e.g., `meta/llama-3.3-70b-instruct`).
+2. Select your desired primary model (e.g., `nvidia/nemotron-3-ultra-550b-a55b`).
 3. Generate and copy your API key (starts with `nvapi-`). This is your `NVIDIA_NIM_API_KEY`.
 
 ---
@@ -384,7 +384,7 @@ All operational settings (`nim_model_primary`, `user_focus_areas`, `max_suggesti
 uv run agent config show
 
 # Update any setting across all workflows instantly:
-uv run agent config set nim_model_primary meta/llama-3.3-70b-instruct
+uv run agent config set nim_model_primary nvidia/nemotron-3-ultra-550b-a55b
 uv run agent config set max_comments_per_day 10
 uv run agent config set user_focus_areas '["AI Agents", "Python", "Distributed Systems"]'
 ```

@@ -95,7 +95,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("NVIDIA_NIM_API_KEY", "nvidia_nim_api_key"),
     )
     nim_model_primary: str = Field(
-        default="meta/llama-3.3-70b-instruct",
+        default="nvidia/nemotron-3-ultra-550b-a55b",
         description="Primary model for comment and post drafting",
         validation_alias=AliasChoices(
             "LLM_MODEL_PRIMARY", "llm_model_primary", "NIM_MODEL_PRIMARY", "nim_model_primary"

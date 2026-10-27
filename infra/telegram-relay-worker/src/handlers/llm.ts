@@ -76,7 +76,7 @@ export async function rewriteDraftWithLlm(
   }
 
   if (!modelName) {
-    modelName = "meta/llama-3.3-70b-instruct";
+    modelName = "nvidia/nemotron-3-ultra-550b-a55b";
   }
 
   const llmResp = await fetch(llmUrl, {
