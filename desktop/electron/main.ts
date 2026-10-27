@@ -21,6 +21,7 @@ import { TrayManager } from "./tray/trayManager";
 import { PollingEngine } from "./tray/pollingEngine";
 import { setupAppMenu } from "./menu";
 import { UpdateManager } from "./updater/updateManager";
+import { desktopToKvConfig, kvConfigToDesktop } from "./config/kvMapper";
 import type { ActionResult, DesktopSettings } from "./types";
 
 interface QuittableApp extends Electron.App {
@@ -50,8 +51,12 @@ function loadSettings(): DesktopSettings {
     workerUrl: process.env.WORKER_URL || "",
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
-    nimModel: process.env.NIM_MODEL_PRIMARY || "",
+    nimModel: process.env.NIM_MODEL_PRIMARY || "nvidia/nemotron-3-ultra-550b-a55b",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
+    nimModelFallback: process.env.LLM_MODEL_FALLBACK || "openai/gpt-oss-20b",
+    llmProvider: process.env.LLM_PROVIDER || "nvidia",
+    userPersona: process.env.USER_PERSONA || "",
+    dryRun: process.env.DRY_RUN === "true" || false,
     githubRepoOwner: process.env.GITHUB_REPO_OWNER || "",
     githubRepoName: process.env.GITHUB_REPO_NAME || "linkedaide",
     githubDispatchPat: process.env.GITHUB_DISPATCH_PAT || "",
@@ -82,7 +87,34 @@ function loadSettings(): DesktopSettings {
   return defaults;
 }
 
-function saveSettings(settings: Partial<DesktopSettings>): boolean {
+async function getAuthoritativeSettings(): Promise<DesktopSettings> {
+  const local = loadSettings();
+  if (local.workerUrl && local.apiSecret && workerClient) {
+    try {
+      workerClient.updateConfig({
+        baseUrl: local.workerUrl,
+        apiSecret: local.apiSecret,
+      });
+      const kvConfig = await workerClient.fetchConfig();
+      if (kvConfig && Object.keys(kvConfig).length > 0) {
+        const mapped = kvConfigToDesktop(kvConfig);
+        const combined: DesktopSettings = { ...local, ...mapped };
+        try {
+          const settingsPath = getSettingsPath();
+          fs.writeFileSync(settingsPath, JSON.stringify(combined, null, 2), "utf-8");
+        } catch {
+          // ignore cache write error
+        }
+        return combined;
+      }
+    } catch (err) {
+      console.warn("Could not fetch remote KV config, using cached settings:", err);
+    }
+  }
+  return local;
+}
+
+async function saveSettings(settings: Partial<DesktopSettings>): Promise<boolean> {
   try {
     const current = loadSettings();
     const updated: DesktopSettings = { ...current, ...settings };
@@ -97,6 +129,18 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
     }
     if (updated.nimApiKey !== undefined) {
       updated.nimApiKey = updated.nimApiKey.trim();
+    }
+    if (updated.nimModelFallback !== undefined) {
+      updated.nimModelFallback = updated.nimModelFallback.trim();
+    }
+    if (updated.llmProvider !== undefined) {
+      updated.llmProvider = updated.llmProvider.trim();
+    }
+    if (updated.userPersona !== undefined) {
+      updated.userPersona = updated.userPersona.trim();
+    }
+    if (updated.dryRun !== undefined) {
+      updated.dryRun = Boolean(updated.dryRun);
     }
     if (updated.githubRepoOwner !== undefined) {
       updated.githubRepoOwner = updated.githubRepoOwner.trim();
@@ -125,6 +169,23 @@ function saveSettings(settings: Partial<DesktopSettings>): boolean {
         .map((s) => (typeof s === "string" ? s.trim() : ""))
         .filter(Boolean);
     }
+
+    // 1. Authoritative Remote Sync: Push operational settings directly to Cloudflare KV!
+    if (updated.workerUrl && updated.apiSecret && workerClient) {
+      workerClient.updateConfig({
+        baseUrl: updated.workerUrl,
+        apiSecret: updated.apiSecret,
+      });
+      const kvPayload = desktopToKvConfig(updated);
+      try {
+        await workerClient.saveConfig(kvPayload);
+      } catch (kvErr) {
+        console.error("Failed to sync settings to Cloudflare KV:", kvErr);
+        // We still save local file as fallback cache but return error or log
+      }
+    }
+
+    // 2. Persist local cache & connection bootstrap
     const settingsPath = getSettingsPath();
     const dir = path.dirname(settingsPath);
     if (!fs.existsSync(dir)) {
@@ -589,15 +650,15 @@ function registerIpcHandlers(): void {
     },
   );
 
-  // Local Settings Handlers
+  // Settings Handlers (Authoritative Cloudflare KV Sync)
   ipcMain.handle("settings:get", async () => {
-    return loadSettings();
+    return await getAuthoritativeSettings();
   });
 
   ipcMain.handle(
     "settings:save",
     async (_event, settings: Partial<DesktopSettings>) => {
-      return saveSettings(settings);
+      return await saveSettings(settings);
     },
   );
 

@@ -44,7 +44,11 @@ const defaultSettings: DesktopSettings = {
   apiSecret: "",
   encryptionKey: "",
   nimModel: "nvidia/nemotron-3-ultra-550b-a55b",
+  nimModelFallback: "openai/gpt-oss-20b",
+  llmProvider: "nvidia",
   nimApiKey: "",
+  userPersona: "",
+  dryRun: false,
   githubRepoOwner: "",
   githubRepoName: "linkedaide",
   githubDispatchPat: "",
@@ -443,6 +447,8 @@ export const SettingsView: React.FC = () => {
         <div id="setting-nim-intelligence">
           <NimIntelligenceCard
             nimModel={settings.nimModel || "nvidia/nemotron-3-ultra-550b-a55b"}
+            nimModelFallback={settings.nimModelFallback || "openai/gpt-oss-20b"}
+            llmProvider={settings.llmProvider || "nvidia"}
             nimApiKey={settings.nimApiKey || ""}
             modelsList={modelsList}
             isCustomModel={isCustomModel}
@@ -451,6 +457,8 @@ export const SettingsView: React.FC = () => {
             showNimKey={showNimKey}
             onToggleShowNimKey={() => setShowNimKey((prev) => !prev)}
             onModelChange={(model) => handleChange("nimModel", model)}
+            onModelFallbackChange={(model) => handleChange("nimModelFallback", model)}
+            onProviderChange={(provider) => handleChange("llmProvider", provider)}
             onCustomModelToggle={(custom) => setIsCustomModel(custom)}
             onApiKeyChange={(key) => handleChange("nimApiKey", key)}
             onFetchModels={handleFetchModels}
@@ -469,6 +477,7 @@ export const SettingsView: React.FC = () => {
             actionTtlHours={settings.actionTtlHours ?? 24}
             autoRefreshInterval={settings.autoRefreshInterval ?? 600}
             headless={settings.headless ?? true}
+            dryRun={settings.dryRun ?? false}
             onCommentsChange={(val) => handleChange("maxCommentsPerDay", val)}
             onPostsChange={(val) => handleChange("maxPostsPerDay", val)}
             onConnectionsChange={(val) =>
@@ -480,15 +489,18 @@ export const SettingsView: React.FC = () => {
             onTtlChange={(val) => handleChange("actionTtlHours", val)}
             onIntervalChange={(val) => handleChange("autoRefreshInterval", val)}
             onHeadlessChange={(val) => handleChange("headless", val)}
+            onDryRunChange={(val) => handleChange("dryRun", val)}
           />
         </div>
 
         {/* Section 7: Scout Targets & Focus Topics */}
         <div id="setting-scout-targeting">
           <ScoutTargetingCard
+            userPersona={settings.userPersona || ""}
             userFocusAreas={settings.userFocusAreas ?? []}
             targetHashtags={settings.targetHashtags ?? []}
             scoutTargetUrls={settings.scoutTargetUrls ?? []}
+            onPersonaChange={(persona) => handleChange("userPersona", persona)}
             onFocusAreasChange={(areas) => handleChange("userFocusAreas", areas)}
             onHashtagsChange={(hashtags) =>
               handleChange("targetHashtags", hashtags)

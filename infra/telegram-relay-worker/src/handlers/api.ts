@@ -950,9 +950,19 @@ async function handleConfig(request: Request, env: Env): Promise<Response> {
       if (!body || typeof body !== "object") {
         return jsonResponse({ error: "Invalid JSON body" }, 400);
       }
-      const newConfig = body.config || body;
-      await env.LINKEDIN_AGENT_KV.put("config:runtime", JSON.stringify(newConfig, null, 2));
-      return jsonResponse({ success: true, config: newConfig });
+      const incoming = (body.config || body) as Record<string, unknown>;
+      const rawExisting = await env.LINKEDIN_AGENT_KV.get("config:runtime");
+      let existing: Record<string, unknown> = {};
+      if (rawExisting) {
+        try {
+          existing = JSON.parse(rawExisting);
+        } catch {
+          existing = {};
+        }
+      }
+      const merged = { ...existing, ...incoming };
+      await env.LINKEDIN_AGENT_KV.put("config:runtime", JSON.stringify(merged, null, 2));
+      return jsonResponse({ success: true, config: merged });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update config";
       return jsonResponse({ error: msg }, 400);

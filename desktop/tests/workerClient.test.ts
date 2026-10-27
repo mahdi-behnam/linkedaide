@@ -537,4 +537,55 @@ describe("WorkerClient", () => {
       ).rejects.toThrow("Media upload failed (500): R2 bucket write failure");
     });
   });
+
+  describe("KV Configuration (config:runtime)", () => {
+    it("fetches config from Cloudflare KV endpoint /api/config", async () => {
+      const mockConfig = {
+        nim_model_primary: "nvidia/nemotron-3-ultra-550b-a55b",
+        user_persona: "Engineering lead",
+      };
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ config: mockConfig }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const res = await client.fetchConfig();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/config",
+        expect.objectContaining({
+          method: "GET",
+          headers: expect.objectContaining({
+            Authorization: "Bearer super-secret-key-12345",
+          }),
+        })
+      );
+      expect(res).toEqual(mockConfig);
+    });
+
+    it("saves config to Cloudflare KV endpoint /api/config", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const toSave = { nim_model_primary: "nvidia/nemotron-3-ultra-550b-a55b" };
+      const success = await client.saveConfig(toSave);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://worker.example.workers.dev/api/config",
+        expect.objectContaining({
+          method: "PUT",
+          headers: expect.objectContaining({
+            Authorization: "Bearer super-secret-key-12345",
+          }),
+          body: JSON.stringify({ config: toSave }),
+        })
+      );
+      expect(success).toBe(true);
+    });
+  });
 });

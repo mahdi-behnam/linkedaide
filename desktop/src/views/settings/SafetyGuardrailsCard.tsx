@@ -9,6 +9,7 @@ interface SafetyGuardrailsCardProps {
   actionTtlHours: number;
   autoRefreshInterval: number;
   headless: boolean;
+  dryRun?: boolean;
   onCommentsChange: (val: number) => void;
   onPostsChange: (val: number) => void;
   onConnectionsChange: (val: number) => void;
@@ -16,6 +17,7 @@ interface SafetyGuardrailsCardProps {
   onTtlChange: (val: number) => void;
   onIntervalChange: (val: number) => void;
   onHeadlessChange: (val: boolean) => void;
+  onDryRunChange?: (val: boolean) => void;
 }
 
 export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
@@ -26,6 +28,7 @@ export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
   actionTtlHours,
   autoRefreshInterval,
   headless,
+  dryRun = false,
   onCommentsChange,
   onPostsChange,
   onConnectionsChange,
@@ -33,6 +36,7 @@ export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
   onTtlChange,
   onIntervalChange,
   onHeadlessChange,
+  onDryRunChange,
 }) => {
   return (
     <div className="flex flex-col gap-3.5 p-4.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30">
@@ -211,6 +215,41 @@ export const SafetyGuardrailsCard: React.FC<SafetyGuardrailsCardProps> = ({
           <span className="font-label-sm text-[11px] text-on-surface-variant">
             Guarantees zero duplicate replies to the same post
           </span>
+        </div>
+      </div>
+
+      {/* Simulation / Dry Run Mode */}
+      <div className="pt-2.5 border-t border-surface-container-high">
+        <div className="flex items-center justify-between p-3 rounded-md bg-surface-container-low border border-outline-variant/30">
+          <div className="flex flex-col gap-0.5 pr-4">
+            <span className="font-body-strong text-on-surface text-[13px] flex items-center gap-2">
+              <span>Dry-Run Simulation Mode</span>
+              {dryRun && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 font-semibold border border-amber-500/20">
+                  SIMULATION ACTIVE
+                </span>
+              )}
+            </span>
+            <span className="font-body-md text-on-surface-variant text-[12px]">
+              Scout feeds, evaluate posts, and generate Telegram proposals without executing real LinkedIn actions (reactions, comments, or posts).
+            </span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(dryRun)}
+            aria-label="Dry-Run Simulation Mode"
+            onClick={() => onDryRunChange?.(!dryRun)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              dryRun ? "bg-amber-500" : "bg-surface-container-highest"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                dryRun ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
       </div>
 

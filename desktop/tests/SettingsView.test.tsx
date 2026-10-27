@@ -39,6 +39,10 @@ describe("SettingsView", () => {
         maxPostsPerDay: 5,
         maxSuggestionsPerRun: 12,
         actionTtlHours: 48,
+        userPersona: "Software and AI Engineer sharing technical insights...",
+        llmProvider: "nvidia",
+        nimModelFallback: "openai/gpt-oss-20b",
+        dryRun: false,
       }),
       saveSettings: vi.fn().mockResolvedValue(true),
       encryptSession: vi.fn().mockResolvedValue("encrypted"),
@@ -588,6 +592,94 @@ describe("SettingsView", () => {
           maxCommentWords: 60,
           enablePreCommentReaction: true,
           defaultReactionType: "insightful",
+        }),
+      );
+    });
+  });
+
+  it("allows editing and saving thought leadership voice and persona", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const personaTextarea = screen.getByPlaceholderText(
+      /Senior Software Architect specializing in distributed consensus/i,
+    ) as HTMLTextAreaElement;
+    expect(personaTextarea).toBeTruthy();
+
+    fireEvent.change(personaTextarea, {
+      target: {
+        value: "Principal Cloud Engineer writing authoritative deep dives on edge compute and LangGraph.",
+      },
+    });
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userPersona:
+            "Principal Cloud Engineer writing authoritative deep dives on edge compute and LangGraph.",
+        }),
+      );
+    });
+  });
+
+  it("allows selecting LLM provider architecture and configuring fallback model", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const providerSelect = screen.getByLabelText(
+      "LLM Provider Architecture",
+    ) as HTMLSelectElement;
+    fireEvent.change(providerSelect, { target: { value: "anthropic" } });
+    expect(providerSelect.value).toBe("anthropic");
+
+    const fallbackInput = screen.getByPlaceholderText(
+      /e\.g\. openai\/gpt-oss-20b/i,
+    ) as HTMLInputElement;
+    fireEvent.change(fallbackInput, {
+      target: { value: "claude-3-5-haiku-20241022" },
+    });
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          llmProvider: "anthropic",
+          nimModelFallback: "claude-3-5-haiku-20241022",
+        }),
+      );
+    });
+  });
+
+  it("allows toggling dry-run simulation mode switch", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const dryRunSwitch = screen.getByRole("switch", {
+      name: "Dry-Run Simulation Mode",
+    });
+    expect(dryRunSwitch.getAttribute("aria-checked")).toBe("false");
+
+    fireEvent.click(dryRunSwitch);
+    expect(dryRunSwitch.getAttribute("aria-checked")).toBe("true");
+
+    const saveBtn = screen.getByTestId("save-settings-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(window.api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dryRun: true,
         }),
       );
     });

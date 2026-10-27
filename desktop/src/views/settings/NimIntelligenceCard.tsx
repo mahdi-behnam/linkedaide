@@ -10,6 +10,8 @@ import {
 interface NimIntelligenceCardProps {
   nimModel: string;
   nimApiKey: string;
+  nimModelFallback?: string;
+  llmProvider?: string;
   modelsList: string[];
   isCustomModel: boolean;
   isFetchingModels: boolean;
@@ -20,6 +22,8 @@ interface NimIntelligenceCardProps {
   showNimKey: boolean;
   onToggleShowNimKey: () => void;
   onModelChange: (model: string) => void;
+  onModelFallbackChange?: (fallbackModel: string) => void;
+  onProviderChange?: (provider: string) => void;
   onCustomModelToggle: (isCustom: boolean) => void;
   onApiKeyChange: (key: string) => void;
   onFetchModels: () => void;
@@ -28,6 +32,8 @@ interface NimIntelligenceCardProps {
 export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
   nimModel,
   nimApiKey,
+  nimModelFallback = "openai/gpt-oss-20b",
+  llmProvider = "nvidia",
   modelsList,
   isCustomModel,
   isFetchingModels,
@@ -35,6 +41,8 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
   showNimKey,
   onToggleShowNimKey,
   onModelChange,
+  onModelFallbackChange,
+  onProviderChange,
   onCustomModelToggle,
   onApiKeyChange,
   onFetchModels,
@@ -89,63 +97,33 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-0.5">
-        {/* Model Selection */}
+        {/* LLM Provider */}
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="primary-nim-model-select"
-              className="font-body-strong text-body-strong text-on-surface text-[12px]"
-            >
-              Primary NIM Model
-            </label>
-            <span className="font-label-sm text-[11px] text-on-surface-variant">
-              {modelsList.length} models available
-            </span>
-          </div>
-
+          <label
+            htmlFor="llm-provider-select"
+            className="font-body-strong text-body-strong text-on-surface text-[12px]"
+          >
+            LLM Provider Architecture
+          </label>
           <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus-within:border-secondary">
             <select
-              id="primary-nim-model-select"
-              aria-label="Primary NIM Model"
-              data-testid="nim-model-select"
-              value={isCustomModel ? "__custom__" : (nimModel || "meta/llama-3.1-70b-instruct")}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "__custom__") {
-                  onCustomModelToggle(true);
-                } else {
-                  onCustomModelToggle(false);
-                  onModelChange(val);
-                }
-              }}
+              id="llm-provider-select"
+              aria-label="LLM Provider Architecture"
+              value={llmProvider}
+              onChange={(e) => onProviderChange?.(e.target.value)}
               className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface text-[13px] p-0 focus:ring-0 cursor-pointer"
             >
-              <optgroup label="Available Models">
-                {modelsList.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Other">
-                <option value="__custom__">Enter custom model name...</option>
-              </optgroup>
+              <option value="nvidia">NVIDIA NIM (Hosted / High Performance)</option>
+              <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+              <option value="anthropic">Anthropic (Claude 3.5 Sonnet / Haiku)</option>
+              <option value="gemini">Google Gemini (Gemini 2.0 Flash)</option>
+              <option value="groq">Groq (Ultra-Low Latency Llama)</option>
+              <option value="ollama">Ollama (Local Private Models)</option>
+              <option value="openai-compatible">Custom OpenAI-Compatible</option>
             </select>
           </div>
-
-          {isCustomModel && (
-            <input
-              type="text"
-              aria-label="Custom NIM Model Identifier"
-              value={nimModel}
-              onChange={(e) => onModelChange(e.target.value)}
-              placeholder="e.g. meta/llama-3.1-8b-instruct or custom NIM URN"
-              className="mt-1 w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-secondary focus:border-secondary outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
-            />
-          )}
-
           <span className="font-label-sm text-[11px] text-on-surface-variant">
-            Default: <code className="text-on-surface font-mono">meta/llama-3.1-70b-instruct</code>. Used for post triage, reasoning, and drafting.
+            Underlying AI provider backend utilized across LangChain and LangGraph runners.
           </span>
         </div>
 
@@ -177,6 +155,91 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
           </div>
           <span className="font-label-sm text-[11px] text-on-surface-variant">
             Personal API key from NVIDIA build catalog for local and agent execution.
+          </span>
+        </div>
+
+        {/* Primary Model Selection */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="primary-nim-model-select"
+              className="font-body-strong text-body-strong text-on-surface text-[12px]"
+            >
+              Primary Model Identifier
+            </label>
+            <span className="font-label-sm text-[11px] text-on-surface-variant">
+              {modelsList.length} models available
+            </span>
+          </div>
+
+          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus-within:border-secondary">
+            <select
+              id="primary-nim-model-select"
+              aria-label="Primary NIM Model"
+              data-testid="nim-model-select"
+              value={isCustomModel ? "__custom__" : (nimModel || "nvidia/nemotron-3-ultra-550b-a55b")}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "__custom__") {
+                  onCustomModelToggle(true);
+                } else {
+                  onCustomModelToggle(false);
+                  onModelChange(val);
+                }
+              }}
+              className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface text-[13px] p-0 focus:ring-0 cursor-pointer"
+            >
+              <optgroup label="Available Models">
+                {modelsList.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Other">
+                <option value="__custom__">Enter custom model name...</option>
+              </optgroup>
+            </select>
+          </div>
+
+          {isCustomModel && (
+            <input
+              type="text"
+              aria-label="Custom NIM Model Identifier"
+              value={nimModel}
+              onChange={(e) => onModelChange(e.target.value)}
+              placeholder="e.g. nvidia/nemotron-3-ultra-550b-a55b or custom URN"
+              className="mt-1 w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-secondary focus:border-secondary outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
+            />
+          )}
+
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
+            Primary model used for post triage, reasoning analysis, and comment drafting.
+          </span>
+        </div>
+
+        {/* Fallback Model Selection */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="fallback-nim-model-input"
+            className="font-body-strong text-body-strong text-on-surface text-[12px]"
+          >
+            Fallback LLM Model
+          </label>
+
+          <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus-within:border-secondary">
+            <input
+              id="fallback-nim-model-input"
+              type="text"
+              value={nimModelFallback}
+              onChange={(e) => onModelFallbackChange?.(e.target.value)}
+              placeholder="e.g. openai/gpt-oss-20b or gpt-4o-mini"
+              className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
+            />
+          </div>
+
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
+            High-reliability fallback model invoked automatically if primary model hits rate limits or errors.
           </span>
         </div>
       </div>

@@ -97,6 +97,10 @@ export interface DesktopSettings {
   actionTtlHours?: number;
   nimModel?: string;
   nimApiKey?: string;
+  nimModelFallback?: string;
+  llmProvider?: string;
+  userPersona?: string;
+  dryRun?: boolean;
   githubRepoOwner?: string;
   githubRepoName?: string;
   githubDispatchPat?: string;

@@ -2,18 +2,22 @@ import React, { useState } from "react";
 import { Target, Hash, Globe, Plus, X, Trash } from "../../components/icons";
 
 interface ScoutTargetingCardProps {
+  userPersona: string;
   userFocusAreas: string[];
   targetHashtags: string[];
   scoutTargetUrls: string[];
+  onPersonaChange: (persona: string) => void;
   onFocusAreasChange: (areas: string[]) => void;
   onHashtagsChange: (hashtags: string[]) => void;
   onTargetUrlsChange: (urls: string[]) => void;
 }
 
 export const ScoutTargetingCard: React.FC<ScoutTargetingCardProps> = ({
+  userPersona,
   userFocusAreas,
   targetHashtags,
   scoutTargetUrls,
+  onPersonaChange,
   onFocusAreasChange,
   onHashtagsChange,
   onTargetUrlsChange,
@@ -84,6 +88,32 @@ export const ScoutTargetingCard: React.FC<ScoutTargetingCardProps> = ({
       </div>
 
       <div className="flex flex-col gap-4 pt-1">
+        {/* Thought Leadership Voice & Persona */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="user-persona-input"
+              className="font-body-strong text-body-strong text-on-surface text-[12px] flex items-center gap-1.5"
+            >
+              <span>Thought Leadership Voice &amp; Persona</span>
+            </label>
+            <span className="font-label-sm text-[11px] text-on-surface-variant font-mono">
+              {userPersona ? userPersona.length : 0} characters
+            </span>
+          </div>
+          <textarea
+            id="user-persona-input"
+            rows={3}
+            value={userPersona || ""}
+            onChange={(e) => onPersonaChange(e.target.value)}
+            placeholder="e.g. Senior Software Architect specializing in distributed consensus, edge computing, and Kubernetes. Shares analytical, high-substance engineering perspectives without corporate buzzwords."
+            className="w-full rounded-md bg-surface-container-low border border-outline-variant/30 p-2.5 font-body-md text-on-surface text-[12px] placeholder:text-on-surface-variant/50 focus:border-blue-500 focus:outline-none resize-y min-h-[72px]"
+          />
+          <span className="font-label-sm text-[11px] text-on-surface-variant">
+            Defines your background, professional voice, perspective, and domain terminology for generated comments and post drafts.
+          </span>
+        </div>
+
         {/* User Focus Areas */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">

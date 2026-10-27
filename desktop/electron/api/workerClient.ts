@@ -690,4 +690,59 @@ export class WorkerClient {
       url: mediaUrl,
     };
   }
+
+  /**
+   * Fetches the authoritative operational configuration from Cloudflare KV (config:runtime).
+   */
+  public async fetchConfig(): Promise<Record<string, unknown>> {
+    if (!this.baseUrl || !this.apiSecret) {
+      return {};
+    }
+
+    const endpoint = `${this.baseUrl}/api/config`;
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${this.apiSecret}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Failed to fetch config from KV (${response.status}): ${errText}`);
+    }
+
+    const data = (await response.json()) as { config?: Record<string, unknown> };
+    return data.config || {};
+  }
+
+  /**
+   * Saves operational configuration directly to Cloudflare KV (config:runtime).
+   */
+  public async saveConfig(config: Record<string, unknown>): Promise<boolean> {
+    if (!this.baseUrl) {
+      throw new Error("Worker URL is not configured. Please enter the Worker URL in Settings.");
+    }
+    if (!this.apiSecret) {
+      throw new Error("Desktop API Secret is not configured. Please enter the API Secret in Settings.");
+    }
+
+    const endpoint = `${this.baseUrl}/api/config`;
+    const response = await fetch(endpoint, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${this.apiSecret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ config }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Failed to save config to KV (${response.status}): ${errText}`);
+    }
+
+    return true;
+  }
 }
