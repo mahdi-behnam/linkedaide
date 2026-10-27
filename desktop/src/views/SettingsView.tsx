@@ -45,8 +45,8 @@ const defaultSettings: DesktopSettings = {
   workerUrl: "https://relay.linkedaide.workers.dev",
   apiSecret: "",
   encryptionKey: "",
-  nimModel: "nvidia/nemotron-3-ultra-550b-a55b",
-  nimModelFallback: "openai/gpt-oss-20b",
+  nimModel: "",
+  nimModelFallback: "",
   llmProvider: "nvidia",
   nimApiKey: "",
   userPersona: "",
@@ -82,7 +82,7 @@ const defaultSettings: DesktopSettings = {
   groqApiKey: "",
   ollamaBaseUrl: "http://localhost:11434",
   nimModelTriage: "",
-  nimModelVision: "meta/llama-3.2-11b-vision-instruct",
+  nimModelVision: "",
   nimTemperature: 0.2,
   nimTimeoutSeconds: 60,
   nimMaxTokens: 1024,
@@ -90,14 +90,6 @@ const defaultSettings: DesktopSettings = {
   residentialProxyUrl: "",
   logLevel: "INFO",
 };
-
-const DEFAULT_NIM_MODELS = [
-  "nvidia/nemotron-3-ultra-550b-a55b",
-  "nvidia/llama-3.1-nemotron-70b-instruct",
-  "mistralai/mistral-large-2-instruct",
-  "deepseek-ai/deepseek-r1",
-  "qwen/qwen2.5-72b-instruct",
-];
 
 export const SettingsView: React.FC = () => {
   const {
@@ -124,13 +116,22 @@ export const SettingsView: React.FC = () => {
     error?: string;
   } | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
-  const [modelsList, setModelsList] = useState<string[]>(DEFAULT_NIM_MODELS);
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, string[]>>({});
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [modelFetchFeedback, setModelFetchFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
   const [isCustomModel, setIsCustomModel] = useState(false);
+
+  const currentProvider = settings.llmProvider || "nvidia";
+  const modelsList = useMemo(() => {
+    const fetched = modelsByProvider[currentProvider] || [];
+    if (settings.nimModel && !fetched.includes(settings.nimModel)) {
+      return [settings.nimModel, ...fetched];
+    }
+    return fetched;
+  }, [modelsByProvider, currentProvider, settings.nimModel]);
 
   useDeepNavigation("settings");
 
@@ -329,27 +330,62 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleFetchModels = async () => {
+    const provider = (settings.llmProvider || "nvidia").toLowerCase().trim();
     setIsFetchingModels(true);
     setModelFetchFeedback(null);
+
+    let apiKey: string | undefined;
+    let baseUrl: string | undefined;
+
+    if (provider === "nvidia") apiKey = settings.nimApiKey;
+    else if (provider === "openai") apiKey = settings.openaiApiKey;
+    else if (provider === "anthropic") apiKey = settings.anthropicApiKey;
+    else if (provider === "gemini") apiKey = settings.geminiApiKey;
+    else if (provider === "groq") apiKey = settings.groqApiKey;
+    else if (provider === "ollama") baseUrl = settings.ollamaBaseUrl;
+    else if (provider === "openai-compatible") {
+      apiKey = settings.nimApiKey || settings.openaiApiKey;
+      baseUrl = settings.nimBaseUrl;
+    }
+
+    const providerNames: Record<string, string> = {
+      nvidia: "NVIDIA NIM",
+      openai: "OpenAI",
+      anthropic: "Anthropic",
+      gemini: "Google Gemini",
+      groq: "Groq",
+      ollama: "Ollama",
+      "openai-compatible": "Custom Provider",
+    };
+    const displayName = providerNames[provider] || provider;
+
+    if (provider !== "ollama" && provider !== "openai-compatible" && !apiKey?.trim()) {
+      setModelFetchFeedback({
+        type: "error",
+        message: `Please enter an API key for ${displayName} before fetching models.`,
+      });
+      setIsFetchingModels(false);
+      return;
+    }
+
     try {
-      if (typeof window !== "undefined" && window.api?.fetchNimModels) {
-        const res = await window.api.fetchNimModels(settings.nimApiKey);
+      if (typeof window !== "undefined" && (window.api?.fetchModels || window.api?.fetchNimModels)) {
+        const res = window.api.fetchModels
+          ? await window.api.fetchModels(provider, apiKey, baseUrl)
+          : await window.api.fetchNimModels!(apiKey);
+
         if (res.success && res.models && res.models.length > 0) {
           const fetched = res.models;
-          if (settings.nimModel && !fetched.includes(settings.nimModel)) {
-            setModelsList([settings.nimModel, ...fetched]);
-          } else {
-            setModelsList(fetched);
-          }
+          setModelsByProvider((prev) => ({ ...prev, [provider]: fetched }));
           setIsCustomModel(false);
           setModelFetchFeedback({
             type: "success",
-            message: `Loaded ${fetched.length} models from NVIDIA`,
+            message: `Loaded ${fetched.length} models from ${displayName}`,
           });
         } else {
           setModelFetchFeedback({
             type: "error",
-            message: res.error || "Failed to fetch models from NVIDIA",
+            message: res.error || `Failed to fetch models from ${displayName}`,
           });
         }
       } else {
@@ -361,7 +397,7 @@ export const SettingsView: React.FC = () => {
     } catch (err) {
       setModelFetchFeedback({
         type: "error",
-        message: err instanceof Error ? err.message : "Failed to fetch models",
+        message: err instanceof Error ? err.message : `Failed to fetch models from ${displayName}`,
       });
     } finally {
       setIsFetchingModels(false);
@@ -487,9 +523,7 @@ export const SettingsView: React.FC = () => {
             groqApiKey={settings.groqApiKey || ""}
             ollamaBaseUrl={settings.ollamaBaseUrl || "http://localhost:11434"}
             nimModelTriage={settings.nimModelTriage || ""}
-            nimModelVision={
-              settings.nimModelVision || "meta/llama-3.2-11b-vision-instruct"
-            }
+            nimModelVision={settings.nimModelVision || ""}
             nimTemperature={settings.nimTemperature ?? 0.2}
             nimTimeoutSeconds={settings.nimTimeoutSeconds ?? 60}
             nimMaxTokens={settings.nimMaxTokens ?? 1024}
@@ -504,7 +538,10 @@ export const SettingsView: React.FC = () => {
             onModelFallbackChange={(model) =>
               handleChange("nimModelFallback", model)
             }
-            onProviderChange={(provider) => handleChange("llmProvider", provider)}
+            onProviderChange={(provider) => {
+              handleChange("llmProvider", provider);
+              setModelFetchFeedback(null);
+            }}
             onCustomModelToggle={(custom) => setIsCustomModel(custom)}
             onApiKeyChange={(key) => handleChange("nimApiKey", key)}
             onOpenaiApiKeyChange={(key) => handleChange("openaiApiKey", key)}

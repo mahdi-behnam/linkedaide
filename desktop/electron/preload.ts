@@ -81,7 +81,14 @@ const api: ElectronAPI = {
   fetchNimModels: (
     apiKey?: string
   ): Promise<{ success: boolean; models: string[]; error?: string }> =>
-    ipcRenderer.invoke("llm:fetchNimModels", apiKey),
+    ipcRenderer.invoke("llm:fetchModels", { provider: "nvidia", apiKey }),
+
+  fetchModels: (
+    provider: string,
+    apiKey?: string,
+    baseUrl?: string
+  ): Promise<{ success: boolean; models: string[]; error?: string }> =>
+    ipcRenderer.invoke("llm:fetchModels", { provider, apiKey, baseUrl }),
 
   verifyTelegramBot: (
     token?: string

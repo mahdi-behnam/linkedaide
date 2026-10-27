@@ -25,9 +25,6 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from agent.config.constants import (
-    PROVIDER_DEFAULT_MODELS,
-)
 from agent.config.sources import (
     AuthoritativeKVSettingsSource,
     FlexibleDotEnvSettingsSource,
@@ -95,14 +92,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("NVIDIA_NIM_API_KEY", "nvidia_nim_api_key"),
     )
     nim_model_primary: str = Field(
-        default="nvidia/nemotron-3-ultra-550b-a55b",
+        default="",
         description="Primary model for comment and post drafting",
         validation_alias=AliasChoices(
             "LLM_MODEL_PRIMARY", "llm_model_primary", "NIM_MODEL_PRIMARY", "nim_model_primary"
         ),
     )
     nim_model_fallback: str = Field(
-        default="openai/gpt-oss-20b",
+        default="",
         description="Fallback model if primary encounters rate limit or failure",
         validation_alias=AliasChoices(
             "LLM_MODEL_FALLBACK", "llm_model_fallback", "NIM_MODEL_FALLBACK", "nim_model_fallback"
@@ -116,7 +113,7 @@ class Settings(BaseSettings):
         ),
     )
     nim_model_vision: str = Field(
-        default="meta/llama-3.2-11b-vision-instruct",
+        default="",
         description="Vision-capable model dedicated to diagram and image analysis",
         validation_alias=AliasChoices(
             "LLM_MODEL_VISION", "llm_model_vision", "NIM_MODEL_VISION", "nim_model_vision"
@@ -448,44 +445,14 @@ class Settings(BaseSettings):
         """Normalize scout URLs: strip whitespace, filter empty entries, and deduplicate."""
         return normalize_scout_target_urls_list(v)
 
-    def get_default_models_for_provider(self, provider: str | None = None) -> dict[str, str]:
-        """Return default primary, fallback, and triage models for the specified or current provider."""
-        p = (provider or self.llm_provider).lower().strip()
-        return PROVIDER_DEFAULT_MODELS.get(p, PROVIDER_DEFAULT_MODELS["nvidia"])
-
-    @property
-    def default_primary_model(self) -> str:
-        """Default primary model for the configured LLM provider."""
-        return self.get_default_models_for_provider()["primary"]
-
-    @property
-    def default_fallback_model(self) -> str:
-        """Default fallback model for the configured LLM provider."""
-        return self.get_default_models_for_provider()["fallback"]
-
-    @property
-    def default_triage_model(self) -> str:
-        """Default triage model for the configured LLM provider."""
-        return self.get_default_models_for_provider()["triage"]
-
     @property
     def effective_primary_model(self) -> str:
         """Effective primary model for the configured provider."""
-        if (
-            self.llm_provider != "nvidia"
-            and self.nim_model_primary == PROVIDER_DEFAULT_MODELS["nvidia"]["primary"]
-        ):
-            return self.default_primary_model
         return self.nim_model_primary
 
     @property
     def effective_fallback_model(self) -> str:
         """Effective fallback model for the configured provider."""
-        if (
-            self.llm_provider != "nvidia"
-            and self.nim_model_fallback == PROVIDER_DEFAULT_MODELS["nvidia"]["fallback"]
-        ):
-            return self.default_fallback_model
         return self.nim_model_fallback
 
     @property
@@ -493,11 +460,6 @@ class Settings(BaseSettings):
         """Return the effective model to use for triage."""
         if self.nim_model_triage:
             return self.nim_model_triage
-        if (
-            self.llm_provider != "nvidia"
-            and self.nim_model_primary == PROVIDER_DEFAULT_MODELS["nvidia"]["primary"]
-        ):
-            return self.default_triage_model
         return self.effective_primary_model
 
     def get_model_for_role(self, role: str = "generation") -> str:

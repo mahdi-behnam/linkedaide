@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from agent.config.constants import (
     COMPLEX_LIST_FIELDS,
-    PROVIDER_DEFAULT_MODELS,
     SUPPORTED_LLM_PROVIDERS,
 )
 from agent.config.settings import Settings, load_settings
@@ -20,7 +19,6 @@ from agent.config.sources import (
 
 __all__ = [
     "COMPLEX_LIST_FIELDS",
-    "PROVIDER_DEFAULT_MODELS",
     "SUPPORTED_LLM_PROVIDERS",
     "ComplexValueDecoderMixin",
     "FlexibleDotEnvSettingsSource",

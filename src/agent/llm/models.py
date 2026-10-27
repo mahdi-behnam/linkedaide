@@ -13,6 +13,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import SecretStr
 
 from agent.config import SUPPORTED_LLM_PROVIDERS, Settings
+from agent.errors import ConfigError
 
 # Module-level references to support direct test patching (e.g. patch("agent.llm.models.ChatNVIDIA"))
 ChatNVIDIA: Any = None
@@ -165,6 +166,11 @@ def build_chat_model(
     """
     provider = settings.llm_provider.lower().strip()
     selected_model = model_name or settings.get_model_for_role(role)
+    if not selected_model:
+        raise ConfigError(
+            f"No LLM model configured for role '{role}' under provider '{provider}'. "
+            "Please configure a model identifier in Settings, Cloudflare KV, or environment variables."
+        )
 
     temperature = kwargs.pop("temperature", settings.nim_temperature)
     max_tokens = kwargs.pop("max_tokens", settings.nim_max_tokens)

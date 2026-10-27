@@ -47,16 +47,17 @@ class TestSettings:
         assert settings.dry_run is True
         assert len(settings.user_focus_areas) == 2
 
-    def test_settings_default_models(self) -> None:
+    def test_settings_no_hardcoded_default_models(self) -> None:
         settings = Settings(
             _env_file=None,  # type: ignore[call-arg]
             nvidia_nim_api_key="nvapi-test-key",
             telegram_bot_token="123456:ABC",
             telegram_authorized_chat_id=123,
         )
-        assert settings.nim_model_primary == "nvidia/nemotron-3-ultra-550b-a55b"
-        assert settings.nim_model_fallback == "openai/gpt-oss-20b"
-        assert settings.effective_triage_model == "nvidia/nemotron-3-ultra-550b-a55b"
+        assert settings.nim_model_primary == ""
+        assert settings.nim_model_fallback == ""
+        assert settings.effective_primary_model == ""
+        assert settings.effective_fallback_model == ""
 
     def test_effective_triage_model_override(self) -> None:
         settings = Settings(
@@ -434,38 +435,18 @@ class TestSettings:
         assert settings.groq_api_key.get_secret_value() == "gsk-abc"
         assert settings.ollama_base_url == "http://custom-ollama:11434"
 
-    def test_provider_default_and_effective_models(self) -> None:
-        providers_expected = {
-            "openai": ("gpt-4o", "gpt-4o-mini", "gpt-4o-mini"),
-            "anthropic": (
-                "claude-3-5-sonnet-latest",
-                "claude-3-5-haiku-latest",
-                "claude-3-5-haiku-latest",
-            ),
-            "gemini": ("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash"),
-            "groq": (
-                "llama-3.3-70b-versatile",
-                "llama-3.1-8b-instant",
-                "llama-3.1-8b-instant",
-            ),
-            "ollama": ("llama3.2", "llama3.2", "llama3.2"),
-        }
-
-        for provider, (exp_primary, exp_fallback, exp_triage) in providers_expected.items():
-            settings = Settings(
-                llm_provider=provider,
-                telegram_bot_token="123:ABC",
-                telegram_authorized_chat_id=123,
-            )
-            assert settings.default_primary_model == exp_primary
-            assert settings.default_fallback_model == exp_fallback
-            assert settings.default_triage_model == exp_triage
-            assert settings.effective_primary_model == exp_primary
-            assert settings.effective_fallback_model == exp_fallback
-            assert settings.effective_triage_model == exp_triage
-            assert settings.get_model_for_role("generation") == exp_primary
-            assert settings.get_model_for_role("fallback") == exp_fallback
-            assert settings.get_model_for_role("triage") == exp_triage
+    def test_provider_effective_models_unconfigured_are_empty(self) -> None:
+        settings = Settings(
+            llm_provider="openai",
+            telegram_bot_token="123:ABC",
+            telegram_authorized_chat_id=123,
+        )
+        assert settings.effective_primary_model == ""
+        assert settings.effective_fallback_model == ""
+        assert settings.effective_triage_model == ""
+        assert settings.get_model_for_role("generation") == ""
+        assert settings.get_model_for_role("fallback") == ""
+        assert settings.get_model_for_role("triage") == ""
 
     def test_provider_effective_models_override(self) -> None:
         settings = Settings(

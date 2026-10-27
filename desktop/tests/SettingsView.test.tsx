@@ -66,6 +66,23 @@ describe("SettingsView", () => {
           "deepseek-ai/deepseek-r1",
         ],
       }),
+      fetchModels: vi.fn().mockImplementation((provider: string) => {
+        if (provider === "openai") {
+          return Promise.resolve({
+            success: true,
+            models: ["gpt-4o", "gpt-4o-mini", "o1-preview"],
+          });
+        }
+        return Promise.resolve({
+          success: true,
+          models: [
+            "nvidia/nemotron-3-ultra-550b-a55b",
+            "nvidia/llama-3.1-nemotron-70b-instruct",
+            "mistralai/mistral-large-2-instruct",
+            "deepseek-ai/deepseek-r1",
+          ],
+        });
+      }),
     };
   });
 
@@ -283,21 +300,54 @@ describe("SettingsView", () => {
     });
   });
 
-  it("fetches available models from NVIDIA and populates the selector", async () => {
+  it("fetches available models dynamically and populates the selector", async () => {
     renderWithContext();
     await waitFor(() => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
     const fetchBtn = screen.getByRole("button", {
-      name: /Fetch Models from NVIDIA/i,
+      name: /Fetch Models/i,
     });
     fireEvent.click(fetchBtn);
 
     await waitFor(() => {
-      expect(window.api.fetchNimModels).toHaveBeenCalled();
-      expect(screen.getByText(/Loaded 4 models from NVIDIA/i)).toBeTruthy();
+      expect(
+        window.api.fetchModels || window.api.fetchNimModels,
+      ).toBeTruthy();
+      expect(screen.getByText(/Loaded 4 models from NVIDIA NIM/i)).toBeTruthy();
       expect(screen.getByText("deepseek-ai/deepseek-r1")).toBeTruthy();
+    });
+  });
+
+  it("fetches available models dynamically for OpenAI when provider changes", async () => {
+    renderWithContext();
+    await waitFor(() => {
+      expect(window.api.getSettings).toHaveBeenCalled();
+    });
+
+    const providerSelect = screen.getByLabelText(
+      "LLM Provider Architecture",
+    ) as HTMLSelectElement;
+    fireEvent.change(providerSelect, { target: { value: "openai" } });
+
+    // Enter OpenAI API key
+    const apiKeyInput = screen.getByPlaceholderText("sk-proj-...");
+    fireEvent.change(apiKeyInput, { target: { value: "sk-proj-test123" } });
+
+    const fetchBtn = screen.getByRole("button", {
+      name: /Fetch Models from OpenAI/i,
+    });
+    fireEvent.click(fetchBtn);
+
+    await waitFor(() => {
+      expect(window.api.fetchModels).toHaveBeenCalledWith(
+        "openai",
+        "sk-proj-test123",
+        undefined,
+      );
+      expect(screen.getByText(/Loaded 3 models from OpenAI/i)).toBeTruthy();
+      expect(screen.getByText("gpt-4o")).toBeTruthy();
     });
   });
 
@@ -308,12 +358,12 @@ describe("SettingsView", () => {
     });
 
     const modelSelect = screen.getByLabelText(
-      "Primary NIM Model",
+      "Primary LLM Model",
     ) as HTMLSelectElement;
     fireEvent.change(modelSelect, { target: { value: "__custom__" } });
 
     const customInput = screen.getByLabelText(
-      "Custom NIM Model Identifier",
+      "Custom LLM Model Identifier",
     ) as HTMLInputElement;
     fireEvent.change(customInput, {
       target: { value: "custom-org/special-model-v1" },
@@ -332,10 +382,15 @@ describe("SettingsView", () => {
   });
 
   it("displays error banner when fetching models fails", async () => {
+    window.api.fetchModels = vi.fn().mockResolvedValue({
+      success: false,
+      models: [],
+      error: "API rate limit exceeded",
+    });
     window.api.fetchNimModels = vi.fn().mockResolvedValue({
       success: false,
       models: [],
-      error: "NVIDIA API rate limit exceeded",
+      error: "API rate limit exceeded",
     });
 
     renderWithContext();
@@ -344,8 +399,14 @@ describe("SettingsView", () => {
     });
 
     const fetchBtn = screen.getByRole("button", {
-      name: /Fetch Models from NVIDIA/i,
+      name: /Fetch Models/i,
     });
+    fireEvent.click(fetchBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/API rate limit exceeded/i)).toBeTruthy();
+    });
+  });
     fireEvent.click(fetchBtn);
 
     await waitFor(() => {

@@ -51,9 +51,9 @@ function loadSettings(): DesktopSettings {
     workerUrl: process.env.WORKER_URL || "",
     apiSecret: process.env.DESKTOP_API_SECRET || "",
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || "",
-    nimModel: process.env.NIM_MODEL_PRIMARY || "nvidia/nemotron-3-ultra-550b-a55b",
+    nimModel: process.env.NIM_MODEL_PRIMARY || process.env.LLM_MODEL_PRIMARY || "",
     nimApiKey: process.env.NVIDIA_NIM_API_KEY || "",
-    nimModelFallback: process.env.LLM_MODEL_FALLBACK || "openai/gpt-oss-20b",
+    nimModelFallback: process.env.LLM_MODEL_FALLBACK || process.env.NIM_MODEL_FALLBACK || "",
     llmProvider: process.env.LLM_PROVIDER || "nvidia",
     userPersona: process.env.USER_PERSONA || "",
     dryRun: process.env.DRY_RUN === "true" || false,
@@ -774,58 +774,312 @@ function registerIpcHandlers(): void {
     };
   });
 
-  // NVIDIA NIM Models Fetcher
-  ipcMain.handle("llm:fetchNimModels", async (_event, apiKey?: string) => {
+  // Unified Dynamic Models Fetcher across all supported providers
+  async function fetchProviderModels(
+    providerName: string,
+    apiKey?: string,
+    baseUrl?: string
+  ): Promise<{ success: boolean; models: string[]; error?: string }> {
     try {
-      const activeKey = (apiKey || loadSettings().nimApiKey || "").trim();
-      const headers: Record<string, string> = {
-        Accept: "application/json",
-      };
-      if (activeKey) {
-        headers["Authorization"] = `Bearer ${activeKey}`;
-      }
+      const provider = (providerName || "nvidia").toLowerCase().trim();
+      const currentSettings = loadSettings();
 
-      const response = await fetch(
-        "https://integrate.api.nvidia.com/v1/models",
-        {
+      // 1. NVIDIA NIM
+      if (provider === "nvidia") {
+        const key = (apiKey || currentSettings.nimApiKey || "").trim();
+        const headers: Record<string, string> = { Accept: "application/json" };
+        if (key) headers["Authorization"] = `Bearer ${key}`;
+
+        const response = await fetch("https://integrate.api.nvidia.com/v1/models", {
           method: "GET",
           headers,
-        },
-      );
+        });
+        if (!response.ok) {
+          return {
+            success: false,
+            models: [],
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
+        }
+        const json = (await response.json()) as { data?: Array<{ id: string }> };
+        if (!json.data || !Array.isArray(json.data)) {
+          return { success: false, models: [], error: "Invalid response format from NVIDIA API" };
+        }
+        const models = json.data
+          .map((m) => m.id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+          .sort((a, b) => a.localeCompare(b));
+        return { success: true, models };
+      }
 
-      if (!response.ok) {
+      // 2. OpenAI
+      if (provider === "openai") {
+        const key = (apiKey || currentSettings.openaiApiKey || "").trim();
+        if (!key) {
+          return { success: false, models: [], error: "OpenAI API key is required to fetch models" };
+        }
+        const response = await fetch("https://api.openai.com/v1/models", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${key}`,
+          },
+        });
+        if (!response.ok) {
+          return {
+            success: false,
+            models: [],
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
+        }
+        const json = (await response.json()) as { data?: Array<{ id: string }> };
+        if (!json.data || !Array.isArray(json.data)) {
+          return { success: false, models: [], error: "Invalid response format from OpenAI API" };
+        }
+        // Filter to chat & reasoning models (gpt-*, o1*, o3*, chatgpt-*)
+        const chatPrefixes = ["gpt-", "o1", "o3", "chatgpt-"];
+        const chatModels = json.data
+          .map((m) => m.id)
+          .filter(
+            (id): id is string =>
+              typeof id === "string" && chatPrefixes.some((p) => id.startsWith(p))
+          )
+          .sort((a, b) => a.localeCompare(b));
+
+        const models = chatModels.length > 0 ? chatModels : json.data.map((m) => m.id).sort();
+        return { success: true, models };
+      }
+
+      // 3. Anthropic
+      if (provider === "anthropic") {
+        const key = (apiKey || currentSettings.anthropicApiKey || "").trim();
+        if (!key) {
+          return { success: false, models: [], error: "Anthropic API key is required to fetch models" };
+        }
+        const response = await fetch("https://api.anthropic.com/v1/models", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+          },
+        });
+        if (!response.ok) {
+          return {
+            success: false,
+            models: [],
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
+        }
+        const json = (await response.json()) as { data?: Array<{ id: string }> };
+        if (!json.data || !Array.isArray(json.data)) {
+          return { success: false, models: [], error: "Invalid response format from Anthropic API" };
+        }
+        const models = json.data
+          .map((m) => m.id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+          .sort((a, b) => a.localeCompare(b));
+        return { success: true, models };
+      }
+
+      // 4. Google Gemini
+      if (provider === "gemini") {
+        const key = (apiKey || currentSettings.geminiApiKey || "").trim();
+        if (!key) {
+          return { success: false, models: [], error: "Google Gemini API key is required to fetch models" };
+        }
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
+          {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          }
+        );
+        if (!response.ok) {
+          return {
+            success: false,
+            models: [],
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
+        }
+        const json = (await response.json()) as {
+          models?: Array<{ name: string; supportedGenerationMethods?: string[] }>;
+        };
+        if (!json.models || !Array.isArray(json.models)) {
+          return { success: false, models: [], error: "Invalid response format from Gemini API" };
+        }
+        const models = json.models
+          .filter(
+            (m) =>
+              !m.supportedGenerationMethods ||
+              m.supportedGenerationMethods.includes("generateContent")
+          )
+          .map((m) => m.name.replace(/^models\//, ""))
+          .filter((id) => id.length > 0)
+          .sort((a, b) => a.localeCompare(b));
+        return { success: true, models };
+      }
+
+      // 5. Groq
+      if (provider === "groq") {
+        const key = (apiKey || currentSettings.groqApiKey || "").trim();
+        if (!key) {
+          return { success: false, models: [], error: "Groq API key is required to fetch models" };
+        }
+        const response = await fetch("https://api.groq.com/openai/v1/models", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${key}`,
+          },
+        });
+        if (!response.ok) {
+          return {
+            success: false,
+            models: [],
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
+        }
+        const json = (await response.json()) as {
+          data?: Array<{ id: string; active?: boolean }>;
+        };
+        if (!json.data || !Array.isArray(json.data)) {
+          return { success: false, models: [], error: "Invalid response format from Groq API" };
+        }
+        const models = json.data
+          .filter((m) => m.active !== false)
+          .map((m) => m.id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+          .sort((a, b) => a.localeCompare(b));
+        return { success: true, models };
+      }
+
+      // 6. Ollama
+      if (provider === "ollama") {
+        const targetUrl = (baseUrl || currentSettings.ollamaBaseUrl || "http://localhost:11434").replace(
+          /\/+$/,
+          ""
+        );
+        try {
+          const response = await fetch(`${targetUrl}/api/tags`, {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          });
+          if (response.ok) {
+            const json = (await response.json()) as {
+              models?: Array<{ name?: string; model?: string }>;
+            };
+            if (json.models && Array.isArray(json.models)) {
+              const models = json.models
+                .map((m) => m.name || m.model || "")
+                .filter((id): id is string => typeof id === "string" && id.length > 0)
+                .sort((a, b) => a.localeCompare(b));
+              if (models.length > 0) {
+                return { success: true, models };
+              }
+            }
+          }
+        } catch {
+          // fallback to /v1/models
+        }
+
+        const fallbackResponse = await fetch(`${targetUrl}/v1/models`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        });
+        if (!fallbackResponse.ok) {
+          return {
+            success: false,
+            models: [],
+            error: `Failed to reach Ollama at ${targetUrl}: HTTP ${fallbackResponse.status}`,
+          };
+        }
+        const json = (await fallbackResponse.json()) as { data?: Array<{ id: string }> };
+        const models = (json.data || [])
+          .map((m) => m.id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+          .sort((a, b) => a.localeCompare(b));
+        return { success: true, models };
+      }
+
+      // 7. Custom OpenAI-Compatible
+      if (provider === "openai-compatible") {
+        const targetUrl = (baseUrl || currentSettings.nimBaseUrl || "").replace(/\/+$/, "");
+        if (!targetUrl) {
+          return {
+            success: false,
+            models: [],
+            error: "Base URL is required to fetch models from custom OpenAI-compatible endpoint",
+          };
+        }
+        const key = (apiKey || currentSettings.nimApiKey || currentSettings.openaiApiKey || "").trim();
+        const headers: Record<string, string> = { Accept: "application/json" };
+        if (key) headers["Authorization"] = `Bearer ${key}`;
+
+        const endpoints = [`${targetUrl}/models`, `${targetUrl}/v1/models`];
+        let lastError = "";
+
+        for (const ep of endpoints) {
+          try {
+            const resp = await fetch(ep, { method: "GET", headers });
+            if (resp.ok) {
+              const json = (await resp.json()) as { data?: Array<{ id: string }> };
+              if (json.data && Array.isArray(json.data)) {
+                const models = json.data
+                  .map((m) => m.id)
+                  .filter((id): id is string => typeof id === "string" && id.length > 0)
+                  .sort((a, b) => a.localeCompare(b));
+                return { success: true, models };
+              }
+            } else {
+              lastError = `HTTP ${resp.status}: ${resp.statusText}`;
+            }
+          } catch (epErr: any) {
+            lastError = epErr.message || "Connection refused";
+          }
+        }
         return {
           success: false,
           models: [],
-          error: `HTTP ${response.status}: ${response.statusText}`,
+          error: lastError || "Failed to fetch models from custom endpoint",
         };
       }
-
-      const json = (await response.json()) as { data?: Array<{ id: string }> };
-      if (!json.data || !Array.isArray(json.data)) {
-        return {
-          success: false,
-          models: [],
-          error: "Invalid response format from NVIDIA API",
-        };
-      }
-
-      const models = json.data
-        .map((m) => m.id)
-        .filter((id): id is string => typeof id === "string" && id.length > 0)
-        .sort((a, b) => a.localeCompare(b));
 
       return {
-        success: true,
-        models,
+        success: false,
+        models: [],
+        error: `Unsupported provider: ${provider}`,
       };
     } catch (err: any) {
       return {
         success: false,
         models: [],
-        error: err.message || "Failed to reach NVIDIA API",
+        error: err.message || "Failed to reach model provider API",
       };
     }
+  }
+
+  // Multi-Provider Dynamic Models IPC Handler
+  ipcMain.handle(
+    "llm:fetchModels",
+    async (
+      _event,
+      params?: { provider?: string; apiKey?: string; baseUrl?: string } | string
+    ) => {
+      if (typeof params === "string") {
+        return fetchProviderModels("nvidia", params);
+      }
+      return fetchProviderModels(
+        params?.provider || "nvidia",
+        params?.apiKey,
+        params?.baseUrl
+      );
+    }
+  );
+
+  // Backward compatible NVIDIA NIM Models Fetcher
+  ipcMain.handle("llm:fetchNimModels", async (_event, apiKey?: string) => {
+    return fetchProviderModels("nvidia", apiKey);
   });
 
   // Media Upload Handler (Cloudflare R2 Media Vault / Local Storage)

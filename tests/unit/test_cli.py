@@ -262,12 +262,26 @@ def test_check_llm_provider_nvidia_pass() -> None:
         telegram_authorized_chat_id=123456789,
         llm_provider="nvidia",
         nvidia_nim_api_key="nvapi-valid",
+        nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
     )
     with patch("agent.llm.models.build_chat_model") as mock_build:
         mock_build.return_value = MagicMock()
         res = check_llm_provider(settings)
         assert res.status == "PASS"
         assert "Provider 'nvidia' configured" in res.message
+
+
+def test_check_llm_provider_missing_model_fail() -> None:
+    settings = Settings(
+        telegram_bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+        telegram_authorized_chat_id=123456789,
+        llm_provider="nvidia",
+        nvidia_nim_api_key="nvapi-valid",
+        nim_model_primary="",
+    )
+    res = check_llm_provider(settings)
+    assert res.status == "FAIL"
+    assert "No model configured" in res.message
 
 
 def test_check_llm_provider_missing_key() -> None:
@@ -287,6 +301,7 @@ def test_check_llm_provider_import_error() -> None:
         telegram_authorized_chat_id=123456789,
         llm_provider="nvidia",
         nvidia_nim_api_key="nvapi-valid",
+        nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
     )
     with patch("agent.llm.models.build_chat_model", side_effect=ImportError("Package not found")):
         res = check_llm_provider(settings)
@@ -490,6 +505,7 @@ def test_doctor_all_passing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
         telegram_bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
         telegram_authorized_chat_id=123456789,
         nvidia_nim_api_key="nvapi-valid",
+        nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
         linkedin_storage_state_path=session_file,
     )
 
@@ -565,6 +581,7 @@ def test_doctor_failing_llm(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
         telegram_bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
         telegram_authorized_chat_id=123456789,
         nvidia_nim_api_key="nvapi-valid",
+        nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
         linkedin_storage_state_path=session_file,
     )
 
@@ -603,6 +620,7 @@ def test_doctor_failing_playwright(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
         telegram_bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
         telegram_authorized_chat_id=123456789,
         nvidia_nim_api_key="nvapi-valid",
+        nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
         linkedin_storage_state_path=session_file,
     )
 

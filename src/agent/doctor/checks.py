@@ -183,6 +183,14 @@ def check_llm_provider(settings: Settings | None, probe_connectivity: bool = Tru
             details=f"Please configure {provider.upper()}_API_KEY or NVIDIA_NIM_API_KEY in .env",
         )
 
+    if not settings.effective_primary_model:
+        return CheckResult(
+            name="LLM Provider",
+            status="FAIL",
+            message=f"No model configured for provider '{provider}'",
+            details=f"Please configure LLM_MODEL_PRIMARY or select a model for provider '{provider}' in Settings.",
+        )
+
     try:
         from langchain_core.messages import HumanMessage
 

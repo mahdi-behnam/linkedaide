@@ -11,6 +11,7 @@ from langchain_core.runnables import RunnableLambda
 
 from agent.config import Settings
 from agent.errors import (
+    ConfigError,
     NIMError,
     NIMRateLimitError,
     NIMSchemaValidationError,
@@ -108,8 +109,9 @@ class TestChatModelFactory:
     ) -> None:
         object.__setattr__(mock_settings, "llm_provider", "openai")
         object.__setattr__(mock_settings, "openai_api_key", "sk-test-openai-12345")
+        object.__setattr__(mock_settings, "nim_model_primary", "gpt-4o")
+        object.__setattr__(mock_settings, "nim_model_fallback", "gpt-4o-mini")
 
-        # Generation role defaults to gpt-4o
         build_chat_model(mock_settings, role="generation")
         mock_chat_openai.assert_called_with(
             model="gpt-4o",
@@ -121,12 +123,17 @@ class TestChatModelFactory:
             top_p=0.95,
         )
 
-        # Triage role defaults to gpt-4o-mini (when nim_model_triage is None)
+        # Triage role falls back to primary model when nim_model_triage is None
         object.__setattr__(mock_settings, "nim_model_triage", None)
+        build_chat_model(mock_settings, role="triage")
+        assert mock_chat_openai.call_args[1]["model"] == "gpt-4o"
+
+        # Explicit triage model
+        object.__setattr__(mock_settings, "nim_model_triage", "gpt-4o-mini")
         build_chat_model(mock_settings, role="triage")
         assert mock_chat_openai.call_args[1]["model"] == "gpt-4o-mini"
 
-        # Fallback role defaults to gpt-4o-mini
+        # Fallback role uses nim_model_fallback
         build_chat_model(mock_settings, role="fallback")
         assert mock_chat_openai.call_args[1]["model"] == "gpt-4o-mini"
 
@@ -159,9 +166,10 @@ class TestChatModelFactory:
     ) -> None:
         object.__setattr__(mock_settings, "llm_provider", "anthropic")
         object.__setattr__(mock_settings, "anthropic_api_key", "sk-ant-test-98765")
+        object.__setattr__(mock_settings, "nim_model_primary", "claude-3-5-sonnet-latest")
+        object.__setattr__(mock_settings, "nim_model_fallback", "claude-3-5-haiku-latest")
         object.__setattr__(mock_settings, "nim_model_triage", None)
 
-        # Generation role defaults to claude-3-5-sonnet-latest
         build_chat_model(mock_settings, role="generation")
         mock_chat_anthropic.assert_called_with(
             model="claude-3-5-sonnet-latest",
@@ -172,11 +180,16 @@ class TestChatModelFactory:
             top_p=0.95,
         )
 
-        # Triage role defaults to claude-3-5-haiku-latest
+        # Triage role falls back to primary model when nim_model_triage is None
+        build_chat_model(mock_settings, role="triage")
+        assert mock_chat_anthropic.call_args[1]["model"] == "claude-3-5-sonnet-latest"
+
+        # Explicit triage model
+        object.__setattr__(mock_settings, "nim_model_triage", "claude-3-5-haiku-latest")
         build_chat_model(mock_settings, role="triage")
         assert mock_chat_anthropic.call_args[1]["model"] == "claude-3-5-haiku-latest"
 
-        # Fallback role defaults to claude-3-5-haiku-latest
+        # Fallback role uses nim_model_fallback
         build_chat_model(mock_settings, role="fallback")
         assert mock_chat_anthropic.call_args[1]["model"] == "claude-3-5-haiku-latest"
 
@@ -186,9 +199,10 @@ class TestChatModelFactory:
     ) -> None:
         object.__setattr__(mock_settings, "llm_provider", "gemini")
         object.__setattr__(mock_settings, "gemini_api_key", "AIzaSyFakeGeminiKey")
+        object.__setattr__(mock_settings, "nim_model_primary", "gemini-2.0-flash")
+        object.__setattr__(mock_settings, "nim_model_fallback", "gemini-1.5-flash")
         object.__setattr__(mock_settings, "nim_model_triage", None)
 
-        # Generation role defaults to gemini-2.0-flash
         build_chat_model(mock_settings, role="generation")
         mock_chat_gemini.assert_called_with(
             model="gemini-2.0-flash",
@@ -199,11 +213,12 @@ class TestChatModelFactory:
             top_p=0.95,
         )
 
-        # Fallback role defaults to gemini-1.5-flash
+        # Fallback role uses nim_model_fallback
         build_chat_model(mock_settings, role="fallback")
         assert mock_chat_gemini.call_args[1]["model"] == "gemini-1.5-flash"
 
-        # Triage role defaults to gemini-1.5-flash
+        # Triage role uses nim_model_triage when configured
+        object.__setattr__(mock_settings, "nim_model_triage", "gemini-1.5-flash")
         build_chat_model(mock_settings, role="triage")
         assert mock_chat_gemini.call_args[1]["model"] == "gemini-1.5-flash"
 
@@ -213,9 +228,10 @@ class TestChatModelFactory:
     ) -> None:
         object.__setattr__(mock_settings, "llm_provider", "groq")
         object.__setattr__(mock_settings, "groq_api_key", "gsk-test-groq-key")
+        object.__setattr__(mock_settings, "nim_model_primary", "llama-3.3-70b-versatile")
+        object.__setattr__(mock_settings, "nim_model_fallback", "llama-3.1-8b-instant")
         object.__setattr__(mock_settings, "nim_model_triage", None)
 
-        # Generation role defaults to llama-3.3-70b-versatile
         build_chat_model(mock_settings, role="generation")
         mock_chat_groq.assert_called_with(
             model="llama-3.3-70b-versatile",
@@ -226,11 +242,12 @@ class TestChatModelFactory:
             top_p=0.95,
         )
 
-        # Fallback role defaults to llama-3.1-8b-instant
+        # Fallback role uses nim_model_fallback
         build_chat_model(mock_settings, role="fallback")
         assert mock_chat_groq.call_args[1]["model"] == "llama-3.1-8b-instant"
 
-        # Triage role defaults to llama-3.1-8b-instant
+        # Triage role uses nim_model_triage when configured
+        object.__setattr__(mock_settings, "nim_model_triage", "llama-3.1-8b-instant")
         build_chat_model(mock_settings, role="triage")
         assert mock_chat_groq.call_args[1]["model"] == "llama-3.1-8b-instant"
 
@@ -240,6 +257,7 @@ class TestChatModelFactory:
     ) -> None:
         object.__setattr__(mock_settings, "llm_provider", "ollama")
         object.__setattr__(mock_settings, "ollama_base_url", "http://localhost:11434")
+        object.__setattr__(mock_settings, "nim_model_primary", "llama3.2")
 
         build_chat_model(mock_settings, role="generation")
         mock_chat_ollama.assert_called_with(
@@ -252,6 +270,13 @@ class TestChatModelFactory:
     def test_build_chat_model_unsupported_provider(self, mock_settings: Settings) -> None:
         object.__setattr__(mock_settings, "llm_provider", "unsupported_provider")
         with pytest.raises(ValueError, match="Unsupported LLM provider 'unsupported_provider'"):
+            build_chat_model(mock_settings)
+
+    def test_build_chat_model_unconfigured_model_raises_config_error(
+        self, mock_settings: Settings
+    ) -> None:
+        object.__setattr__(mock_settings, "nim_model_primary", "")
+        with pytest.raises(ConfigError, match="No LLM model configured for role 'generation'"):
             build_chat_model(mock_settings)
 
     @pytest.mark.parametrize(

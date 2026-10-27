@@ -53,10 +53,20 @@ interface NimIntelligenceCardProps {
   onFetchModels: () => void;
 }
 
+const PROVIDER_NAMES: Record<string, string> = {
+  nvidia: "NVIDIA NIM",
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  gemini: "Google Gemini",
+  groq: "Groq",
+  ollama: "Ollama",
+  "openai-compatible": "Custom Provider",
+};
+
 export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
   nimModel,
   nimApiKey,
-  nimModelFallback = "openai/gpt-oss-20b",
+  nimModelFallback = "",
   llmProvider = "nvidia",
   openaiApiKey = "",
   anthropicApiKey = "",
@@ -64,7 +74,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
   groqApiKey = "",
   ollamaBaseUrl = "http://localhost:11434",
   nimModelTriage = "",
-  nimModelVision = "meta/llama-3.2-11b-vision-instruct",
+  nimModelVision = "",
   nimTemperature = 0.2,
   nimTimeoutSeconds = 60,
   nimMaxTokens = 1024,
@@ -128,7 +138,11 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
             weight="bold"
             className={isFetchingModels ? "animate-spin text-secondary" : "text-on-surface-variant"}
           />
-          <span>{isFetchingModels ? "Fetching Models..." : "Fetch Models from NVIDIA"}</span>
+          <span>
+            {isFetchingModels
+              ? "Fetching Models..."
+              : `Fetch Models from ${PROVIDER_NAMES[llmProvider] || "Provider"}`}
+          </span>
         </button>
       </div>
 
@@ -239,7 +253,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               />
             </div>
             <span className="font-label-sm text-[11px] text-on-surface-variant">
-              Authentication key for OpenAI GPT-4o models.
+              Authentication key for OpenAI models.
             </span>
           </div>
         )}
@@ -269,7 +283,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               />
             </div>
             <span className="font-label-sm text-[11px] text-on-surface-variant">
-              Authentication key for Claude 3.5 Sonnet / Haiku models.
+              Authentication key for Anthropic Claude models.
             </span>
           </div>
         )}
@@ -299,7 +313,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               />
             </div>
             <span className="font-label-sm text-[11px] text-on-surface-variant">
-              API key from Google AI Studio for Gemini 2.0 Flash models.
+              API key from Google AI Studio for Gemini models.
             </span>
           </div>
         )}
@@ -387,16 +401,16 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               Primary Model Identifier
             </label>
             <span className="font-label-sm text-[11px] text-on-surface-variant">
-              {modelsList.length} models available
+              {modelsList.length > 0 ? `${modelsList.length} models available` : "No models fetched"}
             </span>
           </div>
 
           <div className="flex items-center px-3 py-1.5 rounded-md bg-surface-container-low border border-outline-variant/30 focus-within:border-secondary">
             <select
               id="primary-nim-model-select"
-              aria-label="Primary NIM Model"
+              aria-label="Primary LLM Model"
               data-testid="nim-model-select"
-              value={isCustomModel ? "__custom__" : (nimModel || "nvidia/nemotron-3-ultra-550b-a55b")}
+              value={isCustomModel ? "__custom__" : (nimModel || "")}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "__custom__") {
@@ -408,13 +422,19 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               }}
               className="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface text-[13px] p-0 focus:ring-0 cursor-pointer"
             >
-              <optgroup label="Available Models">
-                {modelsList.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </optgroup>
+              {modelsList.length === 0 ? (
+                <option value="" disabled>
+                  No models loaded — enter key &amp; click &apos;Fetch Models&apos;
+                </option>
+              ) : (
+                <optgroup label="Available Models">
+                  {modelsList.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
               <optgroup label="Other">
                 <option value="__custom__">Enter custom model name...</option>
               </optgroup>
@@ -424,10 +444,10 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
           {isCustomModel && (
             <input
               type="text"
-              aria-label="Custom NIM Model Identifier"
+              aria-label="Custom LLM Model Identifier"
               value={nimModel}
               onChange={(e) => onModelChange(e.target.value)}
-              placeholder="e.g. nvidia/nemotron-3-ultra-550b-a55b or custom URN"
+              placeholder="e.g. model identifier URN or name"
               className="mt-1 w-full px-3 py-1.5 rounded-md bg-surface-container-low focus:bg-surface-container-lowest border border-secondary focus:border-secondary outline-none font-code-sm text-code-sm text-on-surface transition-all placeholder:text-on-surface-variant text-[12px]"
             />
           )}
@@ -452,7 +472,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               type="text"
               value={nimModelFallback}
               onChange={(e) => onModelFallbackChange?.(e.target.value)}
-              placeholder="e.g. openai/gpt-oss-20b or gpt-4o-mini"
+              placeholder="e.g. fallback model identifier (e.g. gpt-4o-mini)"
               className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
             />
           </div>
@@ -482,7 +502,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               type="text"
               value={nimModelTriage}
               onChange={(e) => onModelTriageChange?.(e.target.value)}
-              placeholder="e.g. meta/llama-3.1-8b-instruct"
+              placeholder="e.g. lightweight model identifier (optional)"
               className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
             />
           </div>
@@ -505,7 +525,7 @@ export const NimIntelligenceCard: React.FC<NimIntelligenceCardProps> = ({
               type="text"
               value={nimModelVision}
               onChange={(e) => onModelVisionChange?.(e.target.value)}
-              placeholder="meta/llama-3.2-11b-vision-instruct"
+              placeholder="e.g. vision model identifier (e.g. gpt-4o)"
               className="w-full bg-transparent border-0 outline-none font-code-sm text-code-sm text-on-surface p-0 focus:ring-0 placeholder:text-on-surface-variant text-[12px]"
             />
           </div>

@@ -18,6 +18,8 @@ from agent.orchestration.thread_monitor_flow import run_thread_monitor_flow
 def mock_settings() -> Settings:
     return Settings(
         nvidia_nim_api_key=SecretStr("test-key"),
+        nim_model_primary="nvidia/nemotron-3-ultra-550b-a55b",
+        nim_model_fallback="openai/gpt-oss-20b",
         telegram_bot_token=SecretStr("123:token"),
         telegram_authorized_chat_id=12345,
         user_focus_areas=["AI", "Systems"],

@@ -195,6 +195,11 @@ export interface ElectronAPI {
   captureSession?: () => Promise<{ success: boolean; error?: string }>;
   checkSessionHealth?: () => Promise<{ valid: boolean; daysRemaining?: number; details?: string }>;
   fetchNimModels?: (apiKey?: string) => Promise<{ success: boolean; models: string[]; error?: string }>;
+  fetchModels?: (
+    provider: string,
+    apiKey?: string,
+    baseUrl?: string,
+  ) => Promise<{ success: boolean; models: string[]; error?: string }>;
   verifyTelegramBot?: (token?: string) => Promise<{ success: boolean; username?: string; firstName?: string; error?: string }>;
   onRealtimeEvent?: (callback: (event: any) => void) => () => void;
   fetchScheduledPosts?: () => Promise<ScheduledPost[]>;
