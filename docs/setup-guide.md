@@ -23,36 +23,46 @@ This guide walks you through setting up LinkedAide from scratch, including autom
 
 ## Credentials & Secrets Directory
 
-LinkedAide uses a **centralized configuration architecture** backed by Cloudflare Workers KV (`STATE_BACKEND=kv`). Instead of synchronizing dozens of variables across multiple dashboards, you only configure a minimal set of **Bootstrap Secrets** in GitHub Secrets and local `.env`. All operational configuration (`config:runtime`) and encrypted provider keys (`secrets:vault_enc`) are managed authoritatively in Cloudflare KV.
+LinkedAide uses a **centralized configuration architecture** backed by Cloudflare Workers KV (`STATE_BACKEND=kv`). Instead of synchronizing dozens of variables across multiple dashboards, you only configure a minimal set of **5 Bootstrap Secrets** in GitHub Secrets and local `.env`. All operational configuration and credentials are managed authoritatively in Cloudflare KV (`config:runtime`) and can be edited visually in the Desktop App Settings.
 
 ### Bootstrap Secrets (Configured in GitHub Secrets & Local `.env`)
+
+Only these 5 secrets are needed by the GitHub Actions cloud runners and local `.env`:
 
 | Bootstrap Secret Name         | What It Is & Where It Comes From                                                                                   | Where It Is Configured       |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
 | `CLOUDFLARE_ACCOUNT_ID`       | Your 32-character Cloudflare Account ID (found on Cloudflare dashboard URL or Workers overview).                   | Local `.env`, GitHub Secrets |
 | `CLOUDFLARE_KV_NAMESPACE_ID`  | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (generated via Wrangler).                             | Local `.env`, GitHub Secrets |
 | `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token with `Account.Workers KV Storage: Edit` permission to allow runners to read/write state & KV. | Local `.env`, GitHub Secrets |
-| `SESSION_ENCRYPTION_KEY`      | 32-byte Fernet key generated via `scripts/generate_secrets.py` (decrypts storage state & KV secrets vault).        | Local `.env`, GitHub Secrets |
+| `SESSION_ENCRYPTION_KEY`      | 32-byte Fernet key generated via `scripts/generate_secrets.py` (used by runners to decrypt LinkedIn session state). | Local `.env`, GitHub Secrets |
 | `LINKEDIN_SESSION_STATE_ENC`  | Encrypted LinkedIn cookies extracted via `scripts/extract_linkedin_session.py`.                                    | Local `.env`, GitHub Secrets |
+
+> [!NOTE]
+> `SESSION_ENCRYPTION_KEY` is required by GitHub Actions runners and local development to decrypt `LINKEDIN_SESSION_STATE_ENC` into temporary runner-local storage before launching Playwright. It is **not** required as a secret for the Cloudflare Worker relay.
 
 ### Centralized KV Configuration & Secrets (Stored in Cloudflare KV)
 
-These are populated automatically with `uv run agent config init-from-env` and managed anytime via `uv run agent config set <key> <value>`:
+These settings and credentials can be configured directly through the **Desktop App Settings UI** or managed via `uv run agent config set <key> <value>` / `uv run agent config init-from-env`:
 
 | Variable / Secret Name        | Purpose                                                                                                                                           | Storage in Cloudflare KV     |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| `NVIDIA_NIM_API_KEY`          | NVIDIA NIM API key (`nvapi-...`).                                                                                                                 | `secrets:vault_enc` (Vault)  |
-| `OPENAI_API_KEY`              | OpenAI API key (`sk-...`).                                                                                                                        | `secrets:vault_enc` (Vault)  |
-| `ANTHROPIC_API_KEY`           | Anthropic API key (`sk-ant-...`).                                                                                                                 | `secrets:vault_enc` (Vault)  |
-| `GEMINI_API_KEY`              | Google Gemini API key (`AIza...`).                                                                                                                | `secrets:vault_enc` (Vault)  |
-| `TELEGRAM_BOT_TOKEN`          | Bot token created via [`@BotFather`](https://t.me/BotFather).                                                                                     | `secrets:vault_enc` (Vault)  |
-| `TELEGRAM_AUTHORIZED_CHAT_ID` | Numeric Telegram User ID from [`@userinfobot`](https://t.me/userinfobot).                                                                         | `secrets:vault_enc` (Vault)  |
-| `NIM_MODEL_PRIMARY`           | Primary LLM model for drafting (e.g. `nvidia/nemotron-3-ultra-550b-a55b`).                                                                        | `config:runtime` (Plain JSON)|
-| `NIM_MODEL_FALLBACK`          | Fallback LLM model if primary encounters rate limit.                                                                                              | `config:runtime` (Plain JSON)|
-| `USER_FOCUS_AREAS`            | Topics of interest for post triage (e.g. `["AI Agents", "Python"]`).                                                                               | `config:runtime` (Plain JSON)|
-| `USER_PERSONA`                | Custom tone and background prompt guidelines.                                                                                                     | `config:runtime` (Plain JSON)|
-| `MAX_COMMENTS_PER_DAY`        | Hard safety limit on approved comments posted daily (e.g. `5`).                                                                                    | `config:runtime` (Plain JSON)|
-| `MAX_POSTS_PER_DAY`           | Hard safety limit on daily original posts (e.g. `1`).                                                                                             | `config:runtime` (Plain JSON)|
+| `NVIDIA_NIM_API_KEY`          | NVIDIA NIM API key (`nvapi-...`). Powers drafting and Desktop edge tone rewrites.                                                                  | `config:runtime` (KV)        |
+| `OPENAI_API_KEY`              | OpenAI API key (`sk-...`).                                                                                                                        | `config:runtime` (KV)        |
+| `ANTHROPIC_API_KEY`           | Anthropic API key (`sk-ant-...`).                                                                                                                 | `config:runtime` (KV)        |
+| `GEMINI_API_KEY`              | Google Gemini API key (`AIza...`).                                                                                                                | `config:runtime` (KV)        |
+| `GROQ_API_KEY`                | Groq API key (`gsk_...`).                                                                                                                         | `config:runtime` (KV)        |
+| `TELEGRAM_BOT_TOKEN`          | Bot token created via [`@BotFather`](https://t.me/BotFather). Verified live in Desktop App.                                                       | `config:runtime` (KV)        |
+| `TELEGRAM_AUTHORIZED_CHAT_ID` | Numeric Telegram User ID from [`@userinfobot`](https://t.me/userinfobot).                                                                         | `config:runtime` (KV)        |
+| `NIM_MODEL_PRIMARY`           | Primary LLM model for drafting (e.g. `nvidia/nemotron-3-ultra-550b-a55b`).                                                                        | `config:runtime` (KV)        |
+| `NIM_MODEL_FALLBACK`          | Fallback LLM model if primary encounters rate limit.                                                                                              | `config:runtime` (KV)        |
+| `NIM_MODEL_TRIAGE`            | Optional fast model dedicated to post screening (e.g. `meta/llama-3.1-8b-instruct`).                                                              | `config:runtime` (KV)        |
+| `NIM_MODEL_VISION`            | Multimodal vision model for analyzing post images (default `meta/llama-3.2-11b-vision-instruct`).                                                 | `config:runtime` (KV)        |
+| `RESIDENTIAL_PROXY_URL`       | Optional HTTP/SOCKS5 proxy endpoint for headless scraping requests.                                                                              | `config:runtime` (KV)        |
+| `LOG_LEVEL`                   | Python execution log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`).                                                                                 | `config:runtime` (KV)        |
+| `USER_FOCUS_AREAS`            | Topics of interest for post triage (e.g. `["AI Agents", "Python"]`).                                                                               | `config:runtime` (KV)        |
+| `USER_PERSONA`                | Custom tone and background prompt guidelines.                                                                                                     | `config:runtime` (KV)        |
+| `MAX_COMMENTS_PER_DAY`        | Hard safety limit on approved comments posted daily (e.g. `5`).                                                                                    | `config:runtime` (KV)        |
+| `MAX_POSTS_PER_DAY`           | Hard safety limit on daily original posts (e.g. `1`).                                                                                             | `config:runtime` (KV)        |
 
 ### Cloudflare Relay Worker Secrets (Configured via `wrangler secret put`)
 
@@ -63,7 +73,12 @@ These are populated automatically with `uv run agent config init-from-env` and m
 | `GITHUB_REPO_OWNER`           | Your GitHub username or organization name.                                                                                        |
 | `GITHUB_REPO_NAME`            | Your GitHub repository name (e.g., `linkedaide`).                                                                                  |
 | `DESKTOP_API_SECRET`          | High-entropy token to authenticate Desktop app & Worker API calls.                                                                 |
-| `NVIDIA_NIM_API_KEY`          | NIM API key allowing the worker's `/api/rewrite` endpoint to rewrite drafts into different tones.                                 |
+| `NVIDIA_NIM_API_KEY`          | _(Optional)_ NIM API key. If not set in worker secrets, automatically resolved from Cloudflare KV (`config:runtime`).            |
+| `TELEGRAM_BOT_TOKEN`          | _(Optional)_ Bot token. If not set in worker secrets, automatically resolved from Cloudflare KV (`config:runtime`).                |
+| `TELEGRAM_AUTHORIZED_CHAT_ID` | _(Optional)_ Chat ID. If not set in worker secrets, automatically resolved from Cloudflare KV (`config:runtime`).                  |
+
+> [!NOTE]
+> `SESSION_ENCRYPTION_KEY` is **not** needed in Cloudflare Worker secrets. The worker does not run Playwright or decrypt LinkedIn cookies.
 
 ---
 
@@ -127,7 +142,7 @@ Once your Cloudflare KV credentials (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_KV_NAM
 uv run agent config init-from-env
 ```
 
-This pushes all operational configuration (`nim_model_primary`, rate limits, focus areas) to KV key `config:runtime`, and encrypts your provider keys into `secrets:vault_enc`.
+This pushes all operational configuration (`nim_model_primary`, rate limits, focus areas) and provider credentials into Cloudflare KV key `config:runtime` (and optionally `secrets:vault_enc`). You can also inspect, edit, and verify all settings visually at any time through the Desktop App Settings UI.
 
 Inspect your active remote configuration at any time with:
 ```bash
@@ -306,37 +321,30 @@ Copy the deployed worker URL (e.g., `https://telegram-relay-worker.<your-subdoma
 
 ### 4. Set Worker Secrets in Cloudflare
 
-Set the required secrets in Cloudflare via Wrangler:
+Set the essential secrets in Cloudflare via Wrangler:
 
 ```bash
 # 1. Custom webhook secret (generated in Step 1)
 npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
 
-# 2. Telegram bot token (from Step 3)
-npx wrangler secret put TELEGRAM_BOT_TOKEN
-
-# 3. Authorized numeric Telegram chat ID (from Step 3)
-npx wrangler secret put TELEGRAM_AUTHORIZED_CHAT_ID
-
-# 4. GitHub PAT (from Step 5.1)
+# 2. GitHub PAT (from Step 5.1)
 npx wrangler secret put GITHUB_DISPATCH_PAT
 
-# 5. GitHub account/organization name (e.g. your-username)
+# 3. GitHub account/organization name (e.g. your-username)
 npx wrangler secret put GITHUB_REPO_OWNER
 
-# 6. Repository name (e.g. linkedaide)
+# 4. Repository name (e.g. linkedaide)
 npx wrangler secret put GITHUB_REPO_NAME
 
-# 7. Desktop API Secret (from Step 1 — for desktop app realtime sync & API access)
+# 5. Desktop API Secret (from Step 1 — for desktop app realtime sync & API access)
 npx wrangler secret put DESKTOP_API_SECRET
-
-# 8. NVIDIA NIM API Key (from Step 2 — powers AI draft rewriting & tone adjustments in Desktop Control Panel)
-npx wrangler secret put NVIDIA_NIM_API_KEY
 ```
 
-> [!IMPORTANT]
-> **Why does the Cloudflare Worker need `NVIDIA_NIM_API_KEY`?**
-> The Desktop Control Panel features on-the-fly AI draft rewriting (Technical, Inquisitive, Contrarian, Shorter) and comment regeneration directly from the **Approval Queue** tab. These fast LLM rewrite requests are processed directly on the Cloudflare Worker edge using NVIDIA NIM. If this secret is missing, clicking tone pills in the desktop app will fail with `Worker API Error (500 Internal Server Error): NVIDIA_NIM_API_KEY is not configured`.
+> [!TIP]
+> **Dynamic Credential Inheritance from Cloudflare KV:**
+> You can also optionally set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_AUTHORIZED_CHAT_ID`, and `NVIDIA_NIM_API_KEY` via `wrangler secret put`. However, if you configure them in the Desktop App Settings UI or via `uv run agent config set <key> <value>`, the Cloudflare Worker will **automatically inherit them dynamically from KV** (`config:runtime`).
+>
+> **Important Security Invariant**: The Cloudflare Worker does **NOT** require `SESSION_ENCRYPTION_KEY`. The worker only handles webhooks, API requests, and triggers GitHub Actions—it never runs Playwright or decrypts browser cookies.
 
 ### 5. Register the Webhook with Telegram
 
@@ -359,7 +367,7 @@ In your GitHub repository, navigate to **Settings** -> **Secrets and variables**
 
 ### 1. Repository Secrets (`Secrets` tab)
 
-With Cloudflare KV centralized configuration, you only need to configure the **5 Bootstrap Secrets** below. All operational settings (`config:runtime`) and provider API keys (`secrets:vault_enc`) are retrieved and decrypted directly from Cloudflare KV:
+With Cloudflare KV centralized configuration, you only need to configure the **5 Bootstrap Secrets** below. All operational settings and provider credentials are retrieved directly from Cloudflare KV (`config:runtime`):
 
 | Secret Name                   | Value                                                                | Required For                    |
 | ----------------------------- | -------------------------------------------------------------------- | ------------------------------- |
@@ -371,7 +379,7 @@ With Cloudflare KV centralized configuration, you only need to configure the **5
 
 > [!TIP]
 > **Zero Duplicate Secret Hopping:**
-> You do **not** need to maintain `NVIDIA_NIM_API_KEY`, `OPENAI_API_KEY`, or `TELEGRAM_BOT_TOKEN` in GitHub Secrets. They are loaded authoritatively from your encrypted KV vault (`secrets:vault_enc`).
+> You do **not** need to maintain `NVIDIA_NIM_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, or `TELEGRAM_BOT_TOKEN` in GitHub Secrets. They are loaded authoritatively from Cloudflare KV (`config:runtime`), configured once either visually via the Desktop App Settings or using `uv run agent config set <key> <value>`.
 
 ### 2. Repository Variables (`Variables` tab) — Optional Overrides Only
 
@@ -457,6 +465,29 @@ _Looking to develop, modify, or run the desktop app directly from code? See [Bui
    - **Desktop API Secret**: Paste the `DESKTOP_API_SECRET` you generated in Step 1.
 3. Click **"Save Settings"** and then **"Test Connection"**.
    - You should see a green checkmark indicating successful authentication and latency (<100ms).
+
+---
+
+### 3. Configure Credentials & Operational Settings in Desktop UI
+
+Once connected to your Worker, the Desktop App acts as your unified control center for Cloudflare Workers KV (`config:runtime`):
+
+1. **Telegram Reviewer Gateway**:
+   - Enter your `TELEGRAM_BOT_TOKEN` and `TELEGRAM_AUTHORIZED_CHAT_ID`.
+   - Click **"Verify Bot Connection"** to run a live health check verifying your bot handle and token before saving.
+2. **AI Provider & Model Intelligence**:
+   - Select your LLM Provider (`NVIDIA NIM`, `OpenAI`, `Anthropic`, `Google Gemini`, `Groq`, `Ollama`).
+   - Paste the corresponding API Key.
+   - Select your Primary Model (default `nvidia/nemotron-3-ultra-550b-a55b`), Fallback Model, optional fast Triage Model, and Multimodal Vision Model.
+   - Adjust Temperature, Max Tokens, Request Timeout, or Custom Base URL if needed.
+3. **Safety Limits & Daily Quotas**:
+   - Tune your daily comment, post, and connection invitation limits to match your preferred growth rate.
+4. **Targeting & Persona**:
+   - Specify your core focus areas (e.g., `AI Agents`, `Python`, `Distributed Systems`), custom persona guidelines, and comment word limits.
+5. **System & Network Diagnostics**:
+   - Optionally configure a Residential Proxy Tunnel (`http://user:pass@host:port`) with live latency testing, and adjust diagnostics `LOG_LEVEL`.
+
+All changes save directly to remote Cloudflare KV in real time—instantly picked up by GitHub Actions cloud runners and your Telegram relay without needing manual redeployments or secret edits!
 
 ---
 
