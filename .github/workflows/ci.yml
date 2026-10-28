@@ -80,6 +80,15 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install Python Dependencies
+        run: uv sync --all-groups
+        working-directory: .
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
