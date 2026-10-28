@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/mahdi-behnam/linkedaide/compare/v1.10.1...v1.10.2) (2026-10-28)
+
+
+### Continuous Integration
+
+* **relay:** inject CLOUDFLARE_KV_NAMESPACE_ID dynamically in deploy workflow ([613f2ee](https://github.com/mahdi-behnam/linkedaide/commit/613f2eea3a1712ee7bd677412acddd92b37c319d))
+
 ## [1.10.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.10.0...v1.10.1) (2026-10-28)
 
 
