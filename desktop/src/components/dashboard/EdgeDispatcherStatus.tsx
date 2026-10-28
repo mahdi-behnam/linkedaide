@@ -57,26 +57,15 @@ export const EdgeDispatcherStatus: React.FC<EdgeDispatcherStatusProps> = ({
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-on-surface-variant">Live Edge Health</span>
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isConnected
-                  ? "bg-emerald-500 animate-pulse"
-                  : isChecking
-                  ? "bg-amber-500"
-                  : "bg-error"
-              }`}
-            />
-            <span className="text-xs font-medium text-on-surface">
-              {isConnected
-                ? latencyMs !== undefined
-                  ? `Connected (${latencyMs}ms)`
-                  : "Connected"
-                : isChecking
-                ? "Connecting..."
-                : "Offline / Unreachable"}
-            </span>
-          </div>
+          <span className="text-xs font-medium text-on-surface">
+            {isConnected
+              ? latencyMs !== undefined
+                ? `Connected (${latencyMs}ms)`
+                : "Connected"
+              : isChecking
+              ? "Connecting..."
+              : "Offline / Unreachable"}
+          </span>
         </div>
 
         <div className="flex items-center justify-between">
