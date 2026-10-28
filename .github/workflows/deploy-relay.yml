@@ -50,6 +50,19 @@ jobs:
             exit 1
           fi
 
+      - name: Configure KV Namespace ID
+        env:
+          KV_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID || vars.CLOUDFLARE_KV_NAMESPACE_ID }}
+        run: |
+          CURRENT_ID=$(grep -E '^\s*id\s*=' wrangler.toml | head -n 1 | cut -d '"' -f 2)
+          if [ -n "$KV_ID" ]; then
+            echo "Injecting configured CLOUDFLARE_KV_NAMESPACE_ID into wrangler.toml..."
+            sed -i "s/id = \"$CURRENT_ID\"/id = \"$KV_ID\"/" wrangler.toml
+          elif [ "$CURRENT_ID" = "linkedin_agent_kv_namespace" ]; then
+            echo "::error::KV namespace ID in wrangler.toml is the placeholder 'linkedin_agent_kv_namespace', and CLOUDFLARE_KV_NAMESPACE_ID is not configured in GitHub Secrets / Variables. Please add CLOUDFLARE_KV_NAMESPACE_ID under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
