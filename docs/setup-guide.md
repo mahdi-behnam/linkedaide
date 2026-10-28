@@ -29,13 +29,13 @@ LinkedAide uses a **centralized configuration architecture** backed by Cloudflar
 
 Only these 5 secrets are needed by the GitHub Actions cloud runners and local `.env`:
 
-| Bootstrap Secret Name         | What It Is & Where It Comes From                                                                                   | Where It Is Configured       |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
-| `CLOUDFLARE_ACCOUNT_ID`       | Your 32-character Cloudflare Account ID (found on Cloudflare dashboard URL or Workers overview).                   | Local `.env`, GitHub Secrets |
-| `CLOUDFLARE_KV_NAMESPACE_ID`  | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (generated via Wrangler).                             | Local `.env`, GitHub Secrets |
-| `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token with `Account.Workers KV Storage: Edit` permission to allow runners to read/write state & KV. | Local `.env`, GitHub Secrets |
-| `SESSION_ENCRYPTION_KEY`      | 32-byte Fernet key generated via `scripts/generate_secrets.py` (used by runners to decrypt LinkedIn session state). | Local `.env`, GitHub Secrets |
-| `LINKEDIN_SESSION_STATE_ENC`  | Encrypted LinkedIn cookies extracted via `scripts/extract_linkedin_session.py`.                                    | Local `.env`, GitHub Secrets |
+| Bootstrap Secret Name         | What It Is & Where It Comes From                                                                                                                                   | Where It Is Configured       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID`       | Your 32-character Cloudflare Account ID (found on Cloudflare dashboard URL or Workers overview).                                                                   | Local `.env`, GitHub Secrets |
+| `CLOUDFLARE_KV_NAMESPACE_ID`  | 32-character Workers KV Namespace ID for `LINKEDIN_AGENT_KV` (generated via Wrangler).                                                                             | Local `.env`, GitHub Secrets |
+| `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token with Workers KV Storage (Edit), Workers Scripts (Edit), and Account Settings (Read) permissions for state synchronization and CI/CD deploy. | Local `.env`, GitHub Secrets |
+| `SESSION_ENCRYPTION_KEY`      | 32-byte Fernet key generated via `scripts/generate_secrets.py` (used by runners to decrypt LinkedIn session state).                                                 | Local `.env`, GitHub Secrets |
+| `LINKEDIN_SESSION_STATE_ENC`  | Encrypted LinkedIn cookies extracted via `scripts/extract_linkedin_session.py`.                                                                                    | Local `.env`, GitHub Secrets |
 
 > [!NOTE]
 > `SESSION_ENCRYPTION_KEY` is required by GitHub Actions runners and local development to decrypt `LINKEDIN_SESSION_STATE_ENC` into temporary runner-local storage before launching Playwright. It is **not** required as a secret for the Cloudflare Worker relay.
@@ -273,13 +273,23 @@ Open `infra/edge-relay/wrangler.toml` and replace the placeholder `id = "linkedi
 >
 > 1. **`CLOUDFLARE_ACCOUNT_ID`**: Found in your [Cloudflare Dashboard](https://dash.cloudflare.com/) URL (`https://dash.cloudflare.com/<ACCOUNT_ID>`) or on any Worker's overview page in the right-hand sidebar.
 > 2. **`CLOUDFLARE_KV_NAMESPACE_ID`**: The 32-character ID generated from `npx wrangler kv namespace create LINKEDIN_AGENT_KV` above (also visible under **Workers & Pages** &rarr; **KV** in the Cloudflare dashboard).
-> 3. **`CLOUDFLARE_API_TOKEN`**: Create an API token so GitHub Actions can read/write KV state:
+> 3. **`CLOUDFLARE_API_TOKEN`**: Create a scoped API token so GitHub Actions can read/write KV state and automatically deploy the Edge Relay:
 >    - In Cloudflare Dashboard, click your profile icon (top right) &rarr; **My Profile** &rarr; **API Tokens**.
->    - Click **Create Token** &rarr; scroll to bottom &rarr; **Create Custom Token** &rarr; click **Get started**.
->    - **Token Name**: `LinkedIn Agent KV Access`
->    - **Permissions**: **Account** &rarr; **Workers KV Storage** &rarr; **Edit**
+>    - Click **Create Token** &rarr; scroll to bottom &rarr; **Create Custom Token** &rarr; click **Get started** (or choose the pre-configured **Edit Cloudflare Workers** template).
+>    - **Token Name**: `LinkedAide Relay & KV Access`
+>    - **Permissions**: Add the following three **Account** permissions:
+>      1. **Account** &rarr; **Workers KV Storage** &rarr; **Edit**  
+>         *Why it is needed*: Enables the agent runners and local CLI to read and write operational state (pending approval drafts, daily rate limit counters, active thread monitoring, and centralized `config:runtime` settings).  
+>      2. **Account** &rarr; **Workers Scripts** &rarr; **Edit**  
+>         *Why it is needed*: Enables the automated GitHub Actions CI/CD deployment workflow (`.github/workflows/deploy-relay.yml`) to deploy your Cloudflare Worker relay automatically whenever code in `infra/edge-relay` is updated, eliminating manual `wrangler deploy` runs.  
+>      3. **Account** &rarr; **Account Settings** &rarr; **Read**  
+>         *Why it is needed*: Allows Wrangler during automated CI/CD runs to verify your Account ID and validate project bindings non-interactively without interactive CLI prompts.  
 >    - **Account Resources**: **Include** &rarr; **All accounts** (or your specific account)
 >    - Click **Continue to summary** &rarr; **Create Token**, then copy the token value.
+>
+>    > [!NOTE]
+>    > **Security & Least Privilege Guarantee**:  
+>    > These permissions strictly follow the principle of least privilege. They do **not** grant access to your billing details, credit cards, DNS records, domain registration, SSL certificates, or other zones. They are restricted strictly to Workers scripts, Workers KV storage, and reading account metadata.
 >
 > You will add these 3 values as repository secrets in **Step 6**.
 
@@ -313,11 +323,20 @@ Open `infra/edge-relay/wrangler.toml` and replace the placeholder `id = "linkedi
 
 ### 3. Deploy the Worker
 
+You can deploy the worker manually for initial provisioning, or let GitHub Actions deploy it automatically via CI/CD.
+
+#### Manual Initial Deployment
+From `infra/edge-relay`:
+
 ```bash
 npx wrangler deploy
 ```
 
 Copy the deployed worker URL (e.g., `https://edge-relay.<your-subdomain>.workers.dev`).
+
+> [!TIP]
+> **Hands-Free Automated CI/CD Deployment**:  
+> LinkedAide includes an automated deployment workflow (`.github/workflows/deploy-relay.yml`). Once your `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are configured in GitHub Secrets (Step 6), any push to `main` modifying `infra/edge-relay/` will automatically type-check, test, and deploy the worker to Cloudflare. You will never need to run `npx wrangler deploy` manually again for code updates!
 
 ### 4. Set Worker Secrets in Cloudflare
 
@@ -375,7 +394,7 @@ With Cloudflare KV centralized configuration, you only need to configure the **5
 | `LINKEDIN_SESSION_STATE_ENC`  | Encrypted session state token from Step 4                            | All workflows                   |
 | `CLOUDFLARE_ACCOUNT_ID`       | 32-character Cloudflare Account ID from Step 5.2.A                   | Cloud mode (`STATE_BACKEND=kv`) |
 | `CLOUDFLARE_KV_NAMESPACE_ID`  | 32-character KV namespace ID (`LINKEDIN_AGENT_KV`) from Step 5.2.A   | Cloud mode (`STATE_BACKEND=kv`) |
-| `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token with Workers KV Edit permission from Step 5.2.A | Cloud mode (`STATE_BACKEND=kv`) |
+| `CLOUDFLARE_API_TOKEN`        | Cloudflare API Token (Workers KV Edit, Workers Scripts Edit, Account Settings Read) from Step 5.2.A | Cloud mode (`STATE_BACKEND=kv`) & CI/CD Relay Deploy |
 
 > [!TIP]
 > **Zero Duplicate Secret Hopping:**

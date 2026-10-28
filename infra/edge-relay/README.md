@@ -35,6 +35,22 @@ The worker dynamically inherits the following credentials and parameters from Cl
 
 ## Deployment
 
+### Automated CI/CD (Recommended)
+
+LinkedAide includes an automated GitHub Actions deployment workflow (`.github/workflows/deploy-relay.yml`). Whenever changes under `infra/edge-relay/**` are merged or pushed to `main`, GitHub Actions automatically:
+1. Runs TypeScript type checking (`npm run typecheck`).
+2. Runs the test suite (`npm test`).
+3. Deploys the worker using `cloudflare/wrangler-action`.
+
+**Requirements**:
+Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to your GitHub Repository Secrets (see `docs/setup-guide.md`).
+
+You can also trigger a deployment manually at any time from the **Actions** tab in GitHub via **Deploy Cloudflare Edge Relay** → **Run workflow**.
+
+### Manual Deployment
+
+For initial provisioning or local development:
+
 ```bash
 npm install
 npx wrangler deploy
