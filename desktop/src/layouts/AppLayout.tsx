@@ -378,7 +378,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               type="button"
               data-testid="pending-badge-button"
               onClick={() => setCurrentTab("queue")}
-              className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-surface-container-high transition-colors"
+              className="flex h-7 items-center gap-1.5 rounded-md border border-outline bg-surface-container-highest px-2.5 text-xs font-medium text-amber-600 dark:text-amber-400 shadow-2xs transition-all duration-100 hover:bg-surface-container-high active:scale-[0.99] cursor-pointer"
             >
               <Inbox size={13} weight="bold" />
               <span className="tabular-nums">{pendingCount} Pending</span>
@@ -389,7 +389,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               type="button"
               data-testid="global-pause-button"
               onClick={togglePause}
-              className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-100 active:scale-[0.99] shadow-2xs ${
+              className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-all duration-100 active:scale-[0.99] shadow-2xs cursor-pointer ${
                 isPaused
                   ? "border-amber-500/35 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
                   : "border-outline bg-surface-container-highest text-on-surface hover:bg-surface-container-high"
