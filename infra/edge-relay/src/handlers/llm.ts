@@ -45,9 +45,6 @@ export async function rewriteDraftWithLlm(
     throw new Error("NVIDIA_NIM_API_KEY is not configured");
   }
 
-  const baseUrl = (env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(/\/+$/, "");
-  const llmUrl = `${baseUrl}/chat/completions`;
-
   const toneModifier = TONE_INSTRUCTIONS[tone] || `Rewrite in a ${tone} tone.`;
   const systemPrompt =
     "You are an expert LinkedIn ghostwriter and editor. Your task is to rewrite a draft comment according to the specified tone instruction while preserving authenticity and professional voice. Return ONLY the rewritten text without greetings, explanations, or quotes.";
@@ -56,9 +53,10 @@ export async function rewriteDraftWithLlm(
     ? `Context Post:\n"${postExcerpt}"\n\nOriginal Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`
     : `Original Draft:\n"${draftText}"\n\nTone Instruction:\n${toneModifier}\n\nRewritten Draft:`;
 
+  const baseUrl = (env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(/\/+$/, "");
+  let llmUrl = baseUrl.endsWith("/chat/completions") ? baseUrl : `${baseUrl}/chat/completions`;
   let modelName = env.NIM_MODEL_PRIMARY || env.LLM_MODEL;
   let apiKey = env.NVIDIA_NIM_API_KEY || "";
-  let llmUrl = env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1/chat/completions";
 
   if (env.LINKEDIN_AGENT_KV) {
     try {
