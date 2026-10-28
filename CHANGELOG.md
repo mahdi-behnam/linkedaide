@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.9.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.8.2...v1.9.0) (2026-10-28)
+
+
+### Features
+
+* **config:** centralize runtime settings and encrypted secrets in Cloudflare KV ([df90992](https://github.com/mahdi-behnam/linkedaide/commit/df9099297068f79813210cb3398ec2fe04a27e2d))
+* **desktop:** centralize secrets and operational settings in Cloudflare KV ([f3e02e9](https://github.com/mahdi-behnam/linkedaide/commit/f3e02e9c8aca7d1ce09406cdad9faf9e6d893169))
+* **desktop:** fetch models dynamically and remove hardcoded model lists ([ed2344a](https://github.com/mahdi-behnam/linkedaide/commit/ed2344ac28ca71feb2d853937713386fdb1ad98c))
+* **desktop:** synchronize settings with remote KV and add missing controls ([c67ee14](https://github.com/mahdi-behnam/linkedaide/commit/c67ee149a197251328bd31b9981b773a47c01cab))
+
+
+### Bug Fixes
+
+* **config:** update default NIM model to nemotron-3-ultra-550b and fix KV doctor check ([04ec6dd](https://github.com/mahdi-behnam/linkedaide/commit/04ec6dd7a77bcca50d63ed99ef12b254139301c9))
+* **desktop:** equalize top right header button heights ([c8a5b10](https://github.com/mahdi-behnam/linkedaide/commit/c8a5b10685864c15794e8a63a857f95a44e4c5e9))
+* **desktop:** match pending button background and outline to pause button ([9593b7d](https://github.com/mahdi-behnam/linkedaide/commit/9593b7d2dd5a54fdd7e459f007a6a09793b3a14d))
+* **desktop:** style update pill with filled primary blue ([925e599](https://github.com/mahdi-behnam/linkedaide/commit/925e5999eb0683539423912a3a354590fdaa85b8))
+* **relay:** resolve dynamic Telegram credentials in REST API handler ([49b318f](https://github.com/mahdi-behnam/linkedaide/commit/49b318fef59c2a58d070a5df36cb835d2fa0c223))
+
+
+### Code Refactoring
+
+* **desktop:** remove indicator dot from live edge health row ([69c16ac](https://github.com/mahdi-behnam/linkedaide/commit/69c16aca4a3fe14bf70008e80dcc42788bd8edb1))
+* **relay:** rename worker to edge-relay and unify edge gateway references ([f618ddf](https://github.com/mahdi-behnam/linkedaide/commit/f618ddf2f84307189f583ea08fb9ba09c1dbad2a))
+
+
+### Documentation
+
+* **agents:** modernize AGENTS.md for LinkedAide v1.8.2 architecture ([b6fc347](https://github.com/mahdi-behnam/linkedaide/commit/b6fc3473775bab9c718fd89b4b690613b7ca2dbc))
+* **config:** update setup guides and tutorials for centralized KV configuration ([67428e9](https://github.com/mahdi-behnam/linkedaide/commit/67428e9d25a2f1d2bf9a3b7b698bc16bbe5c909b))
+* update configuration and setup guides for centralized KV and desktop controls ([c4f4996](https://github.com/mahdi-behnam/linkedaide/commit/c4f499678391b6ed0d0869d47e6e7fc1ad802a53))
+
+
+### Continuous Integration
+
+* **actions:** decouple workflows from repository variables and ignore empty env vars ([07f7a71](https://github.com/mahdi-behnam/linkedaide/commit/07f7a710045468e28dca499114c2d4ed0ed494ef))
+* **relay:** add automated edge relay deployment workflow and update permissions guide ([3e6d54a](https://github.com/mahdi-behnam/linkedaide/commit/3e6d54a8bff609895f2424cec65044f1bd8ff417))
+
 ## [1.8.2](https://github.com/mahdi-behnam/linkedaide/compare/v1.8.1...v1.8.2) (2026-10-26)
 
 

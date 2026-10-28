@@ -1,6 +1,6 @@
 [project]
 name = "linkedaide"
-version = "1.8.2"
+version = "1.9.0"
 description = "Human-in-the-Loop LinkedIn AI Agent orchestrating scouting, LLM triage, Telegram approval, and Playwright execution."
 readme = "README.md"
 requires-python = ">=3.11"
