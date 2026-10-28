@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -45,6 +47,125 @@ def check_python_runtime() -> CheckResult:
         status="PASS",
         message=f"Python {version_str} (>= 3.11 required)",
     )
+
+
+def check_node_runtime(repo_root: Path | None = None) -> CheckResult:
+    """Check Node.js and npm runtime environment for TypeScript subprojects."""
+    root = repo_root or Path.cwd()
+    node_bin = shutil.which("node")
+    npm_bin = shutil.which("npm")
+
+    if not node_bin or not npm_bin:
+        missing = []
+        if not node_bin:
+            missing.append("node")
+        if not npm_bin:
+            missing.append("npm")
+        return CheckResult(
+            name="Node.js & TypeScript Runtime",
+            status="WARN",
+            message=f"Missing runtime tool(s): {', '.join(missing)}",
+            details="Install Node.js (>=20) and npm to enable Edge Relay and Desktop verification.",
+        )
+
+    try:
+        node_v_proc = subprocess.run(
+            [node_bin, "-v"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        node_version = node_v_proc.stdout.strip()
+
+        # Check for node_modules in subprojects if they exist in repo_root
+        relay_pkg = root / "infra" / "edge-relay" / "package.json"
+        desktop_pkg = root / "desktop" / "package.json"
+
+        missing_deps: list[str] = []
+        if relay_pkg.exists() and not (root / "infra" / "edge-relay" / "node_modules").is_dir():
+            missing_deps.append("infra/edge-relay")
+        if desktop_pkg.exists() and not (root / "desktop" / "node_modules").is_dir():
+            missing_deps.append("desktop")
+
+        if missing_deps:
+            return CheckResult(
+                name="Node.js & TypeScript Runtime",
+                status="WARN",
+                message=f"Node.js {node_version} installed, but dependencies missing in: {', '.join(missing_deps)}",
+                details="Run 'npm ci' inside the missing project directory(ies).",
+            )
+
+        return CheckResult(
+            name="Node.js & TypeScript Runtime",
+            status="PASS",
+            message=f"Node.js {node_version} and dependencies installed for all TypeScript subprojects",
+        )
+    except Exception as err:
+        return CheckResult(
+            name="Node.js & TypeScript Runtime",
+            status="WARN",
+            message=f"Error checking Node.js runtime: {err}",
+        )
+
+
+def check_git_hooks(repo_root: Path | None = None) -> CheckResult:
+    """Verify Git pre-commit and pre-push hooks configuration."""
+    root = repo_root or Path.cwd()
+    git_dir = root / ".git"
+    if not git_dir.exists():
+        return CheckResult(
+            name="Git Hooks",
+            status="WARN",
+            message="Not inside a git repository root (skipped)",
+        )
+
+    hooks_dir = root / ".githooks"
+    pre_commit = hooks_dir / "pre-commit"
+    pre_push = hooks_dir / "pre-push"
+
+    if not pre_commit.exists() or not pre_push.exists():
+        return CheckResult(
+            name="Git Hooks",
+            status="FAIL",
+            message="Required Git hook scripts missing in .githooks",
+            details="Ensure both .githooks/pre-commit and .githooks/pre-push exist.",
+        )
+
+    git_bin = shutil.which("git")
+    if not git_bin:
+        return CheckResult(
+            name="Git Hooks",
+            status="WARN",
+            message="git executable not found in PATH",
+        )
+
+    try:
+        proc = subprocess.run(
+            [git_bin, "config", "--get", "core.hooksPath"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        configured_path = proc.stdout.strip()
+        if configured_path != ".githooks":
+            return CheckResult(
+                name="Git Hooks",
+                status="WARN",
+                message=f"Git hooksPath is '{configured_path or 'default'}' instead of '.githooks'",
+                details="Run: git config core.hooksPath .githooks",
+            )
+        return CheckResult(
+            name="Git Hooks",
+            status="PASS",
+            message="Active pre-commit and pre-push hooks configured (.githooks)",
+        )
+    except Exception as err:
+        return CheckResult(
+            name="Git Hooks",
+            status="WARN",
+            message=f"Could not verify git config core.hooksPath: {err}",
+        )
 
 
 def check_playwright_chromium() -> CheckResult:

@@ -38,8 +38,10 @@ from agent.config import Settings
 from agent.doctor import (
     CheckResult,
     check_configuration,
+    check_git_hooks,
     check_linkedin_session,
     check_llm_provider,
+    check_node_runtime,
     check_playwright_chromium,
     check_python_runtime,
     check_state_backend,
@@ -175,6 +177,88 @@ def test_check_python_runtime_fail(monkeypatch: pytest.MonkeyPatch) -> None:
     res = check_python_runtime()
     assert res.status == "FAIL"
     assert "Python >= 3.11 is required" in res.message
+
+
+def test_check_git_hooks_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / ".git").mkdir()
+    hooks_dir = tmp_path / ".githooks"
+    hooks_dir.mkdir()
+    (hooks_dir / "pre-commit").write_text("#!/bin/sh\nexit 0")
+    (hooks_dir / "pre-push").write_text("#!/bin/sh\nexit 0")
+
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/git")
+    mock_run = MagicMock()
+    mock_run.stdout = ".githooks\n"
+    monkeypatch.setattr("subprocess.run", lambda *args, **kwargs: mock_run)
+
+    res = check_git_hooks(repo_root=tmp_path)
+    assert res.status == "PASS"
+    assert ".githooks" in res.message
+
+
+def test_check_git_hooks_not_git_repo(tmp_path: Path) -> None:
+    res = check_git_hooks(repo_root=tmp_path)
+    assert res.status == "WARN"
+    assert "Not inside a git repository" in res.message
+
+
+def test_check_git_hooks_missing_scripts(tmp_path: Path) -> None:
+    (tmp_path / ".git").mkdir()
+    res = check_git_hooks(repo_root=tmp_path)
+    assert res.status == "FAIL"
+    assert "missing in .githooks" in res.message
+
+
+def test_check_git_hooks_wrong_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / ".git").mkdir()
+    hooks_dir = tmp_path / ".githooks"
+    hooks_dir.mkdir()
+    (hooks_dir / "pre-commit").write_text("#!/bin/sh\nexit 0")
+    (hooks_dir / "pre-push").write_text("#!/bin/sh\nexit 0")
+
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/git")
+    mock_run = MagicMock()
+    mock_run.stdout = ".git/hooks\n"
+    monkeypatch.setattr("subprocess.run", lambda *args, **kwargs: mock_run)
+
+    res = check_git_hooks(repo_root=tmp_path)
+    assert res.status == "WARN"
+    assert "instead of '.githooks'" in res.message
+
+
+def test_check_node_runtime_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("shutil.which", lambda bin_name: f"/usr/bin/{bin_name}")
+    mock_run = MagicMock()
+    mock_run.stdout = "v20.20.2\n"
+    monkeypatch.setattr("subprocess.run", lambda *args, **kwargs: mock_run)
+
+    res = check_node_runtime(repo_root=tmp_path)
+    assert res.status == "PASS"
+    assert "v20.20.2" in res.message
+
+
+def test_check_node_runtime_missing_binaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("shutil.which", lambda _: None)
+    res = check_node_runtime(repo_root=tmp_path)
+    assert res.status == "WARN"
+    assert "Missing runtime tool(s)" in res.message
+
+
+def test_check_node_runtime_missing_deps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("shutil.which", lambda bin_name: f"/usr/bin/{bin_name}")
+    mock_run = MagicMock()
+    mock_run.stdout = "v20.20.2\n"
+    monkeypatch.setattr("subprocess.run", lambda *args, **kwargs: mock_run)
+
+    desktop_dir = tmp_path / "desktop"
+    desktop_dir.mkdir()
+    (desktop_dir / "package.json").write_text("{}")
+
+    res = check_node_runtime(repo_root=tmp_path)
+    assert res.status == "WARN"
+    assert "dependencies missing in: desktop" in res.message
 
 
 def test_check_playwright_chromium_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

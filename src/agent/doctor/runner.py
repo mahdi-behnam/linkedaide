@@ -51,8 +51,10 @@ def run_doctor(
     """
     from agent.doctor.checks import (
         check_configuration,
+        check_git_hooks,
         check_linkedin_session,
         check_llm_provider,
+        check_node_runtime,
         check_playwright_chromium,
         check_python_runtime,
         check_state_backend,
@@ -70,23 +72,29 @@ def run_doctor(
     # 1. Python runtime
     results.append(check_python_runtime())
 
-    # 2. Playwright Chromium
+    # 2. Node.js & TypeScript runtime
+    results.append(check_node_runtime(repo_root=root))
+
+    # 3. Git hooks configuration
+    results.append(check_git_hooks(repo_root=root))
+
+    # 4. Playwright Chromium
     results.append(check_playwright_chromium())
 
-    # 3. Configuration validation
+    # 5. Configuration validation
     cfg_result, resolved_settings = check_configuration(settings)
     results.append(cfg_result)
 
-    # 4. LLM provider check
+    # 6. LLM provider check
     results.append(check_llm_provider(resolved_settings))
 
-    # 5. Telegram bot check
+    # 7. Telegram bot check
     results.append(check_telegram_bot(resolved_settings, client=telegram_client))
 
-    # 6. State backend check
+    # 8. State backend check
     results.append(check_state_backend(resolved_settings, repo_root=root, client=kv_client))
 
-    # 7. LinkedIn session check
+    # 9. LinkedIn session check
     results.append(check_linkedin_session(resolved_settings))
 
     # Display checklist
