@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.9.0...v1.9.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **relay:** resolve duplicate llmUrl declaration in tone rewrite handler ([626fe09](https://github.com/mahdi-behnam/linkedaide/commit/626fe09a49cbbaf13a8ec80be5cbdbc21fffa289))
+
+
+### Continuous Integration
+
+* **hooks:** add edge-relay and desktop typescript checks to pre-push hook ([0b86aa8](https://github.com/mahdi-behnam/linkedaide/commit/0b86aa8a9ebb82430cde9b9b7606a84bdeb3c7ff))
+
 ## [1.9.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.8.2...v1.9.0) (2026-10-28)
 
 
