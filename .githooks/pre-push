@@ -31,14 +31,33 @@ if ! command -v npm &> /dev/null; then
   fi
 fi
 
-if command -v npm &> /dev/null; then
-  echo "5/6 Checking Cloudflare Edge Relay static types..."
+# Detect if TypeScript packages were changed in commits being pushed
+has_relay_changes=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^infra/edge-relay/' || git diff --name-only HEAD~1 2>/dev/null | grep -E '^infra/edge-relay/' || true)
+has_desktop_changes=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^desktop/' || git diff --name-only HEAD~1 2>/dev/null | grep -E '^desktop/' || true)
+
+if ! command -v npm &> /dev/null; then
+  if [ -n "$has_relay_changes" ] || [ -n "$has_desktop_changes" ]; then
+    echo "❌ [pre-push] ABORT: Changes to TypeScript packages (infra/edge-relay or desktop) detected, but 'npm' is not available in PATH." >&2
+    echo "   Please install Node.js (>=20) and npm so that TypeScript verification can run before pushing." >&2
+    echo "   (Use 'git push --no-verify' only in emergency situations)." >&2
+    exit 1
+  else
+    echo "ℹ️  [pre-push] Node/npm not available in environment; no TypeScript package changes detected, skipping."
+  fi
+else
+  echo "5/6 Checking Cloudflare Edge Relay static types & tests..."
   if [ -d "infra/edge-relay/node_modules" ]; then
     (cd infra/edge-relay && npm run typecheck)
-  elif git diff --name-only origin/main...HEAD 2>/dev/null | grep -q "^infra/edge-relay/" || git diff --name-only HEAD~1 2>/dev/null | grep -q "^infra/edge-relay/"; then
+    if [ -n "$has_relay_changes" ]; then
+      echo "🧪 Running Edge Relay unit test verification with Vitest..."
+      (cd infra/edge-relay && npm test)
+    fi
+  elif [ -n "$has_relay_changes" ]; then
     echo "📦 Installing infra/edge-relay dependencies to verify TypeScript changes..."
     (cd infra/edge-relay && npm ci)
     (cd infra/edge-relay && npm run typecheck)
+    echo "🧪 Running Edge Relay unit test verification with Vitest..."
+    (cd infra/edge-relay && npm test)
   else
     echo "ℹ️  [pre-push] infra/edge-relay/node_modules not found and no relay changes detected; skipping."
   fi
@@ -46,15 +65,13 @@ if command -v npm &> /dev/null; then
   echo "6/6 Checking Desktop App static types..."
   if [ -d "desktop/node_modules" ]; then
     (cd desktop && npm run typecheck)
-  elif git diff --name-only origin/main...HEAD 2>/dev/null | grep -q "^desktop/" || git diff --name-only HEAD~1 2>/dev/null | grep -q "^desktop/"; then
+  elif [ -n "$has_desktop_changes" ]; then
     echo "📦 Installing desktop dependencies to verify TypeScript changes..."
     (cd desktop && npm ci)
     (cd desktop && npm run typecheck)
   else
     echo "ℹ️  [pre-push] desktop/node_modules not found and no desktop changes detected; skipping."
   fi
-else
-  echo "ℹ️  [pre-push] Node/npm not available in environment; skipping TypeScript checks."
 fi
 
 echo "✅ [pre-push] All pre-push checks passed successfully. Proceeding with push."

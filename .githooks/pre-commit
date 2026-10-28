@@ -21,4 +21,56 @@ fi
 echo "🔬 [pre-commit] Running Mypy static type analysis..."
 uv run mypy src tests scripts
 
+# Fast schema verification when Python files are staged
+staged_python=$(git diff --name-only --cached | grep -E '\.py$' || true)
+if [ -n "$staged_python" ]; then
+  echo "⚡ [pre-commit] Running fast schema smoke tests..."
+  uv run pytest tests/unit/test_schemas.py
+fi
+
+# Detect Node.js / npm environment (including common paths for GUI clients)
+if ! command -v npm &> /dev/null; then
+  if [ -s "$HOME/.nvm/nvm.sh" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    # shellcheck disable=SC1090
+    \. "$NVM_DIR/nvm.sh"
+  elif [ -x "/opt/homebrew/bin/npm" ]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  elif [ -x "/usr/local/bin/npm" ]; then
+    export PATH="/usr/local/bin:$PATH"
+  fi
+fi
+
+# Check staged TypeScript files in Edge Relay
+staged_relay=$(git diff --name-only --cached | grep -E '^infra/edge-relay/' || true)
+if [ -n "$staged_relay" ]; then
+  if ! command -v npm &> /dev/null; then
+    echo "❌ [pre-commit] Staged changes in infra/edge-relay detected, but 'npm' is not available." >&2
+    echo "   Please install Node.js (>=20) or unstage TypeScript files before committing." >&2
+    exit 1
+  fi
+  echo "🔬 [pre-commit] Checking Cloudflare Edge Relay static types..."
+  if [ ! -d "infra/edge-relay/node_modules" ]; then
+    echo "📦 Installing infra/edge-relay dependencies..."
+    (cd infra/edge-relay && npm ci)
+  fi
+  (cd infra/edge-relay && npm run typecheck)
+fi
+
+# Check staged TypeScript files in Desktop App
+staged_desktop=$(git diff --name-only --cached | grep -E '^desktop/' || true)
+if [ -n "$staged_desktop" ]; then
+  if ! command -v npm &> /dev/null; then
+    echo "❌ [pre-commit] Staged changes in desktop detected, but 'npm' is not available." >&2
+    echo "   Please install Node.js (>=20) or unstage TypeScript files before committing." >&2
+    exit 1
+  fi
+  echo "🔬 [pre-commit] Checking Desktop App static types..."
+  if [ ! -d "desktop/node_modules" ]; then
+    echo "📦 Installing desktop dependencies..."
+    (cd desktop && npm ci)
+  fi
+  (cd desktop && npm run typecheck)
+fi
+
 echo "✅ [pre-commit] All static checks passed."
