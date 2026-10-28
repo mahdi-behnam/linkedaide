@@ -105,7 +105,7 @@ LinkedIn Feed / Topics
 │   ├── electron/              # Electron main process, IPC handlers, tray manager, local runner
 │   └── src/                   # React UI (Approval Queue, Studio, Outreach, Calendar, Analytics)
 ├── infra/
-│   └── telegram-relay-worker/    # Cloudflare Worker relaying Telegram callbacks to GitHub
+│   └── edge-relay/               # Cloudflare Worker: Telegram relay, Desktop API, WebSockets & cron
 ├── scripts/                   # Local operator utilities
 │   ├── extract_linkedin_session.py  # Interactive browser login & session encrypter
 │   ├── generate_secrets.py          # Cryptographic Fernet & webhook secret generator

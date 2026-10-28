@@ -185,7 +185,7 @@ temp/
 
 # ------------------------------------------------------------
 # Node.js / Cloudflare Worker
-# infra/telegram-relay-worker/
+# infra/edge-relay/
 # ------------------------------------------------------------
 
 node_modules/
@@ -199,7 +199,7 @@ pnpm-debug.log*
 .dev.vars
 .dev.vars.*
 
-infra/telegram-relay-worker/dist/
+infra/edge-relay/dist/
 desktop/dist/
 desktop/dist-electron/
 desktop/release/

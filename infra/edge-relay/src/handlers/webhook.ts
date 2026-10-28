@@ -767,7 +767,7 @@ export async function handleTelegramWebhook(
                 headers: {
                   Accept: "application/vnd.github+json",
                   Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
-                  "User-Agent": "Telegram-Relay-Worker",
+                  "User-Agent": "Edge-Relay",
                   "X-GitHub-Api-Version": "2022-11-28",
                 },
                 body: JSON.stringify({
@@ -2148,7 +2148,7 @@ export async function handleTelegramWebhook(
       headers: {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${env.GITHUB_DISPATCH_PAT}`,
-        "User-Agent": "Telegram-Relay-Worker",
+        "User-Agent": "Edge-Relay",
         "X-GitHub-Api-Version": "2022-11-28",
       },
       body: JSON.stringify({

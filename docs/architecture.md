@@ -221,7 +221,7 @@ Safety rules are enforced by independent modules (`src/agent/safety/`):
 
 ## 8. Telegram Interactive Webhook & C2 Engine
 
-The Cloudflare Worker relay (`infra/telegram-relay-worker`) serves as the edge authorization and command-and-control gateway:
+The Cloudflare Edge Relay (`infra/edge-relay`) serves as the edge authorization and command-and-control gateway:
 
 - **Interactive Message Replies**: Operators can reply directly to any suggestion card with revised draft text or tone keywords (`contrarian`, `data_driven`, `concise`, `inquisitive`, `supportive`). The worker leverages LLM capabilities to regenerate drafts on the fly and updates the Telegram card live.
 - **Dedicated Callback Codes**: Compact callback codes (`ac`/`rc` for comments, `ap`/`rp` for posts, `ar`/`rr` for thread replies, `acon`/`rcon` for connection requests).

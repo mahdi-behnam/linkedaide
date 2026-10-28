@@ -84,7 +84,7 @@ describe("DoctorView", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Cloudflare KV State Store")).toBeTruthy();
-      expect(screen.getByText("Telegram Relay Worker")).toBeTruthy();
+      expect(screen.getByText("Cloudflare Edge Relay")).toBeTruthy();
       expect(screen.getByText("LinkedIn Playwright Session")).toBeTruthy();
       expect(screen.getByText("NVIDIA NIM Connectivity")).toBeTruthy();
       expect(screen.getByText("Safety & Circuit Breaker")).toBeTruthy();

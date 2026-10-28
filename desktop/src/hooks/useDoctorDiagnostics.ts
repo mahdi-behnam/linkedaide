@@ -152,7 +152,7 @@ export function useDoctorDiagnostics(
           {
             id: "chk-relay",
             category: "relay",
-            title: "Telegram Relay Worker",
+            title: "Cloudflare Edge Relay",
             status: kvPass ? "pass" : "fail",
             latencyMs: kvLatency,
             detail: kvPass
@@ -234,7 +234,7 @@ export function useDoctorDiagnostics(
           {
             id: "chk-relay",
             category: "relay",
-            title: "Telegram Relay Worker",
+            title: "Cloudflare Edge Relay",
             status: "warn",
             detail: "Desktop API runner not connected. Cannot reach worker relay.",
           },

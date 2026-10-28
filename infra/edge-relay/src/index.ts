@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker: Telegram Webhook to GitHub repository_dispatch Relay & Desktop API.
+ * Cloudflare Worker: Edge Relay (Telegram Webhook, GitHub repository_dispatch, Desktop API & Realtime WS Hub).
  *
  * Modular architecture:
  * - types.ts: Core interfaces (Env, TelegramUpdate, etc.)

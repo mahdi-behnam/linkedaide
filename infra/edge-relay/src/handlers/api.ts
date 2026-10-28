@@ -406,7 +406,7 @@ export async function handlePostAction(
       headers: {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${pat}`,
-        "User-Agent": "Telegram-Relay-Worker",
+        "User-Agent": "Edge-Relay",
         "X-GitHub-Api-Version": "2022-11-28",
       },
       body: JSON.stringify({
@@ -543,7 +543,7 @@ export async function handlePostScout(request: Request, env: Env): Promise<Respo
       headers: {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${pat}`,
-        "User-Agent": "Telegram-Relay-Worker",
+        "User-Agent": "Edge-Relay",
         "X-GitHub-Api-Version": "2022-11-28",
       },
       body: JSON.stringify(dispatchBody),
@@ -654,7 +654,7 @@ export async function handlePostIdeate(request: Request, env: Env): Promise<Resp
       headers: {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${pat}`,
-        "User-Agent": "Telegram-Relay-Worker",
+        "User-Agent": "Edge-Relay",
         "X-GitHub-Api-Version": "2022-11-28",
       },
       body: JSON.stringify(dispatchBody),

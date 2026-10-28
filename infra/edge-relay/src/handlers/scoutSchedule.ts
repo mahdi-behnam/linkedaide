@@ -282,7 +282,7 @@ export async function handleScoutScheduleCron(
         headers: {
           Accept: "application/vnd.github+json",
           Authorization: `Bearer ${pat}`,
-          "User-Agent": "Telegram-Relay-Worker",
+          "User-Agent": "Edge-Relay",
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({ ref: "main" }),

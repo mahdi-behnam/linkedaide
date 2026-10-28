@@ -1,6 +1,6 @@
-# Telegram Relay Worker
+# Edge Relay
 
-Cloudflare Worker that receives Telegram callback queries and converts them into GitHub Actions `repository_dispatch` events for Human-in-the-Loop LinkedIn approvals.
+Cloudflare Worker that handles Telegram webhooks, Desktop Cockpit REST API and WebSocket push events, edge post scheduling, and converts approval actions into GitHub Actions `repository_dispatch` events for Human-in-the-Loop LinkedIn automation.
 
 ## Configuration Secrets
 

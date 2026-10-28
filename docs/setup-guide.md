@@ -64,7 +64,7 @@ These settings and credentials can be configured directly through the **Desktop 
 | `MAX_COMMENTS_PER_DAY`        | Hard safety limit on approved comments posted daily (e.g. `5`).                                                                                    | `config:runtime` (KV)        |
 | `MAX_POSTS_PER_DAY`           | Hard safety limit on daily original posts (e.g. `1`).                                                                                             | `config:runtime` (KV)        |
 
-### Cloudflare Relay Worker Secrets (Configured via `wrangler secret put`)
+### Cloudflare Edge Relay Secrets (Configured via `wrangler secret put`)
 
 | Secret Name                   | Purpose                                                                                                                           |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -222,9 +222,9 @@ To allow browser automation to securely access your LinkedIn feed without storin
 
 ---
 
-## Step 5: Deploy Cloudflare Telegram Relay Worker
+## Step 5: Deploy Cloudflare Edge Relay
 
-When you click **Approve** or **Reject** in Telegram, Telegram sends an HTTP webhook callback. A lightweight Cloudflare Worker validates the request and triggers GitHub Actions via a `repository_dispatch` event.
+When you click **Approve** or **Reject** in Telegram, Telegram sends an HTTP webhook callback. The Cloudflare Edge Relay validates the request and triggers GitHub Actions via a `repository_dispatch` event. It also serves as the edge backend for the Desktop App and real-time state synchronization.
 
 ### Understanding `TELEGRAM_WEBHOOK_SECRET`
 
@@ -244,7 +244,7 @@ To allow the Cloudflare Worker to trigger GitHub Actions:
 ### 2. Provision Cloudflare Storage (KV & Optional R2)
 
 ```bash
-cd infra/telegram-relay-worker
+cd infra/edge-relay
 npm install
 ```
 
@@ -264,7 +264,7 @@ binding = "LINKEDIN_AGENT_KV"
 id = "a1b2c3d4e5f6071829304a5b6c7d8e9f"
 ```
 
-Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id = "linkedin_agent_kv_namespace"` with your generated 32-character `id`.
+Open `infra/edge-relay/wrangler.toml` and replace the placeholder `id = "linkedin_agent_kv_namespace"` with your generated 32-character `id`.
 
 > [!IMPORTANT]
 > **Cloudflare KV Credentials for GitHub Actions (`STATE_BACKEND=kv`)**
@@ -292,7 +292,7 @@ Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id
 >
 > - **No, R2 is completely optional.**
 > - Cloudflare requires entering a payment method / credit card to activate R2 (even though R2 includes a free 10 GB/month tier).
-> - If you **do not want to provide a credit card**, simply **skip R2**. In `infra/telegram-relay-worker/wrangler.toml`, the `[[r2_buckets]]` section is already commented out by default. Execution audit screenshots will automatically be saved locally on your workstation instead.
+> - If you **do not want to provide a credit card**, simply **skip R2**. In `infra/edge-relay/wrangler.toml`, the `[[r2_buckets]]` section is already commented out by default. Execution audit screenshots will automatically be saved locally on your workstation instead.
 > - You can proceed directly to **Step 3 (Deploy the Worker)**!
 
 **If you DO want Cloudflare R2 (for cloud-hosted proof screenshots):**
@@ -304,7 +304,7 @@ Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id
    ```bash
    npx wrangler r2 bucket create linkedin-agent-media
    ```
-5. In `infra/telegram-relay-worker/wrangler.toml`, uncomment the `[[r2_buckets]]` block:
+5. In `infra/edge-relay/wrangler.toml`, uncomment the `[[r2_buckets]]` block:
    ```toml
    [[r2_buckets]]
    binding = "SCREENSHOTS_BUCKET"
@@ -317,7 +317,7 @@ Open `infra/telegram-relay-worker/wrangler.toml` and replace the placeholder `id
 npx wrangler deploy
 ```
 
-Copy the deployed worker URL (e.g., `https://telegram-relay-worker.<your-subdomain>.workers.dev`).
+Copy the deployed worker URL (e.g., `https://edge-relay.<your-subdomain>.workers.dev`).
 
 ### 4. Set Worker Secrets in Cloudflare
 
@@ -352,7 +352,7 @@ Return to the project root directory and run the registration utility:
 
 ```bash
 uv run python scripts/register_telegram_webhook.py \
-  --worker-url https://telegram-relay-worker.<your-subdomain>.workers.dev \
+  --worker-url https://edge-relay.<your-subdomain>.workers.dev \
   --secret-token <YOUR_TELEGRAM_WEBHOOK_SECRET> \
   --bot-token <YOUR_TELEGRAM_BOT_TOKEN>
 ```
@@ -461,7 +461,7 @@ _Looking to develop, modify, or run the desktop app directly from code? See [Bui
 
 1. In the Desktop App, click **Settings** (gear icon in the sidebar).
 2. Configure your connection:
-   - **Cloudflare Worker URL**: Enter your deployed worker URL from Step 5 (e.g., `https://linkedin-agent-telegram-relay.<your-subdomain>.workers.dev`).
+   - **Cloudflare Worker URL**: Enter your deployed worker URL from Step 5 (e.g., `https://edge-relay.<your-subdomain>.workers.dev`).
    - **Desktop API Secret**: Paste the `DESKTOP_API_SECRET` you generated in Step 1.
 3. Click **"Save Settings"** and then **"Test Connection"**.
    - You should see a green checkmark indicating successful authentication and latency (<100ms).

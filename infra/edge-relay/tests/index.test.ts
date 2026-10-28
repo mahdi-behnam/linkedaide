@@ -17,7 +17,7 @@ import worker, {
   Env,
 } from "../src/index";
 
-describe("Telegram Relay Worker", () => {
+describe("Edge Relay", () => {
   const mockEnv: Env = {
     TELEGRAM_WEBHOOK_SECRET: "my-secret-token-123",
     TELEGRAM_BOT_TOKEN: "123456:TEST_TOKEN",

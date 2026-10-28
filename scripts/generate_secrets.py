@@ -65,7 +65,7 @@ def print_full_guide(session_key: str, webhook_secret: str, desktop_secret: str)
     print(f"DESKTOP_API_SECRET={desktop_secret}")
     print(f"# (Optional reference) TELEGRAM_WEBHOOK_SECRET={webhook_secret}")
 
-    print("\n--- B. Configure Cloudflare Relay Worker (infra/telegram-relay-worker) ---")
+    print("\n--- B. Configure Cloudflare Edge Relay (infra/edge-relay) ---")
     print("Run these commands in your terminal:")
     print("  npx wrangler secret put TELEGRAM_WEBHOOK_SECRET")
     print(f"  # When prompted, paste: {webhook_secret}")
@@ -75,7 +75,7 @@ def print_full_guide(session_key: str, webhook_secret: str, desktop_secret: str)
     print("\n--- C. Register Webhook with Telegram API ---")
     print("Run this command from the repository root:")
     print("  uv run python scripts/register_telegram_webhook.py \\")
-    print("    --worker-url https://telegram-relay-worker.<your-subdomain>.workers.dev \\")
+    print("    --worker-url https://edge-relay.<your-subdomain>.workers.dev \\")
     print(f"    --secret-token {webhook_secret}")
 
     print(

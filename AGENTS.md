@@ -9,7 +9,7 @@ LinkedAide (v1.8.2) is an enterprise-grade, human-in-the-loop (HITL) LinkedIn AI
 - **LangGraph**: Deterministic workflow orchestration across 5 compiled state machines (`ScoutGraph`, `ExecuteGraph`, `HealthCheckGraph`, `IdeationGraph`, `ThreadMonitorGraph`).
 - **Playwright**: Stealth LinkedIn browser automation featuring 4-tier self-healing selectors, behavioral biometrics, session keeper, and residential proxy gateway routing.
 - **Dual-Channel HITL Authorization**: Telegram Bot (inline cards, tone studio, C2 commands) and Desktop Cockpit (`desktop/` — Electron + React + TypeScript + Apple HIG / Things 3 UI).
-- **Edge Relay & Realtime Hub**: Cloudflare Worker (`infra/telegram-relay-worker`) with Workers KV, R2 media vault, and WebSocket push hub for instant desktop synchronization.
+- **Edge Relay & Realtime Hub**: Cloudflare Worker (`infra/edge-relay`) with Workers KV, R2 media vault, and WebSocket push hub for instant desktop synchronization.
 - **State & Config Persistence**: Authoritative Cloudflare Workers KV (`STATE_BACKEND=kv`) with local Git/JSON fallback (`STATE_BACKEND=git`).
 - **Automation Execution**: Scheduled and event-driven GitHub Actions cloud runners (`.github/workflows/`) alongside local desktop runner execution.
 
@@ -70,7 +70,7 @@ linkedaide/
 │   └── tests/                  # Desktop TypeScript and React component test suites
 ├── docs/                       # Architecture, configuration, setup, and troubleshooting guides
 ├── infra/
-│   └── telegram-relay-worker/  # Cloudflare Worker: Telegram webhook, API, WS push hub, R2 vault
+│   └── edge-relay/             # Cloudflare Worker: Telegram webhook, API, WS push hub, R2 vault
 ├── persona/                    # User voice configuration, style guides, writing samples
 ├── scripts/                    # Session extraction, secret generation, webhook registration
 ├── src/agent/
@@ -105,7 +105,7 @@ linkedaide/
 ## 4. Human Approval & Review Interfaces
 
 ### 4.1 Telegram Bot & Relay Worker
-- Telegram webhook runs on Cloudflare Workers ([`infra/telegram-relay-worker`](infra/telegram-relay-worker)).
+- Telegram webhook runs on Cloudflare Workers ([`infra/edge-relay`](infra/edge-relay)).
 - Only `TELEGRAM_AUTHORIZED_CHAT_ID` is authorized to trigger actions.
 - Callback data must contain only compact action codes (`ac`, `rc`, `ap`, `rp`, etc.) and opaque item IDs. Never pass secrets or executable payload in callbacks.
 - Supports interactive draft revisions via message reply and tone adjustment menus.
@@ -155,9 +155,9 @@ uv run pytest                             # Full test suite
 uv run pytest tests/unit/test_schemas.py  # Targeted unit test
 ```
 
-### Cloudflare Worker (`infra/telegram-relay-worker`)
+### Cloudflare Worker (`infra/edge-relay`)
 ```bash
-cd infra/telegram-relay-worker
+cd infra/edge-relay
 npm ci
 npm run typecheck
 npm test

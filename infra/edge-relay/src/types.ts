@@ -1,5 +1,5 @@
 /**
- * Type definitions for Telegram Relay Worker.
+ * Type definitions for Edge Relay.
  */
 
 export interface Env {

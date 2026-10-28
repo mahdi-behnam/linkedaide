@@ -1,7 +1,7 @@
 {
-  "name": "telegram-relay-worker",
+  "name": "edge-relay",
   "version": "1.0.0",
-  "description": "Cloudflare Worker webhook relay translating Telegram inline button callbacks to GitHub repository_dispatch events",
+  "description": "Cloudflare Worker edge relay translating Telegram inline button callbacks to GitHub repository_dispatch events, Desktop API, and Realtime Hub",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
