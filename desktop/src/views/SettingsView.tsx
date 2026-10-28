@@ -217,13 +217,6 @@ export const SettingsView: React.FC = () => {
           if (isMounted && loaded) {
             setSettings((prev) => ({ ...prev, ...loaded }));
             setSavedSettings((prev) => ({ ...prev, ...loaded }));
-            if (loaded.nimModel) {
-              setModelsList((prev) =>
-                prev.includes(loaded.nimModel!)
-                  ? prev
-                  : [loaded.nimModel!, ...prev],
-              );
-            }
           }
         } catch (err) {
           console.error("Failed to load settings:", err);

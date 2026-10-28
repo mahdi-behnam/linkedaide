@@ -41,6 +41,7 @@ describe("SettingsView", () => {
         actionTtlHours: 48,
         userPersona: "Software and AI Engineer sharing technical insights...",
         llmProvider: "nvidia",
+        nimApiKey: "nvapi-test123",
         nimModelFallback: "openai/gpt-oss-20b",
         dryRun: false,
         telegramBotToken: "123456:ABC-token-xyz",
@@ -275,8 +276,17 @@ describe("SettingsView", () => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
+    const fetchBtn = screen.getByRole("button", {
+      name: /Fetch Models/i,
+    });
+    fireEvent.click(fetchBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("nvidia/nemotron-3-ultra-550b-a55b")).toBeTruthy();
+    });
+
     const modelSelect = screen.getByLabelText(
-      "Primary NIM Model",
+      "Primary LLM Model",
     ) as HTMLSelectElement;
     fireEvent.change(modelSelect, {
       target: { value: "nvidia/nemotron-3-ultra-550b-a55b" },
@@ -357,6 +367,15 @@ describe("SettingsView", () => {
       expect(window.api.getSettings).toHaveBeenCalled();
     });
 
+    const fetchBtn = screen.getByRole("button", {
+      name: /Fetch Models/i,
+    });
+    fireEvent.click(fetchBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("nvidia/nemotron-3-ultra-550b-a55b")).toBeTruthy();
+    });
+
     const modelSelect = screen.getByLabelText(
       "Primary LLM Model",
     ) as HTMLSelectElement;
@@ -405,12 +424,6 @@ describe("SettingsView", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/API rate limit exceeded/i)).toBeTruthy();
-    });
-  });
-    fireEvent.click(fetchBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/NVIDIA API rate limit exceeded/i)).toBeTruthy();
     });
   });
 
@@ -710,7 +723,7 @@ describe("SettingsView", () => {
     expect(providerSelect.value).toBe("anthropic");
 
     const fallbackInput = screen.getByPlaceholderText(
-      /e\.g\. openai\/gpt-oss-20b/i,
+      /fallback model identifier/i,
     ) as HTMLInputElement;
     fireEvent.change(fallbackInput, {
       target: { value: "claude-3-5-haiku-20241022" },
