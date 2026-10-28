@@ -3,7 +3,7 @@
  */
 
 import { Env } from "../types";
-import { inferContentType, jsonResponse } from "../utils";
+import { inferContentType, jsonResponse, getTelegramCredentials } from "../utils";
 import { broadcastEvent, handleWebSocketUpgrade } from "./ws";
 import { handleScheduledPosts } from "./scheduled";
 import { handleConnectionQueue } from "./connectionQueue";
@@ -1038,6 +1038,14 @@ export async function handleApiRequest(
   ctx: ExecutionContext,
   url: URL
 ): Promise<Response> {
+  // Resolve dynamic Telegram credentials from Cloudflare KV (config:runtime) with env fallback
+  const creds = await getTelegramCredentials(env);
+  env = {
+    ...env,
+    TELEGRAM_BOT_TOKEN: creds.token || env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_AUTHORIZED_CHAT_ID: creds.authorizedChatId || env.TELEGRAM_AUTHORIZED_CHAT_ID,
+  };
+
   const pathname = url.pathname.replace(/\/+$/, "");
 
   // WebSocket push hub upgrade endpoint
