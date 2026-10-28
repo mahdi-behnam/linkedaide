@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.10.0...v1.10.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **desktop:** resolve python cryptography interoperability in CI and run desktop tests on pre-push ([ab2e9bc](https://github.com/mahdi-behnam/linkedaide/commit/ab2e9bc79177998233acee4b27c6608758783f97))
+
 ## [1.10.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.9.1...v1.10.0) (2026-10-28)
 
 
