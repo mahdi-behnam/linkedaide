@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.10.0](https://github.com/mahdi-behnam/linkedaide/compare/v1.9.1...v1.10.0) (2026-10-28)
+
+
+### Features
+
+* **doctor:** add node runtime and git hooks diagnostics ([1968f96](https://github.com/mahdi-behnam/linkedaide/commit/1968f96d79e828760765b284c6cf5c145959d1f6))
+
+
+### Bug Fixes
+
+* **desktop:** resolve syntax and type errors in settings view and tests ([8e19448](https://github.com/mahdi-behnam/linkedaide/commit/8e19448de09efca27cf0007bb1d5c189a12fa01e))
+
+
+### Continuous Integration
+
+* **hooks:** add fail-closed validation, staged checks, and edge relay testing ([50ceb91](https://github.com/mahdi-behnam/linkedaide/commit/50ceb91148b6c350ead26395cde29d16b8daf753))
+
 ## [1.9.1](https://github.com/mahdi-behnam/linkedaide/compare/v1.9.0...v1.9.1) (2026-10-28)
 
 
